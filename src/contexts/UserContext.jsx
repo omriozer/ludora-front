@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { User, SubscriptionPlan, SubscriptionHistory, Settings } from '@/services/apiClient';
 import { loadSettingsWithRetry } from '@/lib/appUser';
+import { clog, cerror } from '@/lib/utils';
 
 const UserContext = createContext(null);
 
@@ -30,7 +31,7 @@ export function UserProvider({ children }) {
         setSettings(null);
       }
     } catch (error) {
-      console.error('[UserContext] Error loading settings:', error);
+      cerror('[UserContext] Error loading settings:', error);
       setSettings(null);
       setSettingsLoadFailed(true);
     }
@@ -86,7 +87,7 @@ export function UserProvider({ children }) {
         clearAuth();
       }
     } catch (error) {
-      console.error('Error checking persisted auth:', error);
+      cerror('Error checking persisted auth:', error);
       clearAuth();
     } finally {
       setIsLoading(false);
@@ -95,7 +96,7 @@ export function UserProvider({ children }) {
 
   const loadUserData = useCallback(async (user) => {
     try {
-      console.log('[UserContext] Loading user data for:', user.email);
+      clog('[UserContext] Loading user data for:', user.email);
 
       // User data is already clean from the API - no normalization needed
       // All user data comes from the database user table
@@ -107,7 +108,7 @@ export function UserProvider({ children }) {
           const updatedUser = await checkUserSubscription(user);
           setCurrentUser(updatedUser);
         } catch (subscriptionError) {
-          console.warn('[UserContext] Subscription check failed, proceeding without subscription:', subscriptionError);
+          clog('[UserContext] Subscription check failed, proceeding without subscription:', subscriptionError);
           // If subscription check fails, proceed without it to allow login
           setCurrentUser(user);
         }
@@ -116,7 +117,7 @@ export function UserProvider({ children }) {
       }
       setIsAuthenticated(true);
     } catch (error) {
-      console.error('[UserContext] Error loading user data:', error);
+      cerror('[UserContext] Error loading user data:', error);
       throw error;
     }
   }, [settings]);
@@ -124,7 +125,7 @@ export function UserProvider({ children }) {
   const checkUserSubscription = useCallback(async (user) => {
     try {
       if (!user.current_subscription_plan_id || user.subscription_status !== 'active') {
-        console.log('[UserContext] User has no active subscription, checking for free plans');
+        clog('[UserContext] User has no active subscription, checking for free plans');
         
         const allPlans = await SubscriptionPlan.find({ is_active: true });
         const freePlans = allPlans.filter(plan => 
@@ -154,7 +155,7 @@ export function UserProvider({ children }) {
               metadata: JSON.stringify({ auto_assigned: true, plan_name: freePlan.name })
             });
           } catch (historyError) {
-            console.error('[UserContext] Error recording subscription history:', historyError);
+            cerror('[UserContext] Error recording subscription history:', historyError);
           }
           
           return updatedUser;
@@ -162,7 +163,7 @@ export function UserProvider({ children }) {
       }
       return user;
     } catch (error) {
-      console.error('[UserContext] Error checking subscription:', error);
+      cerror('[UserContext] Error checking subscription:', error);
       return user;
     }
   }, []);
@@ -181,9 +182,9 @@ export function UserProvider({ children }) {
         localStorage.setItem('rememberMe', 'false');
       }
       updateLastActivity();
-      console.log('[UserContext] User logged in successfully');
+      clog('[UserContext] User logged in successfully');
     } catch (error) {
-      console.error('[UserContext] Login error:', error);
+      cerror('[UserContext] Login error:', error);
       throw error;
     }
   }, [loadUserData]);
@@ -194,7 +195,7 @@ export function UserProvider({ children }) {
       const { logout: apiLogout } = await import('@/services/apiClient');
       await apiLogout();
     } catch (error) {
-      console.error('[UserContext] API logout error:', error);
+      cerror('[UserContext] API logout error:', error);
     } finally {
       clearAuth();
     }

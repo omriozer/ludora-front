@@ -1,5 +1,6 @@
 import { Settings } from './entities';
 import { NAV_ITEM_KEYS } from '@/config/productTypes';
+import { cerror } from '@/lib/utils';
 
 class FeatureFlagService {
   constructor() {
@@ -28,7 +29,7 @@ class FeatureFlagService {
 
       return settings;
     } catch (error) {
-      console.error('Error fetching feature flags:', error);
+      cerror('Error fetching feature flags:', error);
       return {};
     }
   }

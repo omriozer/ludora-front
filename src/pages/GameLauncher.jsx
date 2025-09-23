@@ -18,6 +18,7 @@ import {
   Award,
   LogIn
 } from 'lucide-react';
+import { clog, cerror } from '@/lib/utils';
 
 const GAME_TYPE_NAMES = {
   'sharp_and_smooth': 'חד וחלק',
@@ -103,10 +104,10 @@ export default function GameLauncher() {
       }
     } catch (error) {
       if (error.name !== 'AbortError' && error.name !== 'NotAllowedError') {
-        console.error('Audio play error:', error.message || error);
+        cerror('Audio play error:', error.message || error);
         setAudioError(true);
       } else {
-        console.log('Audio play prevented by browser policy:', error.name);
+        clog('Audio play prevented by browser policy:', error.name);
       }
     }
   }, [audioLoaded, audioRef, audioError]); // Removed setAudioError, as setState dispatchers are stable
@@ -119,7 +120,7 @@ export default function GameLauncher() {
         audioRef.current.pause();
       }
     } catch (error) {
-      console.warn('Could not pause audio:', error.message);
+      clog('Could not pause audio:', error.message);
     }
   }, [audioRef]);
 
@@ -150,7 +151,7 @@ export default function GameLauncher() {
         setAudioEnabled(false);
       }
     } catch (error) {
-      console.error('Error loading game audio:', error);
+      cerror('Error loading game audio:', error);
       setCurrentAudioUrl(null);
       setAudioEnabled(false);
     }
@@ -163,7 +164,7 @@ export default function GameLauncher() {
     }
 
     try {
-      console.log('🎮 Loading game data for ID:', gameId, 'Force reload:', forceReload);
+      clog('🎮 Loading game data for ID:', gameId, 'Force reload:', forceReload);
 
       // Load the game
       const games = await Game.filter({ id: gameId });
@@ -172,7 +173,7 @@ export default function GameLauncher() {
       }
 
       const gameData = games[0];
-      console.log('📋 Game data loaded:', gameData);
+      clog('📋 Game data loaded:', gameData);
       
       if (!forceReload) {
         setGame(gameData);
@@ -180,7 +181,7 @@ export default function GameLauncher() {
 
       // Load content for scatter game
       if (gameData.game_type === 'scatter_game') {
-        console.log('🔤 Loading content for scatter game from relationships...');
+        clog('🔤 Loading content for scatter game from relationships...');
         
         // Parse game settings
         let gameSettings;
@@ -188,9 +189,9 @@ export default function GameLauncher() {
           gameSettings = typeof gameData.game_settings === 'string' 
             ? JSON.parse(gameData.game_settings) 
             : gameData.game_settings;
-          console.log('⚙️ Parsed game settings:', gameSettings);
+          clog('⚙️ Parsed game settings:', gameSettings);
         } catch (e) {
-          console.error('Error parsing game settings:', e);
+          cerror('Error parsing game settings:', e);
           throw new Error('הגדרות המשחק פגומות');
         }
 
@@ -200,8 +201,8 @@ export default function GameLauncher() {
 
         const gameLanguage = gameSettings.language || 'hebrew';
         const requiredWords = gameSettings.required_words || 3;
-        console.log('🌐 Game language:', gameLanguage);
-        console.log('🎯 Required words:', requiredWords);
+        clog('🌐 Game language:', gameLanguage);
+        clog('🎯 Required words:', requiredWords);
 
         // Load content relationships for this game
         // These relationships link the game to its content sources (words, lists, etc.)
@@ -210,7 +211,7 @@ export default function GameLauncher() {
           target_type: 'Game' 
         });
 
-        console.log(`🔗 Found ${gameRelationships.length} content relationships for this game`);
+        clog(`🔗 Found ${gameRelationships.length} content relationships for this game`);
 
         const allAvailableWords = []; // All words available for selection
         
@@ -221,13 +222,13 @@ export default function GameLauncher() {
             const gridWidth = gameSettings.grid_size.width || 12;
             const gridHeight = gameSettings.grid_size.height || 12;
             maxWordLength = Math.max(gridWidth, gridHeight); // Max word length is the larger dimension
-            console.log(`📏 Calculated max word length based on grid ${gridWidth}x${gridHeight}: ${maxWordLength}`);
+            clog(`📏 Calculated max word length based on grid ${gridWidth}x${gridHeight}: ${maxWordLength}`);
           } else {
-            console.log('📏 Using default max word length:', maxWordLength);
+            clog('📏 Using default max word length:', maxWordLength);
           }
         } catch (error) {
-          console.error('Error calculating max word length:', error);
-          console.log('📏 Using fallback max word length:', maxWordLength);
+          cerror('Error calculating max word length:', error);
+          clog('📏 Using fallback max word length:', maxWordLength);
         }
 
         // Pre-calculate game-wide excluded word IDs
@@ -238,24 +239,24 @@ export default function GameLauncher() {
             gameExcludedWordIds.add(rel.source_id);
           }
         });
-        console.log('🚨 Game-wide excluded word IDs:', [...gameExcludedWordIds]);
+        clog('🚨 Game-wide excluded word IDs:', [...gameExcludedWordIds]);
 
         // Process each relationship to build available words pool
         for (const relationship of gameRelationships) {
           try {
             const contextData = relationship.context_data ? JSON.parse(relationship.context_data) : {};
-            console.log('🔍 Processing relationship:', relationship.id, 'Type:', contextData.content_type, 'Source:', relationship.source_type);
+            clog('🔍 Processing relationship:', relationship.id, 'Type:', contextData.content_type, 'Source:', relationship.source_type);
 
             // If the relationship itself signifies an exclusion (e.g., exclude an entire ContentList from the game)
             if (relationship.relationship_types.includes('excluded_game_content')) {
-              console.log('⏭️ Skipping content relationship that is an exclusion itself (e.g., excluded list/category):', relationship.id);
+              clog('⏭️ Skipping content relationship that is an exclusion itself (e.g., excluded list/category):', relationship.id);
               continue; // Skip processing this relationship entirely
             }
 
             // Handle custom words
             if (contextData.content_type === 'custom_word') {
               const wordData = contextData.word;
-              console.log('🎯 Found custom word:', wordData, 'Type:', typeof wordData);
+              clog('🎯 Found custom word:', wordData, 'Type:', typeof wordData);
               
               let actualWordText = null;
               
@@ -270,15 +271,15 @@ export default function GameLauncher() {
                 actualWordText = wordData.text;
               }
               
-              console.log('📝 Extracted word text:', actualWordText, 'Type:', typeof actualWordText);
+              clog('📝 Extracted word text:', actualWordText, 'Type:', typeof actualWordText);
               
               if (actualWordText && typeof actualWordText === 'string') {
                 if (gameExcludedWordIds.has(relationship.source_id)) {
-                  console.log(`⏭️ Skipping custom word '${actualWordText}' because it's game-wide excluded. ID: ${relationship.source_id}`);
+                  clog(`⏭️ Skipping custom word '${actualWordText}' because it's game-wide excluded. ID: ${relationship.source_id}`);
                   continue;
                 }
                 
-                console.log(`📏 Checking custom word length: "${actualWordText}" (Length: ${actualWordText.length}, Max: ${maxWordLength})`);
+                clog(`📏 Checking custom word length: "${actualWordText}" (Length: ${actualWordText.length}, Max: ${maxWordLength})`);
                 
                 if (actualWordText.length <= maxWordLength) {
                   const cleanWord = cleanWordForGame(actualWordText);
@@ -289,15 +290,15 @@ export default function GameLauncher() {
                       type: 'custom',
                       originalText: actualWordText
                     });
-                    console.log('📝 Added custom word to pool:', cleanWord);
+                    clog('📝 Added custom word to pool:', cleanWord);
                   } else {
-                    console.log('⏭️ Custom word became empty after cleaning, skipping:', actualWordText);
+                    clog('⏭️ Custom word became empty after cleaning, skipping:', actualWordText);
                   }
                 } else {
-                  console.log('⏭️ Skipping custom word (too long):', actualWordText, `(Length: ${actualWordText.length}, Max: ${maxWordLength})`);
+                  clog('⏭️ Skipping custom word (too long):', actualWordText, `(Length: ${actualWordText.length}, Max: ${maxWordLength})`);
                 }
               } else {
-                console.log('⚠️ Could not extract valid word text from:', wordData, 'Type:', typeof wordData);
+                clog('⚠️ Could not extract valid word text from:', wordData, 'Type:', typeof wordData);
               }
             }
             
@@ -307,7 +308,7 @@ export default function GameLauncher() {
                 // Check if language matches the game's language setting
                 if ((gameLanguage === 'hebrew' && relationship.source_type !== 'Word') ||
                     (gameLanguage === 'english' && relationship.source_type !== 'WordEN')) {
-                  console.log(`⏭️ Skipping individual word due to language mismatch. Game: ${gameLanguage}, Word source type: ${relationship.source_type}`);
+                  clog(`⏭️ Skipping individual word due to language mismatch. Game: ${gameLanguage}, Word source type: ${relationship.source_type}`);
                   continue;
                 }
                 
@@ -319,7 +320,7 @@ export default function GameLauncher() {
                 if (words && words.length > 0) {
                   const wordEntity = words[0];
                   if (gameExcludedWordIds.has(wordEntity.id)) { // Check if this word is game-excluded
-                    console.log(`⏭️ Skipping individual word '${wordEntity.word}' because it's game-wide excluded. ID: ${wordEntity.id}`);
+                    clog(`⏭️ Skipping individual word '${wordEntity.word}' because it's game-wide excluded. ID: ${wordEntity.id}`);
                     continue;
                   }
 
@@ -335,26 +336,26 @@ export default function GameLauncher() {
                           type: relationship.source_type,
                           originalText: wordText
                         });
-                        console.log('📝 Added individual word to pool:', cleanWord);
+                        clog('📝 Added individual word to pool:', cleanWord);
                       } else {
-                        console.log('⏭️ Individual word became empty after cleaning, skipping:', wordText);
+                        clog('⏭️ Individual word became empty after cleaning, skipping:', wordText);
                       }
                     } else {
-                      console.log('⏭️ Skipping individual word (too long):', wordText, `(Length: ${wordText.length}, Max: ${maxWordLength})`);
+                      clog('⏭️ Skipping individual word (too long):', wordText, `(Length: ${wordText.length}, Max: ${maxWordLength})`);
                     }
                   }
                 } else {
-                  console.log('❌ Individual word entity not found for ID:', relationship.source_id);
+                  clog('❌ Individual word entity not found for ID:', relationship.source_id);
                 }
               } else {
-                console.log('⏭️ Relationship source_type not Word/WordEN for selected_word type:', relationship.source_type);
+                clog('⏭️ Relationship source_type not Word/WordEN for selected_word type:', relationship.source_type);
               }
             }
             
             // Handle content lists - load ALL words from lists into pool
             else if (contextData.content_type === 'content_list') {
               if (relationship.source_type === 'ContentList') {
-                console.log('📚 Processing content list:', relationship.source_id);
+                clog('📚 Processing content list:', relationship.source_id);
                 
                 // Get all relationships where this ContentList is involved (in both directions: List -> Word and Word -> List)
                 const [listToWordsRelationships, wordsToListRelationships] = await Promise.all([
@@ -372,7 +373,7 @@ export default function GameLauncher() {
                 const allListRelationships = [...listToWordsRelationships, ...wordsToListRelationships]
                   .filter((v,i,a)=>a.findIndex(t=>(t.id === v.id))===i);
                 
-                console.log(`📚 Found ${allListRelationships.length} unique relationships for content list ${relationship.source_id}`);
+                clog(`📚 Found ${allListRelationships.length} unique relationships for content list ${relationship.source_id}`);
 
                 // Check for words specifically excluded from *this list* when used *for this game*
                 const listSpecificExcludedWordIds = gameRelationships
@@ -383,7 +384,7 @@ export default function GameLauncher() {
                   )
                   .map(rel => rel.source_id);
 
-                console.log('❌ List-specific excluded word IDs for this game:', listSpecificExcludedWordIds);
+                clog('❌ List-specific excluded word IDs for this game:', listSpecificExcludedWordIds);
                 
                 // Process each relationship to get the actual words from the list
                 for (const listRel of allListRelationships) {
@@ -392,7 +393,7 @@ export default function GameLauncher() {
                   
                   // If this specific relationship within the list is an exclusion (e.g., word X is excluded from list Y)
                   if (listRel.relationship_types.includes('excluded_game_content')) {
-                    console.log('⏭️ Skipping word due to list relationship being an exclusion:', listRel.id);
+                    clog('⏭️ Skipping word due to list relationship being an exclusion:', listRel.id);
                     continue;
                   }
 
@@ -406,7 +407,7 @@ export default function GameLauncher() {
                     wordEntityType = listRel.source_type;
                     wordEntityId = listRel.source_id;
                   } else {
-                    console.log('⏭️ Skipping non-word relationship in list:', listRel.id);
+                    clog('⏭️ Skipping non-word relationship in list:', listRel.id);
                     continue; // Skip relationships that don't involve our ContentList and a word
                   }
                   
@@ -415,7 +416,7 @@ export default function GameLauncher() {
                     // Check if language matches the game's language setting
                     if ((gameLanguage === 'hebrew' && wordEntityType !== 'Word') ||
                         (gameLanguage === 'english' && wordEntityType !== 'WordEN')) {
-                      console.log(`⏭️ Skipping word from list due to language mismatch. Game: ${gameLanguage}, Word type: ${wordEntityType}, Word ID: ${wordEntityId}`);
+                      clog(`⏭️ Skipping word from list due to language mismatch. Game: ${gameLanguage}, Word type: ${wordEntityType}, Word ID: ${wordEntityId}`);
                       continue;
                     }
                     
@@ -430,12 +431,12 @@ export default function GameLauncher() {
 
                         // Apply game-wide exclusion check first
                         if (gameExcludedWordIds.has(wordEntity.id)) {
-                          console.log(`⏭️ Skipping word '${wordEntity.word}' from list because it's game-wide excluded. ID: ${wordEntity.id}`);
+                          clog(`⏭️ Skipping word '${wordEntity.word}' from list because it's game-wide excluded. ID: ${wordEntity.id}`);
                           continue;
                         }
                         // Apply list-specific exclusion check
                         if (listSpecificExcludedWordIds.includes(wordEntity.id)) {
-                          console.log(`⏭️ Skipping word '${wordEntity.word}' because it's excluded specifically from this list for this game. ID: ${wordEntity.id}`);
+                          clog(`⏭️ Skipping word '${wordEntity.word}' because it's excluded specifically from this list for this game. ID: ${wordEntity.id}`);
                           continue;
                         }
 
@@ -452,38 +453,38 @@ export default function GameLauncher() {
                                 originalText: wordText,
                                 fromList: relationship.source_id // Keep for tracing origin
                               });
-                              console.log('📝 Added word from list to pool:', cleanWord, 'from list:', relationship.source_id);
+                              clog('📝 Added word from list to pool:', cleanWord, 'from list:', relationship.source_id);
                             } else {
-                              console.log('⏭️ Word from list became empty after cleaning, skipping:', wordText);
+                              clog('⏭️ Word from list became empty after cleaning, skipping:', wordText);
                             }
                           } else {
-                            console.log('⏭️ Skipping word from list (too long):', wordText, `(Length: ${wordText.length}, Max: ${maxWordLength})`);
+                            clog('⏭️ Skipping word from list (too long):', wordText, `(Length: ${wordText.length}, Max: ${maxWordLength})`);
                           }
                         }
                       } else {
-                        console.log('❌ Word entity not found for ID from list:', wordEntityId);
+                        clog('❌ Word entity not found for ID from list:', wordEntityId);
                       }
                     } catch (error) {
-                      console.error(`Error loading word ${wordEntityId} from list:`, error);
+                      cerror(`Error loading word ${wordEntityId} from list:`, error);
                     }
                   } else {
-                    console.log('⏭️ Relationship points to non-Word/WordEN entity in list:', wordEntityType);
+                    clog('⏭️ Relationship points to non-Word/WordEN entity in list:', wordEntityType);
                   }
                 }
               } else {
-                console.log('⏭️ Relationship source_type not ContentList for content_list type:', relationship.source_type);
+                clog('⏭️ Relationship source_type not ContentList for content_list type:', relationship.source_type);
               }
             }
             else {
-              console.log('❓ Unknown content_type or unhandled relationship:', contextData.content_type);
+              clog('❓ Unknown content_type or unhandled relationship:', contextData.content_type);
             }
           } catch (error) {
-            console.error('❌ Error processing relationship:', relationship.id, error);
+            cerror('❌ Error processing relationship:', relationship.id, error);
           }
         }
 
-        console.log(`🎯 Total available words in pool: ${allAvailableWords.length}`);
-        console.log('📋 Available words:', allAvailableWords.map(w => w.text));
+        clog(`🎯 Total available words in pool: ${allAvailableWords.length}`);
+        clog('📋 Available words:', allAvailableWords.map(w => w.text));
 
         // Validate we have enough words
         if (allAvailableWords.length < requiredWords) {
@@ -494,14 +495,14 @@ export default function GameLauncher() {
         const shuffledWords = [...allAvailableWords].sort(() => Math.random() - 0.5);
         const selectedWords = shuffledWords.slice(0, requiredWords);
 
-        console.log(`🎲 Selected ${selectedWords.length} words for this game:`, selectedWords.map(w => w.text));
+        clog(`🎲 Selected ${selectedWords.length} words for this game:`, selectedWords.map(w => w.text));
 
         // Remove duplicates based on text (in case of duplicates from different sources or accidental repeats)
         const uniqueSelectedWords = selectedWords.filter((word, index, array) => 
           array.findIndex(w => w.text === word.text) === index
         );
 
-        console.log(`✨ Final unique words for game: ${uniqueSelectedWords.length}`, uniqueSelectedWords.map(w => w.text));
+        clog(`✨ Final unique words for game: ${uniqueSelectedWords.length}`, uniqueSelectedWords.map(w => w.text));
 
         // Set the selected words for the game
         setGameWords(uniqueSelectedWords);
@@ -513,7 +514,7 @@ export default function GameLauncher() {
       }
 
     } catch (error) {
-      console.error('❌ Error loading game data:', error);
+      cerror('❌ Error loading game data:', error);
       setError(error.message);
       if (!forceReload) {
         navigate('/catalog');
@@ -526,7 +527,7 @@ export default function GameLauncher() {
   }, [gameId, navigate, cleanWordForGame, loadGameAudio]);
 
   const reloadGameWords = useCallback(() => {
-    console.log('🔄 Reloading game words...');
+    clog('🔄 Reloading game words...');
     loadGameData(true); // Force reload flag
   }, [loadGameData]);
 
@@ -600,15 +601,15 @@ export default function GameLauncher() {
       // Try to auto-play, if fails set audioEnabled to false
       if (audioEnabled) {
         try {
-          console.log('🎵 Trying to auto-play opening music');
+          clog('🎵 Trying to auto-play opening music');
           await audio.play();
-          console.log('🎵 Opening music auto-play successful');
+          clog('🎵 Opening music auto-play successful');
         } catch (playError) {
           if (playError.name === 'NotAllowedError' || playError.name === 'AbortError') {
-            console.log('🎵 Opening music auto-play blocked, setting audio to disabled');
+            clog('🎵 Opening music auto-play blocked, setting audio to disabled');
             setAudioEnabled(false); // Set button to muted state
           } else {
-            console.error('Opening music play error:', playError.message);
+            cerror('Opening music play error:', playError.message);
           }
         }
       }
@@ -618,7 +619,7 @@ export default function GameLauncher() {
       const errorMessage = e.target?.error?.message || 
                           e.message || 
                           `Audio load failed: ${e.target?.src || 'unknown source'}`;
-      console.error('Opening audio error:', errorMessage);
+      cerror('Opening audio error:', errorMessage);
       setAudioError(true);
       setAudioLoaded(false);
     };
@@ -651,7 +652,7 @@ export default function GameLauncher() {
     if (!audioRef.current || !audioLoaded || gameStarted) return;
 
     if (audioEnabled) {
-      console.log('🎵 User manually enabled audio - playing opening music');
+      clog('🎵 User manually enabled audio - playing opening music');
       playAudioSafely();
     } else {
       pauseAudioSafely();
@@ -675,7 +676,7 @@ export default function GameLauncher() {
         } else if (elem.msRequestFullscreen) {
           await elem.msRequestFullscreen();
         } else {
-          console.warn('Fullscreen API not supported on this device');
+          clog('Fullscreen API not supported on this device');
           alert('מסך מלא לא נתמך במכשיר זה');
         }
       } else {
@@ -690,7 +691,7 @@ export default function GameLauncher() {
         }
       }
     } catch (error) {
-      console.error('Error toggling fullscreen:', error);
+      cerror('Error toggling fullscreen:', error);
       alert('שגיאה בכניסה למסך מלא');
     }
   };
@@ -821,8 +822,8 @@ export default function GameLauncher() {
 
   // Handle game start for scatter game specifically, which relies on gameWords
   if (gameStarted) {
-    console.log('🎮 PREPARING to render GameEngine with gameWords:', gameWords.map(w => w.text));
-    console.log('🎮 gameWords length being passed to GameEngine:', gameWords.length);
+    clog('🎮 PREPARING to render GameEngine with gameWords:', gameWords.map(w => w.text));
+    clog('🎮 gameWords length being passed to GameEngine:', gameWords.length);
 
     // Only render GameEngine for 'scatter_game' as it's the only type that loads 'gameWords'
     // If other game types were to use GameEngine, they would need their own word loading logic or different props.

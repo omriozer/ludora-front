@@ -1,6 +1,8 @@
 // Enhanced API utility with comprehensive error handling
 // This is the single utility function for all API requests in the frontend
 
+import { clog, cerror } from '@/lib/utils';
+
 // Get API base URL from environment
 export const getApiBase = () => {
   const apiBase = import.meta.env.VITE_API_BASE;
@@ -64,11 +66,9 @@ export async function apiRequest(endpoint, options = {}) {
   }
 
   // Log request for debugging
-  if (import.meta.env.DEV) {
-    console.log(`🌐 API Request: ${options.method || 'GET'} ${url}`);
-    console.log('📊 API Base:', apiBase);
-    console.log('🔑 Auth Token:', authToken ? `${authToken.substring(0, 20)}...` : 'None');
-  }
+  clog(`🌐 API Request: ${options.method || 'GET'} ${url}`);
+  clog('📊 API Base:', apiBase);
+  clog('🔑 Auth Token:', authToken ? `${authToken.substring(0, 20)}...` : 'None');
 
   // Prepare headers
   const headers = {
@@ -93,14 +93,14 @@ export async function apiRequest(endpoint, options = {}) {
   };
 
   if (import.meta.env.DEV) {
-    console.log('📤 Request options:', requestOptions);
+    clog('📤 Request options:', requestOptions);
   }
 
   try {
     const response = await fetch(url, requestOptions);
 
     if (import.meta.env.DEV) {
-      console.log(`📥 Response status: ${response.status} ${response.statusText}`);
+      clog(`📥 Response status: ${response.status} ${response.statusText}`);
     }
 
     // Handle different response statuses
@@ -120,11 +120,11 @@ export async function apiRequest(endpoint, options = {}) {
 
       // Log error details in development
       if (import.meta.env.DEV) {
-        console.error('❌ API Error:', errorData);
+        cerror('❌ API Error:', errorData);
 
         // Log validation details if available
         if (errorData.details && Array.isArray(errorData.details)) {
-          console.error('📋 Validation Details:', errorData.details);
+          cerror('📋 Validation Details:', errorData.details);
         }
       }
 
@@ -160,7 +160,7 @@ export async function apiRequest(endpoint, options = {}) {
     }
 
     if (import.meta.env.DEV) {
-      console.log('✅ API Response:', data);
+      clog('✅ API Response:', data);
     }
 
     return data;
@@ -172,7 +172,7 @@ export async function apiRequest(endpoint, options = {}) {
     }
 
     if (import.meta.env.DEV) {
-      console.error('🚫 API Request Failed:', error);
+      cerror('🚫 API Request Failed:', error);
     }
 
     // Handle network errors
@@ -263,7 +263,7 @@ export const auth = {
 export function handleApiError(error, customHandlers = {}) {
   // Log error in development
   if (import.meta.env.DEV) {
-    console.error('Handling API error:', error);
+    cerror('Handling API error:', error);
   }
 
   // Check for custom handlers

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, Volume2, VolumeX, Maximize, SkipBack, SkipForward, AlertCircle } from 'lucide-react';
 import logoSm from '../assets/images/logo_sm.png';
+import { clog, cerror } from '@/lib/utils';
 
 // Utility function to detect YouTube URLs
 const isYouTubeUrl = (url) => {
@@ -79,7 +80,7 @@ const SecureVideoPlayer = ({
 
         // Debug logging in development
         if (import.meta.env.DEV) {
-          console.log('🎬 SecureVideoPlayer URL processing:', {
+          clog('🎬 SecureVideoPlayer URL processing:', {
             inputVideoUrl: videoUrl,
             isFullUrl: videoUrl.startsWith('http'),
             baseUrl: videoUrl.startsWith('http') ? 'N/A (full URL)' : window.location.origin,
@@ -95,7 +96,7 @@ const SecureVideoPlayer = ({
             }
           })
           .then(response => {
-            console.log('🌐 Video URL HEAD request result:', {
+            clog('🌐 Video URL HEAD request result:', {
               status: response.status,
               statusText: response.statusText,
               headers: Object.fromEntries(response.headers.entries()),
@@ -103,7 +104,7 @@ const SecureVideoPlayer = ({
             });
           })
           .catch(error => {
-            console.error('🚨 Video URL HEAD request failed:', error);
+            cerror('🚨 Video URL HEAD request failed:', error);
           });
         }
 
@@ -213,10 +214,10 @@ const SecureVideoPlayer = ({
   };
 
   const handleError = (e) => {
-    console.error('Video error:', e);
-    console.error('Video player error:', e.target?.error);
-    console.error('Video URL attempted:', authenticatedVideoUrl);
-    console.error('Original video URL:', videoUrl);
+    cerror('Video error:', e);
+    cerror('Video player error:', e.target?.error);
+    cerror('Video URL attempted:', authenticatedVideoUrl);
+    cerror('Original video URL:', videoUrl);
 
     // In development mode, throw detailed error
     if (import.meta.env.DEV) {
@@ -231,7 +232,7 @@ const SecureVideoPlayer = ({
         currentSrc: e.target?.currentSrc,
         src: e.target?.src
       };
-      console.error('🚨 Detailed video error:', errorDetails);
+      cerror('🚨 Detailed video error:', errorDetails);
 
       // Map common video error codes to readable messages
       const errorMessages = {
@@ -242,7 +243,7 @@ const SecureVideoPlayer = ({
       };
 
       if (e.target?.error?.code) {
-        console.error(`🎬 Error Code ${e.target.error.code}: ${errorMessages[e.target.error.code] || 'Unknown error'}`);
+        cerror(`🎬 Error Code ${e.target.error.code}: ${errorMessages[e.target.error.code] || 'Unknown error'}`);
       }
     }
 
@@ -267,7 +268,7 @@ const SecureVideoPlayer = ({
       const progress = Math.max(0, Math.min(1, clickX / rect.width));
       const newTime = progress * duration;
 
-      console.log('🎯 Seek debug:', {
+      clog('🎯 Seek debug:', {
         clickX,
         rectWidth: rect.width,
         progress,

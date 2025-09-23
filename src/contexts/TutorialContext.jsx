@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { clog } from '@/lib/utils';
 
 const TutorialContext = createContext();
 
@@ -45,26 +46,26 @@ export const TutorialProvider = ({ children }) => {
 
         currentStepData.targetSelectors.forEach(selector => {
           const elements = document.querySelectorAll(selector);
-          console.log(`Tutorial: Looking for selector "${selector}", found ${elements.length} elements`);
+          clog(`Tutorial: Looking for selector "${selector}", found ${elements.length} elements`);
 
           if (elements.length > 0) {
             foundElements++;
             elements.forEach(el => {
               el.classList.add('tutorial-highlight');
-              console.log('Tutorial: Added highlight to element', el);
+              clog('Tutorial: Added highlight to element', el);
 
               // Auto-focus input fields
               if (currentStepData.action === 'input' && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) {
                 setTimeout(() => {
                   el.focus();
-                  console.log('Tutorial: Focused input element', el);
+                  clog('Tutorial: Focused input element', el);
                 }, 200);
               }
             });
           }
         });
 
-        console.log(`Tutorial: Found ${foundElements} element groups, retry count: ${retryCount}`);
+        clog(`Tutorial: Found ${foundElements} element groups, retry count: ${retryCount}`);
 
         // If no elements found and we haven't retried too many times, try again
         if (foundElements === 0 && retryCount < 5) {
@@ -92,7 +93,7 @@ export const TutorialProvider = ({ children }) => {
           });
 
           if (hasTargetElements) {
-            console.log('Tutorial: MutationObserver detected target elements added');
+            clog('Tutorial: MutationObserver detected target elements added');
             // Debounce the highlighting to avoid excessive calls
             setTimeout(() => applyHighlighting(), 50);
           }

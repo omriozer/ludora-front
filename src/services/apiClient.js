@@ -2,6 +2,7 @@
 // REST API client for Ludora API server
 
 import { getApiBase } from '@/utils/api.js';
+import { clog, cerror } from '@/lib/utils';
 
 // Use centralized API base configuration
 const API_BASE = getApiBase();
@@ -58,9 +59,9 @@ if (typeof localStorage !== 'undefined') {
 export async function apiRequest(endpoint, options = {}) {
   const url = `${API_BASE}${endpoint}`;
   
-  console.log(`🌐 API Request: ${options.method || 'GET'} ${url}`);
-  console.log('📊 API Base:', API_BASE);
-  console.log('🔑 Auth Token:', authToken ? `${authToken.substring(0, 20)}...` : 'None');
+  clog(`🌐 API Request: ${options.method || 'GET'} ${url}`);
+  clog('📊 API Base:', API_BASE);
+  clog('🔑 Auth Token:', authToken ? `${authToken.substring(0, 20)}...` : 'None');
   
   const headers = {
     'Content-Type': 'application/json',
@@ -77,20 +78,20 @@ export async function apiRequest(endpoint, options = {}) {
     headers
   };
   
-  console.log('📤 Request headers:', headers);
-  console.log('📤 Request options:', { ...defaultOptions, ...options });
+  clog('📤 Request headers:', headers);
+  clog('📤 Request options:', { ...defaultOptions, ...options });
   
   try {
     const response = await fetch(url, { ...defaultOptions, ...options });
-    console.log(`📥 Response status: ${response.status} ${response.statusText}`);
+    clog(`📥 Response status: ${response.status} ${response.statusText}`);
     
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: response.statusText }));
-      console.error('❌ API Error:', error);
+      cerror('❌ API Error:', error);
       
       // Log validation details if available
       if (error.details && Array.isArray(error.details)) {
-        console.error('📋 Validation Details:', error.details);
+        cerror('📋 Validation Details:', error.details);
       }
       
       const errorMessage = typeof error.error === 'string' ? error.error :
@@ -101,10 +102,10 @@ export async function apiRequest(endpoint, options = {}) {
     }
     
     const data = await response.json();
-    console.log('✅ API Response:', data);
+    clog('✅ API Response:', data);
     return data;
   } catch (error) {
-    console.error('🚫 API Request Failed:', error);
+    cerror('🚫 API Request Failed:', error);
     throw error;
   }
 }
@@ -236,11 +237,11 @@ export const ContentList = new EntityAPI('contentlist');
 
 // Add custom method to ContentList
 ContentList.getContentItems = async function(listId) {
-  console.log(`🔍 Attempting to load content items for list ID: ${listId}`);
+  clog(`🔍 Attempting to load content items for list ID: ${listId}`);
 
   // Note: The /entities/contentlist/:id/items endpoint doesn't exist in the backend
   // So we'll throw an error immediately to trigger the relationship-based fallback
-  console.log(`⚠️ ContentList.getContentItems: /items endpoint not implemented, will use relationship fallback`);
+  clog(`⚠️ ContentList.getContentItems: /items endpoint not implemented, will use relationship fallback`);
   throw new Error('ContentList items endpoint not implemented - using relationship fallback');
 };
 export const ContentRelationship = new EntityAPI('contentrelationship');
@@ -294,7 +295,7 @@ async function loginWithFirebaseAuth() {
     await signInWithRedirect(auth, provider);
     
   } catch (error) {
-    console.error('Firebase login error:', error);
+    cerror('Firebase login error:', error);
     throw new Error('שגיאה בהתחברות עם Google');
   }
 }
