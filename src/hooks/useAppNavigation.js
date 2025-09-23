@@ -1,0 +1,1 @@
+// This custom navigation hook has been replaced with React Router's useNavigate hook directly in components

@@ -1,0 +1,93 @@
+// Import entities and User from apiClient.js (our new API client)
+import {
+  EmailTemplate,
+  Settings,
+  Category,
+  Coupon,
+  SupportMessage,
+  Notification,
+  SiteText,
+  Workshop,
+  Course,
+  File,
+  Tool,
+  Purchase,
+  EmailLog,
+  Game,
+  AudioFile,
+  GameAudioSettings,
+  Word,
+  WordEN,
+  Image,
+  QA,
+  Grammar,
+  ContentList,
+  ContentRelationship,
+  SubscriptionPlan,
+  WebhookLog,
+  PendingSubscription,
+  SubscriptionHistory,
+  GameSession,
+  Attribute,
+  GameContentTag,
+  ContentTag,
+  School,
+  Classroom,
+  StudentInvitation,
+  ParentConsent,
+  ClassroomMembership,
+  User as ApiUser
+} from './apiClient.js';
+
+// Re-export all entities
+export {
+  EmailTemplate,
+  Settings,
+  Category,
+  Coupon,
+  SupportMessage,
+  Notification,
+  SiteText,
+  Workshop,
+  Course,
+  File,
+  Tool,
+  Purchase,
+  EmailLog,
+  Game,
+  AudioFile,
+  GameAudioSettings,
+  Word,
+  WordEN,
+  Image,
+  QA,
+  Grammar,
+  ContentList,
+  ContentRelationship,
+  SubscriptionPlan,
+  WebhookLog,
+  PendingSubscription,
+  SubscriptionHistory,
+  GameSession,
+  Attribute,
+  GameContentTag,
+  ContentTag,
+  School,
+  Classroom,
+  StudentInvitation,
+  ParentConsent,
+  ClassroomMembership,
+  ApiUser as User // Ensure latest User object is re-exported
+};
+
+// Game Rules System API entities
+import { apiRequest } from './apiClient.js';
+
+// Create an apiClient object with the needed methods
+const apiClient = {
+  get: (url) => apiRequest(url),
+  post: (url, data) => apiRequest(url, { method: 'POST', body: JSON.stringify(data) }),
+  put: (url, data) => apiRequest(url, { method: 'PUT', body: JSON.stringify(data) }),
+  delete: (url) => apiRequest(url, { method: 'DELETE' })
+};
+

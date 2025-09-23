@@ -1,0 +1,83 @@
+/*
+  Moved from inline <style> in Layout.jsx:
+  - Global height, margin, padding resets
+  - min-height for body and .min-h-screen
+  - direction, font-family
+  - utility classes: .gradient-text, .glass-effect, .sr-only, .focus:not-sr-only:focus, .shadow-elegant, .hover-lift
+*/
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+body {
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
+  direction: rtl;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+.min-h-screen {
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
+}
+@supports (min-height: 100dvh) {
+  .min-h-screen {
+    min-height: 100dvh;
+  }
+}
+@supports not (min-height: 100dvh) {
+  .min-h-screen {
+    min-height: -webkit-fill-available;
+  }
+}
+.gradient-text {
+  background: linear-gradient(135deg, #2563eb, #059669);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.glass-effect {
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(10px);
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border: 0;
+}
+.focus:not-sr-only:focus {
+  position: static;
+  width: auto;
+  height: auto;
+  padding: inherit;
+  margin: inherit;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+}
+.shadow-elegant {
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+.hover-lift {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+}
+
+/* Hide measurement tool elements that get injected by browser extensions/tools */
+#shadowMeasureIt,
+#divCoordMeasureIt,
+#divRectangleMeasureIt {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}

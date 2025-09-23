@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Firebase Test</title>
+</head>
+<body>
+    <h1>Firebase Configuration Test</h1>
+    <button id="testBtn">Test Firebase Config</button>
+    <div id="result"></div>
+
+    <script type="module">
+        // Test Firebase config
+        const firebaseConfig = {
+            apiKey: "AIzaSyCvc0KGxsYCu61pOwBSJ3tzdCs7lUT28JI",
+            authDomain: "ludora-af706.firebaseapp.com",
+            projectId: "ludora-af706",
+            storageBucket: "ludora-af706.firebasestorage.app",
+            messagingSenderId: "985814078486",
+            appId: "1:985814078486:web:45bbbd97327171c94ad137",
+            measurementId: "G-THZ32X92VY"
+        };
+
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+        import { getAuth, GoogleAuthProvider, signInWithPopup } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const provider = new GoogleAuthProvider();
+
+        document.getElementById('testBtn').addEventListener('click', async () => {
+            const result = document.getElementById('result');
+            try {
+                result.innerHTML = 'Testing Firebase configuration...';
+                const userCredential = await signInWithPopup(auth, provider);
+                result.innerHTML = `✅ Success! User: ${userCredential.user.email}`;
+                console.log('User:', userCredential.user);
+            } catch (error) {
+                result.innerHTML = `❌ Error: ${error.code} - ${error.message}`;
+                console.error('Firebase error:', error);
+            }
+        });
+    </script>
+</body>
+</html>

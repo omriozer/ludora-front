@@ -1,0 +1,41 @@
+#!/bin/bash
+# Ludora utilities wrapper for frontend repository
+
+# Check for help flags
+if [ "$1" = "--help" ] || [ "$1" = "-h" ] || [ "$1" = "help" ]; then
+    echo "🎮 Ludora Frontend Management"
+    echo "============================="
+    echo ""
+    echo "Available commands for frontend repository:"
+    echo ""
+    echo "📦 Deployment:"
+    echo "  deploy-frontend         Deploy this frontend app to Fly.io"
+    echo ""
+    echo "🔌 Access:"
+    echo "  ssh-frontend            SSH into frontend server"
+    echo "  connect-db              Connect to PostgreSQL database"
+    echo ""
+    echo "📋 Monitoring:"
+    echo "  logs frontend           View frontend server logs"
+    echo "  status                  Check frontend server status"
+    echo "  health-check            Run comprehensive health check"
+    echo ""
+    echo "🔐 Configuration:"
+    echo "  manage-secrets          Manage frontend environment variables"
+    echo ""
+    echo "Examples:"
+    echo "  ./ludora deploy-frontend      # Deploy this frontend"
+    echo "  ./ludora ssh-frontend         # SSH to frontend server"
+    echo "  ./ludora logs frontend        # View frontend logs"
+    echo "  ./ludora status               # Check all services"
+    echo "  ./ludora health-check --quick # Quick health check"
+    echo ""
+    echo "💡 Tip: You can also use commands from any other repository:"
+    echo "  ./ludora deploy-api           # Deploy API from here"
+    echo "  ./ludora ssh-api              # SSH to API server"
+    echo "  ./ludora backup-db            # Database operations"
+    echo ""
+    exit 0
+fi
+
+exec ../ludora-utils/scripts/ludora.sh "$@"
