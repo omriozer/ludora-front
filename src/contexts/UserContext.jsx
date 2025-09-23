@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { User, SubscriptionPlan, SubscriptionHistory, Settings } from '@/services/apiClient';
 import { loadSettingsWithRetry } from '@/lib/appUser';
 import { clog, cerror } from '@/lib/utils';
+import { toast } from '@/components/ui/use-toast';
 
 const UserContext = createContext(null);
 
@@ -185,6 +186,14 @@ export function UserProvider({ children }) {
       clog('[UserContext] User logged in successfully');
     } catch (error) {
       cerror('[UserContext] Login error:', error);
+
+      // Show user-friendly error message
+      toast({
+        title: "שגיאה בהתחברות",
+        description: "לא הצלחנו להתחבר למערכת. אנא נסה שוב.",
+        variant: "destructive",
+      });
+
       throw error;
     }
   }, [loadUserData]);

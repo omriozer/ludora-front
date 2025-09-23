@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, Volume2, VolumeX, Maximize, SkipBack, SkipForward, AlertCircle } from 'lucide-react';
 import logoSm from '../assets/images/logo_sm.png';
 import { clog, cerror } from '@/lib/utils';
+import { toast } from '@/components/ui/use-toast';
 
 // Utility function to detect YouTube URLs
 const isYouTubeUrl = (url) => {
@@ -249,6 +250,14 @@ const SecureVideoPlayer = ({
 
     setError('שגיאה בטעינת הווידאו');
     setIsLoading(false);
+
+    // Show user-friendly error message
+    toast({
+      title: "שגיאה בהשמעת הווידאו",
+      description: "לא הצלחנו להשמיע את הווידאו. אנא נסה שוב או בדוק את החיבור לאינטרנט.",
+      variant: "destructive",
+    });
+
     onError(e);
   };
 

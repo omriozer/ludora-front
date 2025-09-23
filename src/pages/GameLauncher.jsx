@@ -19,6 +19,7 @@ import {
   LogIn
 } from 'lucide-react';
 import { clog, cerror } from '@/lib/utils';
+import { toast } from '@/components/ui/use-toast';
 
 const GAME_TYPE_NAMES = {
   'sharp_and_smooth': 'חד וחלק',
@@ -516,6 +517,14 @@ export default function GameLauncher() {
     } catch (error) {
       cerror('❌ Error loading game data:', error);
       setError(error.message);
+
+      // Show user-friendly error message
+      toast({
+        title: "שגיאה בטעינת המשחק",
+        description: "לא הצלחנו לטעון את המשחק. אנא נסה שוב או בחר משחק אחר.",
+        variant: "destructive",
+      });
+
       if (!forceReload) {
         navigate('/catalog');
       }

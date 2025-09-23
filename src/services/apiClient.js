@@ -3,6 +3,7 @@
 
 import { getApiBase } from '@/utils/api.js';
 import { clog, cerror } from '@/lib/utils';
+import { toast } from '@/components/ui/use-toast';
 
 // Use centralized API base configuration
 const API_BASE = getApiBase();
@@ -106,6 +107,16 @@ export async function apiRequest(endpoint, options = {}) {
     return data;
   } catch (error) {
     cerror('🚫 API Request Failed:', error);
+
+    // Show user-friendly error for network failures
+    if (error.message.includes('fetch') || error.message.includes('network') || error.message.includes('Failed to fetch')) {
+      toast({
+        title: "בעיית חיבור",
+        description: "לא הצלחנו להתחבר לשרת. אנא בדוק את החיבור לאינטרנט ונסה שוב.",
+        variant: "destructive",
+      });
+    }
+
     throw error;
   }
 }
@@ -296,6 +307,14 @@ async function loginWithFirebaseAuth() {
     
   } catch (error) {
     cerror('Firebase login error:', error);
+
+    // Show user-friendly error message
+    toast({
+      title: "שגיאה בהתחברות",
+      description: "לא הצלחנו להתחבר עם Google. אנא נסה שוב.",
+      variant: "destructive",
+    });
+
     throw new Error('שגיאה בהתחברות עם Google');
   }
 }
