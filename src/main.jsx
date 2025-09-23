@@ -7,6 +7,7 @@ import App from '@/App.jsx'
 import '@/index.css'
 
 console.log('✅ Frontend app successfully initialized with updated environment variables');
+console.log('🌐 API Base URL:', import.meta.env.VITE_API_BASE);
 
 ReactDOM.createRoot(document.getElementById('root')).render(
     <BrowserRouter>
