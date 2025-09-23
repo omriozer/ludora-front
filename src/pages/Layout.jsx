@@ -53,7 +53,7 @@ export default function Layout({ children }) {
   const navigate = useNavigate();
   
   // Use UserContext instead of local state
-  const { currentUser, settings, isLoading, isAuthenticated, login, logout } = useUser();
+  const { currentUser, settings, isLoading, isAuthenticated, settingsLoadFailed, login, logout } = useUser();
   
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -247,20 +247,22 @@ export default function Layout({ children }) {
     );
   }
 
-  // Show maintenance page if enabled (but allow admins to bypass)
-  if (settings?.maintenance_mode && !(currentUser?.role === 'admin' && !currentUser?._isImpersonated)) {
+  // Show maintenance page if enabled OR if settings loading failed (but allow admins to bypass)
+  if ((settings?.maintenance_mode || settingsLoadFailed) && !(currentUser?.role === 'admin' && !currentUser?._isImpersonated)) {
+    const isTemporaryIssue = settingsLoadFailed && !settings?.maintenance_mode;
+
     return (
       <>
         {/* Global Message */}
         {message && (
-          <GlobalMessage 
-            type={message.type} 
-            message={message.text} 
-            onClose={() => setMessage(null)} 
+          <GlobalMessage
+            type={message.type}
+            message={message.text}
+            onClose={() => setMessage(null)}
           />
         )}
 
-        <MaintenancePage 
+        <MaintenancePage
           showReturnButton={showReturnButton}
           isDraggingReturn={isDraggingReturn}
           returnButtonPosition={returnButtonPosition}
@@ -270,6 +272,7 @@ export default function Layout({ children }) {
           handleTouchEnd={handleTouchEnd}
           handleReturnToSelf={handleReturnToSelf}
           handleLogin={onLogin}
+          isTemporaryIssue={isTemporaryIssue}
         />
 
         {/* Login Modal */}

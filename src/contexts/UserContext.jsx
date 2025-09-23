@@ -17,10 +17,12 @@ export function UserProvider({ children }) {
   const [settings, setSettings] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [settingsLoadFailed, setSettingsLoadFailed] = useState(false);
 
   // Load settings independently of user authentication
   const loadSettings = useCallback(async () => {
     try {
+      setSettingsLoadFailed(false);
       const appSettings = await loadSettingsWithRetry(Settings);
       if (appSettings && appSettings.length > 0) {
         setSettings(appSettings[0]);
@@ -30,6 +32,7 @@ export function UserProvider({ children }) {
     } catch (error) {
       console.error('[UserContext] Error loading settings:', error);
       setSettings(null);
+      setSettingsLoadFailed(true);
     }
   }, []);
 
@@ -235,6 +238,7 @@ export function UserProvider({ children }) {
     settings,
     isLoading,
     isAuthenticated,
+    settingsLoadFailed,
     login,
     logout,
     updateUser,

@@ -11,7 +11,8 @@ export default function MaintenancePage({
   handleTouchMove,
   handleTouchEnd,
   handleReturnToSelf,
-  handleLogin
+  handleLogin,
+  isTemporaryIssue = false
 }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex flex-col items-center justify-center p-4" dir="rtl">
@@ -65,19 +66,31 @@ export default function MaintenancePage({
         {/* Main Content */}
         <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-2xl border border-white/20">
           <h1 className="text-3xl md:text-4xl font-bold text-gray-800 mb-4 leading-tight">
-            האתר בתחזוקה
+            {isTemporaryIssue ? "בעיה זמנית במערכת" : "האתר בתחזוקה"}
           </h1>
           <p className="text-gray-600 text-lg leading-relaxed mb-8">
-            אנחנו מבצעים שדרוגים ושיפורים כדי להעניק לכם חוויה טובה יותר.
-            <br />
-            נשוב בקרוב! תודה על הסבלנות 🙏
+            {isTemporaryIssue ? (
+              <>
+                יש בעיה זמנית שאנחנו מתקנים והאתר יחזור לעבוד בקרוב.
+                <br />
+                תודה על הסבלנות 🙏
+              </>
+            ) : (
+              <>
+                אנחנו מבצעים שדרוגים ושיפורים כדי להעניק לכם חוויה טובה יותר.
+                <br />
+                נשוב בקרוב! תודה על הסבלנות 🙏
+              </>
+            )}
           </p>
 
           {/* Progress Indicator */}
           <div className="bg-gray-200 rounded-full h-2 mb-4 overflow-hidden">
             <div className="bg-gradient-to-r from-blue-500 to-purple-500 h-full rounded-full animate-pulse w-3/4"></div>
           </div>
-          <p className="text-sm text-gray-500">משדרגים את המערכת...</p>
+          <p className="text-sm text-gray-500">
+            {isTemporaryIssue ? "מתקנים את הבעיה..." : "משדרגים את המערכת..."}
+          </p>
         </div>
 
         {/* Footer */}
