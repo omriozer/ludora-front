@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getProductTypeName } from "@/config/productTypes";
+import { getApiBase } from "@/utils/api.js";
 import {
   Calendar,
   Clock,
@@ -84,13 +85,6 @@ export default function VideoViewer() {
     const entityType = urlParams.get('type') || 'workshop';
 
     if (entityId && entityType) {
-      const getApiBase = () => {
-        const apiBase = import.meta.env.VITE_API_BASE;
-        if (!apiBase) {
-          return import.meta.env.PROD ? 'https://api.ludora.app/api' : 'http://localhost:3003/api';
-        }
-        return apiBase;
-      };
       const apiBase = getApiBase();
       // Remove trailing /api from apiBase if it exists, then add the media path
       const baseUrl = apiBase.replace(/\/api\/?$/, '');

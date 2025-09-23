@@ -1,14 +1,9 @@
 // src/services/apiClient.js
 // REST API client for Ludora API server
 
-// Use Vite environment variables for API base
-const getApiBase = () => {
-  const apiBase = import.meta.env.VITE_API_BASE;
-  if (!apiBase) {
-    return import.meta.env.PROD ? 'https://api.ludora.app/api' : 'http://localhost:3003/api';
-  }
-  return apiBase;
-};
+import { getApiBase } from '@/utils/api.js';
+
+// Use centralized API base configuration
 const API_BASE = getApiBase();
 
 // Store authentication token in memory

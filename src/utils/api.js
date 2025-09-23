@@ -2,7 +2,7 @@
 // This is the single utility function for all API requests in the frontend
 
 // Get API base URL from environment
-const getApiBase = () => {
+export const getApiBase = () => {
   const apiBase = import.meta.env.VITE_API_BASE;
 
   if (!apiBase) {
