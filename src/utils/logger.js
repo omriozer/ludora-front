@@ -2,7 +2,14 @@
 // Sends logs to backend database via API
 
 const isDev = import.meta.env.DEV || import.meta.env.MODE === 'development';
-const API_BASE_URL = import.meta.env.VITE_API_BASE || 'http://localhost:3003/api';
+const getApiBase = () => {
+  const apiBase = import.meta.env.VITE_API_BASE;
+  if (!apiBase) {
+    return import.meta.env.PROD ? 'https://api.ludora.app/api' : 'http://localhost:3003/api';
+  }
+  return apiBase;
+};
+const API_BASE_URL = getApiBase();
 
 // Send log to backend API
 const sendLogToBackend = async (message, logType = 'debug') => {

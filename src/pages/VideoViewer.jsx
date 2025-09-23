@@ -84,7 +84,14 @@ export default function VideoViewer() {
     const entityType = urlParams.get('type') || 'workshop';
 
     if (entityId && entityType) {
-      const apiBase = import.meta.env.VITE_API_BASE || 'http://localhost:3003/api';
+      const getApiBase = () => {
+        const apiBase = import.meta.env.VITE_API_BASE;
+        if (!apiBase) {
+          return import.meta.env.PROD ? 'https://api.ludora.app/api' : 'http://localhost:3003/api';
+        }
+        return apiBase;
+      };
+      const apiBase = getApiBase();
       // Remove trailing /api from apiBase if it exists, then add the media path
       const baseUrl = apiBase.replace(/\/api\/?$/, '');
       const finalUrl = `${baseUrl}/api/media/video/${entityType}/${entityId}`;
