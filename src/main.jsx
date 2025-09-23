@@ -6,6 +6,8 @@ import { TutorialProvider } from '@/contexts/TutorialContext'
 import App from '@/App.jsx'
 import '@/index.css'
 
+console.log('✅ Frontend app successfully initialized with updated environment variables');
+
 ReactDOM.createRoot(document.getElementById('root')).render(
     <BrowserRouter>
         <UserProvider>
