@@ -1018,16 +1018,19 @@ export default function ProductModal({
                         className="mt-1"
                       />
                     </div>
-                    <div>
-                      <Label className="text-sm font-medium">משך כולל בדקות (ל{getProductTypeName('course', 'singular')}/{getProductTypeName('workshop', 'singular')})</Label>
-                      <Input
-                        type="number"
-                        value={formData.total_duration_minutes}
-                        onChange={(e) => setFormData(prev => ({ ...prev, total_duration_minutes: parseInt(e.target.value) || 0 }))}
-                        placeholder="60"
-                        className="mt-1"
-                      />
-                    </div>
+                    {/* Duration field only for workshops and courses */}
+                    {(formData.product_type === 'workshop' || formData.product_type === 'course') && (
+                      <div>
+                        <Label className="text-sm font-medium">משך כולל בדקות</Label>
+                        <Input
+                          type="number"
+                          value={formData.total_duration_minutes}
+                          onChange={(e) => setFormData(prev => ({ ...prev, total_duration_minutes: parseInt(e.target.value) || 0 }))}
+                          placeholder="60"
+                          className="mt-1"
+                        />
+                      </div>
+                    )}
                   </div>
 
                   {/* Access Settings Section */}
@@ -1161,36 +1164,23 @@ export default function ProductModal({
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">קישור לתצוגה מקדימה</Label>
-                      <Input
-                        value={formData.preview_file_url || ''}
-                        onChange={(e) => setFormData(prev => ({ ...prev, preview_file_url: e.target.value }))}
-                        placeholder="https://example.com/preview.pdf"
-                        className="mt-1"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">סוג קובץ</Label>
-                      <Select
-                        value={formData.file_type || ''}
-                        onValueChange={(value) => setFormData(prev => ({ ...prev, file_type: value }))}
-                      >
-                        <SelectTrigger className="mt-1">
-                          <SelectValue placeholder="בחר סוג קובץ" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="pdf">PDF</SelectItem>
-                          <SelectItem value="ppt">PowerPoint</SelectItem>
-                          <SelectItem value="docx">Word</SelectItem>
-                          <SelectItem value="xlsx">Excel</SelectItem>
-                          <SelectItem value="image">תמונה</SelectItem>
-                          <SelectItem value="zip">ZIP</SelectItem>
-                          <SelectItem value="other">אחר</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    {/* File type is auto-detected from uploaded file, no manual selection needed */}
+                    {formData.file_type && (
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">סוג קובץ (זוהה אוטומטית)</Label>
+                        <div className="p-2 bg-gray-50 rounded border text-sm text-gray-700">
+                          {formData.file_type === 'pdf' && 'PDF'}
+                          {formData.file_type === 'ppt' && 'PowerPoint'}
+                          {formData.file_type === 'docx' && 'Word'}
+                          {formData.file_type === 'xlsx' && 'Excel'}
+                          {formData.file_type === 'image' && 'תמונה'}
+                          {formData.file_type === 'zip' && 'ZIP'}
+                          {formData.file_type === 'text' && 'טקסט'}
+                          {formData.file_type === 'video' && 'וידיאו'}
+                          {formData.file_type === 'other' && 'אחר'}
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               )}
