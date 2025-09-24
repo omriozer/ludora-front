@@ -8,12 +8,10 @@ export const getApiBase = () => {
   const apiBase = import.meta.env.VITE_API_BASE;
 
   if (!apiBase) {
-    // Fallback based on environment
-    if (import.meta.env.PROD) {
-      return 'https://ludora-api.fly.dev/api';
-    } else {
-      return 'http://localhost:3003/api';
-    }
+    throw new Error(
+      'VITE_API_BASE environment variable is not set. ' +
+      'Please configure it in your environment or .env file.'
+    );
   }
 
   return apiBase;
