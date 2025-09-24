@@ -385,7 +385,7 @@ function FileCard({ file, userPurchase, hasAccess, onAccess, onPurchase, fileTex
   };
 
   const handleDetailsClick = () => {
-    navigate(`/file-details?type=file&id=${file.id}`);
+    navigate(`/product-details?type=file&id=${file.id}`);
   };
 
   const getPlaceholderImage = () => {
