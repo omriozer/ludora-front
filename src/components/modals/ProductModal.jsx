@@ -30,6 +30,7 @@ import {
 import ProductTypeSelector from './ProductTypeSelector';
 import { getProductTypeName } from '@/config/productTypes';
 import { getApiBase } from '@/utils/api.js';
+import { toast } from '@/components/ui/use-toast';
 
 // Utility function to check if feature is enabled based on settings and content creator permissions
 const getEnabledProductTypes = (settings, isContentCreatorMode = false, isAdmin = false) => {
@@ -434,7 +435,15 @@ export default function ProductModal({
           formData.append('file', file);
 
           // For File product type uploads, we need to include the File entity ID
-          if (isFileUpload && editingProduct) {
+          if (isFileUpload) {
+            if (!editingProduct) {
+              toast({
+                title: "שגיאה בהעלאת קובץ",
+                description: "יש לשמור את המוצר תחילה על מנת להעלות קבצים. לחץ על 'צור מוצר' ולאחר מכן תוכל להעלות את הקובץ.",
+                variant: "destructive"
+              });
+              return;
+            }
             formData.append('fileEntityId', editingProduct.id);
           }
 
@@ -752,15 +761,28 @@ export default function ProductModal({
           break;
       }
 
+      let createdEntity = null;
+
       if (editingProduct) {
         await entityService.update(editingProduct.id, cleanedData);
         setMessage({ type: 'success', text: `${entityName} עודכן בהצלחה` });
+        createdEntity = { id: editingProduct.id, ...cleanedData };
       } else {
-        await entityService.create(cleanedData);
+        createdEntity = await entityService.create(cleanedData);
         setMessage({ type: 'success', text: `${entityName} נוצר בהצלחה` });
+
+        // For new File products without file_url, show message but close modal
+        // User will need to edit the product to upload file
+        if (formData.product_type === 'file' && !cleanedData.file_url) {
+          toast({
+            title: "מוצר נוצר בהצלחה",
+            description: "לחץ על 'עריכה' במוצר החדש כדי להעלות את הקובץ",
+            variant: "default"
+          });
+        }
       }
 
-      // Call onSave callback and close modal after a short delay
+      // For all other cases, close modal after delay
       setTimeout(() => {
         if (onSave) onSave();
         onClose();
@@ -1068,85 +1090,73 @@ export default function ProductModal({
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium">{getProductTypeName('file', 'singular')} המוצר *</Label>
-                      <Tabs defaultValue="upload" className="mt-4">
-                        <TabsList className="grid w-full grid-cols-2">
-                          <TabsTrigger value="upload" className="flex items-center gap-2">
-                            <Upload className="w-4 h-4" />
-                            העלאת קובץ
-                          </TabsTrigger>
-                          <TabsTrigger value="url" className="flex items-center gap-2">
-                            <LinkIcon className="w-4 h-4" />
-                            קישור חיצוני
-                          </TabsTrigger>
-                        </TabsList>
+                      <Label className="text-sm font-medium">העלאת {getProductTypeName('file', 'singular')}</Label>
 
-                        <TabsContent value="upload" className="space-y-3">
-                          <div className="space-y-3">
-                            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                              <div className="flex items-center gap-2">
-                                <Input
-                                  type="file"
-                                  accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.webp,.zip"
-                                  onChange={(e) => handleFileUpload(e, 'file')}
-                                  disabled={uploadStates.file}
-                                  className="w-full sm:w-auto"
-                                />
-                                {uploadStates.file && (
-                                  <div className="flex items-center gap-2">
-                                    <Loader2 className="w-4 h-4 animate-spin text-blue-600 flex-shrink-0" />
-                                    <span className="text-sm font-medium text-blue-600">
-                                      {uploadProgress.file || 0}%
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Progress Bar for File Upload */}
-                            {uploadStates.file && uploadProgress.file < 100 && (
-                              <div className="space-y-2">
-                                <div className="flex justify-between items-center">
-                                  <span className="text-sm text-gray-600">מעלה קובץ...</span>
-                                  <span className="text-sm font-medium text-blue-600">
-                                    {uploadProgress.file || 0}%
-                                  </span>
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-2">
-                                  <div
-                                    className="bg-blue-600 h-2 rounded-full transition-all duration-300 ease-out"
-                                    style={{ width: `${uploadProgress.file || 0}%` }}
-                                  ></div>
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Display current file URL (uploaded file) */}
-                            {(formData.file_url && !uploadStates.file) && (
-                              <div className="flex items-center gap-2 mt-2">
-                                <Download className="w-4 h-4 text-green-600 flex-shrink-0" />
-                                <span className="text-sm text-green-700">קובץ זמין להורדה</span>
-                              </div>
-                            )}
-
-                            <div className="text-xs text-gray-500 mt-2">
-                              סוגי קבצים נתמכים: PDF, Word, Excel, PowerPoint, תמונות, ZIP
-                            </div>
-                          </div>
-                        </TabsContent>
-
-                        <TabsContent value="url" className="space-y-3">
-                          <div className="space-y-2">
-                            <Label className="text-sm font-medium">קישור לקובץ *</Label>
+                      <div className="space-y-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                          <div className="flex items-center gap-2">
                             <Input
-                              value={formData.file_url || ''}
-                              onChange={(e) => setFormData(prev => ({ ...prev, file_url: e.target.value }))}
-                              placeholder="https://example.com/file.pdf"
-                              className="mt-1"
+                              type="file"
+                              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.webp,.zip"
+                              onChange={(e) => handleFileUpload(e, 'file')}
+                              disabled={uploadStates.file || !editingProduct}
+                              className="w-full sm:w-auto"
                             />
+                            {uploadStates.file && (
+                              <div className="flex items-center gap-2">
+                                <Loader2 className="w-4 h-4 animate-spin text-blue-600 flex-shrink-0" />
+                                <span className="text-sm font-medium text-blue-600">
+                                  {uploadProgress.file || 0}%
+                                </span>
+                              </div>
+                            )}
                           </div>
-                        </TabsContent>
-                      </Tabs>
+                        </div>
+
+                        {/* Progress Bar for File Upload */}
+                        {uploadStates.file && uploadProgress.file < 100 && (
+                          <div className="space-y-2">
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-gray-600">מעלה קובץ...</span>
+                              <span className="text-sm font-medium text-blue-600">
+                                {uploadProgress.file || 0}%
+                              </span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div
+                                className="bg-blue-600 h-2 rounded-full transition-all duration-300 ease-out"
+                                style={{ width: `${uploadProgress.file || 0}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Display current file URL (uploaded file) */}
+                        {(formData.file_url && !uploadStates.file) && (
+                          <div className="flex items-center gap-2 mt-2">
+                            <Download className="w-4 h-4 text-green-600 flex-shrink-0" />
+                            <span className="text-sm text-green-700">קובץ הועלה בהצלחה</span>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDeleteFile('file')}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        )}
+
+                        {!editingProduct && (
+                          <div className="text-sm text-amber-700 bg-amber-50 p-3 rounded-lg border border-amber-200 mt-2">
+                            ⚠️ יש לשמור את המוצר תחילה (ללא קובץ) על מנת להעלות קבצים. לחץ על "צור מוצר", ולאחר מכן תוכל להעלות את הקובץ.
+                          </div>
+                        )}
+
+                        <div className="text-xs text-gray-500 mt-2">
+                          סוגי קבצים נתמכים: PDF, Word, Excel, PowerPoint, תמונות, ZIP
+                        </div>
+                      </div>
                     </div>
 
                     <div className="space-y-2">
