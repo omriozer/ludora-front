@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import ProductTypeSelector from './ProductTypeSelector';
 import { getProductTypeName } from '@/config/productTypes';
+import { getApiBase } from '@/utils/api.js';
 
 // Utility function to check if feature is enabled based on settings and content creator permissions
 const getEnabledProductTypes = (settings, isContentCreatorMode = false, isAdmin = false) => {
@@ -465,7 +466,7 @@ export default function ProductModal({
           xhr.timeout = 30 * 60 * 1000;
 
           // Choose endpoint based on file type
-          const endpoint = isFileUpload ? '/api/media/file/upload' : '/api/videos/upload';
+          const endpoint = isFileUpload ? `${getApiBase()}/media/file/upload` : `${getApiBase()}/videos/upload`;
           xhr.open('POST', endpoint, true);
           
           // Add authentication header
