@@ -1,5 +1,6 @@
 // Enhanced API utility with comprehensive error handling
 // This is the single utility function for all API requests in the frontend
+// Production uses VITE_API_BASE from GitHub secrets during deployment
 
 import { clog, cerror } from '@/lib/utils';
 
