@@ -10,7 +10,7 @@ export const getApiBase = () => {
   if (!apiBase) {
     // Fallback based on environment
     if (import.meta.env.PROD) {
-      return 'https://api.ludora.app/api';
+      return 'https://ludora-api.fly.dev/api';
     } else {
       return 'http://localhost:3003/api';
     }
