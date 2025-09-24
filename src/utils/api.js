@@ -9,14 +9,13 @@ export const getApiBase = () => {
   const apiBase = import.meta.env.VITE_API_BASE;
 
   if (!apiBase) {
-    throw new Error(
-      'VITE_API_BASE environment variable is not set. ' +
-      'Please configure it in your environment or .env file.'
-    );
+    cerror('❌ VITE_API_BASE environment variable is not set');
+    return '';
   }
 
   return apiBase;
 };
+
 
 // Store authentication token
 let authToken = null;
@@ -264,6 +263,7 @@ export function handleApiError(error, customHandlers = {}) {
   if (import.meta.env.DEV) {
     cerror('Handling API error:', error);
   }
+
 
   // Check for custom handlers
   if (error.status && customHandlers[error.status]) {
