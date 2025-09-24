@@ -8,7 +8,7 @@ export const getApiBase = () => {
   const apiBase = import.meta.env.VITE_API_BASE;
 
   if (!apiBase) {
-    cerror('❌ VITE_API_BASE environment variable is not set');
+    console.error('❌ VITE_API_BASE environment variable is not set');
     if (import.meta.env.PROD) {
       return 'https://ludora-api.fly.dev/api';
     } else {
