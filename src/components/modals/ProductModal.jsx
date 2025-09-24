@@ -492,7 +492,9 @@ export default function ProductModal({
       }
 
       if (result) {
-        const fileReference = result.downloadUrl || result.file_uri || result.file_url || result.streamUrl;
+        // Handle different response formats: API returns data in result.data, integrations return directly
+        const responseData = result.data || result;
+        const fileReference = responseData.downloadUrl || responseData.s3Url || responseData.file_uri || responseData.file_url || responseData.streamUrl;
 
         if (fileReference) {
           if (moduleIndex !== null) {
@@ -525,7 +527,7 @@ export default function ProductModal({
             
             // Only set private flag for non-video files
             if (fileType !== 'video' && fileType !== 'workshop_video') {
-              const isPrivateFile = !!result.file_uri;
+              const isPrivateFile = !!(responseData.file_uri || responseData.s3Url);
               const isPrivateFieldName = fileType === 'image' ? 'image_is_private' :
                 fileType === 'preview_file' ? 'preview_file_is_private' : 'file_is_private';
               updateData[isPrivateFieldName] = isPrivateFile;
