@@ -34,79 +34,21 @@ jobs:
         env:
           NODE_ENV: test
 
-      - name: Build application
-        run: yarn build
-        env:
-          NODE_ENV: production
-          VITE_API_BASE: ${{ secrets.VITE_API_BASE }}
-          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
-          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
-          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
-          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
-          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
-          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
-          VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
-
-      - name: Verify build output
-        run: |
-          echo "🔍 Verifying build output..."
-
-          # Check if dist directory exists
-          if [ ! -d "dist" ]; then
-            echo "❌ Build failed - dist directory not found"
-            exit 1
-          fi
-
-          # Check if index.html exists
-          if [ ! -f "dist/index.html" ]; then
-            echo "❌ Build failed - index.html not found"
-            exit 1
-          fi
-
-          # Check if assets directory exists (Vite creates this)
-          if [ ! -d "dist/assets" ]; then
-            echo "❌ Build failed - assets directory not found"
-            exit 1
-          fi
-
-          # Check for essential files
-          js_files=$(find dist/assets -name "*.js" | wc -l)
-          css_files=$(find dist/assets -name "*.css" | wc -l)
-
-          if [ "$js_files" -eq 0 ]; then
-            echo "❌ Build failed - no JavaScript files found in assets"
-            exit 1
-          fi
-
-          if [ "$css_files" -eq 0 ]; then
-            echo "❌ Build failed - no CSS files found in assets"
-            exit 1
-          fi
-
-          # Check build size (should be reasonable)
-          build_size=$(du -sm dist | cut -f1)
-          if [ "$build_size" -gt 100 ]; then
-            echo "⚠️ Warning: Build size is ${build_size}MB (larger than expected)"
-          fi
-
-          echo "✅ Build verification successful!"
-          echo "📊 Build stats:"
-          echo "   - JavaScript files: $js_files"
-          echo "   - CSS files: $css_files"
-          echo "   - Build size: ${build_size}MB"
-          echo "   - Total files: $(find dist -type f | wc -l)"
-
-          # List key files
-          echo "📁 Build contents:"
-          ls -la dist/
-          echo "📁 Assets contents:"
-          ls -la dist/assets/ | head -10
 
       - name: Setup Fly.io CLI
         uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Deploy to Fly.io
-        run: flyctl deploy --remote-only -a ludora-front
+        run: |
+          flyctl deploy --remote-only -a ludora-front \
+            --build-arg VITE_API_BASE="${{ secrets.VITE_API_BASE }}" \
+            --build-arg VITE_FIREBASE_API_KEY="${{ secrets.VITE_FIREBASE_API_KEY }}" \
+            --build-arg VITE_FIREBASE_AUTH_DOMAIN="${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}" \
+            --build-arg VITE_FIREBASE_PROJECT_ID="${{ secrets.VITE_FIREBASE_PROJECT_ID }}" \
+            --build-arg VITE_FIREBASE_STORAGE_BUCKET="${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}" \
+            --build-arg VITE_FIREBASE_MESSAGING_SENDER_ID="${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}" \
+            --build-arg VITE_FIREBASE_APP_ID="${{ secrets.VITE_FIREBASE_APP_ID }}" \
+            --build-arg VITE_FIREBASE_MEASUREMENT_ID="${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}"
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
