@@ -1,6 +1,5 @@
 // Enhanced API utility with comprehensive error handling
 // This is the single utility function for all API requests in the frontend
-// Production uses VITE_API_BASE from GitHub secrets during deployment
 
 import { clog, cerror } from '@/lib/utils';
 
@@ -10,12 +9,15 @@ export const getApiBase = () => {
 
   if (!apiBase) {
     cerror('❌ VITE_API_BASE environment variable is not set');
-    return '';
+    if (import.meta.env.PROD) {
+      return 'https://ludora-api.fly.dev/api';
+    } else {
+      return 'http://localhost:3003/api';
+    }
   }
 
   return apiBase;
 };
-
 
 // Store authentication token
 let authToken = null;
@@ -263,7 +265,6 @@ export function handleApiError(error, customHandlers = {}) {
   if (import.meta.env.DEV) {
     cerror('Handling API error:', error);
   }
-
 
   // Check for custom handlers
   if (error.status && customHandlers[error.status]) {
