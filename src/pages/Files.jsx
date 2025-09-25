@@ -31,6 +31,7 @@ import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { getText } from "../components/utils/getText";
 import { motion } from "framer-motion";
+import { getApiBase } from "@/utils/api";
 
 const hasActiveAccess = (purchase) => {
   if (!purchase) return false;
@@ -75,14 +76,14 @@ export default function Files() {
     sortByPrice: "לפי מחיר",
     noFiles: `לא נמצאו ${getProductTypeName('file', 'plural')}`,
     noFilesDesc: "נסה לשנות את הסינון או החיפוש",
-    downloadFile: `הורדת ${getProductTypeName('file', 'singular')}`,
+    watchFile: `צפייה ב${getProductTypeName('file', 'singular')}`,
     previewFile: "תצוגה מקדימה",
     getAccess: "קבלת גישה",
     owned: "ברשותך",
     lifetimeAccess: "גישה לכל החיים",
     accessUntil: "גישה עד",
     professionalFiles: getProductTypeName('file', 'plural'),
-    viewDetails: "צפייה בפרטים",
+    viewDetails: "פרטים נוספים",
     downloads: "הורדות",
     fileType: `סוג ${getProductTypeName('file', 'singular')}`
   });
@@ -228,8 +229,12 @@ export default function Files() {
   };
 
   const handleFileAccess = (file) => {
-    if (file.file_url) {
-      window.open(file.file_url, '_blank');
+    // Use authenticated file download endpoint with auth token
+    const authToken = localStorage.getItem('authToken');
+    if (authToken && file.id) {
+      const apiBase = getApiBase();
+      const fileUrl = `${apiBase}/media/file/download/${file.id}?authToken=${authToken}`;
+      window.open(fileUrl, '_blank');
     }
   };
 
@@ -529,8 +534,8 @@ function FileCard({ file, userPurchase, hasAccess, onAccess, onPurchase, fileTex
                   className="bg-purple-600 hover:bg-purple-700 text-white"
                   size="sm"
                 >
-                  <Download className="w-4 h-4 ml-2" />
-                  {fileTexts.downloadFile}
+                  <Play className="w-4 h-4 ml-2" />
+                  {fileTexts.watchFile}
                 </Button>
               ) : (
                 <Button

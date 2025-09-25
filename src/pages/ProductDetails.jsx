@@ -153,7 +153,9 @@ export default function ProductDetails() {
       case 'course': return Course;
       case 'file': return File;
       case 'tool': return Tool;
-      default: return Product;
+      default:
+        console.error('Unknown entity type:', type);
+        return File; // Default to File for safety
     }
   };
 
