@@ -317,17 +317,6 @@ export default function Tools() {
               </Select>
             </div>
             
-            <Select value={selectedDifficulty} onValueChange={setSelectedDifficulty}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder={toolsTexts.allDifficulties} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{toolsTexts.allDifficulties}</SelectItem>
-                <SelectItem value="beginner">{toolsTexts.beginner}</SelectItem>
-                <SelectItem value="intermediate">{toolsTexts.intermediate}</SelectItem>
-                <SelectItem value="advanced">{toolsTexts.advanced}</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
         </div>
 
@@ -456,14 +445,6 @@ function ToolCard({ tool, userPurchase, onDownload, onPurchase, toolsTexts, getF
 
         {/* Tool details - fixed height section */}
         <div className="space-y-2 text-sm mb-4 min-h-[4rem]">
-          {tool.difficulty_level && (
-            <div className="flex items-center gap-2">
-              <Star className="w-4 h-4 text-gray-400" />
-              <Badge className={difficultyColors[tool.difficulty_level]}>
-                {difficultyLabels[tool.difficulty_level]}
-              </Badge>
-            </div>
-          )}
           
           {tool.target_audience && (
             <div className="flex items-center gap-2">

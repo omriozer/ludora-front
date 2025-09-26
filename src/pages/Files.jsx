@@ -31,17 +31,9 @@ import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { getText } from "../components/utils/getText";
 import { motion } from "framer-motion";
-import { getApiBase } from "@/utils/api";
-
-const hasActiveAccess = (purchase) => {
-  if (!purchase) return false;
-  if (purchase.purchased_lifetime_access) return true;
-  if (purchase.access_until && new Date(purchase.access_until) > new Date()) return true;
-  if (!purchase.access_until && !purchase.purchased_lifetime_access) {
-    return true; // Backwards compatibility
-  }
-  return false;
-};
+import GetFileButton from "@/components/files/GetFileButton";
+import FileAccessStatus from "@/components/files/FileAccessStatus";
+import { hasActiveAccess, getUserPurchaseForFile } from "@/components/files/fileAccessUtils";
 
 export default function Files() {
   const navigate = useNavigate();
@@ -58,7 +50,6 @@ export default function Files() {
   // Filter and search states
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [selectedDifficulty, setSelectedDifficulty] = useState("all");
   const [sortBy, setSortBy] = useState("created_date");
   
   // Texts
@@ -67,10 +58,6 @@ export default function Files() {
     subtitle: "כלים דיגיטליים, תבניות ומשאבים מוכנים להורדה שיעזרו לכם ליצור חוויות למידה מהנות",
     searchPlaceholder: `חפש ${getProductTypeName('file', 'plural')}...`,
     allCategories: "כל הקטגוריות",
-    allDifficulties: "כל הרמות",
-    beginner: "מתחיל",
-    intermediate: "בינוני",
-    advanced: "מתקדם",
     sortByNewest: "החדשים ביותר",
     sortByTitle: "לפי כותרת",
     sortByPrice: "לפי מחיר",
@@ -94,7 +81,7 @@ export default function Files() {
 
   useEffect(() => {
     filterFiles();
-  }, [files, searchTerm, selectedCategory, selectedDifficulty, sortBy]);
+  }, [files, searchTerm, selectedCategory, sortBy]);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -105,10 +92,6 @@ export default function Files() {
         subtitle: await getText("files.subtitle", "כלים דיגיטליים, תבניות ומשאבים מוכנים להורדה שיעזרו לכם ליצור חוויות למידה מהנות"),
         searchPlaceholder: await getText("files.searchPlaceholder", `חפש ${getProductTypeName('file', 'plural')}...`),
         allCategories: await getText("files.allCategories", "כל הקטגוריות"),
-        allDifficulties: await getText("files.allDifficulties", "כל הרמות"),
-        beginner: await getText("files.beginner", "מתחיל"),
-        intermediate: await getText("files.intermediate", "בינוני"),
-        advanced: await getText("files.advanced", "מתקדם"),
         sortByNewest: await getText("files.sortByNewest", "החדשים ביותר"),
         sortByTitle: await getText("files.sortByTitle", "לפי כותרת"),
         sortByPrice: await getText("files.sortByPrice", "לפי מחיר"),
@@ -199,10 +182,6 @@ export default function Files() {
       filtered = filtered.filter(file => file.category === selectedCategory);
     }
 
-    // Difficulty filter
-    if (selectedDifficulty !== "all") {
-      filtered = filtered.filter(file => file.difficulty_level === selectedDifficulty);
-    }
 
     // Sort
     filtered.sort((a, b) => {
@@ -218,24 +197,6 @@ export default function Files() {
     });
 
     setFilteredFiles(filtered);
-  };
-
-  const getUserPurchaseForProduct = (fileId) => {
-    return userPurchases.find(purchase =>
-      ((purchase.purchasable_type === 'file' && purchase.purchasable_id === fileId) ||
-       (purchase.product_id === fileId)) && // Backwards compatibility
-      purchase.payment_status === 'paid'
-    );
-  };
-
-  const handleFileAccess = (file) => {
-    // Use authenticated file download endpoint with auth token
-    const authToken = localStorage.getItem('authToken');
-    if (authToken && file.id) {
-      const apiBase = getApiBase();
-      const fileUrl = `${apiBase}/media/file/download/${file.id}?authToken=${authToken}`;
-      window.open(fileUrl, '_blank');
-    }
   };
 
   const handlePurchase = (file) => {
@@ -308,17 +269,6 @@ export default function Files() {
               </Select>
             </div>
 
-            <Select value={selectedDifficulty} onValueChange={setSelectedDifficulty}>
-              <SelectTrigger className="h-12 bg-gray-50 border-gray-200 rounded-lg w-40">
-                <SelectValue placeholder={fileTexts.allDifficulties} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{fileTexts.allDifficulties}</SelectItem>
-                <SelectItem value="beginner">{fileTexts.beginner}</SelectItem>
-                <SelectItem value="intermediate">{fileTexts.intermediate}</SelectItem>
-                <SelectItem value="advanced">{fileTexts.advanced}</SelectItem>
-              </SelectContent>
-            </Select>
 
             <Select value={sortBy} onValueChange={setSortBy}>
               <SelectTrigger className="h-12 bg-gray-50 border-gray-200 rounded-lg w-40">
@@ -337,15 +287,11 @@ export default function Files() {
         {filteredFiles.length > 0 ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredFiles.map((file) => {
-              const userPurchase = getUserPurchaseForProduct(file.id);
-              const hasAccess = hasActiveAccess(userPurchase);
               return (
                 <FileCard
                   key={file.id}
                   file={file}
-                  userPurchase={userPurchase}
-                  hasAccess={hasAccess}
-                  onAccess={handleFileAccess}
+                  userPurchases={userPurchases}
                   onPurchase={handlePurchase}
                   fileTexts={fileTexts}
                   currentUser={currentUser}
@@ -367,19 +313,8 @@ export default function Files() {
   );
 }
 
-function FileCard({ file, userPurchase, hasAccess, onAccess, onPurchase, fileTexts, currentUser }) {
+function FileCard({ file, userPurchases, onPurchase, fileTexts, currentUser }) {
   const navigate = useNavigate();
-  const difficultyColors = {
-    beginner: "bg-green-100 text-green-800",
-    intermediate: "bg-yellow-100 text-yellow-800",
-    advanced: "bg-red-100 text-red-800"
-  };
-
-  const difficultyLabels = {
-    beginner: fileTexts.beginner,
-    intermediate: fileTexts.intermediate,
-    advanced: fileTexts.advanced
-  };
 
   const fileTypeIcons = {
     pdf: "📄",
@@ -428,13 +363,6 @@ function FileCard({ file, userPurchase, hasAccess, onAccess, onPurchase, fileTex
               {file.category}
             </Badge>
           </div>
-          {file.difficulty_level && (
-            <div className="absolute top-3 left-3">
-              <Badge className={difficultyColors[file.difficulty_level]}>
-                {difficultyLabels[file.difficulty_level]}
-              </Badge>
-            </div>
-          )}
         </div>
 
         {/* Flexible content section */}
@@ -450,20 +378,11 @@ function FileCard({ file, userPurchase, hasAccess, onAccess, onPurchase, fileTex
           </h3>
 
           {/* Access status */}
-          {hasAccess && (
-            <div className="text-sm text-green-600 bg-green-50 p-2 rounded-lg mb-3">
-              <div className="font-medium">{fileTexts.owned}</div>
-              {userPurchase?.purchased_lifetime_access ? (
-                <div className="text-xs">{fileTexts.lifetimeAccess}</div>
-              ) : userPurchase?.access_until ? (
-                <div className="text-xs">
-                  {fileTexts.accessUntil} {format(new Date(userPurchase.access_until), 'dd/MM/yyyy', { locale: he })}
-                </div>
-              ) : (
-                <div className="text-xs">{fileTexts.lifetimeAccess}</div>
-              )}
-            </div>
-          )}
+          <FileAccessStatus
+            file={file}
+            userPurchases={userPurchases}
+            variant="files"
+          />
 
           {/* Flexible description area */}
           <p className="text-gray-600 text-sm mb-4 line-clamp-3 flex-grow">
@@ -513,7 +432,7 @@ function FileCard({ file, userPurchase, hasAccess, onAccess, onPurchase, fileTex
                 className="hover:bg-gray-50"
                 title={fileTexts.viewDetails}
               >
-                <Eye className="w-4 h-4" />
+                פרטים נוספים
               </Button>
 
               {currentUser && currentUser.role === 'admin' && (
@@ -528,25 +447,14 @@ function FileCard({ file, userPurchase, hasAccess, onAccess, onPurchase, fileTex
                 </Button>
               )}
 
-              {hasAccess ? (
-                <Button
-                  onClick={() => onAccess(file)}
-                  className="bg-purple-600 hover:bg-purple-700 text-white"
-                  size="sm"
-                >
-                  <Play className="w-4 h-4 ml-2" />
-                  {fileTexts.watchFile}
-                </Button>
-              ) : (
-                <Button
-                  onClick={() => onPurchase(file)}
-                  className="bg-purple-600 hover:bg-purple-700 text-white"
-                  size="sm"
-                >
-                  <ShoppingCart className="w-4 h-4 ml-2" />
-                  {fileTexts.getAccess}
-                </Button>
-              )}
+              <GetFileButton
+                file={file}
+                userPurchases={userPurchases}
+                currentUser={currentUser}
+                onPurchase={onPurchase}
+                variant="files"
+                size="sm"
+              />
             </div>
           </div>
         </CardContent>

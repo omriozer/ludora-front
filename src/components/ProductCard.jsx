@@ -28,11 +28,6 @@ export default function ProductCard({
   const navigate = useNavigate();
   const hasAccess = userPurchase && userPurchase.access_until && new Date(userPurchase.access_until) > new Date();
   
-  const difficultyColors = {
-    beginner: "bg-green-100 text-green-800",
-    intermediate: "bg-yellow-100 text-yellow-800",
-    advanced: "bg-red-100 text-red-800"
-  };
 
   const categoryColors = {
     workshop: "bg-blue-100 text-blue-800",
@@ -98,12 +93,6 @@ export default function ProductCard({
           <Badge className={`${categoryColors[product.product_type] || "bg-gray-100 text-gray-800"} border-none`}>
             {product.category}
           </Badge>
-          {product.difficulty_level && (
-            <Badge className={difficultyColors[product.difficulty_level]}>
-              {product.difficulty_level === 'beginner' ? 'מתחיל' : 
-               product.difficulty_level === 'intermediate' ? 'בינוני' : 'מתקדם'}
-            </Badge>
-          )}
         </div>
 
         <CardTitle className="text-lg leading-tight">{product.title}</CardTitle>

@@ -36,6 +36,9 @@ import { getText } from "../components/utils/getText";
 import LudoraLoadingSpinner from "@/components/ui/LudoraLoadingSpinner";
 import VideoPlayer from "../components/VideoPlayer"; // Added import for VideoPlayer component
 import { getProductTypeName } from "@/config/productTypes";
+import GetFileButton from "@/components/files/GetFileButton";
+import FileAccessStatus from "@/components/files/FileAccessStatus";
+import { hasActiveAccess, getUserPurchaseForFile } from "@/components/files/fileAccessUtils";
 
 export default function ProductDetails() {
   const navigate = useNavigate();
@@ -64,19 +67,16 @@ export default function ProductDetails() {
       buyNow: await getText("productDetails.buyNow", "רכישה עכשיו"),
       startCourse: await getText("productDetails.startCourse", `התחל ${getProductTypeName('course', 'singular')}`),
       downloadFile: await getText("productDetails.downloadFile", `הורד ${getProductTypeName('file', 'singular')}`),
+      watchFile: "צפיה בקובץ", // Same text as Files.jsx
+      getAccess: "קבלת גישה", // Same text as Files.jsx
       joinWorkshop: await getText("productDetails.joinWorkshop", `הצטרף ל${getProductTypeName('workshop', 'singular')}`),
       watchRecording: await getText("productDetails.watchRecording", "צפה בהקלטה"),
-      getAccess: await getText("productDetails.getAccess", "קבל גישה"),
       alreadyOwned: await getText("productDetails.alreadyOwned", "ברשותך"),
       accessUntil: await getText("productDetails.accessUntil", "גישה עד"),
       lifetimeAccess: await getText("productDetails.lifetimeAccess", "גישה לכל החיים"),
       minutes: await getText("productDetails.minutes", "דקות"),
       modules: await getText("productDetails.modules", "מודולים"),
       targetAudience: await getText("productDetails.targetAudience", "קהל יעד"),
-      difficulty: await getText("productDetails.difficulty", "רמת קושי"),
-      beginner: await getText("productDetails.beginner", "מתחיל"),
-      intermediate: await getText("productDetails.intermediate", "בינוני"),
-      advanced: await getText("productDetails.advanced", "מתקדם"),
       previewVideo: await getText("productDetails.previewVideo", "סרטון תצוגה מקדימה"),
       courseModules: await getText("productDetails.courseModules", `מודולי ה${getProductTypeName('course', 'singular')}`),
       scheduledFor: await getText("productDetails.scheduledFor", "מתוכנן ל"),
@@ -102,6 +102,17 @@ export default function ProductDetails() {
     );
   };
 
+  // Use same file access logic as Files.jsx
+  const handleFileAccess = (file) => {
+    // Use authenticated file download endpoint with auth token - same as Files.jsx
+    const authToken = localStorage.getItem('authToken');
+    if (authToken && file.id) {
+      const apiBase = getApiBase();
+      const fileUrl = `${apiBase}/media/file/download/${file.id}?authToken=${authToken}`;
+      window.open(fileUrl, '_blank');
+    }
+  };
+
   const handleDownload = async () => {
     if (!item.file_url && !item.tool_url) {
       console.error("No file URL or tool URL found for item:", item);
@@ -118,7 +129,7 @@ export default function ProductDetails() {
           last_accessed: new Date().toISOString()
         });
       }
-      
+
       // Update item download count based on type
       const EntityClass = getEntityClass(itemType);
       await EntityClass.update(item.id, {
@@ -127,19 +138,19 @@ export default function ProductDetails() {
 
       const response = await fetch(downloadUrl);
       const blob = await response.blob();
-      
+
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
       link.download = `${item.title || 'download'}.${item.file_type || 'pdf'}`;
       link.style.display = 'none';
-      
+
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+
       window.URL.revokeObjectURL(url);
-      
+
     } catch (error) {
       console.error("Error downloading file:", error);
       window.open(downloadUrl, '_blank');
@@ -210,7 +221,7 @@ export default function ProductDetails() {
       const EntityClass = getEntityClass(entityType);
       
       const [itemResult, settingsData] = await Promise.all([
-        EntityClass.get(entityId),
+        EntityClass.findById(entityId),
         Settings.find()
       ]);
 
@@ -223,23 +234,12 @@ export default function ProductDetails() {
       setItem(itemResult);
       setSettings(settingsData.length > 0 ? settingsData[0] : {});
 
-      setHasAccess(false);
-      setPurchase(null);
+      // Use centralized logic for determining access
+      const userPurchase = getUserPurchaseForFile(entityId, purchases);
+      const hasUserAccess = hasActiveAccess(userPurchase);
 
-      if (user) {
-        // Check for purchases using new polymorphic structure or legacy product_id
-        const activePurchase = purchases.find(p =>
-          ((p.purchasable_type === entityType && p.purchasable_id === entityId) ||
-           (p.product_id === entityId)) && // Backwards compatibility
-          (p.purchased_lifetime_access ||
-          (p.access_until && new Date(p.access_until) > new Date()))
-        );
-
-        if (activePurchase) {
-          setHasAccess(true);
-          setPurchase(activePurchase);
-        }
-      }
+      setHasAccess(hasUserAccess);
+      setPurchase(userPurchase);
     } catch (e) {
       console.error("Error loading product:", e);
       setError("שגיאה בטעינת הנתונים");
@@ -259,7 +259,8 @@ export default function ProductDetails() {
         navigate(`/course?course=${item.id}`);
         break;
       case 'file':
-        handleDownload();
+        // Use same file access logic as Files.jsx
+        handleFileAccess(item);
         break;
       case 'tool':
         if (item.tool_url) {
@@ -282,7 +283,8 @@ export default function ProductDetails() {
             navigate(`/course?course=${item.id}`);
             break;
           case 'file':
-            handleDownload();
+            // Use same file access logic as Files.jsx
+            handleFileAccess(item);
             break;
           case 'workshop':
             if (item.recording_url) {
@@ -315,13 +317,14 @@ export default function ProductDetails() {
       case 'course':
         return detailsTexts.startCourse;
       case 'file':
-        return detailsTexts.downloadFile;
+        // Use same text as Files.jsx - "צפיה בקובץ" when has access, "קבלת גישה" when no access
+        return hasAccess ? detailsTexts.watchFile : detailsTexts.getAccess;
       case 'tool':
         return item.tool_url ? `גש ל${getProductTypeName('tool', 'singular')}` : detailsTexts.downloadFile;
       case 'workshop':
         const now = new Date();
         const scheduledDate = item.scheduled_date ? new Date(item.scheduled_date) : null;
-        
+
         if (scheduledDate && scheduledDate > now) {
           return detailsTexts.joinWorkshop;
         } else if (item.recording_url) {
@@ -360,18 +363,6 @@ export default function ProductDetails() {
     }
   };
 
-  const getDifficultyLabel = (level) => {
-    switch (level) {
-      case 'beginner':
-        return detailsTexts.beginner;
-      case 'intermediate':
-        return detailsTexts.intermediate;
-      case 'advanced':
-        return detailsTexts.advanced;
-      default:
-        return level;
-    }
-  };
 
   const getProductTypeLabel = (type) => {
     return getProductTypeName(type, 'singular') || 'מוצר';
@@ -516,21 +507,19 @@ export default function ProductDetails() {
               <div className="p-8 flex flex-col justify-between">
                 {/* Header */}
                 <div>
-                  <div className="flex items-center gap-2 mb-4 justify-end">
-                    {item.difficulty_level && (
-                      <Badge variant="outline" className="text-sm flex items-center gap-1">
-                        <Star className="w-3 h-3" />
-                        {getDifficultyLabel(item.difficulty_level)}
-                      </Badge>
-                    )}
-                  </div>
 
                   <h1 className="text-3xl md::text-4xl font-bold text-gray-900 mb-6 leading-tight text-right">
                     {item.title}
                   </h1>
 
                   {/* Access Status */}
-                  {hasAccess && (
+                  {(itemType === 'file' || item.product_type === 'file') ? (
+                    <FileAccessStatus
+                      file={item}
+                      userPurchases={userPurchases}
+                      variant="productDetails"
+                    />
+                  ) : hasAccess && (
                     <Alert className="mb-6 border-green-200 bg-green-50">
                       <CheckCircle className="h-4 w-4 text-green-600" />
                       <AlertDescription className="text-green-800">
@@ -568,7 +557,16 @@ export default function ProductDetails() {
                     )}
                   </div>
 
-                  {hasAccess ? (
+                  {(itemType === 'file' || item.product_type === 'file') ? (
+                    <GetFileButton
+                      file={item}
+                      userPurchases={userPurchases}
+                      currentUser={currentUser}
+                      onPurchase={() => handlePurchase()}
+                      variant="productDetails"
+                      size="lg"
+                    />
+                  ) : hasAccess ? (
                     <Button
                       onClick={handleProductAccess}
                       className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-4 text-lg font-semibold rounded-2xl shadow-lg transform hover:scale-105 transition-all duration-300"
@@ -606,12 +604,6 @@ export default function ProductDetails() {
                       {item.category}
                     </Badge>
                   )}
-                  {item.difficulty_level && (
-                    <Badge variant="outline" className="text-base flex items-center gap-1 px-4 py-2 rounded-full">
-                      <Star className="w-3 h-3" />
-                      {getDifficultyLabel(item.difficulty_level)}
-                    </Badge>
-                  )}
                 </div>
 
                 <h1 className="text-4xl md::text-5xl font-bold text-gray-900 mb-6 leading-tight">
@@ -619,7 +611,13 @@ export default function ProductDetails() {
                 </h1>
 
                 {/* Access Status */}
-                {hasAccess && (
+                {(itemType === 'file' || item.product_type === 'file') ? (
+                  <FileAccessStatus
+                    file={item}
+                    userPurchases={userPurchases}
+                    variant="productDetails"
+                  />
+                ) : hasAccess && (
                   <Alert className="mb-6 border-green-200 bg-green-50 max-w-2xl mx-auto">
                     <CheckCircle className="h-4 w-4 text-green-600" />
                     <AlertDescription className="text-green-800">
@@ -664,7 +662,17 @@ export default function ProductDetails() {
                       </Button>
                     )}
 
-                    {hasAccess ? (
+                    {(itemType === 'file' || item.product_type === 'file') ? (
+                      <GetFileButton
+                        file={item}
+                        userPurchases={userPurchases}
+                        currentUser={currentUser}
+                        onPurchase={() => handlePurchase()}
+                        variant="productDetails"
+                        size="lg"
+                        className="py-4 px-12"
+                      />
+                    ) : hasAccess ? (
                       <Button
                         onClick={handleProductAccess}
                         className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-4 px-12 text-lg font-semibold rounded-2xl shadow-xl transform hover:scale-105 transition-all duration-300"
@@ -990,17 +998,6 @@ export default function ProductDetails() {
                   </div>
                 )}
 
-                {item.difficulty_level && (
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center">
-                      <Award className="w-5 h-5 text-orange-600" />
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-gray-600 font-medium">{detailsTexts.difficulty}</p>
-                      <p className="font-bold text-gray-900">{getDifficultyLabel(item.difficulty_level)}</p>
-                    </div>
-                  </div>
-                )}
               </CardContent>
             </Card>
 

@@ -114,7 +114,6 @@ export default function ProductModal({
     file_type: "pdf",
     tags: [],
     target_audience: "",
-    difficulty_level: "beginner",
     access_days: null,
     is_lifetime_access: null,
     course_modules: [],
@@ -268,7 +267,6 @@ export default function ProductModal({
       file_type: "pdf",
       tags: [],
       target_audience: "",
-      difficulty_level: "beginner",
       access_days: null,
       is_lifetime_access: null,
       course_modules: [],
@@ -683,7 +681,6 @@ export default function ProductModal({
         file_type: formData.file_type || null,
         tags: formData.tags?.filter(tag => tag.trim()) || [],
         target_audience: (formData.target_audience && formData.target_audience.trim()) ? formData.target_audience : null,
-        difficulty_level: (formData.difficulty_level && formData.difficulty_level.trim()) ? formData.difficulty_level : null,
         access_days: formData.is_lifetime_access ? 0 : (formData.access_days === null ? null : formData.access_days),
         is_lifetime_access: formData.is_lifetime_access,
         course_modules: formData.product_type === 'course' ? formData.course_modules : undefined,
@@ -731,7 +728,6 @@ export default function ProductModal({
             image_is_private: baseData.image_is_private,
             tags: baseData.tags,
             target_audience: baseData.target_audience,
-            difficulty_level: baseData.difficulty_level,
             access_days: baseData.access_days,
             is_lifetime_access: baseData.is_lifetime_access,
             workshop_type: formData.workshop_type
@@ -957,22 +953,6 @@ export default function ProductModal({
                         onChange={(e) => setFormData(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))}
                         className="mt-1"
                       />
-                    </div>
-                    <div>
-                      <Label className="text-sm font-medium">רמת קושי</Label>
-                      <Select
-                        value={formData.difficulty_level}
-                        onValueChange={(value) => setFormData(prev => ({ ...prev, difficulty_level: value }))}
-                      >
-                        <SelectTrigger className="mt-1">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="beginner">מתחיל</SelectItem>
-                          <SelectItem value="intermediate">בינוני</SelectItem>
-                          <SelectItem value="advanced">מתקדם</SelectItem>
-                        </SelectContent>
-                      </Select>
                     </div>
                   </div>
 

@@ -48,7 +48,6 @@ export default function Courses() {
   const [filteredCourses, setFilteredCourses] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [selectedDifficulty, setSelectedDifficulty] = useState("all");
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState(null);
   const [userPurchases, setUserPurchases] = useState([]);
@@ -61,10 +60,6 @@ export default function Courses() {
     getAccess: "קבלת גישה",
     owned: "ברשותך",
     allCategories: "כל הקטגוריות",
-    allDifficulties: "כל הרמות",
-    beginner: "מתחיל",
-    intermediate: "בינוני",
-    advanced: "מתקדם",
     modules: "מודולים",
     totalDuration: "משך כולל",
     noCourses: `אין ${getProductTypeName('course', 'plural')} זמינים`,
@@ -84,7 +79,7 @@ export default function Courses() {
 
   useEffect(() => {
     filterCourses();
-  }, [courses, searchTerm, selectedCategory, selectedDifficulty]);
+  }, [courses, searchTerm, selectedCategory]);
 
   const loadData = async () => {
     try {
@@ -97,10 +92,6 @@ export default function Courses() {
         getAccess: await getText("courses.getAccess", "קבלת גישה"),
         owned: await getText("courses.owned", "ברשותך"),
         allCategories: await getText("courses.allCategories", "כל הקטגוריות"),
-        allDifficulties: await getText("courses.allDifficulties", "כל הרמות"),
-        beginner: await getText("courses.beginner", "מתחיל"),
-        intermediate: await getText("courses.intermediate", "בינוני"),
-        advanced: await getText("courses.advanced", "מתקדם"),
         modules: await getText("courses.modules", "מודולים"),
         totalDuration: await getText("courses.totalDuration", "משך כולל"),
         noCourses: await getText("courses.noCourses", `אין ${getProductTypeName('course', 'plural')} זמינים`),
@@ -185,9 +176,6 @@ export default function Courses() {
       filtered = filtered.filter(course => course.category === selectedCategory);
     }
 
-    if (selectedDifficulty !== "all") {
-      filtered = filtered.filter(course => course.difficulty_level === selectedDifficulty);
-    }
 
     setFilteredCourses(filtered);
   };
@@ -262,17 +250,6 @@ export default function Courses() {
               </Select>
             </div>
 
-            <Select value={selectedDifficulty} onValueChange={setSelectedDifficulty}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder={coursesTexts.allDifficulties} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{coursesTexts.allDifficulties}</SelectItem>
-                <SelectItem value="beginner">{coursesTexts.beginner}</SelectItem>
-                <SelectItem value="intermediate">{coursesTexts.intermediate}</SelectItem>
-                <SelectItem value="advanced">{coursesTexts.advanced}</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
         </div>
 
@@ -307,18 +284,6 @@ function CourseCard({ course, userPurchase, onStartCourse, onPurchase, coursesTe
   const navigate = useNavigate();
   const hasAccess = hasActiveAccess(userPurchase);
 
-  const difficultyColors = {
-    beginner: "bg-green-100 text-green-800",
-    intermediate: "bg-yellow-100 text-yellow-800",
-    advanced: "bg-red-100 text-red-800"
-  };
-
-  const difficultyLabels = {
-    beginner: coursesTexts.beginner,
-    intermediate: coursesTexts.intermediate,
-    advanced: coursesTexts.advanced
-  };
-
   const moduleCount = course.course_modules ? course.course_modules.length : 0;
 
   const handleDetailsClick = () => {
@@ -346,13 +311,6 @@ function CourseCard({ course, userPurchase, onStartCourse, onPurchase, coursesTe
             {course.category}
           </Badge>
         </div>
-        {course.difficulty_level && (
-          <div className="absolute top-3 left-3">
-            <Badge className={difficultyColors[course.difficulty_level]}>
-              {difficultyLabels[course.difficulty_level]}
-            </Badge>
-          </div>
-        )}
       </div>
 
       {/* Flexible content section */}

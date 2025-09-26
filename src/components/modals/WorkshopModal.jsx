@@ -54,7 +54,6 @@ export default function WorkshopModal({
     image_url: "",
     tags: [],
     target_audience: "",
-    difficulty_level: "beginner",
     access_days: 30,
     is_lifetime_access: false
   });
@@ -136,7 +135,6 @@ export default function WorkshopModal({
       image_url: "",
       tags: [],
       target_audience: "",
-      difficulty_level: "beginner",
       access_days: 30,
       is_lifetime_access: false
     });
@@ -341,22 +339,6 @@ export default function WorkshopModal({
                   />
                 </div>
 
-                <div>
-                  <Label htmlFor="difficulty_level">רמת קושי</Label>
-                  <Select 
-                    value={formData.difficulty_level}
-                    onValueChange={(value) => handleInputChange('difficulty_level', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="beginner">מתחילים</SelectItem>
-                      <SelectItem value="intermediate">בינוני</SelectItem>
-                      <SelectItem value="advanced">מתקדמים</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
 
                 <div>
                   <Label htmlFor="duration_minutes">משך זמן (דקות)</Label>
