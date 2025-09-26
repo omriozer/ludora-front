@@ -114,21 +114,21 @@ export default function ProductCard({
             <>
               <div className="flex items-center gap-2">
                 <BookOpen className="w-4 h-4 text-gray-400" />
-                <span className="text-gray-700">{product.course_modules?.length || 0} מודולים</span>
+                <span className="text-gray-700">{product.course?.course_modules?.length || product.course_modules?.length || 0} מודולים</span>
               </div>
-              {product.total_duration_minutes && (
+              {(product.course?.total_duration_minutes || product.total_duration_minutes) && (
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4 text-gray-400" />
-                  <span className="text-gray-700">{product.total_duration_minutes} דקות</span>
+                  <span className="text-gray-700">{product.course?.total_duration_minutes || product.total_duration_minutes} דקות</span>
                 </div>
               )}
             </>
           )}
-          
-          {product.product_type === 'tool' && (
+
+          {product.product_type === 'file' && (
             <div className="flex items-center gap-2 text-gray-500">
               <Download className="w-4 h-4" />
-              <span>{product.downloads_count || 0} הורדות</span>
+              <span>{product.file?.downloads_count || product.downloads_count || 0} הורדות</span>
             </div>
           )}
           

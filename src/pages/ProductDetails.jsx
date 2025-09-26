@@ -133,7 +133,7 @@ export default function ProductDetails() {
       // Update item download count based on type
       const EntityClass = getEntityClass(itemType);
       await EntityClass.update(item.id, {
-        downloads_count: (item.downloads_count || 0) + 1
+        downloads_count: (item.file?.downloads_count || item.downloads_count || 0) + 1
       });
 
       const response = await fetch(downloadUrl);
@@ -886,7 +886,7 @@ export default function ProductDetails() {
                       </div>
                       <div className="text-right">
                         <p className="text-sm text-gray-600 font-medium">{detailsTexts.downloads}</p>
-                        <p className="font-bold text-gray-900 text-lg">{item.downloads_count || 0}</p>
+                        <p className="font-bold text-gray-900 text-lg">{item.file?.downloads_count || item.downloads_count || 0}</p>
                       </div>
                     </div>
                   </div>
