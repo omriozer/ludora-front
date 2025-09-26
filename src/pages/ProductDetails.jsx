@@ -39,6 +39,13 @@ import { getProductTypeName } from "@/config/productTypes";
 import GetFileButton from "@/components/files/GetFileButton";
 import FileAccessStatus from "@/components/files/FileAccessStatus";
 import { hasActiveAccess, getUserPurchaseForFile } from "@/components/files/fileAccessUtils";
+import { getApiBase } from "@/utils/api.js";
+
+// Import modular components
+import ProductHeader from "@/components/product-details/ProductHeader";
+import ProductImage from "@/components/product-details/ProductImage";
+import ProductPricing from "@/components/product-details/ProductPricing";
+import ProductMetadata from "@/components/product-details/ProductMetadata";
 
 export default function ProductDetails() {
   const navigate = useNavigate();
@@ -337,6 +344,7 @@ export default function ProductDetails() {
     }
   };
 
+
   const getAccessButtonIcon = () => {
     if (!item) return <ShoppingCart className="w-5 h-5 ml-2" />;
 
@@ -441,9 +449,10 @@ export default function ProductDetails() {
   }
 
   return (
+
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/30">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
+
         {/* Modern Header with Back Button */}
         <div className="mb-8">
           <Button
@@ -880,15 +889,18 @@ export default function ProductDetails() {
                       </div>
                     )}
                     
-                    <div className="flex items-center gap-4 p-6 bg-blue-50 rounded-2xl">
-                      <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center">
-                        <Download className="w-7 h-7 text-blue-600" />
+                    {/* Downloads count removed from database - keeping layout minimal */}
+                    {item.file_type && (
+                      <div className="flex items-center gap-4 p-6 bg-blue-50 rounded-2xl">
+                        <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center">
+                          <FileText className="w-7 h-7 text-blue-600" />
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm text-gray-600 font-medium">{detailsTexts.fileType}</p>
+                          <p className="font-bold text-gray-900 text-lg">{item.file_type.toUpperCase()}</p>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm text-gray-600 font-medium">{detailsTexts.downloads}</p>
-                        <p className="font-bold text-gray-900 text-lg">{item.file?.downloads_count || item.downloads_count || 0}</p>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
