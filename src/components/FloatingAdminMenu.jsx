@@ -209,7 +209,7 @@ export default function FloatingAdminMenu({ currentUser }) {
   // Toggle maintenance mode
   const toggleMaintenanceMode = async () => {
     if (!settings) return;
-    
+
     setIsUpdatingMaintenance(true);
     try {
       const newMaintenanceState = !settings.maintenance_mode;
@@ -217,12 +217,12 @@ export default function FloatingAdminMenu({ currentUser }) {
         ...settings,
         maintenance_mode: newMaintenanceState
       });
-      
+
       setSettings({
         ...settings,
         maintenance_mode: newMaintenanceState
       });
-      
+
       // Show confirmation
       alert(newMaintenanceState ? 'מצב תחזוקה הופעל' : 'מצב תחזוקה בוטל');
     } catch (error) {
@@ -230,6 +230,45 @@ export default function FloatingAdminMenu({ currentUser }) {
       alert('שגיאה בעדכון מצב תחזוקה');
     }
     setIsUpdatingMaintenance(false);
+  };
+
+  // Check if we're in production environment
+  const isProduction = import.meta.env.PROD;
+
+  // Handle database management
+  const openDatabaseManager = async (environment) => {
+    try {
+      // Close the admin menu first
+      setIsOpen(false);
+
+      // Send request to API to start adminer for the specified environment
+      const endpoint = environment === 'prod' ? '/admin/database/prod' : '/admin/database/dev';
+
+      // Make API call to ensure adminer is running
+      const response = await fetch(`${import.meta.env.VITE_API_BASE || 'http://localhost:3003/api'}${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+
+        // Open adminer in new tab
+        const adminerUrl = environment === 'prod'
+          ? 'http://localhost:8080' // Production adminer port
+          : 'http://localhost:8080'; // Development adminer port (same port, different setup)
+
+        window.open(adminerUrl, '_blank');
+      } else {
+        throw new Error(`Failed to start database manager: ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error('Error opening database manager:', error);
+      alert(`שגיאה בפתיחת מנהל מסד הנתונים: ${error.message}`);
+    }
   };
 
 
@@ -376,7 +415,31 @@ export default function FloatingAdminMenu({ currentUser }) {
           url: "/dev-tools",
           icon: <Code className="w-4 h-4" />,
           description: "ניקוי וכלי מתקדמים"
-        }
+        },
+        // Database management - conditional items based on environment
+        ...(isProduction ? [
+          // Production: Only allow access to production DB
+          {
+            title: "מנהל מסד נתונים - Production",
+            action: () => openDatabaseManager('prod'),
+            icon: <Database className="w-4 h-4" />,
+            description: "ניהול מסד הנתונים של האתר"
+          }
+        ] : [
+          // Development: Allow access to both dev and prod DB
+          {
+            title: "מנהל מסד נתונים - Dev",
+            action: () => openDatabaseManager('dev'),
+            icon: <Database className="w-4 h-4" />,
+            description: "ניהול מסד הנתונים המקומי"
+          },
+          {
+            title: "מנהל מסד נתונים - Production",
+            action: () => openDatabaseManager('prod'),
+            icon: <Database className="w-4 h-4 text-orange-600" />,
+            description: "⚠️ ניהול מסד הנתונים של האתר"
+          }
+        ])
       ]
     }
   ];
@@ -509,28 +572,43 @@ export default function FloatingAdminMenu({ currentUser }) {
 
                   {/* Category Items Grid - Responsive */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
-                    {category.items.map((item, itemIndex) => (
-                      <Link
-                        key={itemIndex}
-                        to={item.url}
-                        onClick={() => setIsOpen(false)}
-                        className="group bg-gray-50 hover:bg-gradient-to-br hover:from-white hover:to-gray-50 border border-gray-200 hover:border-gray-300 rounded-xl md:rounded-2xl p-3 md:p-4 transition-all duration-300 hover:shadow-lg hover:scale-[1.02] active:scale-95"
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className={`w-7 h-7 md:w-8 md:h-8 bg-gradient-to-br ${category.color} rounded-lg flex items-center justify-center text-white shadow-sm group-hover:scale-110 transition-transform duration-300 flex-shrink-0`}>
-                            {item.icon}
+                    {category.items.map((item, itemIndex) => {
+                      // Handle items with action vs url
+                      const ItemComponent = item.action ? 'button' : Link;
+                      const itemProps = item.action
+                        ? {
+                            onClick: () => {
+                              item.action();
+                            },
+                            type: 'button'
+                          }
+                        : {
+                            to: item.url,
+                            onClick: () => setIsOpen(false)
+                          };
+
+                      return (
+                        <ItemComponent
+                          key={itemIndex}
+                          {...itemProps}
+                          className="group bg-gray-50 hover:bg-gradient-to-br hover:from-white hover:to-gray-50 border border-gray-200 hover:border-gray-300 rounded-xl md:rounded-2xl p-3 md:p-4 transition-all duration-300 hover:shadow-lg hover:scale-[1.02] active:scale-95 text-left"
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className={`w-7 h-7 md:w-8 md:h-8 bg-gradient-to-br ${category.color} rounded-lg flex items-center justify-center text-white shadow-sm group-hover:scale-110 transition-transform duration-300 flex-shrink-0`}>
+                              {item.icon}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-semibold text-gray-900 text-sm md:text-base group-hover:text-indigo-700 transition-colors leading-tight">
+                                {item.title}
+                              </h4>
+                              <p className="text-xs md:text-sm text-gray-500 mt-1 leading-relaxed line-clamp-2">
+                                {item.description}
+                              </p>
+                            </div>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold text-gray-900 text-sm md:text-base group-hover:text-indigo-700 transition-colors leading-tight">
-                              {item.title}
-                            </h4>
-                            <p className="text-xs md:text-sm text-gray-500 mt-1 leading-relaxed line-clamp-2">
-                              {item.description}
-                            </p>
-                          </div>
-                        </div>
-                      </Link>
-                    ))}
+                        </ItemComponent>
+                      );
+                    })}
                   </div>
                 </div>
               ))}
