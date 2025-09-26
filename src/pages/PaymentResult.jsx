@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Game, Purchase, User, Workshop, Course, File, Tool } from "@/services/entities";
+import { Game, Purchase, User, Workshop, Course, File, Tool, Product } from "@/services/entities";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -32,6 +32,7 @@ export default function PaymentResult() {
   const [error, setError] = useState(null);
   const [isFree, setIsFree] = useState(false);
   const [autoRedirectSeconds, setAutoRedirectSeconds] = useState(null);
+  const [productId, setProductId] = useState(null);
 
   useEffect(() => {
     loadPaymentResult();
@@ -46,10 +47,10 @@ export default function PaymentResult() {
       const countdownInterval = setInterval(() => {
         setAutoRedirectSeconds(prev => {
           if (prev === 1) {
-            // Redirect to product details page
-            const productId = purchase.purchasable_id || purchase.product_id;
-            if (productId) {
-              navigate(`/product/${productId}`);
+            // Redirect to product details page using the correct Product ID
+            const redirectProductId = productId || purchase.product_id;
+            if (redirectProductId) {
+              navigate(`/product/${redirectProductId}`);
             }
             return 0;
           }
@@ -60,6 +61,28 @@ export default function PaymentResult() {
       return () => clearInterval(countdownInterval);
     }
   }, [status, purchase, item, isLoading, navigate]);
+
+  const findProductId = async (entityType, entityId) => {
+    try {
+      console.log(`🔍 Finding Product ID for ${entityType}:`, entityId);
+
+      // Search for Product with matching product_type and entity_id
+      const products = await Product.filter({
+        product_type: entityType,
+        entity_id: entityId
+      });
+
+      if (products && products.length > 0) {
+        const foundProductId = products[0].id;
+        setProductId(foundProductId);
+        console.log(`✅ Found Product ID:`, foundProductId);
+      } else {
+        console.log(`⚠️ No Product found for ${entityType}:${entityId}`);
+      }
+    } catch (error) {
+      console.error('❌ Error finding Product ID:', error);
+    }
+  };
 
   const loadPaymentResult = async () => {
     try {
@@ -124,6 +147,9 @@ export default function PaymentResult() {
                 setItem(itemData);
                 setItemType(entityType);
                 console.log(`✅ ${entityType} loaded:`, itemData.title);
+
+                // Find the corresponding Product ID
+                await findProductId(entityType, entityId);
               } catch (itemError) {
                 console.error('❌ Error loading item:', itemError);
                 setMessage({ type: 'error', text: 'לא ניתן לטעון את פרטי הפריט שנרכש' });
@@ -299,24 +325,12 @@ export default function PaymentResult() {
     const buttons = [];
 
     // Add "View Product Details" button first for all product types
-    if (purchase && purchase.purchasable_id) {
-      // Use polymorphic structure
+    const viewProductId = productId || purchase.product_id;
+    if (viewProductId) {
       buttons.push(
         <Button
           key="view-product"
-          onClick={() => navigate(`/product/${purchase.purchasable_id}`)}
-          className="w-full bg-blue-600 hover:bg-blue-700"
-        >
-          <FileText className="w-4 h-4 ml-2" />
-          צפה בפרטי המוצר
-        </Button>
-      );
-    } else if (purchase && purchase.product_id) {
-      // Legacy structure fallback
-      buttons.push(
-        <Button
-          key="view-product"
-          onClick={() => navigate(`/product/${purchase.product_id}`)}
+          onClick={() => navigate(`/product/${viewProductId}`)}
           className="w-full bg-blue-600 hover:bg-blue-700"
         >
           <FileText className="w-4 h-4 ml-2" />

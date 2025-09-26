@@ -229,6 +229,7 @@ export const Notification = new EntityAPI('notification');
 export const SiteText = new EntityAPI('sitetext');
 
 // New dedicated entity types
+export const Product = new EntityAPI('product');
 export const Workshop = new EntityAPI('workshop');
 export const Course = new EntityAPI('course');
 export const File = new EntityAPI('file');
