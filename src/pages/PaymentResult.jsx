@@ -31,10 +31,35 @@ export default function PaymentResult() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isFree, setIsFree] = useState(false);
+  const [autoRedirectSeconds, setAutoRedirectSeconds] = useState(null);
 
   useEffect(() => {
     loadPaymentResult();
   }, []);
+
+  // Auto redirect effect
+  useEffect(() => {
+    if (status === 'success' && purchase && item && !isLoading) {
+      // Start 10 second countdown for auto redirect
+      setAutoRedirectSeconds(10);
+
+      const countdownInterval = setInterval(() => {
+        setAutoRedirectSeconds(prev => {
+          if (prev === 1) {
+            // Redirect to product details page
+            const productId = purchase.purchasable_id || purchase.product_id;
+            if (productId) {
+              navigate(`/product/${productId}`);
+            }
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      return () => clearInterval(countdownInterval);
+    }
+  }, [status, purchase, item, isLoading, navigate]);
 
   const loadPaymentResult = async () => {
     try {
@@ -79,19 +104,19 @@ export default function PaymentResult() {
                 console.log(`📦 Loading ${entityType}:`, entityId);
                 switch (entityType) {
                   case 'workshop':
-                    itemData = await Workshop.get(entityId);
+                    itemData = await Workshop.findById(entityId);
                     break;
                   case 'course':
-                    itemData = await Course.get(entityId);
+                    itemData = await Course.findById(entityId);
                     break;
                   case 'file':
-                    itemData = await File.get(entityId);
+                    itemData = await File.findById(entityId);
                     break;
                   case 'tool':
-                    itemData = await Tool.get(entityId);
+                    itemData = await Tool.findById(entityId);
                     break;
                   case 'game':
-                    itemData = await Game.get(entityId);
+                    itemData = await Game.findById(entityId);
                     break;
                   default:
                     throw new Error(`Unknown entity type: ${entityType}`);
@@ -109,12 +134,12 @@ export default function PaymentResult() {
                 let itemData;
                 if (type === 'game') {
                   console.log('🎮 Loading game:', purchaseData.product_id);
-                  itemData = await Game.get(purchaseData.product_id);
+                  itemData = await Game.findById(purchaseData.product_id);
                   console.log('✅ Game loaded:', itemData.title);
                 } else {
                   // Default to workshop for legacy product_id
                   console.log('📦 Loading workshop (legacy):', purchaseData.product_id);
-                  itemData = await Workshop.get(purchaseData.product_id);
+                  itemData = await Workshop.findById(purchaseData.product_id);
                   console.log('✅ Workshop loaded:', itemData.title);
                   setItemType('workshop');
                 }
@@ -124,7 +149,7 @@ export default function PaymentResult() {
                 // Try Game as fallback for legacy data
                 try {
                   console.log('🔄 Fallback: trying Game for legacy product ID');
-                  const fallbackItem = await Game.get(purchaseData.product_id);
+                  const fallbackItem = await Game.findById(purchaseData.product_id);
                   setItem(fallbackItem);
                   setItemType('game');
                   console.log('✅ Fallback game loaded:', fallbackItem.title);
@@ -262,7 +287,7 @@ export default function PaymentResult() {
     // For products
     if (!item) {
       return (
-        <Button 
+        <Button
           onClick={() => navigate("/account")}
           className="w-full"
         >
@@ -273,13 +298,41 @@ export default function PaymentResult() {
 
     const buttons = [];
 
+    // Add "View Product Details" button first for all product types
+    if (purchase && purchase.purchasable_id) {
+      // Use polymorphic structure
+      buttons.push(
+        <Button
+          key="view-product"
+          onClick={() => navigate(`/product/${purchase.purchasable_id}`)}
+          className="w-full bg-blue-600 hover:bg-blue-700"
+        >
+          <FileText className="w-4 h-4 ml-2" />
+          צפה בפרטי המוצר
+        </Button>
+      );
+    } else if (purchase && purchase.product_id) {
+      // Legacy structure fallback
+      buttons.push(
+        <Button
+          key="view-product"
+          onClick={() => navigate(`/product/${purchase.product_id}`)}
+          className="w-full bg-blue-600 hover:bg-blue-700"
+        >
+          <FileText className="w-4 h-4 ml-2" />
+          צפה בפרטי המוצר
+        </Button>
+      );
+    }
+
     // Add product-specific action
     if (item.product_type === 'workshop') {
       buttons.push(
-        <Button 
+        <Button
           key="catalog"
           onClick={() => navigate("/catalog")}
           className="w-full"
+          variant="outline"
         >
           <Calendar className="w-4 h-4 ml-2" />
           ל{getProductTypeName('workshop', 'plural')} שלי
@@ -287,19 +340,20 @@ export default function PaymentResult() {
       );
     } else if (item.product_type === 'course') {
       buttons.push(
-        <Button 
+        <Button
           key="courses"
           onClick={() => navigate("/courses")}
           className="w-full"
+          variant="outline"
         >
           <Play className="w-4 h-4 ml-2" />
           ל{getProductTypeName('course', 'plural')} שלי
         </Button>
       );
-      
+
       if (item.course_modules && item.course_modules.length > 0) {
         buttons.push(
-          <Button 
+          <Button
             key="start-course"
             onClick={() => navigate(`/course?course=${item.id}`)}
             className="w-full"
@@ -312,19 +366,20 @@ export default function PaymentResult() {
       }
     } else if (item.product_type === 'file') {
       buttons.push(
-        <Button 
+        <Button
           key="files"
           onClick={() => navigate("/files")}
           className="w-full"
+          variant="outline"
         >
           <FileText className="w-4 h-4 ml-2" />
           ל{getProductTypeName('file', 'plural')} שלי
         </Button>
       );
-      
+
       if (item.file_url) {
         buttons.push(
-          <Button 
+          <Button
             key="download"
             onClick={() => window.open(item.file_url, '_blank')}
             className="w-full"
@@ -339,7 +394,7 @@ export default function PaymentResult() {
 
     // Add general account button
     buttons.push(
-      <Button 
+      <Button
         key="account"
         onClick={() => navigate("/account")}
         className="w-full"
@@ -390,6 +445,22 @@ export default function PaymentResult() {
             <p className="text-center text-gray-600 text-lg">
               {getStatusMessage()}
             </p>
+
+            {autoRedirectSeconds > 0 && status === 'success' && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+                <p className="text-blue-800 text-sm">
+                  עובר לעמוד המוצר בעוד {autoRedirectSeconds} שניות...
+                </p>
+                <Button
+                  onClick={() => setAutoRedirectSeconds(null)}
+                  variant="ghost"
+                  size="sm"
+                  className="text-blue-600 hover:text-blue-800 mt-2"
+                >
+                  בטל מעבר אוטומטי
+                </Button>
+              </div>
+            )}
 
             {item && (
               <div className="bg-gray-50 rounded-lg p-4">
