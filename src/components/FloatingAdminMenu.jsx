@@ -256,18 +256,35 @@ export default function FloatingAdminMenu({ currentUser }) {
       if (response.ok) {
         const data = await response.json();
 
-        // Open adminer in new tab
-        const adminerUrl = environment === 'prod'
-          ? 'http://localhost:8080' // Production adminer port
-          : 'http://localhost:8080'; // Development adminer port (same port, different setup)
+        // Handle production environment instructions
+        if (data.instructions) {
+          // In production, show instructions instead of opening adminer
+          const instructionText = `
+לניהול מסד הנתונים בסביבת Production:
 
-        window.open(adminerUrl, '_blank');
+1. הרץ מהמחשב המקומי: flyctl proxy 5433:5432 -a ludora-db
+2. לאחר מכן הרץ: npm run db:gui:prod
+3. או התחבר ישירות ל: ${data.instructions.direct_connection.host}:${data.instructions.direct_connection.port}
+
+⚠️ ${data.warning}
+          `.trim();
+
+          alert(instructionText);
+        } else {
+          // Local development - open adminer directly
+          const adminerUrl = data.url || 'http://localhost:8080';
+          window.open(adminerUrl, '_blank');
+        }
       } else {
-        throw new Error(`Failed to start database manager: ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || response.statusText;
+        const suggestion = errorData.suggestion || '';
+
+        throw new Error(`${errorMessage}${suggestion ? '\n\nהצעה: ' + suggestion : ''}`);
       }
     } catch (error) {
       console.error('Error opening database manager:', error);
-      alert(`שגיאה בפתיחת מנהל מסד הנתונים: ${error.message}`);
+      alert(`שגיאה בפתיחת מנהל מסד הנתונים:\n\n${error.message}`);
     }
   };
 
