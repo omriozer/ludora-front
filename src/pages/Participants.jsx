@@ -45,7 +45,7 @@ export default function Participants() {
           Course.find({}, '-created_date'),
           File.find({}, '-created_date'),
           Tool.find({}, '-created_date'),
-          Purchase.list("-created_date")
+          Purchase.list("-created_date", { includes: ['buyer'] })
         ]);
 
         // Combine all entities for the product filter
@@ -58,9 +58,9 @@ export default function Participants() {
           .map(purchase => ({
             ...purchase,
             type: 'purchase',
-            participant_name: purchase.buyer_name,
-            participant_email: purchase.buyer_email,
-            participant_phone: purchase.buyer_phone,
+            participant_name: purchase.buyer?.full_name,
+            participant_email: purchase.buyer?.email,
+            participant_phone: purchase.buyer?.phone,
             // Handle both new polymorphic and legacy product_id structure
             product_id: purchase.purchasable_id || purchase.product_id,
             workshop_id: purchase.purchasable_id || purchase.product_id, // Backward compatibility

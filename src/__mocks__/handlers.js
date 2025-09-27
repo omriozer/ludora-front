@@ -186,20 +186,25 @@ export const handlers = [
   // Purchases endpoint
   http.get(`${API_BASE}/entities/purchase`, ({ request }) => {
     const url = new URL(request.url);
-    const buyerEmail = url.searchParams.get('buyer_email');
+    const buyerUserId = url.searchParams.get('buyer_user_id');
     const paymentStatus = url.searchParams.get('payment_status');
-    
+
     // Mock purchases based on query
     const mockPurchases = [];
-    if (buyerEmail === 'test@example.com' && paymentStatus === 'paid') {
+    if (buyerUserId === 'test-user-id' && paymentStatus === 'paid') {
       mockPurchases.push({
         id: 'purchase-1',
-        product_id: 'workshop-1',
-        buyer_email: 'test@example.com',
+        purchasable_id: 'workshop-1',
+        purchasable_type: 'workshop',
+        buyer_user_id: 'test-user-id',
+        buyer: {
+          id: 'test-user-id',
+          email: 'test@example.com',
+          full_name: 'Test User'
+        },
         payment_status: 'paid',
         payment_amount: 150,
-        purchased_lifetime_access: false,
-        access_until: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        access_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         created_at: new Date().toISOString(),
       });
     }

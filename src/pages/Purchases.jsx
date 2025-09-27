@@ -66,7 +66,7 @@ export default function Purchases() {
 
       if (user.role === 'admin') {
         const [purchasesData, workshopsData, coursesData, filesData, toolsData, gamesData] = await Promise.all([
-          Purchase.list("-created_date"),
+          Purchase.list("-created_date", { includes: ['buyer'] }), // Include buyer user info
           Workshop.find({}, '-created_date'),
           Course.find({}, '-created_date'),
           File.find({}, '-created_date'),
@@ -99,10 +99,10 @@ export default function Purchases() {
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
       filtered = filtered.filter(purchase =>
-        purchase.buyer_name?.toLowerCase().includes(searchLower) ||
-        purchase.buyer_email?.toLowerCase().includes(searchLower) ||
+        purchase.buyer?.full_name?.toLowerCase().includes(searchLower) ||
+        purchase.buyer?.email?.toLowerCase().includes(searchLower) ||
         purchase.order_number?.toLowerCase().includes(searchLower) ||
-        products.find(p => p.id === purchase.product_id)?.title?.toLowerCase().includes(searchLower)
+        products.find(p => p.id === purchase.purchasable_id)?.title?.toLowerCase().includes(searchLower)
       );
     }
 
@@ -306,18 +306,18 @@ export default function Purchases() {
                       {/* Purchase Info */}
                       <div>
                         <div className="flex items-center gap-2 mb-2">
-                          <h3 className="font-semibold text-gray-900">{purchase.buyer_name}</h3>
+                          <h3 className="font-semibold text-gray-900">{purchase.buyer?.full_name || 'משתמש לא ידוע'}</h3>
                           {getStatusBadge(purchase.payment_status)}
                         </div>
                         <div className="text-sm text-gray-600 space-y-1">
                           <div className="flex items-center gap-1">
                             <Mail className="w-3 h-3" />
-                            <span className="break-all">{purchase.buyer_email}</span>
+                            <span className="break-all">{purchase.buyer?.email || 'אימייל לא זמין'}</span>
                           </div>
-                          {purchase.buyer_phone && (
+                          {purchase.buyer?.phone && (
                             <div className="flex items-center gap-1">
                               <Phone className="w-3 h-3" />
-                              <span>{purchase.buyer_phone}</span>
+                              <span>{purchase.buyer.phone}</span>
                             </div>
                           )}
                         </div>
@@ -326,7 +326,7 @@ export default function Purchases() {
                       {/* Product Info */}
                       <div>
                         <h4 className="font-medium text-gray-900 mb-1">
-                          {getProductTitle(purchase.product_id)}
+                          {getProductTitle(purchase.purchasable_id)}
                         </h4>
                         <div className="text-sm text-gray-600">
                           מספר הזמנה: {purchase.order_number}
