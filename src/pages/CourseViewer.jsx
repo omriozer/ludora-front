@@ -73,7 +73,7 @@ export default function CourseViewer() {
 
       // Check user access
       const purchases = await Purchase.filter({ 
-        buyer_email: user.email, 
+        buyer_user_id: user.id, 
         product_id: courseId,
         payment_status: 'paid'
       });

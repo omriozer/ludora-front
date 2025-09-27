@@ -163,7 +163,7 @@ export default function Registration() {
         purchasable_id: workshop.id,
         user_id: currentUser.id,
         buyer_name: formData.participant_name.trim(),
-        buyer_email: currentUser.email,
+        buyer_user_id: currentUser.id,
         buyer_phone: formData.participant_phone.trim(),
         total_amount: finalPrice,
         payment_status: 'pending',

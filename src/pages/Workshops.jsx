@@ -195,7 +195,7 @@ export default function Workshops() {
 
       let purchases = [];
       if (user) {
-        purchases = await Purchase.filter({ buyer_email: user.email, payment_status: 'paid' });
+        purchases = await Purchase.filter({ buyer_user_id: user.id, payment_status: 'paid' });
         setUserPurchases(purchases);
       }
 

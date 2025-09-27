@@ -121,7 +121,7 @@ export default function GamesCatalog() {
           // Dynamically import Purchase entity
           const { Purchase } = await import('@/services/entities'); 
           const userPurchases = await Purchase.filter({ 
-            buyer_email: user.email, 
+            buyer_user_id: user.id, 
             payment_status: 'paid' 
           });
           const purchasedGameIds = userPurchases.map(p => p.product_id);

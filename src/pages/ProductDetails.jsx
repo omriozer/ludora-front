@@ -223,7 +223,7 @@ export default function ProductDetails() {
           // If no purchases found with new schema, try legacy email-based lookup
           if (purchases.length === 0) {
             purchases = await Purchase.filter({
-              buyer_email: user.email,
+              buyer_user_id: user.id,
               payment_status: 'paid' // Legacy status check
             });
           }

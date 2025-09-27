@@ -329,13 +329,9 @@ export const purchaseUtils = {
     return purchase.payment_status === 'completed' && !purchaseUtils.isAccessExpired(purchase);
   },
 
-  // Get buyer information from user association (new schema)
+  // Get buyer information from user association
   getBuyerInfo: (purchase) => {
-    return purchase.buyer || {
-      email: purchase.buyer_email, // Fallback for legacy data
-      full_name: purchase.buyer_name, // Fallback for legacy data
-      phone: purchase.buyer_phone // Fallback for legacy data
-    };
+    return purchase.buyer || {};
   },
 
   // Get purchasable entity ID based on type (new schema)

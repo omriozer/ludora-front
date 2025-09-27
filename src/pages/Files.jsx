@@ -144,7 +144,7 @@ export default function Files() {
 
       let purchases = [];
       if (tempCurrentUser) {
-        purchases = await Purchase.filter({ buyer_email: tempCurrentUser.email, payment_status: 'paid' });
+        purchases = await Purchase.filter({ buyer_user_id: tempCurrentUser.id, payment_status: 'paid' });
         setUserPurchases(purchases);
       }
 

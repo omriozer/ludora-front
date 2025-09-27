@@ -132,14 +132,8 @@ const MyAccount = () => {
     if (!currentUser) return;
 
     try {
-      // Load purchases using new schema with fallback to legacy
-      let userPurchases = await Purchase.filter({ buyer_user_id: currentUser.id }, { order: [['created_at', 'DESC']] });
-
-      // If no purchases found with new schema, try legacy email-based lookup
-      if (userPurchases.length === 0) {
-        userPurchases = await Purchase.filter({ buyer_email: currentUser.email }, { order: [['created_at', 'DESC']] });
-      }
-
+      // Load purchases using buyer_user_id
+      const userPurchases = await Purchase.filter({ buyer_user_id: currentUser.id }, { order: [['created_at', 'DESC']] });
       setPurchases(userPurchases);
 
       // Load entities for the purchases (handle both new polymorphic and legacy structures)

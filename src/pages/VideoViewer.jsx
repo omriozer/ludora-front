@@ -198,7 +198,7 @@ export default function VideoViewer() {
       // If no purchases found with new schema, try legacy email-based lookup
       if (purchases.length === 0) {
         const legacyPurchases = await Purchase.filter({
-          buyer_email: user.email,
+          buyer_user_id: user.id,
           payment_status: 'paid' // Legacy status check
         });
         purchases.push(...legacyPurchases);
