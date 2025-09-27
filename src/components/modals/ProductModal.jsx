@@ -115,7 +115,6 @@ export default function ProductModal({
     tags: [],
     target_audience: "",
     access_days: null,
-    is_lifetime_access: null,
     course_modules: [],
     total_duration_minutes: 0,
   });
@@ -146,6 +145,8 @@ export default function ProductModal({
         return false;
     }
   };
+
+  const isLifetimeAccess = (accessDays) => accessDays === null || accessDays === undefined;
 
   // Load initial data
   useEffect(() => {
@@ -193,10 +194,10 @@ export default function ProductModal({
         setEnabledProductTypes(getEnabledProductTypes(settings, isContentCreatorMode, isAdmin));
         
         if (!editingProduct) {
+          const defaultLifetime = getDefaultLifetimeAccess('workshop', settings);
           setFormData(prev => ({
             ...prev,
-            access_days: prev.access_days === null ? getDefaultAccessDays(prev.product_type, settings) : prev.access_days,
-            is_lifetime_access: prev.is_lifetime_access === null ? getDefaultLifetimeAccess(prev.product_type, settings) : prev.is_lifetime_access
+            access_days: defaultLifetime ? null : (getDefaultAccessDays(prev.product_type, settings) || 30)
           }));
         }
       }
@@ -217,8 +218,7 @@ export default function ProductModal({
         video_is_private: module.video_is_private ?? false,
         material_is_private: module.material_is_private ?? false,
       })),
-      is_lifetime_access: product.is_lifetime_access ?? null,
-      access_days: product.is_lifetime_access ? null : (product.access_days ?? null),
+      access_days: product.access_days ?? null,
       preview_file_url: product.preview_file_url || "",
       workshop_type: product.workshop_type || (product.video_file_url ? "recorded" : "online_live"),
       scheduled_date: product.scheduled_date ? format(new Date(product.scheduled_date), "yyyy-MM-dd'T'HH:mm") : "",
@@ -268,7 +268,6 @@ export default function ProductModal({
       tags: [],
       target_audience: "",
       access_days: null,
-      is_lifetime_access: null,
       course_modules: [],
       total_duration_minutes: 0,
     });
@@ -287,11 +286,11 @@ export default function ProductModal({
       }
     }
 
+    const defaultLifetime = getDefaultLifetimeAccess(productType, currentSettings);
     setFormData(prev => ({
       ...prev,
       product_type: productType,
-      access_days: getDefaultAccessDays(productType, currentSettings),
-      is_lifetime_access: getDefaultLifetimeAccess(productType, currentSettings)
+      access_days: defaultLifetime ? null : (getDefaultAccessDays(productType, currentSettings) || 30)
     }));
 
     setStep('form');
@@ -309,11 +308,11 @@ export default function ProductModal({
       }
     }
 
+    const defaultLifetime = getDefaultLifetimeAccess(newType, currentSettings);
     setFormData(prev => ({
       ...prev,
       product_type: newType,
-      access_days: getDefaultAccessDays(newType, currentSettings),
-      is_lifetime_access: getDefaultLifetimeAccess(newType, currentSettings)
+      access_days: defaultLifetime ? null : (getDefaultAccessDays(newType, currentSettings) || 30)
     }));
   };
 
@@ -681,8 +680,7 @@ export default function ProductModal({
         file_type: formData.file_type || null,
         tags: formData.tags?.filter(tag => tag.trim()) || [],
         target_audience: (formData.target_audience && formData.target_audience.trim()) ? formData.target_audience : null,
-        access_days: formData.is_lifetime_access ? 0 : (formData.access_days === null ? null : formData.access_days),
-        is_lifetime_access: formData.is_lifetime_access,
+        access_days: formData.access_days,
         course_modules: formData.product_type === 'course' ? formData.course_modules : undefined,
         total_duration_minutes: formData.total_duration_minutes
       };
@@ -729,7 +727,6 @@ export default function ProductModal({
             tags: baseData.tags,
             target_audience: baseData.target_audience,
             access_days: baseData.access_days,
-            is_lifetime_access: baseData.is_lifetime_access,
             workshop_type: formData.workshop_type
           };
           break;
@@ -1020,12 +1017,11 @@ export default function ProductModal({
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
                         <Label className="font-medium">גישה לכל החיים</Label>
                         <Switch
-                          checked={formData.is_lifetime_access !== null ? formData.is_lifetime_access : false}
+                          checked={isLifetimeAccess(formData.access_days)}
                           onCheckedChange={(checked) => {
                             setFormData(prev => ({
                               ...prev,
-                              is_lifetime_access: checked,
-                              access_days: checked ? null : (prev.access_days || null)
+                              access_days: checked ? null : 30
                             }));
                           }}
                         />
@@ -1039,7 +1035,7 @@ export default function ProductModal({
                             ...prev,
                             access_days: e.target.value === "" ? null : parseInt(e.target.value) || 0
                           }))}
-                          disabled={formData.is_lifetime_access}
+                          disabled={isLifetimeAccess(formData.access_days)}
                           placeholder="השאר ריק לברירת מחדל"
                         />
                         <p className="text-xs text-gray-500">

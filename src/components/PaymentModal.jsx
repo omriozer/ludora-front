@@ -81,12 +81,14 @@ export default function PaymentModal({ product, user, settings, isTestMode = tru
       let purchasedAccessDays = null;
       let purchasedLifetimeAccess = false;
 
-      if (product.is_lifetime_access !== null) {
-        purchasedLifetimeAccess = product.is_lifetime_access;
-        if (!purchasedLifetimeAccess) {
-          purchasedAccessDays = product.access_days;
-        }
-      } else {
+      // New clean logic: access_days = null means lifetime access
+      purchasedLifetimeAccess = product.access_days === null || product.access_days === undefined;
+      if (!purchasedLifetimeAccess) {
+        purchasedAccessDays = product.access_days;
+      }
+
+      // Fallback to system defaults if needed
+      if (purchasedAccessDays === undefined) {
         // Use system defaults based on product type
         if (product.product_type === 'workshop') {
           purchasedLifetimeAccess = settings.recording_lifetime_access || false;

@@ -379,4 +379,38 @@ export const purchaseUtils = {
   }
 };
 
+// Product utilities for clean polymorphic structure
+export const productUtils = {
+  // Check if product has lifetime access (new clean logic)
+  isLifetimeAccess: (product) => {
+    return product.access_days === null || product.access_days === undefined;
+  },
+
+  // Check if product has time-limited access
+  hasTimeLimit: (product) => {
+    return !productUtils.isLifetimeAccess(product);
+  },
+
+  // Get access duration text for display
+  getAccessDuration: (product) => {
+    return productUtils.isLifetimeAccess(product) ? 'לכל החיים' : `${product.access_days} ימים`;
+  },
+
+  // Convert old is_lifetime_access logic to new access_days logic
+  convertToNewAccessLogic: (oldProduct) => {
+    if (oldProduct.is_lifetime_access === true || oldProduct.is_lifetime_access === null) {
+      return { ...oldProduct, access_days: null };
+    }
+    return { ...oldProduct, access_days: oldProduct.access_days || 30 };
+  },
+
+  // Convert new access_days logic to old is_lifetime_access for backward compatibility
+  convertToOldAccessLogic: (newProduct) => {
+    return {
+      ...newProduct,
+      is_lifetime_access: productUtils.isLifetimeAccess(newProduct)
+    };
+  }
+};
+
 export default api;

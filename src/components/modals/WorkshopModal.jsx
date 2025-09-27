@@ -54,8 +54,7 @@ export default function WorkshopModal({
     image_url: "",
     tags: [],
     target_audience: "",
-    access_days: 30,
-    is_lifetime_access: false
+    access_days: 30
   });
 
   // Load initial data on mount
@@ -95,8 +94,7 @@ export default function WorkshopModal({
         if (!editingWorkshop) {
           setFormData(prev => ({
             ...prev,
-            access_days: settings.workshop_default_access_days || 30,
-            is_lifetime_access: settings.workshop_default_lifetime_access || false
+            access_days: settings.workshop_default_lifetime_access ? null : (settings.workshop_default_access_days || 30)
           }));
         }
       }
@@ -135,8 +133,7 @@ export default function WorkshopModal({
       image_url: "",
       tags: [],
       target_audience: "",
-      access_days: 30,
-      is_lifetime_access: false
+      access_days: 30
     });
   };
 
@@ -159,7 +156,7 @@ export default function WorkshopModal({
         price: parseFloat(formData.price) || 0,
         max_participants: parseInt(formData.max_participants) || null,
         duration_minutes: parseInt(formData.duration_minutes) || null,
-        access_days: parseInt(formData.access_days) || null
+        access_days: formData.access_days === null || formData.access_days === '' ? null : parseInt(formData.access_days)
       };
 
       let result;
@@ -511,14 +508,14 @@ export default function WorkshopModal({
                 <div className="flex items-center space-x-2">
                   <Switch
                     id="is_lifetime_access"
-                    checked={formData.is_lifetime_access}
-                    onCheckedChange={(checked) => handleInputChange('is_lifetime_access', checked)}
+                    checked={formData.access_days === null}
+                    onCheckedChange={(checked) => handleInputChange('access_days', checked ? null : 30)}
                   />
                   <Label htmlFor="is_lifetime_access">גישה לכל החיים</Label>
                 </div>
               </div>
 
-              {!formData.is_lifetime_access && (
+              {formData.access_days !== null && (
                 <div>
                   <Label htmlFor="access_days">ימי גישה</Label>
                   <Input

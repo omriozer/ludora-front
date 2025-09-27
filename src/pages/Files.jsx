@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { File, Category, Purchase, User, Settings } from "@/services/entities"; // Using File entity instead of Product
+import { Product, File, Category, Purchase, User, Settings } from "@/services/entities"; // Using Product entity for file products
 import { PRODUCT_TYPES, getProductTypeName } from "@/config/productTypes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -38,9 +38,9 @@ import { hasActiveAccess, getUserPurchaseForFile } from "@/components/files/file
 export default function Files() {
   const navigate = useNavigate();
 
-  const [files, setFiles] = useState([]);
+  const [fileProducts, setFileProducts] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [filteredFiles, setFilteredFiles] = useState([]);
+  const [filteredFileProducts, setFilteredFileProducts] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [userPurchases, setUserPurchases] = useState([]);
   const [settings, setSettings] = useState(null);
@@ -81,7 +81,7 @@ export default function Files() {
 
   useEffect(() => {
     filterFiles();
-  }, [files, searchTerm, selectedCategory, sortBy]);
+  }, [fileProducts, searchTerm, selectedCategory, sortBy]);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -148,13 +148,13 @@ export default function Files() {
         setUserPurchases(purchases);
       }
 
-      // Load files and categories
-      const [filesData, categoriesData] = await Promise.all([
-        File.filter({ is_published: true }),
+      // Load file products and categories
+      const [fileProductsData, categoriesData] = await Promise.all([
+        Product.filter({ product_type: 'file', is_published: true }),
         Category.find({})
       ]);
-      
-      setFiles(filesData);
+
+      setFileProducts(fileProductsData);
       setCategories(categoriesData);
       
     } catch (error) {
@@ -165,23 +165,22 @@ export default function Files() {
   };
 
   const filterFiles = () => {
-    let filtered = [...files];
+    let filtered = [...fileProducts];
 
     // Search filter
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
-      filtered = filtered.filter(file =>
-        file.title.toLowerCase().includes(searchLower) ||
-        file.description.toLowerCase().includes(searchLower) ||
-        file.tags?.some(tag => tag.toLowerCase().includes(searchLower))
+      filtered = filtered.filter(product =>
+        product.title.toLowerCase().includes(searchLower) ||
+        product.description?.toLowerCase().includes(searchLower) ||
+        product.tags?.some(tag => tag.toLowerCase().includes(searchLower))
       );
     }
 
     // Category filter
     if (selectedCategory !== "all") {
-      filtered = filtered.filter(file => file.category === selectedCategory);
+      filtered = filtered.filter(product => product.category === selectedCategory);
     }
-
 
     // Sort
     filtered.sort((a, b) => {
@@ -192,11 +191,11 @@ export default function Files() {
           return (a.price || 0) - (b.price || 0);
         case "created_date":
         default:
-          return new Date(b.created_date) - new Date(a.created_date);
+          return new Date(b.created_at) - new Date(a.created_at);
       }
     });
 
-    setFilteredFiles(filtered);
+    setFilteredFileProducts(filtered);
   };
 
   const handlePurchase = (file) => {
@@ -284,13 +283,13 @@ export default function Files() {
         </div>
 
         {/* Files Grid */}
-        {filteredFiles.length > 0 ? (
+        {filteredFileProducts.length > 0 ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredFiles.map((file) => {
+            {filteredFileProducts.map((fileProduct) => {
               return (
                 <FileCard
-                  key={file.id}
-                  file={file}
+                  key={fileProduct.id}
+                  file={fileProduct}
                   userPurchases={userPurchases}
                   onPurchase={handlePurchase}
                   fileTexts={fileTexts}
@@ -379,7 +378,7 @@ function FileCard({ file, userPurchases, onPurchase, fileTexts, currentUser }) {
 
           {/* Access status */}
           <FileAccessStatus
-            file={file}
+            file={{ ...file, id: file.entity_id }}
             userPurchases={userPurchases}
             variant="files"
           />
@@ -401,10 +400,6 @@ function FileCard({ file, userPurchases, onPurchase, fileTexts, currentUser }) {
               </div>
             )}
 
-            <div className="flex items-center gap-2">
-              <Download className="w-4 h-4 text-gray-400" />
-              <span className="text-gray-700">{file.downloads_count || 0} {fileTexts.downloads}</span>
-            </div>
           </div>
 
           {/* Tags - only show if tags exist and are not empty */}
@@ -448,7 +443,7 @@ function FileCard({ file, userPurchases, onPurchase, fileTexts, currentUser }) {
               )}
 
               <GetFileButton
-                file={file}
+                file={{ ...file, id: file.entity_id }}
                 userPurchases={userPurchases}
                 currentUser={currentUser}
                 onPurchase={onPurchase}

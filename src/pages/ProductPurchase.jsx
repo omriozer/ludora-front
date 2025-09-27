@@ -231,11 +231,8 @@ export default function ProductPurchase() {
       let isLifetimeAccess = true;
 
       if (itemType === 'product') {
-        if (item.is_lifetime_access !== null) {
-          isLifetimeAccess = item.is_lifetime_access;
-        } else {
-          isLifetimeAccess = getDefaultLifetimeAccess();
-        }
+        // New clean logic: access_days = null means lifetime access
+        isLifetimeAccess = item.access_days === null || item.access_days === undefined;
 
         if (!isLifetimeAccess) {
           accessDays = item.access_days || getDefaultAccessDays();
@@ -394,21 +391,15 @@ export default function ProductPurchase() {
       let isLifetimeAccess = true;
 
       if (itemType === 'workshop') {
-        if (item.is_lifetime_access !== null) {
-          isLifetimeAccess = item.is_lifetime_access;
-        } else {
-          isLifetimeAccess = getDefaultLifetimeAccess();
-        }
+        // New clean logic: access_days = null means lifetime access
+        isLifetimeAccess = item.access_days === null || item.access_days === undefined;
 
         if (!isLifetimeAccess) {
           accessDays = item.access_days || getDefaultAccessDays();
         }
       } else if (itemType === 'product') {
-        if (item.is_lifetime_access !== null) {
-          isLifetimeAccess = item.is_lifetime_access;
-        } else {
-          isLifetimeAccess = getDefaultLifetimeAccess();
-        }
+        // New clean logic: access_days = null means lifetime access
+        isLifetimeAccess = item.access_days === null || item.access_days === undefined;
 
         if (!isLifetimeAccess) {
           accessDays = item.access_days || getDefaultAccessDays();

@@ -550,11 +550,9 @@ export default function Products() {
                             )}
                           </div>
                           {/* Access info as subtitle */}
-                          {(product.access_days || product.is_lifetime_access) && (
-                            <div className="text-xs text-gray-500 mt-1">
-                              {product.is_lifetime_access ? 'לכל החיים' : `${product.access_days} ימים`}
-                            </div>
-                          )}
+                          <div className="text-xs text-gray-500 mt-1">
+                            {product.access_days === null ? 'לכל החיים' : `${product.access_days} ימים`}
+                          </div>
                         </div>
 
                         {/* Status */}
