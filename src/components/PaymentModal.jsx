@@ -100,21 +100,33 @@ export default function PaymentModal({ product, user, settings, isTestMode = tru
         }
       }
 
-      // Create purchase record
+      // Create purchase record with new schema
       const orderNumber = generateOrderNumber();
+
+      // Calculate access expiration for new schema
+      let accessExpiresAt = null;
+      if (!purchasedLifetimeAccess && purchasedAccessDays && purchasedAccessDays > 0) {
+        accessExpiresAt = new Date();
+        accessExpiresAt.setDate(accessExpiresAt.getDate() + purchasedAccessDays);
+      }
+
       const purchaseData = {
         order_number: orderNumber,
-        product_id: product.id,
-        buyer_name: user.display_name || user.full_name,
-        buyer_email: user.email,
-        buyer_phone: user.phone || '',
+        buyer_user_id: user.id, // Use user ID instead of email/name/phone
+        purchasable_type: product.product_type, // New polymorphic structure
+        purchasable_id: product.entity_id || product.id, // Entity ID for polymorphic reference
         payment_amount: finalPrice,
         original_price: product.price,
         discount_amount: discountAmount,
         coupon_code: appliedCoupon?.code || null,
-        purchased_access_days: purchasedAccessDays,
-        purchased_lifetime_access: purchasedLifetimeAccess,
-        environment: isTestMode ? 'test' : 'production'
+        payment_status: 'pending',
+        access_expires_at: accessExpiresAt, // New access control field
+        metadata: {
+          environment: isTestMode ? 'test' : 'production',
+          product_title: product.title,
+          access_days: purchasedAccessDays,
+          lifetime_access: purchasedLifetimeAccess
+        }
       };
 
       const purchase = await Purchase.create(purchaseData);
@@ -149,7 +161,7 @@ export default function PaymentModal({ product, user, settings, isTestMode = tru
           const data = JSON.parse(event.data);
           if (data.type === 'payplus_payment_complete') {
             // Payment completed, redirect to results page
-            window.location.href = `/PaymentResult?status=${data.status}&order=${data.orderNumber}`;
+            window.location.href = `/PaymentResult?status=${data.status}&purchaseId=${data.purchaseId || data.orderNumber}`;  // Updated for new schema
           }
         } catch (e) {
           // Not a PayPlus message, ignore

@@ -491,6 +491,15 @@ export default function PaymentResult() {
                       ) : purchase && (
                         <span>₪{purchase.payment_amount}</span>
                       )}
+                      {purchase && !purchaseUtils.hasLifetimeAccess(purchase) && (
+                        <span className="flex items-center gap-1 text-blue-600">
+                          <Clock className="w-3 h-3" />
+                          גישה עד: {purchaseUtils.formatAccessExpiry(purchase)}
+                        </span>
+                      )}
+                      {purchase && purchaseUtils.hasLifetimeAccess(purchase) && (
+                        <span className="text-green-600 font-medium">גישה לכל החיים</span>
+                      )}
                       {itemType === 'product' && item.product_type === 'workshop' && item.scheduled_date && (
                         <span className="flex items-center gap-1">
                           <Clock className="w-3 h-3" />

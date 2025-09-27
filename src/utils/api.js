@@ -313,4 +313,74 @@ export function useApi() {
   };
 }
 
+// Purchase schema utility functions
+export const purchaseUtils = {
+  // Check if purchase has lifetime access (new schema)
+  hasLifetimeAccess: (purchase) => !purchase.access_expires_at,
+
+  // Check if access is expired (new schema)
+  isAccessExpired: (purchase) => {
+    if (!purchase.access_expires_at) return false; // Lifetime access
+    return new Date(purchase.access_expires_at) < new Date();
+  },
+
+  // Check if purchase is active (not expired)
+  isAccessActive: (purchase) => {
+    return purchase.payment_status === 'completed' && !purchaseUtils.isAccessExpired(purchase);
+  },
+
+  // Get buyer information from user association (new schema)
+  getBuyerInfo: (purchase) => {
+    return purchase.buyer || {
+      email: purchase.buyer_email, // Fallback for legacy data
+      full_name: purchase.buyer_name, // Fallback for legacy data
+      phone: purchase.buyer_phone // Fallback for legacy data
+    };
+  },
+
+  // Get purchasable entity ID based on type (new schema)
+  getEntityId: (purchase) => {
+    return purchase.purchasable_id || purchase.product_id || purchase.workshop_id; // Fallbacks for legacy
+  },
+
+  // Get purchasable entity type (new schema)
+  getEntityType: (purchase) => {
+    return purchase.purchasable_type || (purchase.product_id ? 'product' : 'workshop'); // Fallbacks for legacy
+  },
+
+  // Format access expiry date for display
+  formatAccessExpiry: (purchase) => {
+    if (purchaseUtils.hasLifetimeAccess(purchase)) {
+      return 'גישה לכל החיים';
+    }
+    if (purchase.access_expires_at) {
+      return new Date(purchase.access_expires_at).toLocaleDateString('he-IL');
+    }
+    // Legacy fallback
+    if (purchase.access_until) {
+      return new Date(purchase.access_until).toLocaleDateString('he-IL');
+    }
+    return 'לא ידוע';
+  },
+
+  // Check payment status (normalized)
+  isPaymentCompleted: (purchase) => {
+    return purchase.payment_status === 'completed' || purchase.payment_status === 'paid'; // Legacy support
+  },
+
+  // Get purchase display title
+  getDisplayTitle: (purchase) => {
+    // Try to get from associated entities first
+    const entity = purchase.workshop || purchase.course || purchase.file ||
+                  purchase.tool || purchase.game || purchase.product;
+
+    if (entity && entity.title) {
+      return entity.title;
+    }
+
+    // Legacy fallbacks
+    return purchase.product_title || purchase.workshop_title || 'מוצר לא ידוע';
+  }
+};
+
 export default api;

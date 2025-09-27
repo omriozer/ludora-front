@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { User, Notification, Purchase, SubscriptionPlan, Settings, Workshop, Course, File, Tool } from "@/services/entities"; // Added Settings import
 import { getProductTypeName } from "@/config/productTypes";
+import { purchaseUtils } from "@/utils/api.js";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -131,8 +132,14 @@ const MyAccount = () => {
     if (!currentUser) return;
 
     try {
-      // Load purchases directly for the current user instead of filtering all purchases
-      const userPurchases = await Purchase.filter({ buyer_email: currentUser.email }, { order: [['created_at', 'DESC']] });
+      // Load purchases using new schema with fallback to legacy
+      let userPurchases = await Purchase.filter({ buyer_user_id: currentUser.id }, { order: [['created_at', 'DESC']] });
+
+      // If no purchases found with new schema, try legacy email-based lookup
+      if (userPurchases.length === 0) {
+        userPurchases = await Purchase.filter({ buyer_email: currentUser.email }, { order: [['created_at', 'DESC']] });
+      }
+
       setPurchases(userPurchases);
 
       // Load entities for the purchases (handle both new polymorphic and legacy structures)
@@ -194,8 +201,10 @@ const MyAccount = () => {
           bValue = b.payment_amount || 0;
           break;
         case 'product_name':
-          const productA = products.find(p => p.id === a.product_id);
-          const productB = products.find(p => p.id === b.product_id);
+          const entityIdA = purchaseUtils.getEntityId(a);
+          const entityIdB = purchaseUtils.getEntityId(b);
+          const productA = products.find(p => p.id === entityIdA);
+          const productB = products.find(p => p.id === entityIdB);
           aValue = productA?.title || '';
           bValue = productB?.title || '';
           break;

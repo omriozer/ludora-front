@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getProductTypeName } from "@/config/productTypes";
-import { getApiBase } from "@/utils/api.js";
+import { getApiBase, purchaseUtils } from "@/utils/api.js";
 import {
   Calendar,
   Clock,
@@ -190,24 +190,31 @@ export default function VideoViewer() {
       // Check user's access via Purchase entities
       let hasPurchaseAccess = false;
 
-      // Check Purchase (new system) - check both polymorphic and legacy structures
+      // Check Purchase using new schema with fallback to legacy
       const purchases = await Purchase.filter({
-        buyer_email: user.email,
-        payment_status: 'paid'
+        buyer_user_id: user.id // Use new schema first
       });
 
-      // Filter purchases for this specific entity
-      const entityPurchases = purchases.filter(purchase =>
-        (purchase.purchasable_id === entityId && purchase.purchasable_type === entityType.toLowerCase()) ||
-        (purchase.product_id === entityId) // Legacy fallback
-      );
+      // If no purchases found with new schema, try legacy email-based lookup
+      if (purchases.length === 0) {
+        const legacyPurchases = await Purchase.filter({
+          buyer_email: user.email,
+          payment_status: 'paid' // Legacy status check
+        });
+        purchases.push(...legacyPurchases);
+      }
+
+      // Filter purchases for this specific entity using utility functions
+      const entityPurchases = purchases.filter(purchase => {
+        const purchaseEntityType = purchaseUtils.getEntityType(purchase);
+        const purchaseEntityId = purchaseUtils.getEntityId(purchase);
+        return purchaseEntityType === entityType.toLowerCase() && purchaseEntityId === entityId;
+      });
 
       if (entityPurchases.length > 0) {
         const userPurchase = entityPurchases[0];
-        // Check if it's lifetime access or access is still valid
-        if (userPurchase.purchased_lifetime_access || 
-            (userPurchase.access_until && new Date(userPurchase.access_until) > new Date()) ||
-            (!userPurchase.access_until && !userPurchase.purchased_lifetime_access)) {
+        // Use utility functions to check access
+        if (purchaseUtils.isPaymentCompleted(userPurchase) && purchaseUtils.isAccessActive(userPurchase)) {
           hasPurchaseAccess = true;
         }
       }
@@ -223,24 +230,23 @@ export default function VideoViewer() {
           try {
             const orderNumber = `FREE-AUTO-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
+            // Create purchase with new schema
             const purchaseData = {
               order_number: orderNumber,
+              buyer_user_id: user.id, // New schema uses user ID
               purchasable_type: entityType.toLowerCase(),
               purchasable_id: entityId,
-              // Legacy compatibility
-              product_id: entityType === 'product' ? entityId : null,
-              workshop_id: entityType === 'workshop' ? entityId : null,
-              buyer_name: user.display_name || user.full_name,
-              buyer_email: user.email,
-              buyer_phone: user.phone || '',
-              payment_status: 'paid',
+              payment_status: 'completed', // New schema uses 'completed'
               payment_amount: 0,
               original_price: 0,
               discount_amount: 0,
-              environment: 'production',
-              purchased_access_days: null,
-              purchased_lifetime_access: true,
-              first_accessed: new Date().toISOString()
+              access_expires_at: null, // null = lifetime access
+              first_accessed_at: new Date(),
+              metadata: {
+                environment: 'production',
+                auto_granted: true,
+                entity_title: entityData.title
+              }
             };
 
             await Purchase.create(purchaseData);

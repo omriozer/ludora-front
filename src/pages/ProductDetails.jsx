@@ -39,7 +39,7 @@ import { getProductTypeName } from "@/config/productTypes";
 import GetFileButton from "@/components/files/GetFileButton";
 import FileAccessStatus from "@/components/files/FileAccessStatus";
 import { hasActiveAccess, getUserPurchaseForFile } from "@/components/files/fileAccessUtils";
-import { getApiBase } from "@/utils/api.js";
+import { getApiBase, purchaseUtils } from "@/utils/api.js";
 
 // Import modular components
 import ProductHeader from "@/components/product-details/ProductHeader";
@@ -102,11 +102,13 @@ export default function ProductDetails() {
   };
 
   const getUserPurchaseForItem = (itemId, itemType) => {
-    return userPurchases.find(purchase => 
-      ((purchase.purchasable_type === itemType && purchase.purchasable_id === itemId) ||
-       (purchase.product_id === itemId)) && // Backwards compatibility
-      purchase.payment_status === 'paid'
-    );
+    return userPurchases.find(purchase => {
+      const purchaseEntityType = purchaseUtils.getEntityType(purchase);
+      const purchaseEntityId = purchaseUtils.getEntityId(purchase);
+      return purchaseEntityType === itemType &&
+             purchaseEntityId === itemId &&
+             purchaseUtils.isPaymentCompleted(purchase);
+    });
   };
 
   // Use same file access logic as Files.jsx
@@ -213,10 +215,19 @@ export default function ProductDetails() {
         setCurrentUser(user);
         
         if (user) {
+          // Try new schema first, then fallback to legacy
           purchases = await Purchase.filter({
-            buyer_email: user.email,
-            payment_status: 'paid'
+            buyer_user_id: user.id
           });
+
+          // If no purchases found with new schema, try legacy email-based lookup
+          if (purchases.length === 0) {
+            purchases = await Purchase.filter({
+              buyer_email: user.email,
+              payment_status: 'paid' // Legacy status check
+            });
+          }
+
           setUserPurchases(purchases);
         }
       } catch (e) {
@@ -533,14 +544,12 @@ export default function ProductDetails() {
                       <CheckCircle className="h-4 w-4 text-green-600" />
                       <AlertDescription className="text-green-800">
                         <div className="font-medium">{detailsTexts.alreadyOwned}</div>
-                        {purchase?.purchased_lifetime_access ? (
+                        {purchaseUtils.hasLifetimeAccess(purchase) ? (
                           <div className="text-xs mt-1">{detailsTexts.lifetimeAccess}</div>
-                        ) : purchase?.access_until ? (
-                          <div className="text-xs mt-1">
-                            {detailsTexts.accessUntil} {format(new Date(purchase.access_until), 'dd/MM/yyyy', { locale: he })}
-                          </div>
                         ) : (
-                          <div className="text-xs mt-1">{detailsTexts.lifetimeAccess}</div>
+                          <div className="text-xs mt-1">
+                            {detailsTexts.accessUntil} {purchaseUtils.formatAccessExpiry(purchase)}
+                          </div>
                         )}
                       </AlertDescription>
                     </Alert>
@@ -631,14 +640,12 @@ export default function ProductDetails() {
                     <CheckCircle className="h-4 w-4 text-green-600" />
                     <AlertDescription className="text-green-800">
                       <div className="font-medium">{detailsTexts.alreadyOwned}</div>
-                      {purchase?.purchased_lifetime_access ? (
+                      {purchaseUtils.hasLifetimeAccess(purchase) ? (
                         <div className="text-xs mt-1">{detailsTexts.lifetimeAccess}</div>
-                      ) : purchase?.access_until ? (
-                        <div className="text-xs mt-1">
-                          {detailsTexts.accessUntil} {format(new Date(purchase.access_until), 'dd/MM/yyyy', { locale: he })}
-                        </div>
                       ) : (
-                        <div className="text-xs mt-1">{detailsTexts.lifetimeAccess}</div>
+                        <div className="text-xs mt-1">
+                          {detailsTexts.accessUntil} {purchaseUtils.formatAccessExpiry(purchase)}
+                        </div>
                       )}
                     </AlertDescription>
                   </Alert>
