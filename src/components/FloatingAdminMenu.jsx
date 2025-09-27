@@ -24,7 +24,6 @@ import {
   MessageSquare, // Added from outline
   Monitor,       // Added from outline
   Gamepad2,      // Added from outline
-  Database,      // Added from outline
   Wrench,        // Added from outline
   Tag,           // Added from outline
   ChevronRight,  // Added from outline
@@ -235,58 +234,6 @@ export default function FloatingAdminMenu({ currentUser }) {
   // Check if we're in production environment
   const isProduction = import.meta.env.PROD;
 
-  // Handle database management
-  const openDatabaseManager = async (environment) => {
-    try {
-      // Close the admin menu first
-      setIsOpen(false);
-
-      // Send request to API to start adminer for the specified environment
-      const endpoint = environment === 'prod' ? '/admin/database/prod' : '/admin/database/dev';
-
-      // Make API call to ensure adminer is running
-      const response = await fetch(`${import.meta.env.VITE_API_BASE || 'http://localhost:3003/api'}${endpoint}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-
-        // Handle production environment instructions
-        if (data.instructions) {
-          // In production, show instructions instead of opening adminer
-          const instructionText = `
-לניהול מסד הנתונים בסביבת Production:
-
-1. הרץ מהמחשב המקומי: flyctl proxy 5433:5432 -a ludora-db
-2. לאחר מכן הרץ: npm run db:gui:prod
-3. או התחבר ישירות ל: ${data.instructions.direct_connection.host}:${data.instructions.direct_connection.port}
-
-⚠️ ${data.warning}
-          `.trim();
-
-          alert(instructionText);
-        } else {
-          // Local development - open adminer directly
-          const adminerUrl = data.url || 'http://localhost:8080';
-          window.open(adminerUrl, '_blank');
-        }
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        const errorMessage = errorData.error || response.statusText;
-        const suggestion = errorData.suggestion || '';
-
-        throw new Error(`${errorMessage}${suggestion ? '\n\nהצעה: ' + suggestion : ''}`);
-      }
-    } catch (error) {
-      console.error('Error opening database manager:', error);
-      alert(`שגיאה בפתיחת מנהל מסד הנתונים:\n\n${error.message}`);
-    }
-  };
 
 
   if (!isAdmin) return null;
@@ -432,31 +379,7 @@ export default function FloatingAdminMenu({ currentUser }) {
           url: "/dev-tools",
           icon: <Code className="w-4 h-4" />,
           description: "ניקוי וכלי מתקדמים"
-        },
-        // Database management - conditional items based on environment
-        ...(isProduction ? [
-          // Production: Only allow access to production DB
-          {
-            title: "מנהל מסד נתונים - Production",
-            action: () => openDatabaseManager('prod'),
-            icon: <Database className="w-4 h-4" />,
-            description: "ניהול מסד הנתונים של האתר"
-          }
-        ] : [
-          // Development: Allow access to both dev and prod DB
-          {
-            title: "מנהל מסד נתונים - Dev",
-            action: () => openDatabaseManager('dev'),
-            icon: <Database className="w-4 h-4" />,
-            description: "ניהול מסד הנתונים המקומי"
-          },
-          {
-            title: "מנהל מסד נתונים - Production",
-            action: () => openDatabaseManager('prod'),
-            icon: <Database className="w-4 h-4 text-orange-600" />,
-            description: "⚠️ ניהול מסד הנתונים של האתר"
-          }
-        ])
+        }
       ]
     }
   ];
