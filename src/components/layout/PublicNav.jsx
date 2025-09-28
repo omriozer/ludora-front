@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
-  FileText, Play, Calendar, BookOpen, UserIcon, Users, GraduationCap, Settings as SettingsIcon, Mail, BarChart3, Menu, X, Home, Crown, LogIn, LogOut, UserCheck, ShieldAlert, MessageSquare, Shield, Code, Edit, Monitor, Award, Globe, ArrowLeft
+  FileText, Play, Calendar, BookOpen, UserIcon, Users, GraduationCap, Menu, X, Crown, LogIn, LogOut, ShieldAlert, ChevronLeft, ChevronRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { iconMap } from "@/lib/layoutUtils";
@@ -9,7 +9,7 @@ import { NAV_ITEMS, getNavItemConfig } from "@/config/productTypes";
 import logoSm from "../../assets/images/logo_sm.png";
 
 // Utility: get navigation items
-function getNavigationItems({ currentUser, settings, isImpersonating, isActualAdmin, isContentCreator }) {
+function getNavigationItems({ currentUser, settings, isActualAdmin, isContentCreator }) {
   const navOrder = settings?.nav_order || Object.keys(NAV_ITEMS);
   let navItems = [];
   navOrder.forEach((itemType) => {
@@ -124,7 +124,7 @@ function getNavigationItems({ currentUser, settings, isImpersonating, isActualAd
         if (currentUser) {
           const contentCreatorsVisibility = settings?.nav_content_creators_visibility || 'admins_and_creators';
           if (contentCreatorsVisibility === 'hidden') break;
-          
+
           let shouldShow = false;
           if (contentCreatorsVisibility === 'admins_only' && isActualAdmin) {
             shouldShow = true;
@@ -132,7 +132,7 @@ function getNavigationItems({ currentUser, settings, isImpersonating, isActualAd
             // Show to admins and content creators, and also to regular users so they can sign up
             shouldShow = true;
           }
-          
+
           if (shouldShow) {
             const iconName = settings?.nav_content_creators_icon || navItemConfig.defaultIcon;
             const IconComponent = iconMap[iconName] || Users;
@@ -158,155 +158,293 @@ const PublicNav = ({ currentUser, handleLogout, handleLogin, settings }) => {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isImpersonating, setIsImpersonating] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    // Load saved state from localStorage, but default to collapsed on mobile
+    const saved = localStorage.getItem('sideNavCollapsed');
+    if (saved) return JSON.parse(saved);
+    // Default: collapsed on mobile, expanded on desktop
+    return typeof window !== 'undefined' ? window.innerWidth < 1024 : false;
+  });
+
+  // Track if this is a mobile view for overlay behavior
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === 'undefined') return false; // SSR default
+    return window.innerWidth < 1024;
+  });
 
   useEffect(() => {
     setIsImpersonating(currentUser && currentUser._isImpersonated);
   }, [currentUser]);
 
+  // Handle window resize to track mobile/desktop state
+  useEffect(() => {
+    const checkInitialState = () => {
+      const newIsMobile = window.innerWidth < 1024;
+      setIsMobile(newIsMobile);
+    };
+
+    checkInitialState();
+
+    const handleResize = () => {
+      const newIsMobile = window.innerWidth < 1024;
+      setIsMobile(newIsMobile);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+
+  // Save collapsed state to localStorage and update CSS custom property
+  useEffect(() => {
+    localStorage.setItem('sideNavCollapsed', JSON.stringify(isCollapsed));
+    // Update CSS custom property based on device type
+    if (!isMobile) {
+      // Desktop: Set width for content pushing
+      document.documentElement.style.setProperty('--nav-width', isCollapsed ? '80px' : '256px');
+    } else {
+      // Mobile: No margin needed (overlay mode)
+      document.documentElement.style.setProperty('--nav-width', '0px');
+    }
+  }, [isCollapsed, isMobile]);
+
   const isActualAdmin = currentUser?.role === 'admin' && !isImpersonating;
   const isContentCreator = currentUser?.content_creator_agreement_sign_date;
-  const currentNavItems = getNavigationItems({ currentUser, settings, isImpersonating, isActualAdmin, isContentCreator });
+  const currentNavItems = getNavigationItems({ currentUser, settings, isActualAdmin, isContentCreator });
+
+  const toggleCollapse = () => {
+    setIsCollapsed(!isCollapsed);
+  };
 
   return (
-    <nav className="bg-white/80 backdrop-blur-xl border-b border-gray-200/50 sticky top-0 z-50 shadow-lg shadow-purple-500/10">
-      {/* Maintenance mode warning - moved inside nav */}
-      {settings?.maintenance_mode && currentUser?.role === 'admin' && (
-        <div className="bg-gradient-to-r from-yellow-400 via-orange-400 to-red-400 text-black p-3 text-center text-sm font-bold flex items-center justify-center gap-2 shadow-lg animate-pulse" role="alert" aria-live="polite">
-          <ShieldAlert className="w-5 h-5 animate-bounce" />
-          האתר במצב תחזוקה. רק מנהלים יכולים לגשת.
-        </div>
-      )}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-20" dir="rtl">
-          {/* Logo Section */}
-          <Link
-            to={currentUser ? '/dashboard' : '/'}
-            className="flex items-center gap-4 hover:scale-105 transition-transform duration-300"
-          >
-            {logoSm || settings?.logo_url ? (
+    <>
+      {/* Mobile Top Header Bar */}
+      {isMobile && (
+        <div className={`fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-b border-gray-200/50 shadow-lg transition-all duration-300 ${
+          isCollapsed ? 'z-50' : 'z-30'
+        }`}>
+          <div className="flex items-center justify-between px-4 py-3" dir="rtl">
+            {/* Logo - hidden when menu is open */}
+            <Link
+              to={currentUser ? '/dashboard' : '/'}
+              className={`flex items-center gap-3 hover:scale-105 transition-all duration-300 ${
+                isCollapsed ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'
+              }`}
+            >
+              {logoSm || settings?.logo_url ? (
                 <img
                   src={logoSm || settings?.logo_url}
                   alt={settings?.site_name || "לודורה"}
-                  className="h-16 md:h-18 w-auto object-contain rounded-lg max-w-[120px]" // larger logo without height constraints
-                  />
-            ) : (
-              <>
-                <div className="w-14 h-14 bg-gradient-to-br from-purple-600 via-pink-600 to-blue-600 rounded-2xl flex items-center justify-center shadow-xl">
-                  <GraduationCap className="w-8 h-8 text-white" />
-                </div>
-                <div className="hidden sm:block">
-                  <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 bg-clip-text text-transparent">
+                  className="h-8 w-auto object-contain rounded-lg max-w-[120px]"
+                />
+              ) : (
+                <>
+                  <div className="w-8 h-8 bg-gradient-to-br from-purple-600 via-pink-600 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+                    <GraduationCap className="w-5 h-5 text-white" />
+                  </div>
+                  <h1 className="text-lg font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 bg-clip-text text-transparent">
                     {settings?.site_name || "לודורה"}
                   </h1>
-                  <p className="text-sm text-gray-500 font-medium">פלטפורמה חינוכית מתקדמת</p>
-                </div>
-              </>
-            )}
-          </Link>
+                </>
+              )}
+            </Link>
 
-          {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center justify-between flex-1">
-            {/* Navigation Items - stick to logo */}
-            <div className="flex items-center gap-2 mr-8">
-              {currentNavItems.map((item) =>
-                <div key={item.title} className="relative group">
-                  <Link
-                    to={item.url}
-                    className={`relative flex items-center gap-3 px-6 py-3 rounded-2xl text-sm font-bold transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 ${
-                      location.pathname === item.url
-                        ? `bg-gradient-to-r ${item.gradient} text-white shadow-lg shadow-purple-500/25`
-                        : 'hover:bg-gradient-to-r hover:from-gray-100 hover:to-gray-200 text-gray-700 hover:text-gray-900 hover:shadow-lg'
-                    }`}
-                  >
-                    <item.icon className="w-5 h-5" />
-                    <span className="whitespace-nowrap">{item.title}</span>
-                  </Link>
-                  {item.isAdminOnly && (
-                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-gradient-to-r from-orange-400 to-red-500 rounded-full flex items-center justify-center shadow-lg transform rotate-12">
-                      <Crown className="w-3 h-3 text-white" />
+            {/* Menu Toggle Button */}
+            <button
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              className="p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200"
+              aria-label={isCollapsed ? "פתח תפריט" : "סגור תפריט"}
+            >
+              {isCollapsed ? <Menu className="w-6 h-6" /> : <X className="w-6 h-6" />}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Backdrop for mobile overlay */}
+      {isMobile && !isCollapsed && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-30"
+          onClick={() => setIsCollapsed(true)}
+        />
+      )}
+
+      {/* Universal Side Navigation */}
+      <div className={`
+        flex flex-col fixed right-0 top-0 h-full
+        bg-white/95 backdrop-blur-xl border-l border-gray-200/50
+        shadow-xl shadow-purple-500/10
+        transition-all duration-300 ease-in-out
+        ${isMobile ? 'z-40' : 'z-30'}
+        ${isCollapsed ? 'w-20' : 'w-64'}
+        ${isMobile && isCollapsed ? 'translate-x-full' : 'translate-x-0'}
+      `} dir="rtl">
+
+        {/* Maintenance mode warning */}
+        {settings?.maintenance_mode && currentUser?.role === 'admin' && (
+          <div className="bg-gradient-to-r from-yellow-400 via-orange-400 to-red-400 text-black p-2 text-center text-xs font-bold flex items-center justify-center gap-1 shadow-lg animate-pulse">
+            <ShieldAlert className="w-4 h-4 animate-bounce" />
+            {!isCollapsed && <span>מצב תחזוקה</span>}
+          </div>
+        )}
+
+        {/* Header */}
+        <div className="p-4 border-b border-gray-200/50">
+          {!isCollapsed ? (
+            <div className="flex items-center justify-between">
+              {/* Logo */}
+              <Link
+                to={currentUser ? '/dashboard' : '/'}
+                className="flex items-center gap-3 hover:scale-105 transition-transform duration-300"
+              >
+                {logoSm || settings?.logo_url ? (
+                  <img
+                    src={logoSm || settings?.logo_url}
+                    alt={settings?.site_name || "לודורה"}
+                    className="h-12 w-auto max-w-[150px] object-contain rounded-lg transition-all duration-300"
+                  />
+                ) : (
+                  <>
+                    <div className="w-12 h-12 bg-gradient-to-br from-purple-600 via-pink-600 to-blue-600 rounded-xl flex items-center justify-center shadow-lg transition-all duration-300">
+                      <GraduationCap className="w-7 h-7 text-white transition-all duration-300" />
+                    </div>
+                    <div className="transition-all duration-300">
+                      <h1 className="text-xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 bg-clip-text text-transparent">
+                        {settings?.site_name || "לודורה"}
+                      </h1>
+                      <p className="text-xs text-gray-500 font-medium">פלטפורמה חינוכית מתקדמת</p>
+                    </div>
+                  </>
+                )}
+              </Link>
+
+              {/* Collapse Toggle Button */}
+              <button
+                onClick={toggleCollapse}
+                className="p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200"
+                aria-label="כווץ תפריט"
+              >
+                <ChevronRight className="w-5 h-5 text-gray-600" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center space-y-3">
+              {/* Logo centered when collapsed */}
+              <Link
+                to={currentUser ? '/dashboard' : '/'}
+                className="flex items-center justify-center hover:scale-105 transition-transform duration-300"
+              >
+                {logoSm || settings?.logo_url ? (
+                  <img
+                    src={logoSm || settings?.logo_url}
+                    alt={settings?.site_name || "לודורה"}
+                    className="h-8 w-8 object-contain rounded-lg transition-all duration-300"
+                  />
+                ) : (
+                  <div className="w-8 h-8 bg-gradient-to-br from-purple-600 via-pink-600 to-blue-600 rounded-xl flex items-center justify-center shadow-lg transition-all duration-300">
+                    <GraduationCap className="w-5 h-5 text-white transition-all duration-300" />
+                  </div>
+                )}
+              </Link>
+
+              {/* Expand button when collapsed */}
+              <button
+                onClick={toggleCollapse}
+                className="p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200"
+                aria-label="הרחב תפריט"
+              >
+                <ChevronLeft className="w-5 h-5 text-gray-600" />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Navigation Items */}
+        <div className="flex-1 overflow-y-auto py-4">
+          <nav className="space-y-2 px-3">
+            {currentNavItems.map((item) => (
+              <div key={item.title} className="relative group">
+                <Link
+                  to={item.url}
+                  className={`relative flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-bold transition-all duration-300 hover:scale-105 ${
+                    location.pathname === item.url
+                      ? `bg-gradient-to-r ${item.gradient} text-white shadow-lg shadow-purple-500/25`
+                      : 'hover:bg-gradient-to-r hover:from-gray-100 hover:to-gray-200 text-gray-700 hover:text-gray-900 hover:shadow-lg'
+                  } ${isCollapsed ? 'justify-center' : ''}`}
+                  title={isCollapsed ? item.title : undefined}
+                >
+                  <item.icon className="w-5 h-5 flex-shrink-0" />
+                  {!isCollapsed && (
+                    <span className="whitespace-nowrap transition-opacity duration-300">{item.title}</span>
+                  )}
+                </Link>
+
+                {/* Admin indicator */}
+                {item.isAdminOnly && (
+                  <div className={`absolute ${isCollapsed ? '-top-1 -left-1' : '-top-2 -right-2'} w-6 h-6 bg-gradient-to-r from-orange-400 to-red-500 rounded-full flex items-center justify-center shadow-lg transform rotate-12`}>
+                    <Crown className="w-3 h-3 text-white" />
+                  </div>
+                )}
+
+                {/* Tooltip for collapsed state */}
+                {isCollapsed && (
+                  <div className="absolute left-full ml-2 top-1/2 transform -translate-y-1/2 bg-gray-900 text-white text-sm px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
+                    {item.title}
+                    <div className="absolute right-full top-1/2 transform -translate-y-1/2 border-4 border-transparent border-l-gray-900"></div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </nav>
+        </div>
+
+        {/* User Section at Bottom */}
+        <div className="border-t border-gray-200/50 p-4">
+          {!currentUser ? (
+            <Button
+              variant="outline"
+              className={`flex items-center gap-2 font-bold transition-all duration-300 ${
+                isCollapsed ? 'w-12 h-12 p-0 justify-center' : 'w-full justify-center'
+              }`}
+              onClick={handleLogin}
+              title={isCollapsed ? "התחברות" : undefined}
+            >
+              <LogIn className="w-5 h-5" />
+              {!isCollapsed && <span>התחברות</span>}
+            </Button>
+          ) : (
+            <div className="space-y-3">
+              {/* User Info (only when expanded) */}
+              {!isCollapsed && (
+                <div className="text-center">
+                  <div className="text-sm font-semibold text-gray-800 truncate">
+                    {currentUser.full_name || currentUser.email}
+                  </div>
+                  {currentUser.role === 'admin' && (
+                    <div className="text-xs text-orange-600 font-bold flex items-center justify-center gap-1">
+                      <Crown className="w-3 h-3" />
+                      מנהל
                     </div>
                   )}
                 </div>
               )}
-            </div>
 
-            {/* Login/Logout Button - separate on the left */}
-            <div>
-              {!currentUser ? (
-                <Button
-                  variant="outline"
-                  className="flex items-center gap-2 font-bold"
-                  onClick={handleLogin}
-                >
-                  <LogIn className="w-5 h-5" />
-                  התחברות
-                </Button>
-              ) : (
-                <Button
-                  variant="ghost"
-                  className="flex items-center gap-2 font-bold"
-                  onClick={handleLogout}
-                >
-                  <LogOut className="w-5 h-5" />
-                  התנתקות
-                </Button>
-              )}
-            </div>
-          </div>
-          {/* Mobile Menu Button */}
-          <div className="lg:hidden flex items-center">
-            <button
-              className="p-2 rounded-md text-gray-700 hover:bg-gray-200 focus:outline-none"
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              aria-label="תפריט ראשי"
-            >
-              {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
-          </div>
-        </div>
-      </div>
-      
-      {/* Mobile Navigation Drawer - positioned below navbar */}
-      {isMobileMenuOpen && (
-        <div className="lg:hidden absolute right-4 left-4 bg-white shadow-xl rounded-2xl z-50 animate-fade-in py-6 mt-2" dir="rtl" style={{ top: '100%' }}>
-          <div className="flex flex-col gap-2 px-4">
-            {currentNavItems.map((item) => (
-              <Link
-                key={item.title}
-                to={item.url}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-bold text-gray-700 hover:bg-gradient-to-r hover:from-gray-100 hover:to-gray-200 hover:text-gray-900 transition-all duration-200 text-right"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                <item.icon className="w-5 h-5" />
-                <span>{item.title}</span>
-              </Link>
-            ))}
-            
-            {/* Separator line */}
-            {currentUser && <div className="border-t border-gray-200 my-2"></div>}
-            
-            {/* Mobile: Login/Logout Button - different styling */}
-            {!currentUser ? (
-              <button
-                className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 transition-all duration-200 text-right border border-blue-200"
-                onClick={() => { setIsMobileMenuOpen(false); handleLogin(); }}
-              >
-                <LogIn className="w-5 h-5" />
-                <span>התחברות</span>
-              </button>
-            ) : (
-              <button
-                className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-bold bg-red-50 text-red-700 hover:bg-red-100 transition-all duration-200 text-right border border-red-200"
-                onClick={() => { setIsMobileMenuOpen(false); handleLogout(); }}
+              <Button
+                variant="ghost"
+                className={`flex items-center gap-2 font-bold transition-all duration-300 ${
+                  isCollapsed ? 'w-12 h-12 p-0 justify-center' : 'w-full justify-center'
+                }`}
+                onClick={handleLogout}
+                title={isCollapsed ? "התנתקות" : undefined}
               >
                 <LogOut className="w-5 h-5" />
-                <span>התנתקות</span>
-              </button>
-            )}
-          </div>
+                {!isCollapsed && <span>התנתקות</span>}
+              </Button>
+            </div>
+          )}
         </div>
-      )}
-    </nav>
+      </div>
+    </>
   );
 };
 

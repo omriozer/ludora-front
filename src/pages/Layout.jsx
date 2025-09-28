@@ -51,9 +51,12 @@ import MaintenancePage from "@/components/layout/MaintenancePage";
 export default function Layout({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
-  
+
   // Use UserContext instead of local state
   const { currentUser, settings, isLoading, isAuthenticated, settingsLoadFailed, login, logout } = useUser();
+
+  // Track screen size for responsive layout
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
   
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -76,6 +79,28 @@ export default function Layout({ children }) {
       setShowReturnButton(false);
     }
   }, [currentUser]);
+
+  // Handle responsive layout
+  useEffect(() => {
+    const handleResize = () => {
+      const newIsDesktop = window.innerWidth >= 1024;
+      console.log('Layout resize detected:', window.innerWidth, 'isDesktop:', newIsDesktop);
+      setIsDesktop(newIsDesktop);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Debug logging for Layout
+  useEffect(() => {
+    console.log('Layout render state:', {
+      isDesktop,
+      hideNav,
+      windowWidth: window.innerWidth,
+      applyingMargin: !hideNav && isDesktop
+    });
+  }, [isDesktop, hideNav]);
 
   // Initialize accessibility and other settings
   // useEffect(() => {
@@ -294,21 +319,21 @@ export default function Layout({ children }) {
 
   // Main layout
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex">
       <SkipLink />
-      
+
       {/* Global Message */}
       {message && (
-        <GlobalMessage 
-          type={message.type} 
-          message={message.text} 
-          onClose={() => setMessage(null)} 
+        <GlobalMessage
+          type={message.type}
+          message={message.text}
+          onClose={() => setMessage(null)}
         />
       )}
 
       {/* Navigation */}
       {!hideNav && (
-        <PublicNav 
+        <PublicNav
           currentUser={currentUser}
           handleLogin={onLogin}
           handleLogout={onLogout}
@@ -316,19 +341,29 @@ export default function Layout({ children }) {
         />
       )}
 
-      {/* Main Content */}
-      <main className="flex-1">
-        <Suspense fallback={
-          <div className="flex items-center justify-center min-h-[400px]">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          </div>
-        }>
-          {children}
-        </Suspense>
-      </main>
+      {/* Main Content Area */}
+      <div
+        className={`flex flex-col flex-1 min-h-screen transition-all duration-300 ${
+          !hideNav && !isDesktop ? 'pt-16' : ''
+        }`}
+        style={{
+          marginRight: !hideNav ? 'var(--nav-width, 0px)' : '0',
+        }}
+      >
+        {/* Main Content */}
+        <main className="flex-1">
+          <Suspense fallback={
+            <div className="flex items-center justify-center min-h-[400px]">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          }>
+            {children}
+          </Suspense>
+        </main>
 
-      {/* Footer */}
-      {!hideNav && <Footer />}
+        {/* Footer */}
+        {!hideNav && <Footer />}
+      </div>
 
       {/* Floating Admin Menu */}
       {!isLoading && currentUser && isStaff(currentUser) && (
