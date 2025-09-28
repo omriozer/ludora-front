@@ -23,6 +23,7 @@ import {
   Users
 } from "lucide-react";
 import { getProductTypeName } from '@/config/productTypes';
+import { formatPriceSimple } from '@/lib/utils';
 
 export default function Products() {
   const location = useLocation();
@@ -543,11 +544,9 @@ export default function Products() {
                         {/* Price */}
                         <div className={`${isAdmin && showAllContent ? 'col-span-1' : 'col-span-2'} text-center`}>
                           <div className="font-bold text-lg">
-                            {product.price > 0 ? (
-                              <span className="text-green-600">₪{product.price}</span>
-                            ) : (
-                              <span className="text-blue-600">חינם</span>
-                            )}
+                            <span className={product.price > 0 ? "text-green-600" : "text-blue-600"}>
+                              {formatPriceSimple(product.price, !product.original_price && product.price === 0)}
+                            </span>
                           </div>
                           {/* Access info as subtitle */}
                           <div className="text-xs text-gray-500 mt-1">

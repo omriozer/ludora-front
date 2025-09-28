@@ -20,3 +20,64 @@ export function cerror(...args) {
         console.error(...args);
     }
 }
+
+/**
+ * Formats price with consistent display rules
+ * @param {number} price - Current price
+ * @param {number|null} originalPrice - Original price (for discount calculation)
+ * @param {boolean} wasFree - Whether the item was originally free (true for naturally free items)
+ * @returns {object} - Formatted price information
+ */
+export function formatPrice(price, originalPrice = null, wasFree = false) {
+    const numPrice = Number(price) || 0;
+    const numOriginalPrice = originalPrice ? Number(originalPrice) : null;
+
+    // If originally free (natural free item) - show "חינמי!"
+    if (wasFree || (numPrice === 0 && !numOriginalPrice)) {
+        return {
+            display: 'חינמי!',
+            isFree: true,
+            isDiscounted: false,
+            discountPercent: 0,
+            currency: null,
+            formatted: 'חינמי!'
+        };
+    }
+
+    // If price is 0 because of discount - show "0 ₪"
+    if (numPrice === 0 && numOriginalPrice && numOriginalPrice > 0) {
+        return {
+            display: '0 ₪',
+            isFree: false,
+            isDiscounted: true,
+            discountPercent: 100,
+            originalPrice: numOriginalPrice,
+            currency: '₪',
+            formatted: '0 ₪'
+        };
+    }
+
+    // Regular price with optional discount
+    const isDiscounted = numOriginalPrice && numOriginalPrice > numPrice;
+    const discountPercent = isDiscounted ? Math.round(((numOriginalPrice - numPrice) / numOriginalPrice) * 100) : 0;
+
+    return {
+        display: `${numPrice} ₪`,
+        isFree: false,
+        isDiscounted,
+        discountPercent,
+        originalPrice: numOriginalPrice,
+        currency: '₪',
+        formatted: `${numPrice} ₪`
+    };
+}
+
+/**
+ * Simple price formatting for basic display
+ * @param {number} price - The price to format
+ * @param {boolean} wasFree - Whether originally free
+ * @returns {string} - Formatted price string
+ */
+export function formatPriceSimple(price, wasFree = false) {
+    return formatPrice(price, null, wasFree).formatted;
+}

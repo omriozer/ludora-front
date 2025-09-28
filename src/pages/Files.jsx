@@ -34,6 +34,7 @@ import { motion } from "framer-motion";
 import GetFileButton from "@/components/files/GetFileButton";
 import FileAccessStatus from "@/components/files/FileAccessStatus";
 import { hasActiveAccess, getUserPurchaseForFile } from "@/components/files/fileAccessUtils";
+import { formatPrice } from "@/lib/utils";
 
 export default function Files() {
   const navigate = useNavigate();
@@ -315,6 +316,9 @@ export default function Files() {
 function FileCard({ file, userPurchases, onPurchase, fileTexts, currentUser }) {
   const navigate = useNavigate();
 
+  // Format price using centralized utility
+  const priceInfo = formatPrice(file.price, file.original_price, !file.original_price && file.price === 0);
+
   const fileTypeIcons = {
     pdf: "📄",
     ppt: "📊", 
@@ -348,7 +352,7 @@ function FileCard({ file, userPurchases, onPurchase, fileTexts, currentUser }) {
       exit={{ opacity: 0, y: -20 }}
       className="h-full"
     >
-      <Card className="bg-white/80 backdrop-blur-sm hover:shadow-lg transition-all duration-300 h-full flex flex-col">
+      <Card className="bg-white/80 backdrop-blur-sm hover:shadow-xl hover:scale-[1.02] transition-all duration-300 h-full flex flex-col border-0 shadow-md overflow-hidden">
         {/* Fixed height image section */}
         <div className="h-48 overflow-hidden relative flex-shrink-0">
           <img
@@ -356,23 +360,30 @@ function FileCard({ file, userPurchases, onPurchase, fileTexts, currentUser }) {
             alt={file.title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent"></div>
           <div className="absolute top-3 right-3">
-            <Badge className="bg-purple-600 text-white">
+            <Badge className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg">
               {file.category}
             </Badge>
           </div>
+          {priceInfo.isFree && (
+            <div className="absolute top-3 left-3">
+              <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg animate-pulse">
+                {priceInfo.display}
+              </Badge>
+            </div>
+          )}
         </div>
 
         {/* Flexible content section */}
         <CardContent className="p-6 flex-grow flex flex-col">
           <div className="flex items-center gap-2 mb-3">
-            <Badge variant="outline" className="text-xs">
+            <Badge variant="outline" className="text-xs bg-gray-50 border-gray-200 text-gray-700 font-medium">
               {fileTypeIcons[file.file_type] || fileTypeIcons.other} {file.file_type?.toUpperCase() || fileTexts.fileType.toUpperCase()}
             </Badge>
           </div>
 
-          <h3 className="text-xl font-bold text-gray-900 mb-3 line-clamp-2 min-h-[3.5rem]">
+          <h3 className="text-xl font-bold text-gray-900 mb-3 line-clamp-2 min-h-[3.5rem] hover:text-purple-700 transition-colors duration-200">
             {file.title}
           </h3>
 
@@ -406,25 +417,51 @@ function FileCard({ file, userPurchases, onPurchase, fileTexts, currentUser }) {
           {file.tags && file.tags.length > 0 && file.tags.some(tag => tag && tag.trim()) && (
             <div className="flex flex-wrap gap-1 mb-4">
               {file.tags.filter(tag => tag && tag.trim()).map((tag, index) => (
-                <Badge key={index} variant="outline" className="text-xs">
+                <Badge key={index} variant="outline" className="text-xs bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100 transition-colors duration-200">
                   {tag}
                 </Badge>
               ))}
             </div>
           )}
 
-          {/* Fixed footer section */}
-          <div className="flex items-center justify-between pt-4 border-t mt-auto">
-            <div className="text-2xl font-bold text-purple-600">
-              ₪{file.price}
+          {/* Enhanced footer section with centered price and buttons */}
+          <div className="pt-4 border-t mt-auto space-y-4">
+            {/* Centered price section */}
+            <div className="text-center">
+              {priceInfo.isFree ? (
+                <div className="inline-flex items-center justify-center px-6 py-2 bg-gradient-to-r from-green-100 to-emerald-100 rounded-full">
+                  <span className="text-2xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+                    {priceInfo.display}
+                  </span>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <div className="inline-flex items-center justify-center px-6 py-2 bg-gradient-to-r from-purple-100 to-indigo-100 rounded-full">
+                    <span className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
+                      {priceInfo.display}
+                    </span>
+                  </div>
+                  {priceInfo.isDiscounted && (
+                    <div className="flex items-center justify-center gap-2 text-sm">
+                      <span className="text-gray-500 line-through">
+                        {priceInfo.originalPrice} ₪
+                      </span>
+                      <Badge className="bg-red-100 text-red-700 text-xs">
+                        חסכון {priceInfo.discountPercent}%
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
-            <div className="flex gap-2">
+            {/* Centered buttons section */}
+            <div className="flex justify-center gap-2 flex-wrap">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleDetailsClick}
-                className="hover:bg-gray-50"
+                className="hover:bg-gray-50 hover:border-purple-300 transition-colors duration-200"
                 title={fileTexts.viewDetails}
               >
                 פרטים נוספים
@@ -435,7 +472,7 @@ function FileCard({ file, userPurchases, onPurchase, fileTexts, currentUser }) {
                   variant="outline"
                   size="sm"
                   onClick={() => navigate(`/files?edit=${file.id}`)}
-                  className="hover:bg-gray-50 border-orange-200 text-orange-600"
+                  className="hover:bg-orange-50 border-orange-200 text-orange-600 hover:border-orange-300 transition-colors duration-200"
                   title="עריכת קובץ"
                 >
                   <Edit className="w-4 h-4" />

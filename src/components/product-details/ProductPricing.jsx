@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { ShoppingCart, CheckCircle, Crown, Star } from "lucide-react";
+import { formatPrice } from "@/lib/utils";
 
 export default function ProductPricing({
   price,
@@ -16,11 +17,8 @@ export default function ProductPricing({
   accessButtonIcon,
   purchaseButtonText = "רכישה"
 }) {
-  const formatPrice = (price) => {
-    return price === 0 ? "חינם" : `₪${price}`;
-  };
-
-  const isOnSale = originalPrice && originalPrice > price;
+  // Use centralized price formatting
+  const priceInfo = formatPrice(price, originalPrice, !originalPrice && price === 0);
 
   return (
     <Card className="border-none shadow-2xl sticky top-6 bg-gradient-to-br from-white via-blue-50/30 to-indigo-50/30 backdrop-blur-xl">
@@ -43,22 +41,22 @@ export default function ProductPricing({
         {/* Enhanced Pricing Section */}
         <div className="text-center mb-6">
           <div className="mb-3">
-            {price === 0 ? (
+            {priceInfo.isFree ? (
               <div className="text-4xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
-                חינם!
+                {priceInfo.display}
               </div>
             ) : (
               <div className="space-y-2">
                 <div className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                  ₪{price}
+                  {priceInfo.display}
                 </div>
-                {isOnSale && (
+                {priceInfo.isDiscounted && (
                   <div className="flex items-center justify-center gap-3">
                     <span className="text-xl text-gray-500 line-through">
-                      ₪{originalPrice}
+                      {priceInfo.originalPrice} ₪
                     </span>
                     <Badge className="bg-gradient-to-r from-red-500 to-pink-600 text-white px-3 py-1 shadow-md">
-                      חסכון {discountPercent || Math.round(((originalPrice - price) / originalPrice) * 100)}%
+                      חסכון {discountPercent || priceInfo.discountPercent}%
                     </Badge>
                   </div>
                 )}

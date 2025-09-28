@@ -16,6 +16,7 @@ import {
   CheckCircle,
   Youtube
 } from "lucide-react";
+import { formatPriceSimple } from "@/lib/utils";
 
 export default function ProductCard({ 
   product, 
@@ -142,7 +143,7 @@ export default function ProductCard({
 
         <div className="flex items-center justify-between pt-4 border-t">
           <div className="text-xl font-bold text-blue-600">
-            ₪{product.price}
+            {formatPriceSimple(product.price, !product.original_price && product.price === 0)}
           </div>
 
           <div className="flex gap-2">
