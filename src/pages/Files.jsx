@@ -410,6 +410,24 @@ function FileCard({ file, userPurchases, onPurchase, fileTexts, currentUser }) {
                 <span className="text-gray-700">{file.target_audience}</span>
               </div>
             )}
+            {file.difficulty_level && (
+              <div className="flex items-center gap-2">
+                <Star className="w-4 h-4 text-gray-400" />
+                <span className="text-gray-700">
+                  {file.difficulty_level === 'beginner' && 'מתחילים'}
+                  {file.difficulty_level === 'intermediate' && 'בינוני'}
+                  {file.difficulty_level === 'advanced' && 'מתקדמים'}
+                </span>
+              </div>
+            )}
+            {file.youtube_video_id && (
+              <div className="flex items-center gap-2">
+                <Play className="w-4 h-4 text-red-500" />
+                <span className="text-red-600 text-xs">
+                  {file.youtube_video_title || 'סרטון הסבר זמין'}
+                </span>
+              </div>
+            )}
 
           </div>
 

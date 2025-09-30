@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
-import { Workshop, Course, File, Tool, Category, User, Settings } from "@/services/entities";
+import { Workshop, Course, File, Tool, Product, Category, User, Settings } from "@/services/entities";
 import { deleteFile } from "@/services/apiClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,11 @@ import {
   CheckCircle,
   Package,
   User as UserIcon,
-  Users
+  Users,
+  FileType,
+  Image,
+  Video,
+  AlignLeft
 } from "lucide-react";
 import { getProductTypeName } from '@/config/productTypes';
 import { formatPriceSimple } from '@/lib/utils';
@@ -38,7 +42,7 @@ export default function Products() {
   const [message, setMessage] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isContentCreator, setIsContentCreator] = useState(false);
-  const [showAllContent, setShowAllContent] = useState(false);
+  const [showAllContent, setShowAllContent] = useState(true);
 
   // Access context and permissions
   const [isContentCreatorMode, setIsContentCreatorMode] = useState(false);
@@ -48,7 +52,7 @@ export default function Products() {
     files: true,
     tools: true
   });
-  const [selectedTab, setSelectedTab] = useState("all");
+  const [selectedTab, setSelectedTab] = useState("file");
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -97,26 +101,17 @@ export default function Products() {
         }
         // If hasAdminAccess && showAllContent, load all products (empty query)
 
-        // Fetch from all entity types and combine
-        const [workshopsData, coursesData, filesData, toolsData, categoriesData] = await Promise.all([
-          Workshop.find(productsQuery),
-          Course.find(productsQuery),
-          File.find(productsQuery),
-          Tool.find(productsQuery),
+        // Fetch all products from the unified Product table with joined entity data
+        const [allProductsData, categoriesData] = await Promise.all([
+          Product.find(productsQuery),
           Category.find({}, "name")
         ]);
 
-        // Combine all entities into a single products array with product_type field
-        const allProducts = [
-          ...workshopsData.map(item => ({ ...item, product_type: 'workshop' })),
-          ...coursesData.map(item => ({ ...item, product_type: 'course' })),
-          ...filesData.map(item => ({ ...item, product_type: 'file' })),
-          ...toolsData.map(item => ({ ...item, product_type: 'tool' }))
-        ];
+        const allProducts = allProductsData || [];
 
         // Sort by creation date (newest first)
         allProducts.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-        
+
         setProducts(allProducts);
         setCategories(categoriesData);
       }
@@ -186,14 +181,32 @@ export default function Products() {
     if (!confirm("האם למחוק את המוצר?")) return;
 
     try {
-      // For workshops, delete uploaded video file first if it exists
+      // Delete associated assets first
+      const filesToDelete = [];
+
+      // For workshops, collect video files
       if (product.product_type === 'workshop' && product.video_file_url) {
+        filesToDelete.push({ file_uri: product.video_file_url, type: 'video' });
+      }
+
+      // For files, collect main file and preview file
+      if (product.product_type === 'file') {
+        if (product.file_url) {
+          filesToDelete.push({ file_uri: product.file_url, type: 'main file' });
+        }
+        if (product.preview_file_url) {
+          filesToDelete.push({ file_uri: product.preview_file_url, type: 'preview file' });
+        }
+      }
+
+      // Delete all associated files
+      for (const fileToDelete of filesToDelete) {
         try {
-          await deleteFile({ file_uri: product.video_file_url });
-          console.log('Video file deleted successfully:', product.video_file_url);
+          await deleteFile({ file_uri: fileToDelete.file_uri });
+          console.log(`${fileToDelete.type} deleted successfully:`, fileToDelete.file_uri);
         } catch (fileError) {
-          console.warn('Failed to delete video file:', fileError);
-          // Continue with workshop deletion even if file deletion fails
+          console.warn(`Failed to delete ${fileToDelete.type}:`, fileError);
+          // Continue with product deletion even if file deletion fails
         }
       }
 
@@ -225,7 +238,6 @@ export default function Products() {
   };
 
   const getFilteredProducts = () => {
-    if (selectedTab === "all") return products;
     return products.filter(product => product.product_type === selectedTab);
   };
 
@@ -278,6 +290,35 @@ export default function Products() {
     }
   };
 
+  const getDataIndicators = (product) => {
+    const hasDescription = product.description && product.description.trim().length > 0;
+    const hasLongDescription = product.description && product.description.trim().length > 100;
+    const hasImage = product.image_url && product.image_url.trim().length > 0;
+    const hasVideo = (product.youtube_video_id && product.youtube_video_id.trim().length > 0) ||
+                     (product.video_file_url && product.video_file_url.trim().length > 0);
+
+    return (
+      <div className="flex items-center justify-center gap-1">
+        <FileType
+          className={`w-3.5 h-3.5 ${hasDescription ? 'text-green-600' : 'text-gray-300'}`}
+          title={hasDescription ? 'יש תיאור' : 'אין תיאור'}
+        />
+        <AlignLeft
+          className={`w-3.5 h-3.5 ${hasLongDescription ? 'text-blue-600' : 'text-gray-300'}`}
+          title={hasLongDescription ? 'יש תיאור מפורט' : 'אין תיאור מפורט'}
+        />
+        <Image
+          className={`w-3.5 h-3.5 ${hasImage ? 'text-purple-600' : 'text-gray-300'}`}
+          title={hasImage ? 'יש תמונה' : 'אין תמונה'}
+        />
+        <Video
+          className={`w-3.5 h-3.5 ${hasVideo ? 'text-red-600' : 'text-gray-300'}`}
+          title={hasVideo ? 'יש סרטון' : 'אין סרטון'}
+        />
+      </div>
+    );
+  };
+
   if (!isAdmin && !isContentCreator) {
     return (
       <div className="p-4 md:p-8 bg-gray-50 min-h-screen">
@@ -294,31 +335,31 @@ export default function Products() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20" dir="rtl">
+      <div className="max-w-full mx-auto px-0 py-2 sm:px-1 sm:py-3 lg:px-8 xl:px-16 lg:py-4">
         {/* Modern Header */}
-        <div className="mb-8">
-          <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 rounded-2xl p-6 sm:p-8 border border-blue-100/50">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-              <div className="flex items-center gap-4">
-                <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-3 rounded-xl shadow-lg">
-                  <Package className="w-8 h-8 text-white" />
+        <div className="mb-4 md:mb-6">
+          <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 rounded-2xl md:rounded-3xl p-4 sm:p-6 md:p-8 border border-blue-100/50 shadow-lg backdrop-blur-sm ring-1 ring-blue-900/5">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 md:gap-6">
+              <div className="flex items-center gap-3 md:gap-4">
+                <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-2 md:p-3 rounded-lg md:rounded-xl shadow-lg">
+                  <Package className="w-6 h-6 md:w-8 md:h-8 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
                     ניהול מוצרים
                   </h1>
-                  <p className="text-gray-600 text-lg mt-1">
+                  <p className="text-gray-600 text-sm sm:text-base md:text-lg mt-1 hidden sm:block">
                     נהל וארגן את {getProductTypeName('file', 'plural')}, {getProductTypeName('course', 'plural')} ו{getProductTypeName('workshop', 'plural')} שלך במקום אחד
                   </p>
                   
                   {/* Stats */}
-                  <div className="flex items-center gap-4 mt-3">
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <div className="flex items-center gap-3 md:gap-4 mt-2 md:mt-3">
+                    <div className="flex items-center gap-1.5 md:gap-2 text-xs md:text-sm text-gray-500">
                       <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                       <span>{products.filter(p => p.is_published).length} פורסמו</span>
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <div className="flex items-center gap-1.5 md:gap-2 text-xs md:text-sm text-gray-500">
                       <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
                       <span>{products.filter(p => !p.is_published).length} טיוטות</span>
                     </div>
@@ -326,11 +367,11 @@ export default function Products() {
                 </div>
               </div>
               
-              <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
                 {/* Admin Toggle */}
                 {isAdmin && (
-                  <div className="bg-white/70 backdrop-blur-sm rounded-xl p-4 border border-white/20">
-                    <div className="flex items-center gap-3">
+                  <div className="bg-white/70 backdrop-blur-sm rounded-lg md:rounded-xl p-3 md:p-4 border border-white/20">
+                    <div className="flex items-center gap-2 md:gap-3">
                       <Switch
                         checked={showAllContent}
                         onCheckedChange={setShowAllContent}
@@ -356,9 +397,9 @@ export default function Products() {
                 {/* Action Button */}
                 <Button
                   onClick={handleCreateNew}
-                  className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 px-6 py-3"
+                  className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 px-4 py-2.5 md:px-6 md:py-3 text-sm md:text-base w-full sm:w-auto"
                 >
-                  <Plus className="w-5 h-5 ml-2" />
+                  <Plus className="w-4 h-4 md:w-5 md:h-5 ml-1.5 md:ml-2" />
                   מוצר חדש
                 </Button>
               </div>
@@ -387,54 +428,48 @@ export default function Products() {
 
         {/* Enhanced Tabs */}
         <Tabs value={selectedTab} onValueChange={setSelectedTab}>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-2 mb-8">
-            <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 bg-transparent gap-2">
-              <TabsTrigger 
-                value="all" 
-                className="flex items-center gap-2 text-sm font-medium px-4 py-3 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-gray-50"
+          <div className="bg-white/70 backdrop-blur-sm rounded-xl md:rounded-2xl shadow-lg border border-slate-200/60 p-2 md:p-3 mb-4 md:mb-6 ring-1 ring-slate-900/5">
+            <TabsList className="flex w-full flex-wrap justify-center lg:justify-center lg:gap-6 bg-slate-50/50 backdrop-blur-sm gap-1 md:gap-2 p-1 rounded-lg md:rounded-xl">
+              <TabsTrigger
+                value="file"
+                className="flex items-center gap-1 md:gap-2 text-xs md:text-sm font-medium px-2 py-2 md:px-4 md:py-3 rounded-md md:rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-gray-50 flex-1 lg:flex-none min-w-0"
               >
-                <Package className="w-4 h-4" />
-                <span>הכל</span>
-                <Badge variant="secondary" className="bg-gray-200 text-gray-700 text-xs">
-                  {products.length}
-                </Badge>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="file" 
-                className="flex items-center gap-2 text-sm font-medium px-4 py-3 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-gray-50"
-              >
-                <FileText className="w-4 h-4" />
-                <span>{getProductTypeName('file', 'plural')}</span>
+                <FileText className="w-3 h-3 md:w-4 md:h-4" />
+                <span className="hidden md:inline">{getProductTypeName('file', 'plural')}</span>
+                <span className="md:hidden">קבצים</span>
                 <Badge variant="secondary" className="bg-gray-200 text-gray-700 text-xs">
                   {products.filter(p => p.product_type === 'file').length}
                 </Badge>
               </TabsTrigger>
-              <TabsTrigger 
-                value="course" 
-                className="flex items-center gap-2 text-sm font-medium px-4 py-3 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-green-600 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-gray-50"
+              <TabsTrigger
+                value="course"
+                className="flex items-center gap-1 md:gap-2 text-xs md:text-sm font-medium px-2 py-2 md:px-4 md:py-3 rounded-md md:rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-green-600 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-gray-50 flex-1 lg:flex-none min-w-0"
               >
-                <BookOpen className="w-4 h-4" />
-                <span>{getProductTypeName('course', 'plural')}</span>
+                <BookOpen className="w-3 h-3 md:w-4 md:h-4" />
+                <span className="hidden md:inline">{getProductTypeName('course', 'plural')}</span>
+                <span className="md:hidden">קורסים</span>
                 <Badge variant="secondary" className="bg-gray-200 text-gray-700 text-xs">
                   {products.filter(p => p.product_type === 'course').length}
                 </Badge>
               </TabsTrigger>
-              <TabsTrigger 
-                value="workshop" 
-                className="flex items-center gap-2 text-sm font-medium px-4 py-3 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-gray-50"
+              <TabsTrigger
+                value="workshop"
+                className="flex items-center gap-1 md:gap-2 text-xs md:text-sm font-medium px-2 py-2 md:px-4 md:py-3 rounded-md md:rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-gray-50 flex-1 lg:flex-none min-w-0"
               >
-                <Play className="w-4 h-4" />
-                <span>{getProductTypeName('workshop', 'plural')}</span>
+                <Play className="w-3 h-3 md:w-4 md:h-4" />
+                <span className="hidden md:inline">{getProductTypeName('workshop', 'plural')}</span>
+                <span className="md:hidden">סדנאות</span>
                 <Badge variant="secondary" className="bg-gray-200 text-gray-700 text-xs">
                   {products.filter(p => p.product_type === 'workshop').length}
                 </Badge>
               </TabsTrigger>
-              <TabsTrigger 
-                value="tool" 
-                className="flex items-center gap-2 text-sm font-medium px-4 py-3 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-orange-600 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-gray-50"
+              <TabsTrigger
+                value="tool"
+                className="flex items-center gap-1 md:gap-2 text-xs md:text-sm font-medium px-2 py-2 md:px-4 md:py-3 rounded-md md:rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-orange-600 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-gray-50 flex-1 lg:flex-none min-w-0"
               >
-                <Package className="w-4 h-4" />
-                <span>{getProductTypeName('tool', 'plural')}</span>
+                <Package className="w-3 h-3 md:w-4 md:h-4" />
+                <span className="hidden md:inline">{getProductTypeName('tool', 'plural')}</span>
+                <span className="md:hidden">כלים</span>
                 <Badge variant="secondary" className="bg-gray-200 text-gray-700 text-xs">
                   {products.filter(p => p.product_type === 'tool').length}
                 </Badge>
@@ -442,136 +477,36 @@ export default function Products() {
             </TabsList>
           </div>
 
-          <TabsContent value={selectedTab} className="space-y-4">
+          <TabsContent value={selectedTab} className="space-y-6">
             {getFilteredProducts().length > 0 ? (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                {/* Modern Table Header */}
-                <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
-                  <div className="grid grid-cols-12 gap-4 items-center text-sm font-semibold text-gray-700">
-                    <div className="col-span-4 text-right">מוצר</div>
-                    <div className="col-span-2 text-center">סוג</div>
-                    <div className="col-span-2 text-center">קטגוריה</div>
-                    {isAdmin && showAllContent && (
-                      <div className="col-span-2 text-center">יוצר</div>
-                    )}
-                    <div className={`${isAdmin && showAllContent ? 'col-span-1' : 'col-span-2'} text-center`}>מחיר</div>
-                    <div className={`${isAdmin && showAllContent ? 'col-span-1' : 'col-span-1'} text-center`}>סטטוס</div>
-                    <div className="col-span-1 text-center flex items-center justify-center">פעולות</div>
-                  </div>
-                </div>
-
-                {/* Modern Table Body */}
-                <div className="divide-y divide-gray-100">
+              <>
+                {/* Mobile/Tablet Card Layout */}
+                <div className="block lg:hidden space-y-4">
                   {getFilteredProducts().map((product, index) => {
                     const IconComponent = getProductTypeIcon(product.product_type);
                     return (
-                      <div 
-                        key={product.id} 
-                        className={`grid grid-cols-12 gap-4 items-center px-6 py-4 hover:bg-gradient-to-r hover:from-blue-50/30 hover:to-indigo-50/30 transition-all duration-200 ${
-                          index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'
-                        }`}
+                      <div
+                        key={product.id}
+                        className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 p-4 hover:shadow-xl transition-all duration-300 ring-1 ring-slate-900/5"
                       >
-                        {/* Product Info */}
-                        <div className="col-span-4 text-right">
-                          <div className="flex items-center gap-4 justify-end">
-                            {/* Product Image or Icon */}
-                            <div className="flex-shrink-0">
-                              {product.image_url ? (
-                                <img
-                                  src={product.image_url}
-                                  alt={product.title}
-                                  className="w-12 h-12 object-cover rounded-lg shadow-sm"
-                                />
-                              ) : (
-                                <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-lg flex items-center justify-center">
-                                  <IconComponent className="w-6 h-6 text-indigo-500" />
-                                </div>
-                              )}
-                            </div>
-                            {/* Title and Description */}
-                            <div className="min-w-0 flex-1 text-right">
-                              <h3 className="font-semibold text-gray-900 text-lg leading-tight mb-1">
-                                {product.title}
-                              </h3>
-                              {product.short_description && (
-                                <p className="text-sm text-gray-600 line-clamp-1">
-                                  {product.short_description}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Type */}
-                        <div className="col-span-2 text-center">
-                          <Badge className={getProductTypeBadgeColor(product.product_type) + " font-medium"}>
-                            <IconComponent className="w-3 h-3 ml-1" />
-                            {getProductTypeLabel(product.product_type)}
-                          </Badge>
-                        </div>
-
-                        {/* Category */}
-                        <div className="col-span-2 text-center">
-                          {product.category ? (
-                            <Badge variant="outline" className="font-medium">
-                              {product.category}
-                            </Badge>
-                          ) : (
-                            <span className="text-gray-400 text-sm">-</span>
-                          )}
-                        </div>
-
-                        {/* Creator (Admin only) */}
-                        {isAdmin && showAllContent && (
-                          <div className="col-span-2 text-center">
-                            {product.creator ? (
-                              <div className="text-sm">
-                                <div className="font-medium text-gray-900">
-                                  {product.creator.full_name || product.creator.email}
-                                </div>
-                                {product.creator.full_name && (
-                                  <div className="text-xs text-gray-500">
-                                    {product.creator.email}
-                                  </div>
-                                )}
-                              </div>
-                            ) : (
-                              <span className="text-gray-400 text-sm">לא ידוע</span>
+                        {/* Card Header */}
+                        <div className="flex justify-between items-start mb-3">
+                          <div className="flex-1">
+                            <h3 className="font-bold text-slate-900 text-lg leading-tight mb-2" dir="rtl">
+                              {product.title}
+                            </h3>
+                            {product.short_description && (
+                              <p className="text-sm text-slate-600 mb-3" dir="rtl">
+                                {product.short_description}
+                              </p>
                             )}
                           </div>
-                        )}
-
-                        {/* Price */}
-                        <div className={`${isAdmin && showAllContent ? 'col-span-1' : 'col-span-2'} text-center`}>
-                          <div className="font-bold text-lg">
-                            <span className={product.price > 0 ? "text-green-600" : "text-blue-600"}>
-                              {formatPriceSimple(product.price, !product.original_price && product.price === 0)}
-                            </span>
-                          </div>
-                          {/* Access info as subtitle */}
-                          <div className="text-xs text-gray-500 mt-1">
-                            {product.access_days === null ? 'לכל החיים' : `${product.access_days} ימים`}
-                          </div>
-                        </div>
-
-                        {/* Status */}
-                        <div className={`${isAdmin && showAllContent ? 'col-span-1' : 'col-span-1'} text-center`}>
-                          <Badge 
-                            variant={product.is_published ? "default" : "secondary"}
-                            className="font-medium"
-                          >
-                            {product.is_published ? "פורסם" : "טיוטה"}
-                          </Badge>
-                        </div>
-
-                        {/* Actions */}
-                        <div className="col-span-1 text-center">
-                          <div className="flex justify-center gap-1">
+                          <div className="flex gap-2 mr-3">
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => handleEdit(product)}
-                              className="h-8 w-8 p-0 hover:bg-blue-100 hover:text-blue-700"
+                              className="h-9 w-9 p-0 hover:bg-blue-100 hover:text-blue-700 rounded-lg"
                             >
                               <Edit className="w-4 h-4" />
                             </Button>
@@ -579,17 +514,286 @@ export default function Products() {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleDelete(product)}
-                              className="h-8 w-8 p-0 text-red-600 hover:bg-red-100 hover:text-red-700"
+                              className="h-9 w-9 p-0 text-red-500 hover:bg-red-100 hover:text-red-600 rounded-lg"
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
+                          </div>
+                        </div>
+
+                        {/* Data Indicators */}
+                        <div className="flex justify-center mb-3">
+                          <div className="bg-slate-50 rounded-lg px-3 py-2">
+                            <div className="text-xs text-slate-500 mb-1 text-center">נתונים זמינים</div>
+                            {getDataIndicators(product)}
+                          </div>
+                        </div>
+
+                        {/* Card Content */}
+                        <div className="grid grid-cols-2 gap-4">
+                          {/* Price */}
+                          <div className="text-center">
+                            <div className="text-xs text-slate-500 mb-1">מחיר</div>
+                            <div className="text-lg font-bold text-blue-600" dir="rtl">
+                              {formatPriceSimple(product.price, (!product.original_price && product.original_price !== 0) && product.price === 0)}
+                            </div>
+                            {product.access_days && (
+                              <div className="text-xs text-slate-500 mt-1" dir="rtl">
+                                {(product.access_days === null || product.access_days === undefined) ? 'לכל החיים' : `${product.access_days} ימים`}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Status */}
+                          <div className="text-center">
+                            <div className="text-xs text-slate-500 mb-1">סטטוס</div>
+                            <Badge
+                              variant={product.is_published ? "default" : "secondary"}
+                              className={`font-medium ${product.is_published ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-amber-100 text-amber-800 border-amber-200'}`}
+                            >
+                              {product.is_published ? "פורסם" : "טיוטה"}
+                            </Badge>
+                          </div>
+
+                          {/* File Type */}
+                          <div className="text-center">
+                            <div className="text-xs text-slate-500 mb-1">סוג קובץ</div>
+                            {product.product_type === 'file' && product.file_type ? (
+                              <Badge variant="outline" className="font-medium uppercase bg-purple-50 text-purple-700 border-purple-200">
+                                {product.file_type}
+                              </Badge>
+                            ) : (
+                              <span className="text-slate-400 text-sm">-</span>
+                            )}
+                          </div>
+
+                          {/* Category */}
+                          <div className="text-center">
+                            <div className="text-xs text-slate-500 mb-1">קטגוריה</div>
+                            {product.category ? (
+                              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                                {product.category}
+                              </Badge>
+                            ) : (
+                              <span className="text-slate-400 text-sm">-</span>
+                            )}
+                          </div>
+
+                          {/* Creator (Admin only) */}
+                          {isAdmin && showAllContent && (
+                            <div className="col-span-2 text-center">
+                              <div className="text-xs text-slate-500 mb-1">יוצר</div>
+                              <div className="text-sm font-medium text-slate-900">
+                                {product.creator?.full_name || 'Ludora'}
+                              </div>
+                              {product.creator?.email && (
+                                <div className="text-xs text-slate-500 mt-1">
+                                  {product.creator.email}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Tags and Additional Info */}
+                        <div className="mt-4 pt-3 border-t border-slate-100">
+                          <div className="flex flex-wrap gap-2 justify-center">
+                            {product.difficulty_level && (
+                              <Badge variant="outline" className="text-xs bg-indigo-50 text-indigo-700 border-indigo-200">
+                                {product.difficulty_level === 'beginner' && 'מתחילים'}
+                                {product.difficulty_level === 'intermediate' && 'בינוני'}
+                                {product.difficulty_level === 'advanced' && 'מתקדמים'}
+                              </Badge>
+                            )}
+                            {product.target_audience && (
+                              <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                                <Users className="w-3 h-3 ml-1" />
+                                {product.target_audience && product.target_audience.length > 15 ? `${product.target_audience.substring(0, 12)}...` : product.target_audience}
+                              </Badge>
+                            )}
+                            {product.youtube_video_id && (
+                              <Badge variant="outline" className="text-xs bg-red-50 text-red-700 border-red-200">
+                                <Play className="w-3 h-3 ml-1" />
+                                סרטון
+                              </Badge>
+                            )}
                           </div>
                         </div>
                       </div>
                     );
                   })}
                 </div>
-              </div>
+
+                {/* Desktop Table Layout */}
+                <div className="hidden lg:block bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-slate-200/60 overflow-hidden ring-1 ring-slate-900/5">
+                  {/* Modern Table Header */}
+                  <div className="bg-gradient-to-l from-slate-50 to-white px-4 py-4 border-b border-slate-200/60 backdrop-blur-sm">
+                    <div className="grid grid-cols-12 gap-2 items-center text-sm font-bold text-slate-700">
+                      <div className="col-span-1 text-center">פעולות</div>
+                      <div className="col-span-1 text-center">נתונים</div>
+                      <div className={`${isAdmin && showAllContent ? 'col-span-1' : 'col-span-1'} text-center`}>מחיר</div>
+                      {isAdmin && showAllContent && (
+                        <div className="col-span-1 text-center">יוצר</div>
+                      )}
+                      <div className="col-span-1 text-center">קטגוריה</div>
+                      <div className="col-span-1 text-center">סוג</div>
+                      <div className="col-span-1 text-center">סטטוס</div>
+                      <div className={`${isAdmin && showAllContent ? 'col-span-5' : 'col-span-6'} text-right`}>כותרת</div>
+                    </div>
+                  </div>
+
+                {/* Modern Table Body */}
+                <div className="divide-y divide-gray-100">
+                  {getFilteredProducts().map((product, index) => {
+                    const IconComponent = getProductTypeIcon(product.product_type);
+                    return (
+                      <div
+                        key={product.id}
+                        className={`grid grid-cols-12 gap-2 items-center px-3 py-3 hover:bg-gradient-to-l hover:from-blue-50/40 hover:to-indigo-50/20 transition-all duration-300 border-b border-slate-100/50 ${
+                          index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'
+                        }`}
+                      >
+                        {/* Actions */}
+                        <div className="col-span-1 text-center">
+                          <div className="flex justify-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEdit(product)}
+                              className="h-8 w-8 p-0 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-colors"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(product)}
+                              className="h-8 w-8 p-0 text-red-500 hover:bg-red-100 hover:text-red-600 rounded-lg transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+
+                        {/* Data Indicators */}
+                        <div className="col-span-1 text-center">
+                          {getDataIndicators(product)}
+                        </div>
+
+                        {/* Price */}
+                        <div className={`${isAdmin && showAllContent ? 'col-span-1' : 'col-span-1'} text-center`}>
+                          <div className="font-bold text-base" dir="rtl">
+                            <span className={product.price > 0 ? "text-emerald-600" : "text-blue-600"}>
+                              {formatPriceSimple(product.price, (!product.original_price && product.original_price !== 0) && product.price === 0)}
+                            </span>
+                            {product.original_price && product.original_price > product.price && (
+                              <div className="text-xs text-gray-500 line-through">
+                                {product.original_price} ₪
+                              </div>
+                            )}
+                          </div>
+                          <div className="text-xs text-slate-500 mt-1" dir="rtl">
+                            {(product.access_days === null || product.access_days === undefined) ? 'לכל החיים' : `${product.access_days} ימים`}
+                          </div>
+                        </div>
+
+                        {/* Creator (Admin only) */}
+                        {isAdmin && showAllContent && (
+                          <div className="col-span-1 text-center">
+                            <div className="text-sm">
+                              <div className="font-medium text-slate-900">
+                                {product.creator?.full_name || 'Ludora'}
+                              </div>
+                              {product.creator?.email && (
+                                <div className="text-xs text-slate-500">
+                                  {product.creator.email}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Category */}
+                        <div className="col-span-1 text-center">
+                          {product.category ? (
+                            <Badge variant="outline" className="font-medium border-slate-300 text-slate-700 bg-slate-50 text-xs">
+                              {product.category.length > 8 ? `${product.category.substring(0, 6)}...` : product.category}
+                            </Badge>
+                          ) : (
+                            <span className="text-slate-400 text-sm">-</span>
+                          )}
+                        </div>
+
+                        {/* File Type */}
+                        <div className="col-span-1 text-center">
+                          {product.product_type === 'file' && product.file_type ? (
+                            <Badge variant="outline" className="font-medium uppercase bg-purple-50 text-purple-700 border-purple-200">
+                              {product.file_type}
+                            </Badge>
+                          ) : product.product_type !== 'file' ? (
+                            <Badge className={getProductTypeBadgeColor(product.product_type) + " font-medium"}>
+                              {getProductTypeLabel(product.product_type)}
+                            </Badge>
+                          ) : (
+                            <span className="text-slate-400 text-sm">-</span>
+                          )}
+                        </div>
+
+                        {/* Status */}
+                        <div className="col-span-1 text-center">
+                          <Badge
+                            variant={product.is_published ? "default" : "secondary"}
+                            className={`font-medium ${product.is_published ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-amber-100 text-amber-800 border-amber-200'}`}
+                          >
+                            {product.is_published ? "פורסם" : "טיוטה"}
+                          </Badge>
+                        </div>
+
+                        {/* Title */}
+                        <div className={`${isAdmin && showAllContent ? 'col-span-5' : 'col-span-6'} text-right`}>
+                          <div className="text-right">
+                            <h3 className="font-bold text-slate-900 text-base leading-tight mb-1">
+                              {product.title}
+                            </h3>
+                            {product.short_description && (
+                              <p className="text-sm text-slate-600 line-clamp-1 mb-2">
+                                {product.short_description}
+                              </p>
+                            )}
+                            <div className="flex flex-wrap gap-1 justify-end mt-1">
+                              {product.difficulty_level && (
+                                <Badge variant="outline" className="text-xs px-2 py-0.5 bg-indigo-50 text-indigo-700 border-indigo-200">
+                                  {product.difficulty_level === 'beginner' && 'מתחילים'}
+                                  {product.difficulty_level === 'intermediate' && 'בינוני'}
+                                  {product.difficulty_level === 'advanced' && 'מתקדמים'}
+                                </Badge>
+                              )}
+                              {product.target_audience && (
+                                <Badge variant="outline" className="text-xs px-2 py-0.5 bg-blue-50 text-blue-700 border-blue-200">
+                                  <Users className="w-3 h-3 ml-1" />
+                                  {product.target_audience && product.target_audience.length > 20 ? `${product.target_audience.substring(0, 17)}...` : product.target_audience}
+                                </Badge>
+                              )}
+                              {product.youtube_video_id && (
+                                <Badge variant="outline" className="text-xs px-2 py-0.5 bg-red-50 text-red-700 border-red-200">
+                                  <Play className="w-3 h-3 ml-1" />
+                                  סרטון
+                                </Badge>
+                              )}
+                              {product.tags && product.tags.length > 0 && (
+                                <Badge variant="outline" className="text-xs px-2 py-0.5 bg-slate-50 text-slate-600 border-slate-200">
+                                  {product.tags?.length || 0} תגיות
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  </div>
+                </div>
+              </>
             ) : (
               <div className="text-center py-20 text-gray-500">
                 <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-12 mx-auto max-w-md">

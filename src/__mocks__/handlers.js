@@ -1,6 +1,17 @@
 import { http, HttpResponse } from 'msw';
 
-const API_BASE = 'http://localhost:3003/api';
+// Use the same API base logic as the main application
+const getApiBase = () => {
+  const apiBase = import.meta.env.VITE_API_BASE;
+  if (apiBase) {
+    return apiBase;
+  }
+  // Fallback for tests
+  const port = import.meta.env.VITE_API_PORT || '3003';
+  return `http://localhost:${port}/api`;
+};
+
+const API_BASE = getApiBase();
 
 // Mock data
 const mockUser = {

@@ -7,27 +7,16 @@ console.log('🔍 All import.meta.env:', import.meta.env);
 console.log('🔍 VITE_FIREBASE_API_KEY:', import.meta.env.VITE_FIREBASE_API_KEY);
 console.log('🔍 VITE_FIREBASE_PROJECT_ID:', import.meta.env.VITE_FIREBASE_PROJECT_ID);
 
-// Firebase configuration - temporarily hardcoded to test
+// Firebase configuration from environment variables
 const firebaseConfig = {
-  apiKey: "AIzaSyCvc0KGxsYCu61pOwBSJ3tzdCs7lUT28JI",
-  authDomain: "ludora-af706.firebaseapp.com",
-  projectId: "ludora-af706",
-  storageBucket: "ludora-af706.firebasestorage.app",
-  messagingSenderId: "985814078486",
-  appId: "1:985814078486:web:45bbbd97327171c94ad137",
-  measurementId: "G-THZ32X92VY"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
-
-// Firebase configuration from environment variables (commented out for now)
-// const firebaseConfig = {
-//   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-//   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-//   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-//   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-//   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-//   appId: import.meta.env.VITE_FIREBASE_APP_ID,
-//   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
-// };
 
 // Initialize Firebase
 let app;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Workshop, Course, File, Tool, Category, User, Settings } from "@/services/entities";
+import { Workshop, Course, File, Tool, Product, Category, User, Settings } from "@/services/entities";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,10 +27,13 @@ import {
   Trash2,
   Play
 } from "lucide-react";
+import SecureVideoPlayer from '../SecureVideoPlayer';
 import ProductTypeSelector from './ProductTypeSelector';
 import { getProductTypeName } from '@/config/productTypes';
 import { getApiBase } from '@/utils/api.js';
+import { getMarketingVideoUrl } from '@/utils/videoUtils.js';
 import { toast } from '@/components/ui/use-toast';
+import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
 
 // Utility function to check if feature is enabled based on settings and content creator permissions
 const getEnabledProductTypes = (settings, isContentCreatorMode = false, isAdmin = false) => {
@@ -86,11 +89,89 @@ export default function ProductModal({
   const [step, setStep] = useState(editingProduct ? 'form' : 'typeSelection');
   const [categories, setCategories] = useState([]);
   const [globalSettings, setGlobalSettings] = useState({});
-  const [enabledProductTypes, setEnabledProductTypes] = useState(['workshop', 'course', 'file']);
+  const [enabledProductTypes, setEnabledProductTypes] = useState([]);
   const [message, setMessage] = useState(null);
   const [uploadStates, setUploadStates] = useState({});
   const [uploadProgress, setUploadProgress] = useState({});
   const [selectedModuleVideoTab, setSelectedModuleVideoTab] = useState({});
+  const [marketingVideoType, setMarketingVideoType] = useState('youtube'); // 'youtube' or 'upload'
+  
+  // Loading states for different operations
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeletingFile, setIsDeletingFile] = useState(false);
+  const [isLoadingData, setIsLoadingData] = useState(false);
+
+  // Helper functions for marketing video logic
+  const [marketingVideoExists, setMarketingVideoExists] = useState(false);
+  
+  const hasUploadedVideo = () => {
+    // Check if marketing video exists on server (not relying on title)
+    return marketingVideoExists;
+  };
+
+  const hasYouTubeVideo = () => {
+    return formData.youtube_video_id && formData.youtube_video_id.trim() !== '';
+  };
+
+  const hasAnyMarketingVideo = () => {
+    return hasUploadedVideo() || hasYouTubeVideo();
+  };
+
+  // Check if marketing video exists on server
+  const checkMarketingVideoExists = async (product) => {
+    if (!product?.id || !product?.product_type) return false;
+    
+    try {
+      const response = await fetch(
+        `${getApiBase()}/files/check-marketing-video?entityType=${product.product_type}&entityId=${product.id}`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      
+      if (response.ok) {
+        const result = await response.json();
+        return result.exists === true;
+      }
+    } catch (error) {
+      console.error('Error checking marketing video:', error);
+    }
+    
+    return false;
+  };
+
+  // Extract YouTube video ID from various URL formats
+  const extractYouTubeId = (url) => {
+    if (!url || typeof url !== 'string') return '';
+
+    // Remove whitespace
+    url = url.trim();
+
+    // If it's already just an ID (11 characters, alphanumeric and dashes/underscores)
+    if (/^[a-zA-Z0-9_-]{11}$/.test(url)) {
+      return url;
+    }
+
+    // Various YouTube URL patterns
+    const patterns = [
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/|youtube\.com\/watch\?.*&v=)([a-zA-Z0-9_-]{11})/,
+      /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
+      /youtube\.com\/live\/([a-zA-Z0-9_-]{11})/
+    ];
+
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match && match[1]) {
+        return match[1];
+      }
+    }
+
+    return '';
+  };
 
   const [formData, setFormData] = useState({
     title: "",
@@ -114,7 +195,14 @@ export default function ProductModal({
     file_type: "pdf",
     tags: [],
     target_audience: "",
-    access_days: null,
+    difficulty_level: "",
+    youtube_video_id: "",
+    youtube_video_title: "",
+    marketing_video_title: "",
+    marketing_video_duration: "",
+    access_days: "",
+    is_lifetime_access: false,
+    downloads_count: 0,
     course_modules: [],
     total_duration_minutes: 0,
   });
@@ -146,7 +234,7 @@ export default function ProductModal({
     }
   };
 
-  const isLifetimeAccess = (accessDays) => accessDays === null || accessDays === undefined;
+  const isLifetimeAccess = (accessDays) => accessDays === null || accessDays === undefined || accessDays === "";
 
   // Load initial data
   useEffect(() => {
@@ -179,6 +267,7 @@ export default function ProductModal({
   }, [isOpen, editingProduct]);
 
   const loadInitialData = async () => {
+    setIsLoadingData(true);
     try {
       const [categoriesData, settingsData] = await Promise.all([
         Category.find({}, "name"),
@@ -197,13 +286,15 @@ export default function ProductModal({
           const defaultLifetime = getDefaultLifetimeAccess('workshop', settings);
           setFormData(prev => ({
             ...prev,
-            access_days: defaultLifetime ? null : (getDefaultAccessDays(prev.product_type, settings) || 30)
+            access_days: defaultLifetime ? "" : (getDefaultAccessDays(prev.product_type, settings)?.toString() || "30")
           }));
         }
       }
     } catch (error) {
       console.error("Error loading initial data:", error);
       setMessage({ type: 'error', text: 'שגיאה בטעינת נתונים ראשוניים' });
+    } finally {
+      setIsLoadingData(false);
     }
   };
 
@@ -218,7 +309,7 @@ export default function ProductModal({
         video_is_private: module.video_is_private ?? false,
         material_is_private: module.material_is_private ?? false,
       })),
-      access_days: product.access_days ?? null,
+      access_days: product.access_days === null ? "" : product.access_days?.toString() || "",
       preview_file_url: product.preview_file_url || "",
       workshop_type: product.workshop_type || (product.video_file_url ? "recorded" : "online_live"),
       scheduled_date: product.scheduled_date ? format(new Date(product.scheduled_date), "yyyy-MM-dd'T'HH:mm") : "",
@@ -242,6 +333,29 @@ export default function ProductModal({
       initialModuleTabs[index] = 'upload';
     });
     setSelectedModuleVideoTab(initialModuleTabs);
+
+    // Check for marketing video existence and set type accordingly
+    if (product.youtube_video_id) {
+      setMarketingVideoType('youtube');
+      setMarketingVideoExists(false);
+    } else {
+      // Always check if marketing video exists on server for existing products
+      if (product.id && product.product_type) {
+        checkMarketingVideoExists(product).then(exists => {
+          setMarketingVideoExists(exists);
+          if (exists) {
+            setMarketingVideoType('upload');
+            console.log('Found existing marketing video on server');
+          } else {
+            setMarketingVideoType('upload'); // Default to upload tab when no video exists
+          }
+        });
+      } else {
+        // New product - no video exists yet
+        setMarketingVideoExists(false);
+        setMarketingVideoType('upload');
+      }
+    }
   };
 
   const resetForm = () => {
@@ -267,11 +381,20 @@ export default function ProductModal({
       file_type: "pdf",
       tags: [],
       target_audience: "",
-      access_days: null,
+      difficulty_level: "",
+      youtube_video_id: "",
+      youtube_video_title: "",
+      marketing_video_title: "",
+      marketing_video_duration: "",
+      access_days: "",
+      is_lifetime_access: false,
+      downloads_count: 0,
       course_modules: [],
       total_duration_minutes: 0,
     });
     setSelectedModuleVideoTab({});
+    setMarketingVideoType('youtube');
+    setMarketingVideoExists(false);
   };
 
   const handleProductTypeSelect = async (productType) => {
@@ -290,7 +413,7 @@ export default function ProductModal({
     setFormData(prev => ({
       ...prev,
       product_type: productType,
-      access_days: defaultLifetime ? null : (getDefaultAccessDays(productType, currentSettings) || 30)
+      access_days: defaultLifetime ? "" : (getDefaultAccessDays(productType, currentSettings)?.toString() || "30")
     }));
 
     setStep('form');
@@ -312,7 +435,7 @@ export default function ProductModal({
     setFormData(prev => ({
       ...prev,
       product_type: newType,
-      access_days: defaultLifetime ? null : (getDefaultAccessDays(newType, currentSettings) || 30)
+      access_days: defaultLifetime ? "" : (getDefaultAccessDays(newType, currentSettings)?.toString() || "30")
     }));
   };
 
@@ -341,6 +464,8 @@ export default function ProductModal({
     const file = event.target.files[0];
     if (!file) return;
 
+    console.log(`🔍 Frontend file upload - File type: "${file.type}", File name: "${file.name}", Upload type: "${fileType}"`);
+
     const uploadKey = moduleIndex !== null ? `module_${moduleIndex}_${fileType}` : fileType;
 
     // Validate file type
@@ -355,6 +480,12 @@ export default function ProductModal({
     }
 
     if (fileType === 'workshop_video' && !file.type.startsWith('video/')) {
+      setMessage({ type: 'error', text: 'אנא בחר קובץ וידיאו בלבד' });
+      return;
+    }
+
+    if (fileType === 'marketing_video' && !file.type.startsWith('video/')) {
+      console.error(`❌ Frontend validation failed - File type: "${file.type}", File name: "${file.name}"`);
       setMessage({ type: 'error', text: 'אנא בחר קובץ וידיאו בלבד' });
       return;
     }
@@ -410,7 +541,7 @@ export default function ProductModal({
     let progressIntervalId = null;
 
     try {
-      const isVideoFile = (fileType === 'video' || fileType === 'workshop_video');
+      const isVideoFile = (fileType === 'video' || fileType === 'workshop_video' || fileType === 'marketing_video');
       const isFileUpload = (fileType === 'file');
       let result;
 
@@ -421,6 +552,15 @@ export default function ProductModal({
           file.detectedDuration = duration; // Store detected duration on file object
           const durationMinutes = Math.round(duration / 60);
           console.log(`Detected workshop video duration: ${durationMinutes} minutes`);
+        }
+      }
+
+      if (fileType === 'marketing_video') {
+        const duration = await getVideoDuration(file);
+        if (duration) {
+          file.detectedDuration = duration; // Store detected duration on file object
+          const durationSeconds = Math.round(duration);
+          console.log(`Detected marketing video duration: ${durationSeconds} seconds`);
         }
       }
 
@@ -472,7 +612,18 @@ export default function ProductModal({
           xhr.timeout = 30 * 60 * 1000;
 
           // Choose endpoint based on file type
-          const endpoint = isFileUpload ? `${getApiBase()}/media/file/upload` : `${getApiBase()}/videos/upload`;
+          let endpoint;
+          if (isFileUpload) {
+            endpoint = `${getApiBase()}/media/file/upload`;
+          } else if (fileType === 'marketing_video') {
+            // Use new unified public video endpoint for marketing videos
+            const entityType = editingProduct?.product_type || formData.product_type;
+            endpoint = `${getApiBase()}/files/upload-public-video?entityType=${entityType}&entityId=${editingProduct?.id || 'temp'}`;
+          } else {
+            // Use new unified private video endpoint for other videos (workshop, etc.)
+            const entityType = editingProduct?.product_type || formData.product_type;
+            endpoint = `${getApiBase()}/files/upload-private-video?entityType=${entityType}&entityId=${editingProduct?.id || 'temp'}`;
+          }
           xhr.open('POST', endpoint, true);
           
           // Add authentication header
@@ -486,6 +637,7 @@ export default function ProductModal({
       } else {
         const { UploadFile } = await import('@/services/integrations');
         result = await UploadFile({ file });
+        console.log('this is the BAD endpoint:', result);
       }
 
       if (result) {
@@ -507,13 +659,16 @@ export default function ProductModal({
               )
             }));
           } else {
+            // For marketing videos, we don't store URL anymore since we use predictable paths
             const fieldName = fileType === 'image' ? 'image_url' :
               fileType === 'video' ? 'video_url' :
               fileType === 'workshop_video' ? 'video_file_url' :
+              fileType === 'marketing_video' ? null : // No URL field needed for marketing videos
               fileType === 'preview_file' ? 'preview_file_url' : 'file_url';
 
-            // For video files, we don't need to track private flag since all videos are private by design
-            const updateData = { [fieldName]: fileReference };
+            // For marketing videos, we don't update any URL field since we use predictable paths
+            // For other file types, we update the URL field
+            const updateData = fieldName ? { [fieldName]: fileReference } : {};
             
             // Auto-set duration for workshop videos if detected on client-side
             if (fileType === 'workshop_video' && file.detectedDuration) {
@@ -521,9 +676,21 @@ export default function ProductModal({
               updateData.duration_minutes = durationMinutes;
               console.log(`Auto-set workshop duration to ${durationMinutes} minutes from client-side detection`);
             }
-            
+
+            // Auto-set duration for marketing videos if detected on client-side
+            if (fileType === 'marketing_video') {
+              if (file.detectedDuration) {
+                const durationSeconds = Math.round(file.detectedDuration);
+                updateData.marketing_video_duration = durationSeconds;
+                console.log(`Auto-set marketing video duration to ${durationSeconds} seconds from client-side detection`);
+              }
+              // Set the marketing video exists flag
+              setMarketingVideoExists(true);
+              console.log('Marketing video uploaded successfully, updated existence state');
+            }
+
             // Only set private flag for non-video files
-            if (fileType !== 'video' && fileType !== 'workshop_video') {
+            if (fileType !== 'video' && fileType !== 'workshop_video' && fileType !== 'marketing_video') {
               const isPrivateFile = !!(responseData.file_uri || responseData.s3Url);
               const isPrivateFieldName = fileType === 'image' ? 'image_is_private' :
                 fileType === 'preview_file' ? 'preview_file_is_private' : 'file_is_private';
@@ -536,7 +703,9 @@ export default function ProductModal({
             }));
           }
 
-          setMessage({ type: 'success', text: 'קובץ הועלה בהצלחה!' });
+          // Extract filename from original file for better user feedback
+          const fileName = file.originalname || file.name || 'קובץ';
+          setMessage({ type: 'success', text: `${fileName} הועלה בהצלחה!` });
         } else {
           throw new Error('לא התקבל קישור לקובץ מהשרת');
         }
@@ -561,7 +730,7 @@ export default function ProductModal({
     setTimeout(() => setMessage(null), 5000);
   };
 
-  const handleDeleteFile = (fileType, moduleIndex = null) => {
+  const handleDeleteFile = async (fileType, moduleIndex = null) => {
     if (moduleIndex !== null) {
       setFormData(prev => ({
         ...prev,
@@ -575,16 +744,65 @@ export default function ProductModal({
         )
       }));
     } else {
+      // Special handling for marketing video - delete from S3
+      if (fileType === 'marketing_video') {
+        if (!editingProduct?.id || !editingProduct?.product_type) {
+          console.error('Cannot delete marketing video: Missing product ID or type');
+          setMessage({ type: 'error', text: 'שגיאה: לא ניתן למחוק את הסרטון כרגע' });
+          return;
+        }
+
+        setIsDeletingFile(true);
+        try {
+          const entityType = editingProduct.product_type;
+          const entityId = editingProduct.id;
+          
+          const response = await fetch(
+            `${getApiBase()}/files/marketing-video?entityType=${entityType}&entityId=${entityId}`,
+            {
+              method: 'DELETE',
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+
+          if (response.ok) {
+            // Clear marketing video fields and update state
+            setFormData(prev => ({
+              ...prev,
+              marketing_video_title: '',
+              marketing_video_duration: ''
+            }));
+            setMarketingVideoExists(false);
+            setMessage({ type: 'success', text: 'סרטון השיווק נמחק בהצלחה!' });
+            console.log('Marketing video deleted successfully from S3');
+          } else {
+            const errorData = await response.json().catch(() => ({}));
+            console.error('Failed to delete marketing video:', errorData);
+            setMessage({ type: 'error', text: errorData.message || 'שגיאה במחיקת הסרטון' });
+          }
+        } catch (error) {
+          console.error('Error deleting marketing video:', error);
+          setMessage({ type: 'error', text: 'שגיאה במחיקת הסרטון' });
+        } finally {
+          setIsDeletingFile(false);
+        }
+        return;
+      }
+
+      // Handle other file types (original logic)
       const fieldName = fileType === 'image' ? 'image_url' :
         fileType === 'video' ? 'video_url' :
         fileType === 'workshop_video' ? 'video_file_url' :
         fileType === 'preview_file' ? 'preview_file_url' : 'file_url';
 
-      // Prepare update data
-      const updateData = { [fieldName]: '' };
-      
+      // Prepare update data - only if there's a field to update
+      const updateData = fieldName ? { [fieldName]: '' } : {};
+
       // Only reset private flag for non-video files
-      if (fileType !== 'video' && fileType !== 'workshop_video') {
+      if (fileType !== 'video' && fileType !== 'workshop_video' && fileType !== 'marketing_video') {
         const isPrivateFieldName = fileType === 'image' ? 'image_is_private' :
           fileType === 'preview_file' ? 'preview_file_is_private' : 'file_is_private';
         updateData[isPrivateFieldName] = false;
@@ -643,6 +861,8 @@ export default function ProductModal({
       return;
     }
 
+    setIsSaving(true);
+
     // Validate workshop-specific requirements
     if (formData.product_type === 'workshop') {
       if (formData.workshop_type === 'online_live') {
@@ -680,7 +900,12 @@ export default function ProductModal({
         file_type: formData.file_type || null,
         tags: formData.tags?.filter(tag => tag.trim()) || [],
         target_audience: (formData.target_audience && formData.target_audience.trim()) ? formData.target_audience : null,
-        access_days: formData.access_days,
+        difficulty_level: (formData.difficulty_level && formData.difficulty_level.trim()) ? formData.difficulty_level : null,
+        youtube_video_id: (formData.youtube_video_id && formData.youtube_video_id.trim()) ? formData.youtube_video_id : null,
+        youtube_video_title: (formData.youtube_video_title && formData.youtube_video_title.trim()) ? formData.youtube_video_title : null,
+        marketing_video_title: (formData.marketing_video_title && formData.marketing_video_title.trim()) ? formData.marketing_video_title : null,
+        marketing_video_duration: formData.marketing_video_duration ? parseInt(formData.marketing_video_duration) || null : null,
+        access_days: formData.access_days === "" ? null : parseInt(formData.access_days) || null,
         course_modules: formData.product_type === 'course' ? formData.course_modules : undefined,
         total_duration_minutes: formData.total_duration_minutes
       };
@@ -698,62 +923,19 @@ export default function ProductModal({
         }));
       }
 
-      // Choose the appropriate entity service and prepare entity-specific data
-      let entityService;
-      let entityName;
-      let cleanedData;
-      
-      switch (formData.product_type) {
-        case 'workshop':
-          entityService = Workshop;
-          entityName = getProductTypeName('workshop', 'singular');
-          // Remove product_type and exclude fields not relevant to workshops
-          cleanedData = {
-            title: baseData.title,
-            short_description: baseData.short_description,
-            description: baseData.description,
-            category: baseData.category,
-            scheduled_date: baseData.scheduled_date,
-            meeting_link: baseData.meeting_link,
-            meeting_password: baseData.meeting_password,
-            meeting_platform: baseData.meeting_platform,
-            video_file_url: baseData.video_file_url,
-            max_participants: baseData.max_participants,
-            duration_minutes: baseData.duration_minutes,
-            price: baseData.price,
-            is_published: baseData.is_published,
-            image_url: baseData.image_url,
-            image_is_private: baseData.image_is_private,
-            tags: baseData.tags,
-            target_audience: baseData.target_audience,
-            access_days: baseData.access_days,
-            workshop_type: formData.workshop_type
-          };
-          break;
-        case 'course':
-          entityService = Course;
-          entityName = getProductTypeName('course', 'singular');
-          cleanedData = { ...baseData };
-          break;
-        case 'file':
-          entityService = File;
-          entityName = getProductTypeName('file', 'singular');
-          cleanedData = { ...baseData };
-          break;
-        case 'tool':
-          entityService = Tool;
-          entityName = getProductTypeName('tool', 'singular');
-          cleanedData = { ...baseData };
-          break;
-        default:
-          // For backward compatibility, use Product service for other types
-          entityService = Product;
-          entityName = 'מוצר';
-          cleanedData = {
-            ...baseData,
-            product_type: formData.product_type
-          };
-          break;
+      // Use unified Product service for all product types
+      const entityService = Product;
+      const entityName = getProductTypeName(formData.product_type, 'singular') || 'מוצר';
+
+      // Prepare product data with product_type included
+      const cleanedData = {
+        ...baseData,
+        product_type: formData.product_type
+      };
+
+      // Add product-type specific fields
+      if (formData.product_type === 'workshop') {
+        cleanedData.workshop_type = formData.workshop_type;
       }
 
       let createdEntity = null;
@@ -794,6 +976,8 @@ export default function ProductModal({
       } else {
         setMessage({ type: 'error', text: 'שגיאה בשמירת המוצר' });
       }
+    } finally {
+      setIsSaving(false);
     }
 
     setTimeout(() => setMessage(null), 5000);
@@ -814,7 +998,22 @@ export default function ProductModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-start justify-center overflow-y-auto p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full my-8">
+      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full my-8 relative">
+        {/* Loading Overlay */}
+        {(isLoadingData || isSaving || isDeletingFile || Object.values(uploadStates).some(state => state.isUploading)) && (
+          <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center z-10 rounded-lg">
+            <div className="flex flex-col items-center gap-4">
+              <LudoraLoadingSpinner />
+              <p className="text-sm text-gray-600">
+                {isLoadingData && 'טוען נתונים...'}
+                {isSaving && 'שומר מוצר...'}
+                {isDeletingFile && 'מוחק קובץ...'}
+                {Object.values(uploadStates).some(state => state.isUploading) && 'מעלה קובץ...'}
+              </p>
+            </div>
+          </div>
+        )}
+        
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
           <div className="flex items-center gap-3">
@@ -867,12 +1066,12 @@ export default function ProductModal({
           {step === 'form' && (editingProduct || getAvailableProductTypes(enabledProductTypes, canCreateProductType).length > 0) && (
             <div className="space-y-6">
 
-              {/* Common Fields Section */}
+              {/* Product Fields Section */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <FileText className="w-5 h-5" />
-                    פרטים כלליים
+                    שדות מוצר - פרטים כלליים
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -881,7 +1080,7 @@ export default function ProductModal({
                     <div>
                       <Label className="text-sm font-medium">כותרת *</Label>
                       <Input
-                        value={formData.title}
+                        value={formData.title || ""}
                         onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
                         placeholder="כותרת המוצר"
                         className="mt-1"
@@ -901,20 +1100,24 @@ export default function ProductModal({
                   </div>
 
                   <div>
-                    <Label className="text-sm font-medium">תיאור קצר</Label>
+                    <Label className="text-sm font-medium">תיאור קצר (אופציונלי)</Label>
                     <Textarea
-                      value={formData.short_description}
+                      value={formData.short_description || ""}
                       onChange={(e) => setFormData(prev => ({ ...prev, short_description: e.target.value }))}
-                      placeholder="תיאור קצר שיופיע בקטלוג המוצרים"
+                      placeholder="תיאור קצר שיופיע בקטלוג המוצרים - עד 150 תווים"
                       rows={2}
                       className="mt-1"
+                      maxLength={150}
                     />
+                    <div className="text-xs text-gray-500 mt-1">
+                      {formData.short_description?.length || 0}/150 תווים
+                    </div>
                   </div>
 
                   <div>
-                    <Label className="text-sm font-medium">תיאור ארוך *</Label>
+                    <Label className="text-sm font-medium">תיאור מפורט *</Label>
                     <Textarea
-                      value={formData.description}
+                      value={formData.description || ""}
                       onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                       placeholder="תיאור מפורט של המוצר שיופיע בדף המוצר"
                       rows={4}
@@ -923,11 +1126,11 @@ export default function ProductModal({
                   </div>
 
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label className="text-sm font-medium">קטגוריה</Label>
                       <Select
-                        value={formData.category}
+                        value={formData.category || ""}
                         onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
                       >
                         <SelectTrigger className="mt-1">
@@ -943,13 +1146,57 @@ export default function ProductModal({
                       </Select>
                     </div>
                     <div>
-                      <Label className="text-sm font-medium">מחיר (₪)</Label>
-                      <Input
-                        type="number"
-                        value={formData.price}
-                        onChange={(e) => setFormData(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))}
-                        className="mt-1"
-                      />
+                      <Label className="text-sm font-medium">רמת קושי</Label>
+                      <Select
+                        value={formData.difficulty_level || ""}
+                        onValueChange={(value) => setFormData(prev => ({ ...prev, difficulty_level: value }))}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="בחר רמת קושי" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="beginner">מתחילים</SelectItem>
+                          <SelectItem value="intermediate">בינוני</SelectItem>
+                          <SelectItem value="advanced">מתקדמים</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label className="text-sm font-medium">מחיר (₪)</Label>
+                    <Input
+                      type="number"
+                      value={formData.price || ""}
+                      onChange={(e) => setFormData(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))}
+                      className="mt-1"
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="text-sm font-medium">קהל יעד</Label>
+                    <Input
+                      value={formData.target_audience || ""}
+                      onChange={(e) => setFormData(prev => ({ ...prev, target_audience: e.target.value }))}
+                      placeholder="מי הקהל המיועד למוצר זה?"
+                      className="mt-1"
+                    />
+                  </div>
+
+                  {/* Tags Input */}
+                  <div>
+                    <Label className="text-sm font-medium">תגיות (מופרדות בפסיק)</Label>
+                    <Input
+                      value={Array.isArray(formData.tags) ? formData.tags.join(', ') : ''}
+                      onChange={(e) => {
+                        const tags = e.target.value.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
+                        setFormData(prev => ({ ...prev, tags }));
+                      }}
+                      placeholder="תכנות, מתחילים, PDF, מדריך"
+                      className="mt-1"
+                    />
+                    <div className="text-xs text-gray-500 mt-1">
+                      הקלד תגיות מופרדות בפסיקים
                     </div>
                   </div>
 
@@ -985,29 +1232,230 @@ export default function ProductModal({
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Duration field only for workshops and courses */}
+                  {(formData.product_type === 'workshop' || formData.product_type === 'course') && (
                     <div>
-                      <Label className="text-sm font-medium">קהל יעד</Label>
+                      <Label className="text-sm font-medium">משך כולל בדקות</Label>
                       <Input
-                        value={formData.target_audience}
-                        onChange={(e) => setFormData(prev => ({ ...prev, target_audience: e.target.value }))}
-                        placeholder="מורים, רכזי חינוך..."
+                        type="number"
+                        value={formData.total_duration_minutes}
+                        onChange={(e) => setFormData(prev => ({ ...prev, total_duration_minutes: parseInt(e.target.value) || 0 }))}
+                        placeholder="60"
                         className="mt-1"
                       />
                     </div>
-                    {/* Duration field only for workshops and courses */}
-                    {(formData.product_type === 'workshop' || formData.product_type === 'course') && (
-                      <div>
-                        <Label className="text-sm font-medium">משך כולל בדקות</Label>
-                        <Input
-                          type="number"
-                          value={formData.total_duration_minutes}
-                          onChange={(e) => setFormData(prev => ({ ...prev, total_duration_minutes: parseInt(e.target.value) || 0 }))}
-                          placeholder="60"
-                          className="mt-1"
-                        />
-                      </div>
-                    )}
+                  )}
+
+                  {/* Marketing Video Section */}
+                  <div className="space-y-4">
+                    <h3 className="text-base font-semibold flex items-center gap-2">
+                      <Play className="w-4 h-4" />
+                      סרטון שיווקי (אופציונלי)
+                    </h3>
+                    <div className="p-4 border rounded-lg bg-blue-50">
+                      {/* Show conditional tabs based on existing video content */}
+                      {hasAnyMarketingVideo() ? (
+                        // Show only existing video tab when video exists
+                        <div className="space-y-4">
+                          {hasYouTubeVideo() && (
+                            <div className="p-4 border-l-4 border-blue-500 bg-blue-50">
+                              <div className="flex items-center justify-between mb-2">
+                                <Label className="text-sm font-medium text-blue-700">סרטון יוטיוב קיים</Label>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setFormData(prev => ({ ...prev, youtube_video_id: "" }));
+                                    setMarketingVideoType("upload");
+                                  }}
+                                  className="text-red-600 border-red-300 hover:bg-red-50"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                  מחק כדי להעלות קובץ
+                                </Button>
+                              </div>
+                              <Input
+                                value={formData.youtube_video_id || ""}
+                                onChange={(e) => {
+                                  const input = e.target.value;
+                                  const extractedId = extractYouTubeId(input);
+                                  setFormData(prev => ({ ...prev, youtube_video_id: extractedId || input }));
+                                }}
+                                placeholder="הדבק כל קישור יוטיוב או מזהה וידיאו"
+                                className="mt-1"
+                              />
+                              {formData.youtube_video_id && (
+                                <div className="mt-3">
+                                  <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
+                                    <iframe
+                                      src={`https://www.youtube.com/embed/${formData.youtube_video_id}`}
+                                      title="YouTube Video Preview"
+                                      className="w-full h-full"
+                                      frameBorder="0"
+                                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                      allowFullScreen
+                                    />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {hasUploadedVideo() && (
+                            <div className="p-4 border-l-4 border-green-500 bg-green-50">
+                              <div className="flex items-center justify-between mb-2">
+                                <Label className="text-sm font-medium text-green-700">סרטון שהועלה</Label>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleDeleteFile('marketing_video')}
+                                  className="text-red-600 border-red-300 hover:bg-red-50"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                  מחק כדי להוסיף יוטיוב
+                                </Button>
+                              </div>
+                              {hasUploadedVideo() && editingProduct && (
+                                <div className="mt-2">
+                                  <div className="bg-white p-2 rounded border">
+                                    <SecureVideoPlayer
+                                      videoUrl={getMarketingVideoUrl(editingProduct)}
+                                      title={formData.marketing_video_title || "Marketing Video"}
+                                      className="h-48"
+                                      contentType="marketing"
+                                    />
+                                    <div className="mt-2 text-xs text-gray-500">
+                                      Marketing video: {editingProduct.product_type}/{editingProduct.id}
+                                    </div>
+                                    {formData.marketing_video_title && (
+                                      <p className="text-sm text-gray-600 mt-2 font-medium">
+                                        {formData.marketing_video_title}
+                                      </p>
+                                    )}
+                                    {formData.marketing_video_duration && (
+                                      <p className="text-xs text-gray-500 mt-1">
+                                        משך: {Math.floor(formData.marketing_video_duration / 60)}:{(formData.marketing_video_duration % 60).toString().padStart(2, '0')} דקות
+                                      </p>
+                                    )}
+                                  </div>
+                                  <div className="mt-2">
+                                    <Label className="text-sm font-medium">כותרת הסרטון</Label>
+                                    <Input
+                                      value={formData.marketing_video_title || ""}
+                                      onChange={(e) => setFormData(prev => ({ ...prev, marketing_video_title: e.target.value }))}
+                                      placeholder="כותרת הסרטון להצגה באתר"
+                                      className="mt-1"
+                                    />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        // Show tabs for upload when no video exists
+                        <Tabs value={marketingVideoType} onValueChange={setMarketingVideoType} className="w-full">
+                          <TabsList className="grid w-full grid-cols-2">
+                            <TabsTrigger value="upload" className="flex items-center gap-2">
+                              <Upload className="w-4 h-4" />
+                              העלאת קובץ
+                            </TabsTrigger>
+                            <TabsTrigger value="youtube" className="flex items-center gap-2">
+                              <LinkIcon className="w-4 h-4" />
+                              יוטיוב
+                            </TabsTrigger>
+                          </TabsList>
+
+                          <TabsContent value="upload" className="space-y-3 mt-4">
+                            <div>
+                              <Label className="text-sm font-medium">העלאת קובץ וידיאו</Label>
+                              <div className="mt-1 space-y-2">
+                                <input
+                                  type="file"
+                                  accept="video/*"
+                                  onChange={(e) => handleFileUpload(e, 'marketing_video')}
+                                  className="hidden"
+                                  id="marketing-video-upload"
+                                />
+                                <label
+                                  htmlFor="marketing-video-upload"
+                                  className="flex items-center justify-center w-full p-4 border-2 border-dashed border-blue-300 rounded-lg cursor-pointer hover:border-blue-400 transition-colors bg-white"
+                                >
+                                  {uploadStates.marketing_video ? (
+                                    <div className="flex items-center gap-2 text-blue-600">
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                      מעלה... {uploadProgress.marketing_video ? `${uploadProgress.marketing_video}%` : ''}
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center gap-2 text-blue-600">
+                                      <Upload className="w-4 h-4" />
+                                      לחץ לבחירת קובץ וידיאו
+                                    </div>
+                                  )}
+                                </label>
+                                <div className="text-xs text-gray-500">
+                                  תומך בכל פורמטי הוידיאו הנפוצים (MP4, MOV, AVI וכו')
+                                </div>
+                              </div>
+                            </div>
+                          </TabsContent>
+
+                          <TabsContent value="youtube" className="space-y-3 mt-4">
+                            <div>
+                              <Label className="text-sm font-medium">מזהה סרטון יוטיוב</Label>
+                              <Input
+                                value={formData.youtube_video_id || ""}
+                                onChange={(e) => {
+                                  const input = e.target.value;
+                                  const extractedId = extractYouTubeId(input);
+                                  setFormData(prev => ({ ...prev, youtube_video_id: extractedId || input }));
+                                }}
+                                placeholder="הדבק כל קישור יוטיוב או מזהה וידיאו"
+                                className="mt-1"
+                              />
+                              <div className="text-xs text-gray-500 mt-1">
+                                הדבק כל קישור יוטיוב והמערכת תחלץ את מזהה הוידיאו אוטומטית
+                              </div>
+                            </div>
+                            <div>
+                              <Label className="text-sm font-medium">כותרת הסרטון</Label>
+                              <Input
+                                value={formData.youtube_video_title || ""}
+                                onChange={(e) => setFormData(prev => ({ ...prev, youtube_video_title: e.target.value }))}
+                                placeholder="כותרת הסרטון להצגה באתר"
+                                className="mt-1"
+                              />
+                            </div>
+
+                            {/* YouTube Video Preview */}
+                            {formData.youtube_video_id && formData.youtube_video_id.trim() && (
+                              <div className="mt-4">
+                                <Label className="text-sm font-medium text-blue-700 mb-2 block">תצוגה מקדימה:</Label>
+                                <div className="bg-white p-2 rounded border">
+                                  <iframe
+                                    width="100%"
+                                    height="200"
+                                    src={`https://www.youtube.com/embed/${formData.youtube_video_id.trim()}?controls=1&showinfo=0&rel=0`}
+                                    title={formData.youtube_video_title || "YouTube Video Preview"}
+                                    frameBorder="0"
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                    allowFullScreen
+                                    className="rounded"
+                                  />
+                                  {formData.youtube_video_title && (
+                                    <p className="text-sm text-gray-600 mt-2 font-medium">
+                                      {formData.youtube_video_title}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </TabsContent>
+                        </Tabs>
+                      )}
+                    </div>
                   </div>
 
                   {/* Access Settings Section */}
@@ -1021,7 +1469,7 @@ export default function ProductModal({
                           onCheckedChange={(checked) => {
                             setFormData(prev => ({
                               ...prev,
-                              access_days: checked ? null : 30
+                              access_days: checked ? "" : "30"
                             }));
                           }}
                         />
@@ -1030,10 +1478,10 @@ export default function ProductModal({
                         <Label className="text-sm">ימי גישה (השאר ריק לברירת מחדל)</Label>
                         <Input
                           type="number"
-                          value={formData.access_days === null ? "" : formData.access_days}
+                          value={formData.access_days}
                           onChange={(e) => setFormData(prev => ({
                             ...prev,
-                            access_days: e.target.value === "" ? null : parseInt(e.target.value) || 0
+                            access_days: e.target.value
                           }))}
                           disabled={isLifetimeAccess(formData.access_days)}
                           placeholder="השאר ריק לברירת מחדל"
@@ -1058,18 +1506,24 @@ export default function ProductModal({
                 </CardContent>
               </Card>
 
-              {/* Product Type Specific Sections */}
+              {/* Product Type Specific Section */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <BookOpen className="w-5 h-5" />
+                    שדות ספציפיים לסוג המוצר - {getProductTypeName(formData.product_type, 'singular')}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-6">
               
-              {/* File-specific fields */}
-              {formData.product_type === 'file' && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-purple-900 flex items-center gap-2">
-                      <FileText className="w-5 h-5" />
-                      הגדרות {getProductTypeName('file', 'singular')}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
+                    {/* File-specific fields */}
+                    {formData.product_type === 'file' && (
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-semibold text-purple-900 flex items-center gap-2">
+                          <FileText className="w-5 h-5" />
+                          הגדרות {getProductTypeName('file', 'singular')}
+                        </h3>
                     <div className="space-y-2">
                       <Label className="text-sm font-medium">העלאת {getProductTypeName('file', 'singular')}</Label>
 
@@ -1116,7 +1570,16 @@ export default function ProductModal({
                         {(formData.file_url && !uploadStates.file) && (
                           <div className="flex items-center gap-2 mt-2">
                             <Download className="w-4 h-4 text-green-600 flex-shrink-0" />
-                            <span className="text-sm text-green-700">קובץ הועלה בהצלחה</span>
+                            <span className="text-sm text-green-700">
+                              {(() => {
+                                try {
+                                  const fileName = formData.file_url.split('/').pop() || 'קובץ הועלה בהצלחה';
+                                  return fileName.length > 30 ? fileName.substring(0, 30) + '...' : fileName;
+                                } catch {
+                                  return 'קובץ הועלה בהצלחה';
+                                }
+                              })()}
+                            </span>
                             <Button
                               type="button"
                               variant="outline"
@@ -1140,6 +1603,80 @@ export default function ProductModal({
                       </div>
                     </div>
 
+                    {/* Preview File Upload */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">קובץ תצוגה מקדימה (אופציונלי)</Label>
+
+                      <div className="space-y-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="file"
+                              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.webp,.zip"
+                              onChange={(e) => handleFileUpload(e, 'preview')}
+                              disabled={uploadStates.preview || !editingProduct}
+                              className="w-full sm:w-auto"
+                            />
+                            {uploadStates.preview && (
+                              <div className="flex items-center gap-2">
+                                <Loader2 className="w-4 h-4 animate-spin text-blue-600 flex-shrink-0" />
+                                <span className="text-sm font-medium text-blue-600">
+                                  {uploadProgress.preview || 0}%
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Progress Bar for Preview Upload */}
+                        {uploadStates.preview && uploadProgress.preview < 100 && (
+                          <div className="space-y-2">
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-gray-600">מעלה קובץ תצוגה מקדימה...</span>
+                              <span className="text-sm font-medium text-blue-600">
+                                {uploadProgress.preview || 0}%
+                              </span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div
+                                className="bg-blue-600 h-2 rounded-full transition-all duration-300 ease-out"
+                                style={{ width: `${uploadProgress.preview || 0}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Display current preview file URL */}
+                        {(formData.preview_file_url && !uploadStates.preview) && (
+                          <div className="flex items-center gap-2 mt-2">
+                            <Download className="w-4 h-4 text-green-600 flex-shrink-0" />
+                            <span className="text-sm text-green-700">
+                              תצוגה מקדימה: {(() => {
+                                try {
+                                  const fileName = formData.preview_file_url.split('/').pop() || 'קובץ';
+                                  return fileName.length > 25 ? fileName.substring(0, 25) + '...' : fileName;
+                                } catch {
+                                  return 'קובץ תצוגה מקדימה';
+                                }
+                              })()}
+                            </span>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDeleteFile('preview')}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        )}
+
+                        <div className="text-xs text-gray-500 mt-2">
+                          קובץ תצוגה מקדימה יאפשר למשתמשים לראות חלק מהתוכן לפני הרכישה
+                        </div>
+                      </div>
+                    </div>
+
                     {/* File type is auto-detected from uploaded file, no manual selection needed */}
                     {formData.file_type && (
                       <div className="space-y-2">
@@ -1157,20 +1694,16 @@ export default function ProductModal({
                         </div>
                       </div>
                     )}
-                  </CardContent>
-                </Card>
-              )}
+                      </div>
+                    )}
 
-              {/* Workshop specific fields */}
-              {formData.product_type === 'workshop' && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-blue-900 flex items-center gap-2">
-                      <Calendar className="w-5 h-5" />
-                      הגדרות ${getProductTypeName('workshop', 'singular')}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
+                    {/* Workshop specific fields */}
+                    {formData.product_type === 'workshop' && (
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-semibold text-blue-900 flex items-center gap-2">
+                          <Calendar className="w-5 h-5" />
+                          הגדרות {getProductTypeName('workshop', 'singular')}
+                        </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                       <div>
                         <Label className="text-sm font-medium">סוג ה${getProductTypeName('workshop', 'singular')}</Label>
@@ -1332,7 +1865,16 @@ export default function ProductModal({
                             {(formData.video_file_url && !uploadStates.workshop_video) && (
                               <div className="flex items-center gap-2 mt-2">
                                 <Play className="w-4 h-4 text-green-600 flex-shrink-0" />
-                                <span className="text-sm text-gray-600">וידיאו הועלה</span>
+                                <span className="text-sm text-gray-600">
+                                  וידיאו: {(() => {
+                                    try {
+                                      const fileName = formData.video_file_url.split('/').pop() || 'וידיאו';
+                                      return fileName.length > 25 ? fileName.substring(0, 25) + '...' : fileName;
+                                    } catch {
+                                      return 'וידיאו הועלה';
+                                    }
+                                  })()}
+                                </span>
                                 <Button
                                   type="button"
                                   variant="outline"
@@ -1356,20 +1898,16 @@ export default function ProductModal({
                         </div>
                       </div>
                     )}
-                  </CardContent>
-                </Card>
-              )}
+                      </div>
+                    )}
 
-              {/* Course modules */}
-              {formData.product_type === 'course' && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-green-900 flex items-center gap-2">
-                      <BookOpen className="w-5 h-5" />
-                      מודולי ה${getProductTypeName('course', 'singular')}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
+                    {/* Course modules */}
+                    {formData.product_type === 'course' && (
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-semibold text-green-900 flex items-center gap-2">
+                          <BookOpen className="w-5 h-5" />
+                          מודולי ה{getProductTypeName('course', 'singular')}
+                        </h3>
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                       <span className="text-lg font-semibold">מודולי ה${getProductTypeName('course', 'singular')}</span>
                       <Button type="button" variant="outline" onClick={addModule} className="w-full sm:w-auto">
@@ -1472,7 +2010,16 @@ export default function ProductModal({
                                   {(module.video_url && !uploadStates[`module_${index}_video`] && module.video_is_private) && (
                                     <div className="flex items-center gap-2 mt-2">
                                       <Play className="w-4 h-4 text-green-600 flex-shrink-0" />
-                                      <span className="text-sm text-gray-600">וידיאו הועלה</span>
+                                      <span className="text-sm text-gray-600">
+                                        וידיאו: {(() => {
+                                          try {
+                                            const fileName = module.video_url.split('/').pop() || 'וידיאו';
+                                            return fileName.length > 20 ? fileName.substring(0, 20) + '...' : fileName;
+                                          } catch {
+                                            return 'וידיאו הועלה';
+                                          }
+                                        })()}
+                                      </span>
                                       <Button
                                         type="button"
                                         variant="outline"
@@ -1543,7 +2090,16 @@ export default function ProductModal({
                             {module.material_url && (
                               <div className="flex items-center gap-2">
                                 <Download className="w-4 h-4 text-blue-600 flex-shrink-0" />
-                                <span className="text-sm text-gray-600">חומר הועלה</span>
+                                <span className="text-sm text-gray-600">
+                                  חומר: {(() => {
+                                    try {
+                                      const fileName = module.material_url.split('/').pop() || 'חומר';
+                                      return fileName.length > 20 ? fileName.substring(0, 20) + '...' : fileName;
+                                    } catch {
+                                      return 'חומר הועלה';
+                                    }
+                                  })()}
+                                </span>
                                 <Button
                                   type="button"
                                   variant="outline"
@@ -1558,9 +2114,26 @@ export default function ProductModal({
                         </div>
                       </Card>
                     ))}
-                  </CardContent>
-                </Card>
-              )}
+                      </div>
+                    )}
+
+                    {/* Tool-specific fields */}
+                    {formData.product_type === 'tool' && (
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-semibold text-orange-900 flex items-center gap-2">
+                          <FileText className="w-5 h-5" />
+                          הגדרות {getProductTypeName('tool', 'singular')}
+                        </h3>
+                        <div className="p-4 border rounded-lg bg-orange-50">
+                          <p className="text-sm text-orange-700">
+                            כלים משתמשים באותם שדות כמו קבצים. ניתן להעלות קבצים, הוסיף תיאור ותמונה.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           )}
         </div>
@@ -1571,7 +2144,11 @@ export default function ProductModal({
             <Button variant="outline" onClick={handleCancel} className="order-2 sm:order-1">
               ביטול
             </Button>
-            <Button onClick={handleSave} className="order-1 sm:order-2">
+            <Button 
+              onClick={handleSave} 
+              className="order-1 sm:order-2"
+              disabled={isSaving || isLoadingData}
+            >
               <Save className="w-4 h-4 ml-2" />
               {editingProduct ? 'עדכן מוצר' : 'צור מוצר'}
             </Button>

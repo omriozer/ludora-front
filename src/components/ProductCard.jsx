@@ -139,11 +139,31 @@ export default function ProductCard({
               <span className="text-gray-700">{product.target_audience}</span>
             </div>
           )}
+
+          {product.difficulty_level && (
+            <div className="flex items-center gap-2">
+              <Star className="w-4 h-4 text-gray-400" />
+              <span className="text-gray-700">
+                {product.difficulty_level === 'beginner' && 'מתחילים'}
+                {product.difficulty_level === 'intermediate' && 'בינוני'}
+                {product.difficulty_level === 'advanced' && 'מתקדמים'}
+              </span>
+            </div>
+          )}
+
+          {product.youtube_video_id && (
+            <div className="flex items-center gap-2">
+              <Youtube className="w-4 h-4 text-red-500" />
+              <span className="text-red-600 text-sm">
+                {product.youtube_video_title || 'סרטון הסבר'}
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center justify-between pt-4 border-t">
           <div className="text-xl font-bold text-blue-600">
-            {formatPriceSimple(product.price, !product.original_price && product.price === 0)}
+            {formatPriceSimple(product.price, (!product.original_price && product.original_price !== 0) && product.price === 0)}
           </div>
 
           <div className="flex gap-2">

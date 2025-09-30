@@ -9,17 +9,38 @@ expect.extend({});
 // Mock Firebase before importing it anywhere
 global.fetch = fetch;
 
-// Mock environment variables
+// Mock environment variables - use same logic as main application
+const getApiBase = () => {
+  const apiBase = import.meta.env.VITE_API_BASE;
+  if (apiBase) {
+    return apiBase;
+  }
+  // Fallback for tests
+  const port = import.meta.env.VITE_API_PORT || '3003';
+  return `http://localhost:${port}/api`;
+};
+
+const testApiBase = getApiBase();
+const testPort = import.meta.env.VITE_API_PORT || '3003';
+
 Object.defineProperty(window, 'location', {
   value: {
-    href: 'http://localhost:3003',
-    origin: 'http://localhost:3003',
+    href: `http://localhost:${testPort}`,
+    origin: `http://localhost:${testPort}`,
     pathname: '/',
     search: '',
     hash: '',
   },
   writable: true,
 });
+
+// Mock VITE_API_BASE for testing
+if (!import.meta.env.VITE_API_BASE) {
+  Object.defineProperty(import.meta.env, 'VITE_API_BASE', {
+    value: testApiBase,
+    writable: true,
+  });
+}
 
 // Mock ResizeObserver
 global.ResizeObserver = class ResizeObserver {

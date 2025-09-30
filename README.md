@@ -64,7 +64,7 @@ Create a `.env` file with:
 
 ```bash
 # API Configuration
-VITE_API_URL=http://localhost:3001
+VITE_API_PORT=3000
 
 # Firebase Authentication
 VITE_FIREBASE_API_KEY=your-api-key

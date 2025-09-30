@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Play, Pause, Volume2, VolumeX, Maximize, SkipBack, SkipForward, AlertCircle } from 'lucide-react';
 import logoSm from '../assets/images/logo_sm.png';
 import { clog, cerror } from '@/lib/utils';
 import { toast } from '@/components/ui/use-toast';
+import { getApiBase } from '@/utils/api.js';
 
 // Utility function to detect YouTube URLs
 const isYouTubeUrl = (url) => {
@@ -21,8 +22,37 @@ const getYouTubeId = (url) => {
 // Check if URL is a supported video format for direct streaming
 const isSupportedVideoFormat = (url) => {
   if (!url) return false;
+
+  // Check for direct file extensions in URL
   const supportedFormats = ['.mp4', '.webm', '.ogg', '.m3u8'];
-  return supportedFormats.some(format => url.toLowerCase().includes(format));
+  const hasExtension = supportedFormats.some(format => url.toLowerCase().includes(format));
+
+  // If it has a supported extension, it's supported
+  if (hasExtension) return true;
+
+  // Check for our API streaming endpoints
+  if (url.includes('/stream-marketing-video/') || url.includes('/stream-video/')) {
+    return true;
+  }
+
+  // For uploaded files from cloud storage (S3, etc.) that may not have extensions in URL,
+  // assume they are supported video files if they come from our upload endpoints
+  if (url.includes('/videos/') || url.includes('ludora-files') || url.includes('amazonaws.com')) {
+    return true;
+  }
+
+  return false;
+};
+
+// Check if URL is a public marketing video (no authentication required)
+const isPublicMarketingVideo = (url) => {
+  if (!url) return false;
+
+  // Check for public marketing video patterns
+  return url.includes('/public/marketing/') ||
+         url.includes('/stream-marketing-video/') || // Add our streaming endpoint
+         (url.includes('ludora-files') && url.includes('/public/')) ||
+         (url.includes('amazonaws.com') && url.includes('/public/'));
 };
 
 // Check if URL is a local file that needs secure streaming
@@ -37,7 +67,8 @@ const SecureVideoPlayer = ({
   title = "Video Player",
   onError = () => {},
   className = "",
-  autoPlay = false
+  autoPlay = false,
+  contentType = null // 'marketing', 'content', etc.
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -47,13 +78,32 @@ const SecureVideoPlayer = ({
   const [isLoading, setIsLoading] = useState(true);
   const [authenticatedVideoUrl, setAuthenticatedVideoUrl] = useState(null);
   const [bufferedRanges, setBufferedRanges] = useState([]);
+  const [retryCount, setRetryCount] = useState(0);
+  const [isRetrying, setIsRetrying] = useState(false);
   const videoRef = useRef(null);
 
   // Determine video type
   const videoType = React.useMemo(() => {
     if (!videoUrl) return 'none';
     if (isYouTubeUrl(videoUrl)) return 'youtube';
-    if (isSupportedVideoFormat(videoUrl) || videoUrl.includes('/api/media/video/')) return 'video';
+
+    // Check for API video endpoints first (these are always supported)
+    if (videoUrl.includes('/api/media/video/') || 
+        videoUrl.includes('/api/file/') || 
+        videoUrl.includes('/api/videos/') ||
+        videoUrl.includes('/files/stream-marketing-video/') ||
+        videoUrl.includes('/files/stream-video/')) {
+      console.log(`🎥 SecureVideoPlayer: Detected API video endpoint: ${videoUrl}`);
+      return 'video';
+    }
+
+    // Check for direct video file formats
+    if (isSupportedVideoFormat(videoUrl)) {
+      console.log(`🎥 SecureVideoPlayer: Detected supported video format: ${videoUrl}`);
+      return 'video';
+    }
+
+    console.warn(`❌ SecureVideoPlayer: Unsupported video URL: ${videoUrl}`);
     return 'unsupported';
   }, [videoUrl]);
 
@@ -68,14 +118,59 @@ const SecureVideoPlayer = ({
   useEffect(() => {
     if (!videoUrl) return;
 
-    if (videoUrl.includes('/api/media/video/')) {
+    // Check if this is a public marketing video (no authentication needed)
+    if (isPublicMarketingVideo(videoUrl) || contentType === 'marketing') {
+      cerror('🎬 Public marketing video detected, no authentication required:', {
+        videoUrl,
+        contentType,
+        isPublicPattern: isPublicMarketingVideo(videoUrl),
+        finalUrl: videoUrl
+      });
+
+      // For marketing videos with internal API URLs, they should use direct S3 URLs instead
+      if (contentType === 'marketing' && videoUrl.includes('/api/videos/')) {
+        clog('⚠️ Marketing video using internal API URL - should use direct S3 URL instead:', {
+          videoUrl,
+          contentType,
+          note: 'This suggests the video was uploaded with old system or misconfigured'
+        });
+
+        // For now, still process it but log the issue
+        // In the future, marketing videos should always use direct S3 URLs
+        setAuthenticatedVideoUrl(videoUrl);
+        return;
+      }
+
+      // Set the URL directly without any authentication
+      setAuthenticatedVideoUrl(videoUrl);
+      cerror('✅ Marketing video URL set directly:', videoUrl);
+      return;
+    }
+
+    if (videoUrl.includes('/api/media/video/') || videoUrl.includes('/api/file/') || videoUrl.includes('/api/videos/') || videoUrl.includes('/api/files/stream-video/')) {
       // For secure API endpoints, add authentication token
       const token = localStorage.getItem('authToken');
       if (token) {
-        // If videoUrl is already a full URL, use it directly, otherwise resolve it
-        const url = videoUrl.startsWith('http')
-          ? new URL(videoUrl)
-          : new URL(videoUrl, window.location.origin);
+        // For relative URLs in development, keep them relative to use vite proxy
+        if (!videoUrl.startsWith('http') && import.meta.env.DEV) {
+          // Keep relative for proxy in development - just add auth token as query param
+          const separator = videoUrl.includes('?') ? '&' : '?';
+          const authenticatedPath = `${videoUrl}${separator}authToken=${token}`;
+          setAuthenticatedVideoUrl(authenticatedPath);
+          return;
+        }
+
+        // For absolute URLs or production, handle normally
+        let url;
+        if (videoUrl.startsWith('http')) {
+          url = new URL(videoUrl);
+        } else {
+          // For relative URLs in production, we should use the API base URL, not frontend origin
+          const apiBase = getApiBase();
+          // Remove /api suffix if present since videoUrl already includes it
+          const baseUrl = apiBase.endsWith('/api') ? apiBase.slice(0, -4) : apiBase;
+          url = new URL(videoUrl, baseUrl);
+        }
         url.searchParams.set('authToken', token);
         const finalUrl = url.toString();
 
@@ -84,7 +179,7 @@ const SecureVideoPlayer = ({
           clog('🎬 SecureVideoPlayer URL processing:', {
             inputVideoUrl: videoUrl,
             isFullUrl: videoUrl.startsWith('http'),
-            baseUrl: videoUrl.startsWith('http') ? 'N/A (full URL)' : window.location.origin,
+            baseUrl: videoUrl.startsWith('http') ? 'N/A (full URL)' : getApiBase(),
             finalUrl,
             tokenType: token === 'token_dev' ? 'dev' : 'jwt'
           });
@@ -214,6 +309,73 @@ const SecureVideoPlayer = ({
     }
   };
 
+  const testVideoCodec = useCallback(async () => {
+    if (!authenticatedVideoUrl) return false;
+    
+    try {
+      // Test if browser can play the video
+      const testVideo = document.createElement('video');
+      testVideo.preload = 'metadata';
+      testVideo.muted = true; // Mute to avoid audio issues
+      
+      return new Promise((resolve) => {
+        const timeout = setTimeout(() => {
+          cerror('Video codec test timed out');
+          resolve(false);
+        }, 5000);
+        
+        testVideo.addEventListener('loadedmetadata', () => {
+          clearTimeout(timeout);
+          cerror('✅ Video metadata loaded successfully - codec appears compatible');
+          resolve(true);
+        });
+        
+        testVideo.addEventListener('error', (e) => {
+          clearTimeout(timeout);
+          cerror('❌ Video codec test failed:', e.target?.error);
+          resolve(false);
+        });
+        
+        testVideo.src = authenticatedVideoUrl;
+      });
+    } catch (error) {
+      cerror('Video codec test error:', error);
+      return false;
+    }
+  }, [authenticatedVideoUrl]);
+
+  const retryVideo = useCallback(async () => {
+    if (retryCount >= 2) {
+      cerror('Maximum retry attempts reached');
+      return;
+    }
+
+    setIsRetrying(true);
+    setError(null);
+    setRetryCount(prev => prev + 1);
+
+    // Wait a moment before retrying
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    if (videoRef.current && authenticatedVideoUrl) {
+      try {
+        // On retry, try muted playback to avoid audio codec issues
+        if (retryCount >= 0) {
+          videoRef.current.muted = true;
+          cerror('🔇 Retrying with muted audio to bypass audio codec issues');
+        }
+        
+        // Just reload without clearing src to preserve streaming
+        videoRef.current.load();
+        
+      } catch (error) {
+        cerror('Error during video retry:', error);
+      }
+    }
+
+    setIsRetrying(false);
+  }, [retryCount, authenticatedVideoUrl]);
+
   const handleError = (e) => {
     cerror('Video error:', e);
     cerror('Video player error:', e.target?.error);
@@ -248,7 +410,26 @@ const SecureVideoPlayer = ({
       }
     }
 
-    setError('שגיאה בטעינת הווידאו');
+    // Handle specific error types
+    const errorCode = e.target?.error?.code;
+    
+    // Only retry on decode errors, not network or loading errors
+    if (errorCode === 3 && retryCount < 1) { // MEDIA_ERR_DECODE - only 1 retry
+      cerror(`🔄 Decode error - attempting muted retry ${retryCount + 1}/1`);
+      retryVideo();
+      return;
+    }
+    
+    // Don't retry on network errors or src issues - let streaming handle it naturally
+    if (errorCode === 3) { // MEDIA_ERR_DECODE
+      setError('בעיה בקידוד הווידאו - נסה עם שמע מושתק');
+    } else if (errorCode === 2) { // MEDIA_ERR_NETWORK  
+      setError('שגיאת רשת - בדוק את החיבור לאינטרנט');
+    } else if (errorCode === 4) { // MEDIA_ERR_SRC_NOT_SUPPORTED
+      setError('פורמט הווידאו לא נתמך בדפדפן זה');
+    } else {
+      setError('שגיאה בהשמעת הווידאו');
+    }
     setIsLoading(false);
 
     // Show user-friendly error message
@@ -351,26 +532,40 @@ const SecureVideoPlayer = ({
   // Custom secure video player
   return (
     <div className={`relative bg-black rounded-lg overflow-hidden ${className}`}>
-      {error && (
+      {error && !isRetrying && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-900 text-white z-10">
           <div className="text-center">
             <AlertCircle className="w-12 h-12 mx-auto mb-4 text-red-400" />
-            <p>{error}</p>
+            <p className="mb-4">{error}</p>
+            {retryCount < 2 && (
+              <button
+                onClick={retryVideo}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white text-sm transition-colors"
+              >
+                נסה שוב
+              </button>
+            )}
+            {retryCount >= 2 && (
+              <p className="text-sm text-gray-400">
+                לא הצלחנו להשמיע את הווידאו לאחר מספר ניסיונות
+              </p>
+            )}
           </div>
         </div>
       )}
 
-      {isLoading && !error && (
+      {(isLoading || isRetrying) && !error && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-900 text-white z-10">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-            <p>טוען ווידאו...</p>
+            <p>{isRetrying ? `מנסה שוב... (${retryCount + 1}/3)` : 'טוען ווידאו...'}</p>
           </div>
         </div>
       )}
 
       <video
         ref={videoRef}
+        src={authenticatedVideoUrl || ''}
         className="w-full h-full"
         onPlay={() => setIsPlaying(true)}
         onPause={() => setIsPlaying(false)}
@@ -379,10 +574,30 @@ const SecureVideoPlayer = ({
         onError={handleError}
         onLoadStart={() => setIsLoading(true)}
         onCanPlay={() => setIsLoading(false)}
-        preload="metadata"
-        autoPlay={autoPlay}
+        onLoadedData={() => {
+          cerror('✅ Video data loaded successfully');
+        }}
+        onSuspend={() => {
+          // Handle network suspension - normal for streaming
+          clog('Video suspended - buffering or network pause (normal for streaming)');
+        }}
+        onStalled={() => {
+          // Handle stalled playback - normal for streaming
+          clog('Video stalled - waiting for more data (normal for streaming)');
+        }}
+        onWaiting={() => {
+          // Handle waiting for data - normal for streaming
+          clog('Video waiting for data - buffering (normal for streaming)');
+        }}
+        onCanPlayThrough={() => {
+          // Video can play through without stopping
+          cerror('✅ Video can play through - sufficient buffering');
+          setIsLoading(false);
+        }}
+        preload="metadata" // Only load metadata initially to support streaming
+        autoPlay={false} // Let user control playback
         playsInline
-        crossOrigin="anonymous"
+        muted={false} // Start unmuted, will be muted on retry if needed
         // Security attributes
         controlsList="nodownload noremoteplayback"
         disablePictureInPicture
@@ -392,16 +607,6 @@ const SecureVideoPlayer = ({
           WebkitUserSelect: 'none'
         }}
       >
-        {/* Use authenticated URL for secure endpoints */}
-        {authenticatedVideoUrl && (
-          <source src={authenticatedVideoUrl} type="video/mp4" />
-        )}
-        {authenticatedVideoUrl && authenticatedVideoUrl.includes('.webm') && (
-          <source src={authenticatedVideoUrl} type="video/webm" />
-        )}
-        {authenticatedVideoUrl && authenticatedVideoUrl.includes('.ogg') && (
-          <source src={authenticatedVideoUrl} type="video/ogg" />
-        )}
         דפדפן זה אינו תומך בהשמעת וידאו
       </video>
 
