@@ -11,8 +11,9 @@ import { clog, cerror } from '@/lib/utils';
  * Handles both free and paid product access
  * - Free products: Auto-creates purchase and redirects to product details
  * - Paid products: Redirects to purchase page
+ * - Shows access status if product is already purchased
  *
- * @param {object} product - The product object
+ * @param {object} product - The product object (includes purchase if exists)
  * @param {string} className - Additional CSS classes
  * @param {string} size - Button size variant
  * @param {boolean} fullWidth - Whether button should be full width
@@ -27,6 +28,9 @@ export default function GetAccessButton({
 }) {
   const navigate = useNavigate();
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Check if user already has access
+  const hasAccess = product?.purchase && product.purchase.payment_status === 'completed';
 
   const handleGetAccess = async () => {
     if (!product) {
@@ -141,6 +145,25 @@ export default function GetAccessButton({
   };
 
   const isFree = parseFloat(product?.price || 0) === 0;
+
+  // If user already has access, show different button
+  if (hasAccess) {
+    const productType = product.product_type || 'file';
+    return (
+      <Button
+        onClick={() => navigate(`/product-details/${productType}/${product.id}`)}
+        className={`group relative overflow-hidden bg-gradient-to-r from-green-500 via-green-600 to-emerald-600 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 text-white font-bold rounded-full shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 border-2 border-green-400/20 ${fullWidth ? 'w-full' : ''} ${className}`}
+        size={size}
+      >
+        <span className="relative z-10 flex items-center justify-center gap-2 sm:gap-3">
+          <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6" />
+          <span>יש לך גישה - לצפייה</span>
+        </span>
+        <div className="absolute inset-0 bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+        <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 animate-pulse"></div>
+      </Button>
+    );
+  }
 
   return (
     <Button

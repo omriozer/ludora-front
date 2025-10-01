@@ -47,7 +47,6 @@ export default function Files() {
   const [categories, setCategories] = useState([]);
   const [filteredFileProducts, setFilteredFileProducts] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
-  const [userPurchases, setUserPurchases] = useState([]);
   const [settings, setSettings] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState(null);
@@ -184,13 +183,8 @@ export default function Files() {
         return;
       }
 
-      let purchases = [];
-      if (tempCurrentUser) {
-        purchases = await Purchase.filter({ buyer_user_id: tempCurrentUser.id, payment_status: 'paid' });
-        setUserPurchases(purchases);
-      }
-
       // Load file products and categories using new endpoint
+      // Products now include purchase data from the API
       const [fileProductsData, categoriesData] = await Promise.all([
         apiRequest(`/entities/products/list?product_type=file&is_published=true&sort_by=${sortBy}&sort_order=${sortOrder}`),
         Category.find({})
@@ -365,7 +359,6 @@ export default function Files() {
                 <FileCard
                   key={fileProduct.id}
                   file={fileProduct}
-                  userPurchases={userPurchases}
                   onPurchase={handlePurchase}
                   onEdit={handleEdit}
                   fileTexts={fileTexts}
@@ -399,7 +392,7 @@ export default function Files() {
   );
 }
 
-function FileCard({ file, userPurchases, onPurchase, onEdit, fileTexts, currentUser }) {
+function FileCard({ file, onPurchase, onEdit, fileTexts, currentUser }) {
   const navigate = useNavigate();
 
   const fileTypeIcons = {
@@ -477,7 +470,7 @@ function FileCard({ file, userPurchases, onPurchase, onEdit, fileTexts, currentU
           {/* Access status */}
           <FileAccessStatus
             file={{ ...file, id: file.entity_id }}
-            userPurchases={userPurchases}
+            userPurchases={[]}
             variant="files"
           />
 
