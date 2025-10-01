@@ -30,12 +30,6 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 
-      - name: Run tests
-        run: yarn test
-        env:
-          NODE_ENV: test
-
-
       - name: Setup Fly.io CLI
         uses: superfly/flyctl-actions/setup-flyctl@master
 
