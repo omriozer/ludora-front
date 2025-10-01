@@ -752,35 +752,25 @@ export default function ProductDetails() {
           )}
         </div>
 
-        {/* Marketing Video - YouTube or Uploaded - Only show if video exists */}
-        {(item.youtube_video_id || item.marketing_video_title) && (
+        {/* Marketing Video - YouTube only (uploaded videos need separate handling) */}
+        {item.youtube_video_id && (
           <Card className="mb-6 sm:mb-8 shadow-xl bg-white/90 backdrop-blur-xl border-0 rounded-2xl sm:rounded-3xl overflow-hidden">
             <CardContent className="p-4 sm:p-6 md:p-8">
-              {(item.youtube_video_title || item.marketing_video_title) && (
+              {item.youtube_video_title && (
                 <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-center text-gray-900">
-                  {item.youtube_video_title || item.marketing_video_title}
+                  {item.youtube_video_title}
                 </h3>
               )}
               <div className="aspect-video rounded-lg sm:rounded-2xl overflow-hidden shadow-xl sm:shadow-2xl">
-                {item.youtube_video_id ? (
-                  <iframe
-                    width="100%"
-                    height="100%"
-                    src={`https://www.youtube.com/embed/${item.youtube_video_id}`}
-                    title="YouTube video player"
-                    style={{ border: 0 }}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  ></iframe>
-                ) : (
-                  <VideoPlayer
-                    file_uri={`/api/media/marketing-video/${item.product_type}/${item.entity_id || item.id}`}
-                    product_id={item.id}
-                    title={item.marketing_video_title || item.title}
-                    className="w-full h-full"
-                    is_private={false}
-                  />
-                )}
+                <iframe
+                  width="100%"
+                  height="100%"
+                  src={`https://www.youtube.com/embed/${item.youtube_video_id}`}
+                  title={item.youtube_video_title || "YouTube video player"}
+                  style={{ border: 0 }}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                ></iframe>
               </div>
             </CardContent>
           </Card>
