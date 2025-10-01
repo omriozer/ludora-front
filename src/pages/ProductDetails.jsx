@@ -40,6 +40,7 @@ import GetFileButton from "@/components/files/GetFileButton";
 import FileAccessStatus from "@/components/files/FileAccessStatus";
 import { hasActiveAccess, getUserPurchaseForFile } from "@/components/files/fileAccessUtils";
 import { getApiBase, purchaseUtils } from "@/utils/api.js";
+import PriceDisplayTag from "@/components/ui/PriceDisplayTag";
 
 // Import modular components
 import ProductHeader from "@/components/product-details/ProductHeader";
@@ -489,15 +490,13 @@ export default function ProductDetails() {
 
                   {/* Price Badge */}
                   <div className="flex-shrink-0">
-                    {item.price === 0 ? (
-                      <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-2 rounded-full shadow-md">
-                        <span className="text-base font-bold">חינם!</span>
-                      </div>
-                    ) : (
-                      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-full shadow-md">
-                        <span className="text-base font-bold">₪{item.price}</span>
-                      </div>
-                    )}
+                    <PriceDisplayTag
+                      originalPrice={item.price}
+                      discount={item.discount}
+                      variant="badge"
+                      size="md"
+                      showDiscount={false}
+                    />
                   </div>
 
                   {/* Purchase Button - Unified Design */}
@@ -553,15 +552,13 @@ export default function ProductDetails() {
 
                 {/* Price Badge */}
                 <div className="absolute bottom-4 sm:bottom-6 right-4 sm:right-6">
-                  {item.price === 0 ? (
-                    <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-full shadow-xl">
-                      <span className="text-base sm:text-lg font-bold" dir="rtl">חינם!</span>
-                    </div>
-                  ) : (
-                    <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-full shadow-xl">
-                      <span className="text-base sm:text-lg font-bold">₪{item.price}</span>
-                    </div>
-                  )}
+                  <PriceDisplayTag
+                    originalPrice={item.price}
+                    discount={item.discount}
+                    variant="badge"
+                    size="lg"
+                    showDiscount={false}
+                  />
                 </div>
               </div>
 
@@ -663,15 +660,13 @@ export default function ProductDetails() {
                       {item.category}
                     </Badge>
                   )}
-                  {item.price === 0 ? (
-                    <Badge className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-3 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base font-bold rounded-full">
-                      חינם!
-                    </Badge>
-                  ) : (
-                    <Badge className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-3 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base font-bold rounded-full">
-                      ₪{item.price}
-                    </Badge>
-                  )}
+                  <PriceDisplayTag
+                    originalPrice={item.price}
+                    discount={item.discount}
+                    variant="badge"
+                    size="md"
+                    showDiscount={false}
+                  />
                 </div>
 
                 <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 sm:mb-6 leading-tight">

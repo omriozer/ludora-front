@@ -27,6 +27,7 @@ import { he } from "date-fns/locale";
 import { getText } from "../components/utils/getText";
 import { motion } from "framer-motion";
 import LudoraLoadingSpinner from "@/components/ui/LudoraLoadingSpinner";
+import PriceDisplayTag from "@/components/ui/PriceDisplayTag";
 
 export default function Workshops() {
   const navigate = useNavigate();
@@ -731,15 +732,13 @@ function WorkshopCard({ workshop, isPast = false, userPurchase, hasAccess, curre
 
           {/* Price badge */}
           <div className="absolute bottom-3 right-3">
-            {workshop.price === 0 || workshop.price === "0" ? (
-              <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-2 rounded-full shadow-lg">
-                <span className="text-base font-bold" dir="rtl">חינם!</span>
-              </div>
-            ) : (
-              <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-full shadow-lg">
-                <span className="text-base font-bold">₪{workshop.price}</span>
-              </div>
-            )}
+            <PriceDisplayTag
+              originalPrice={workshop.price}
+              discount={workshop.discount}
+              variant="badge"
+              size="md"
+              showDiscount={false}
+            />
           </div>
         </div>
 

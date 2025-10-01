@@ -36,6 +36,7 @@ import GetFileButton from "@/components/files/GetFileButton";
 import FileAccessStatus from "@/components/files/FileAccessStatus";
 import { hasActiveAccess, getUserPurchaseForFile } from "@/components/files/fileAccessUtils";
 import { formatPrice } from "@/lib/utils";
+import PriceDisplayTag from "@/components/ui/PriceDisplayTag";
 
 export default function Files() {
   const navigate = useNavigate();
@@ -396,9 +397,6 @@ export default function Files() {
 function FileCard({ file, userPurchases, onPurchase, onEdit, fileTexts, currentUser }) {
   const navigate = useNavigate();
 
-  // Format price using centralized utility
-  const priceInfo = formatPrice(file.price, file.original_price, !file.original_price && file.price === 0);
-
   const fileTypeIcons = {
     pdf: "📄",
     ppt: "📊", 
@@ -446,11 +444,15 @@ function FileCard({ file, userPurchases, onPurchase, onEdit, fileTexts, currentU
               {file.category}
             </Badge>
           </div>
-          {priceInfo.isFree && (
+          {file.price === 0 && (
             <div className="absolute top-3 left-3">
-              <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg animate-pulse">
-                {priceInfo.display}
-              </Badge>
+              <PriceDisplayTag
+                originalPrice={file.price}
+                discount={file.discount}
+                variant="badge"
+                size="sm"
+                className="animate-pulse"
+              />
             </div>
           )}
         </div>
@@ -525,32 +527,14 @@ function FileCard({ file, userPurchases, onPurchase, onEdit, fileTexts, currentU
           {/* Enhanced footer section with centered price and buttons */}
           <div className="pt-4 border-t mt-auto space-y-4">
             {/* Centered price section */}
-            <div className="text-center">
-              {priceInfo.isFree ? (
-                <div className="inline-flex items-center justify-center px-6 py-2 bg-gradient-to-r from-green-100 to-emerald-100 rounded-full">
-                  <span className="text-2xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
-                    {priceInfo.display}
-                  </span>
-                </div>
-              ) : (
-                <div className="space-y-1">
-                  <div className="inline-flex items-center justify-center px-6 py-2 bg-gradient-to-r from-purple-100 to-indigo-100 rounded-full">
-                    <span className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
-                      {priceInfo.display}
-                    </span>
-                  </div>
-                  {priceInfo.isDiscounted && (
-                    <div className="flex items-center justify-center gap-2 text-sm">
-                      <span className="text-gray-500 line-through">
-                        {priceInfo.originalPrice} ₪
-                      </span>
-                      <Badge className="bg-red-100 text-red-700 text-xs">
-                        חסכון {priceInfo.discountPercent}%
-                      </Badge>
-                    </div>
-                  )}
-                </div>
-              )}
+            <div className="flex justify-center">
+              <PriceDisplayTag
+                originalPrice={file.price}
+                discount={file.discount}
+                variant="gradient"
+                size="lg"
+                showDiscount={true}
+              />
             </div>
 
             {/* Centered buttons section */}
