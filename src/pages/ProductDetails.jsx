@@ -41,6 +41,7 @@ import FileAccessStatus from "@/components/files/FileAccessStatus";
 import { hasActiveAccess, getUserPurchaseForFile } from "@/components/files/fileAccessUtils";
 import { getApiBase, purchaseUtils } from "@/utils/api.js";
 import PriceDisplayTag from "@/components/ui/PriceDisplayTag";
+import GetAccessButton from "@/components/ui/GetAccessButton";
 
 // Import modular components
 import ProductHeader from "@/components/product-details/ProductHeader";
@@ -500,17 +501,11 @@ export default function ProductDetails() {
                   </div>
 
                   {/* Purchase Button - Unified Design */}
-                  <Button
-                    onClick={(itemType === 'file' || item.product_type === 'file') ? () => handleFileAccess(item) : handlePurchase}
-                    className="group relative overflow-hidden bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600 hover:from-blue-600 hover:via-indigo-600 hover:to-purple-600 text-white px-8 py-3 font-bold rounded-full shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 flex-shrink-0 border-2 border-blue-400/20"
-                  >
-                    <span className="relative z-10 flex items-center gap-2 text-base">
-                      <ShoppingCart className="w-5 h-5 group-hover:rotate-12 transition-transform duration-300" />
-                      <span>קבלת גישה</span>
-                    </span>
-                    <div className="absolute inset-0 bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                    <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 animate-pulse"></div>
-                  </Button>
+                  <GetAccessButton
+                    product={item}
+                    className="px-8 py-3 flex-shrink-0 text-base"
+                    size="default"
+                  />
                 </div>
               </div>
             </div>
@@ -628,18 +623,12 @@ export default function ProductDetails() {
                       {getAccessButtonText()}
                     </Button>
                   ) : (
-                    <Button
-                      onClick={(itemType === 'file' || item.product_type === 'file') ? () => handleFileAccess(item) : handlePurchase}
-                      className="group relative overflow-hidden w-full bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600 hover:from-blue-600 hover:via-indigo-600 hover:to-purple-600 text-white py-3 sm:py-4 font-bold rounded-full shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 border-2 border-blue-400/20"
+                    <GetAccessButton
+                      product={item}
+                      className="py-3 sm:py-4 text-base sm:text-lg"
                       size="lg"
-                    >
-                      <span className="relative z-10 flex items-center justify-center gap-2 sm:gap-3 text-base sm:text-lg">
-                        <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6 group-hover:rotate-12 transition-transform duration-300" />
-                        <span>קבלת גישה</span>
-                      </span>
-                      <div className="absolute inset-0 bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                      <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 animate-pulse"></div>
-                    </Button>
+                      fullWidth={true}
+                    />
                   )}
                 </div>
               </div>
@@ -733,18 +722,12 @@ export default function ProductDetails() {
                       {getAccessButtonText()}
                     </Button>
                   ) : (
-                    <Button
-                      onClick={(itemType === 'file' || item.product_type === 'file') ? () => handleFileAccess(item) : handlePurchase}
-                      className="group relative overflow-hidden w-full bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600 hover:from-blue-600 hover:via-indigo-600 hover:to-purple-600 text-white py-3 sm:py-4 px-8 sm:px-12 font-bold rounded-full shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 border-2 border-blue-400/20"
+                    <GetAccessButton
+                      product={item}
+                      className="py-3 sm:py-4 px-8 sm:px-12 text-base sm:text-lg"
                       size="lg"
-                    >
-                      <span className="relative z-10 flex items-center justify-center gap-2 sm:gap-3 text-base sm:text-lg">
-                        <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6 group-hover:rotate-12 transition-transform duration-300" />
-                        <span>קבלת גישה</span>
-                      </span>
-                      <div className="absolute inset-0 bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                      <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 animate-pulse"></div>
-                    </Button>
+                      fullWidth={true}
+                    />
                   )}
                 </div>
               </div>

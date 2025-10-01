@@ -38,6 +38,7 @@ import { hasActiveAccess, getUserPurchaseForFile } from "@/components/files/file
 import { formatPrice } from "@/lib/utils";
 import PriceDisplayTag from "@/components/ui/PriceDisplayTag";
 import { apiRequest } from "@/utils/api";
+import GetAccessButton from "@/components/ui/GetAccessButton";
 
 export default function Files() {
   const navigate = useNavigate();
@@ -565,13 +566,10 @@ function FileCard({ file, userPurchases, onPurchase, onEdit, fileTexts, currentU
                 </Button>
               )}
 
-              <GetFileButton
-                file={{ ...file, id: file.entity_id }}
-                userPurchases={userPurchases}
-                currentUser={currentUser}
-                onPurchase={onPurchase}
-                variant="files"
+              <GetAccessButton
+                product={file}
                 size="sm"
+                className="text-sm"
               />
             </div>
           </div>
