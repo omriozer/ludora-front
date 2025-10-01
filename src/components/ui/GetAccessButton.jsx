@@ -84,7 +84,9 @@ export default function GetAccessButton({
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to create purchase');
+        const errorMessage = errorData.error || errorData.message || 'Failed to create purchase';
+        cerror('Purchase API error:', errorData);
+        throw new Error(errorMessage);
       }
 
       const purchase = await response.json();
@@ -111,9 +113,18 @@ export default function GetAccessButton({
 
     } catch (error) {
       cerror('Error creating free purchase:', error);
+
+      // Extract error message properly
+      let errorMessage = "אירעה שגיאה בעת הוספת המוצר לחשבונך";
+      if (error && typeof error.message === 'string') {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+
       toast({
         title: "שגיאה בקבלת המוצר",
-        description: error.message || "אירעה שגיאה בעת הוספת המוצר לחשבונך",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
