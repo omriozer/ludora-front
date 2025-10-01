@@ -235,25 +235,27 @@ export default function ProductDetails() {
       }
 
       // Load item data based on type
-      let itemData = null;
-      const EntityClass = getEntityClass(entityType);
-      
-      const [itemResult, settingsData] = await Promise.all([
-        EntityClass.findById(entityId),
+      // Use the new product details endpoint that returns Product + Entity + Creator
+      const { apiRequest } = await import('@/services/apiClient');
+
+      const [productDetails, settingsData] = await Promise.all([
+        apiRequest(`/entities/product/${entityId}/details`),
         Settings.find()
       ]);
 
-      if (!itemResult) {
+      if (!productDetails) {
         setError("מוצר לא נמצא");
         setIsLoading(false);
         return;
       }
-      
-      setItem(itemResult);
+
+      setItem(productDetails);
       setSettings(settingsData.length > 0 ? settingsData[0] : {});
 
       // Use centralized logic for determining access
-      const userPurchase = getUserPurchaseForFile(entityId, purchases);
+      // getUserPurchaseForFile expects (file_id, userPurchases), not (entityId, purchases)
+      // For products, we need to check against the product ID
+      const userPurchase = getUserPurchaseForItem(productDetails.id, productDetails.product_type || entityType);
       const hasUserAccess = hasActiveAccess(userPurchase);
 
       setHasAccess(hasUserAccess);
@@ -464,179 +466,122 @@ export default function ProductDetails() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/30">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-        {/* Modern Header with Back Button */}
-        <div className="mb-8">
-          <Button
-            variant="ghost"
-            onClick={() => window.history.back()}
-            className="mb-6 text-gray-600 hover:text-gray-900 hover:bg-white/80 rounded-2xl px-6 py-3 shadow-sm backdrop-blur-sm border border-white/20"
-          >
-            <ArrowLeft className="w-5 h-5 ml-2" />
-            חזור
-          </Button>
-        </div>
+        {/* Sticky Header with Back Button and Purchase Button */}
+        {!hasAccess && (
+          <div className="sticky top-0 z-40 -mx-4 sm:-mx-6 lg:-mx-8 mb-8">
+            <div className="bg-white/95 backdrop-blur-xl border-b border-gray-200 shadow-lg">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+                <div className="flex items-center gap-6">
+                  {/* Back Button */}
+                  <Button
+                    variant="ghost"
+                    onClick={() => window.history.back()}
+                    className="text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl px-3 py-2 flex-shrink-0"
+                  >
+                    <ArrowLeft className="w-4 h-4 ml-2" />
+                    <span className="text-sm whitespace-nowrap">בחזרה ל{getProductTypeName(item.product_type || itemType, 'plural')}</span>
+                  </Button>
+
+                  {/* Product Title - Takes remaining space */}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-base font-semibold text-gray-800 truncate">{item.title}</div>
+                  </div>
+
+                  {/* Price Badge */}
+                  <div className="flex-shrink-0">
+                    {item.price === 0 ? (
+                      <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-2 rounded-full shadow-md">
+                        <span className="text-base font-bold">חינם!</span>
+                      </div>
+                    ) : (
+                      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-full shadow-md">
+                        <span className="text-base font-bold">₪{item.price}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Purchase Button - Unified Design */}
+                  <Button
+                    onClick={(itemType === 'file' || item.product_type === 'file') ? () => handleFileAccess(item) : handlePurchase}
+                    className="group relative overflow-hidden bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600 hover:from-blue-600 hover:via-indigo-600 hover:to-purple-600 text-white px-8 py-3 font-bold rounded-full shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 flex-shrink-0 border-2 border-blue-400/20"
+                  >
+                    <span className="relative z-10 flex items-center gap-2 text-base">
+                      <ShoppingCart className="w-5 h-5 group-hover:rotate-12 transition-transform duration-300" />
+                      <span>קבלת גישה</span>
+                    </span>
+                    <div className="absolute inset-0 bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                    <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 animate-pulse"></div>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Hero Section */}
         <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl shadow-blue-500/10 overflow-hidden mb-8">
           {item.image_url ? (
-            <div className="grid lg:grid-cols-2 gap-0">
-              {/* Image Section */}
-              <div className="relative">
-                <div className="h-96 lg:h-full overflow-hidden">
+            <div className="flex flex-col">
+              {/* Image Section - Full Width on Top */}
+              <div className="relative w-full">
+                <div className="h-64 sm:h-80 md:h-96 overflow-hidden">
                   <img
                     src={item.image_url}
                     alt={item.title}
                     className="w-full h-full object-cover"
                   />
                 </div>
-                
+
                 {/* Product Type Badge */}
-                <div className="absolute top-6 right-6">
-                  <Badge className="bg-white/95 text-gray-800 px-4 py-2 text-base font-bold rounded-full shadow-lg">
+                <div className="absolute top-4 sm:top-6 right-4 sm:right-6">
+                  <Badge className="bg-white/95 text-gray-800 px-3 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base font-bold rounded-full shadow-lg">
                     <div className="flex items-center gap-2">
                       {getProductIcon(item.product_type)}
-                      {getProductTypeLabel(item.product_type)}
+                      <span className="hidden sm:inline">{getProductTypeLabel(item.product_type)}</span>
                     </div>
                   </Badge>
                 </div>
 
                 {/* Category Badge */}
                 {item.category && (
-                  <div className="absolute top-6 left-6">
-                    <Badge variant="outline" className="bg-white/95 border-0 font-medium px-4 py-2 rounded-full shadow-lg">
+                  <div className="absolute top-4 sm:top-6 left-4 sm:left-6">
+                    <Badge variant="outline" className="bg-white/95 border-0 font-medium px-3 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base rounded-full shadow-lg">
                       {item.category}
                     </Badge>
                   </div>
                 )}
 
                 {/* Price Badge */}
-                <div className="absolute bottom-6 right-6">
+                <div className="absolute bottom-4 sm:bottom-6 right-4 sm:right-6">
                   {item.price === 0 ? (
-                    <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-full shadow-xl">
-                      <span className="text-lg font-bold" dir="rtl">חינם!</span>
+                    <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-full shadow-xl">
+                      <span className="text-base sm:text-lg font-bold" dir="rtl">חינם!</span>
                     </div>
                   ) : (
-                    <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-3 rounded-full shadow-xl">
-                      <span className="text-lg font-bold">₪{item.price}</span>
+                    <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-full shadow-xl">
+                      <span className="text-base sm:text-lg font-bold">₪{item.price}</span>
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Content Section */}
-              <div className="p-8 flex flex-col justify-between">
-                {/* Header */}
-                <div>
-
-                  <h1 className="text-3xl md::text-4xl font-bold text-gray-900 mb-6 leading-tight text-right">
-                    {item.title}
-                  </h1>
-
-                  {/* Access Status */}
-                  {(itemType === 'file' || item.product_type === 'file') ? (
-                    <FileAccessStatus
-                      file={item}
-                      userPurchases={userPurchases}
-                      variant="productDetails"
-                    />
-                  ) : hasAccess && (
-                    <Alert className="mb-6 border-green-200 bg-green-50">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                      <AlertDescription className="text-green-800">
-                        <div className="font-medium">{detailsTexts.alreadyOwned}</div>
-                        {purchaseUtils.hasLifetimeAccess(purchase) ? (
-                          <div className="text-xs mt-1">{detailsTexts.lifetimeAccess}</div>
-                        ) : (
-                          <div className="text-xs mt-1">
-                            {detailsTexts.accessUntil} {purchaseUtils.formatAccessExpiry(purchase)}
-                          </div>
-                        )}
-                      </AlertDescription>
-                    </Alert>
-                  )}
-
-                  <p className="text-lg text-gray-700 mb-6 leading-relaxed text-right">
-                    {item.description}
-                  </p>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    {!hasAccess && item.product_type === 'file' && item.preview_file_url && (
-                      <Button
-                        onClick={handlePreviewDownload}
-                        variant="outline"
-                        className="flex items-center gap-2 rounded-full px-6 py-3 shadow-md"
-                      >
-                        <Eye className="w-4 h-4" />
-                        {detailsTexts.freePreview}
-                      </Button>
-                    )}
-                  </div>
-
-                  {(itemType === 'file' || item.product_type === 'file') ? (
-                    <GetFileButton
-                      file={item}
-                      userPurchases={userPurchases}
-                      currentUser={currentUser}
-                      onPurchase={() => handlePurchase()}
-                      variant="productDetails"
-                      size="lg"
-                    />
-                  ) : hasAccess ? (
-                    <Button
-                      onClick={handleProductAccess}
-                      className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-4 text-lg font-semibold rounded-2xl shadow-lg transform hover:scale-105 transition-all duration-300"
-                      size="lg"
-                    >
-                      {getAccessButtonIcon()}
-                      {getAccessButtonText()}
-                    </Button>
-                  ) : (
-                    <Button
-                      onClick={handlePurchase}
-                      className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-4 text-lg font-semibold rounded-2xl shadow-lg transform hover:scale-105 transition-all duration-300"
-                      size="lg"
-                    >
-                      <ShoppingCart className="w-5 h-5 ml-2" />
-                      {detailsTexts.buyNow}
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="p-8">
-              {/* Header without image */}
-              <div className="mb-8 text-center">
-                <div className="flex items-center gap-2 mb-4 justify-center">
-                  <Badge className="bg-blue-600 text-white px-4 py-2 text-base font-bold rounded-full">
-                    <div className="flex items-center gap-2">
-                      {getProductIcon(item.product_type)}
-                      {getProductTypeLabel(item.product_type)}
-                    </div>
-                  </Badge>
-                  {item.category && (
-                    <Badge variant="outline" className="text-base font-medium px-4 py-2 rounded-full">
-                      {item.category}
-                    </Badge>
-                  )}
-                </div>
-
-                <h1 className="text-4xl md::text-5xl font-bold text-gray-900 mb-6 leading-tight">
+              {/* Content Section - Full Width Below Image */}
+              <div className="p-6 sm:p-8 md:p-10">
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-4 sm:mb-6 leading-tight text-right">
                   {item.title}
                 </h1>
 
                 {/* Access Status */}
                 {(itemType === 'file' || item.product_type === 'file') ? (
-                  <FileAccessStatus
-                    file={item}
-                    userPurchases={userPurchases}
-                    variant="productDetails"
-                  />
+                  <div className="mb-4 sm:mb-6">
+                    <FileAccessStatus
+                      file={item}
+                      userPurchases={userPurchases}
+                      variant="productDetails"
+                    />
+                  </div>
                 ) : hasAccess && (
-                  <Alert className="mb-6 border-green-200 bg-green-50 max-w-2xl mx-auto">
+                  <Alert className="mb-4 sm:mb-6 border-green-200 bg-green-50">
                     <CheckCircle className="h-4 w-4 text-green-600" />
                     <AlertDescription className="text-green-800">
                       <div className="font-medium">{detailsTexts.alreadyOwned}</div>
@@ -651,86 +596,196 @@ export default function ProductDetails() {
                   </Alert>
                 )}
 
-                <p className="text-xl text-gray-700 leading-relaxed mb-8 max-w-3xl mx-auto">
-                  {item.description}
-                </p>
+                {item.short_description && (
+                  <p className="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4 leading-relaxed text-right">
+                    {item.short_description}
+                  </p>
+                )}
 
-                {/* Price and Action */}
-                <div className="flex flex-col sm:flex-row items-center gap-6 justify-center">
-                  <div className="text-5xl font-bold">
-                    {item.price === 0 ? (
-                      <span className="text-green-600" dir="rtl">חינם!</span>
-                    ) : (
-                      <span className="text-blue-600">₪{item.price}</span>
-                    )}
-                  </div>
-                  
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    {!hasAccess && item.product_type === 'file' && item.preview_file_url && (
-                      <Button
-                        onClick={handlePreviewDownload}
-                        variant="outline"
-                        className="flex items-center gap-2 rounded-full px-8 py-4 text-lg shadow-lg"
-                        size="lg"
-                      >
-                        <Eye className="w-5 h-5" />
-                        {detailsTexts.freePreview}
-                      </Button>
-                    )}
+                {item.description && (
+                  <p className="text-base sm:text-lg text-gray-700 mb-6 sm:mb-8 leading-relaxed text-right">
+                    {item.description}
+                  </p>
+                )}
 
-                    {(itemType === 'file' || item.product_type === 'file') ? (
-                      <GetFileButton
-                        file={item}
-                        userPurchases={userPurchases}
-                        currentUser={currentUser}
-                        onPurchase={() => handlePurchase()}
-                        variant="productDetails"
-                        size="lg"
-                        className="py-4 px-12"
-                      />
-                    ) : hasAccess ? (
-                      <Button
-                        onClick={handleProductAccess}
-                        className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-4 px-12 text-lg font-semibold rounded-2xl shadow-xl transform hover:scale-105 transition-all duration-300"
-                        size="lg"
-                      >
-                        {getAccessButtonIcon()}
-                        {getAccessButtonText()}
-                      </Button>
-                    ) : (
-                      <Button
-                        onClick={handlePurchase}
-                        className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-4 px-12 text-lg font-semibold rounded-2xl shadow-xl transform hover:scale-105 transition-all duration-300"
-                        size="lg"
-                      >
-                        <ShoppingCart className="w-5 h-5 ml-2" />
-                        {detailsTexts.buyNow}
-                      </Button>
-                    )}
+                {/* Action Buttons */}
+                <div className="space-y-3 sm:space-y-4">
+                  {!hasAccess && item.product_type === 'file' && item.preview_file_url && (
+                    <Button
+                      onClick={handlePreviewDownload}
+                      variant="outline"
+                      className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-full px-6 py-3 shadow-md"
+                    >
+                      <Eye className="w-4 h-4" />
+                      {detailsTexts.freePreview}
+                    </Button>
+                  )}
+
+                  {hasAccess ? (
+                    <Button
+                      onClick={handleProductAccess}
+                      className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-3 sm:py-4 text-base sm:text-lg font-semibold rounded-2xl shadow-lg transform hover:scale-105 transition-all duration-300"
+                      size="lg"
+                    >
+                      {getAccessButtonIcon()}
+                      {getAccessButtonText()}
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={(itemType === 'file' || item.product_type === 'file') ? () => handleFileAccess(item) : handlePurchase}
+                      className="group relative overflow-hidden w-full bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600 hover:from-blue-600 hover:via-indigo-600 hover:to-purple-600 text-white py-3 sm:py-4 font-bold rounded-full shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 border-2 border-blue-400/20"
+                      size="lg"
+                    >
+                      <span className="relative z-10 flex items-center justify-center gap-2 sm:gap-3 text-base sm:text-lg">
+                        <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6 group-hover:rotate-12 transition-transform duration-300" />
+                        <span>קבלת גישה</span>
+                      </span>
+                      <div className="absolute inset-0 bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                      <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 animate-pulse"></div>
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="p-6 sm:p-8 md:p-10">
+              {/* Header without image */}
+              <div className="text-center">
+                <div className="flex flex-wrap items-center gap-2 mb-4 sm:mb-6 justify-center">
+                  <Badge className="bg-blue-600 text-white px-3 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base font-bold rounded-full">
+                    <div className="flex items-center gap-2">
+                      {getProductIcon(item.product_type)}
+                      <span className="hidden sm:inline">{getProductTypeLabel(item.product_type)}</span>
+                    </div>
+                  </Badge>
+                  {item.category && (
+                    <Badge variant="outline" className="text-sm sm:text-base font-medium px-3 sm:px-4 py-1.5 sm:py-2 rounded-full">
+                      {item.category}
+                    </Badge>
+                  )}
+                  {item.price === 0 ? (
+                    <Badge className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-3 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base font-bold rounded-full">
+                      חינם!
+                    </Badge>
+                  ) : (
+                    <Badge className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-3 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base font-bold rounded-full">
+                      ₪{item.price}
+                    </Badge>
+                  )}
+                </div>
+
+                <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 sm:mb-6 leading-tight">
+                  {item.title}
+                </h1>
+
+                {/* Access Status */}
+                {(itemType === 'file' || item.product_type === 'file') ? (
+                  <div className="mb-4 sm:mb-6">
+                    <FileAccessStatus
+                      file={item}
+                      userPurchases={userPurchases}
+                      variant="productDetails"
+                    />
                   </div>
+                ) : hasAccess && (
+                  <Alert className="mb-4 sm:mb-6 border-green-200 bg-green-50 max-w-2xl mx-auto">
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <AlertDescription className="text-green-800">
+                      <div className="font-medium">{detailsTexts.alreadyOwned}</div>
+                      {purchaseUtils.hasLifetimeAccess(purchase) ? (
+                        <div className="text-xs mt-1">{detailsTexts.lifetimeAccess}</div>
+                      ) : (
+                        <div className="text-xs mt-1">
+                          {detailsTexts.accessUntil} {purchaseUtils.formatAccessExpiry(purchase)}
+                        </div>
+                      )}
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {item.short_description && (
+                  <p className="text-lg sm:text-xl md:text-2xl font-semibold text-gray-800 leading-relaxed mb-4 sm:mb-6 max-w-3xl mx-auto">
+                    {item.short_description}
+                  </p>
+                )}
+                {item.description && (
+                  <p className="text-base sm:text-lg md:text-xl text-gray-700 leading-relaxed mb-6 sm:mb-8 max-w-3xl mx-auto">
+                    {item.description}
+                  </p>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex flex-col gap-3 sm:gap-4 max-w-md mx-auto">
+                  {!hasAccess && item.product_type === 'file' && item.preview_file_url && (
+                    <Button
+                      onClick={handlePreviewDownload}
+                      variant="outline"
+                      className="w-full flex items-center justify-center gap-2 rounded-full px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg shadow-lg"
+                      size="lg"
+                    >
+                      <Eye className="w-4 h-4 sm:w-5 sm:h-5" />
+                      {detailsTexts.freePreview}
+                    </Button>
+                  )}
+
+                  {hasAccess ? (
+                    <Button
+                      onClick={handleProductAccess}
+                      className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-3 sm:py-4 px-8 sm:px-12 text-base sm:text-lg font-semibold rounded-2xl shadow-xl transform hover:scale-105 transition-all duration-300"
+                      size="lg"
+                    >
+                      {getAccessButtonIcon()}
+                      {getAccessButtonText()}
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={(itemType === 'file' || item.product_type === 'file') ? () => handleFileAccess(item) : handlePurchase}
+                      className="group relative overflow-hidden w-full bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600 hover:from-blue-600 hover:via-indigo-600 hover:to-purple-600 text-white py-3 sm:py-4 px-8 sm:px-12 font-bold rounded-full shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 border-2 border-blue-400/20"
+                      size="lg"
+                    >
+                      <span className="relative z-10 flex items-center justify-center gap-2 sm:gap-3 text-base sm:text-lg">
+                        <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6 group-hover:rotate-12 transition-transform duration-300" />
+                        <span>קבלת גישה</span>
+                      </span>
+                      <div className="absolute inset-0 bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                      <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 animate-pulse"></div>
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
           )}
         </div>
 
-        {/* YouTube Video */}
-        {item.youtube_video_id && (
-          <Card className="mb-8 shadow-xl bg-white/90 backdrop-blur-xl border-0 rounded-3xl overflow-hidden">
-            <CardContent className="p-8">
-              {item.youtube_video_title && (
-                <h3 className="text-2xl font-bold mb-6 text-center text-gray-900">{item.youtube_video_title}</h3>
+        {/* Marketing Video - YouTube or Uploaded - Only show if video exists */}
+        {(item.youtube_video_id || item.marketing_video_title) && (
+          <Card className="mb-6 sm:mb-8 shadow-xl bg-white/90 backdrop-blur-xl border-0 rounded-2xl sm:rounded-3xl overflow-hidden">
+            <CardContent className="p-4 sm:p-6 md:p-8">
+              {(item.youtube_video_title || item.marketing_video_title) && (
+                <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-center text-gray-900">
+                  {item.youtube_video_title || item.marketing_video_title}
+                </h3>
               )}
-              <div className="aspect-video rounded-2xl overflow-hidden shadow-2xl">
-                <iframe
-                  width="100%"
-                  height="100%"
-                  src={`https://www.youtube.com/embed/${item.youtube_video_id}`}
-                  title="YouTube video player"
-                  style={{ border: 0 }}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                ></iframe>
+              <div className="aspect-video rounded-lg sm:rounded-2xl overflow-hidden shadow-xl sm:shadow-2xl">
+                {item.youtube_video_id ? (
+                  <iframe
+                    width="100%"
+                    height="100%"
+                    src={`https://www.youtube.com/embed/${item.youtube_video_id}`}
+                    title="YouTube video player"
+                    style={{ border: 0 }}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  ></iframe>
+                ) : (
+                  <VideoPlayer
+                    file_uri={`/api/media/marketing-video/${item.product_type}/${item.entity_id || item.id}`}
+                    product_id={item.id}
+                    title={item.marketing_video_title || item.title}
+                    className="w-full h-full"
+                    is_private={false}
+                  />
+                )}
               </div>
             </CardContent>
           </Card>
@@ -884,6 +939,7 @@ export default function ProductDetails() {
                 </CardHeader>
                 <CardContent className="p-8">
                   <div className="grid md:grid-cols-2 gap-6">
+                    {/* File Type */}
                     {item.file_type && (
                       <div className="flex items-center gap-4 p-6 bg-purple-50 rounded-2xl">
                         <div className="w-14 h-14 bg-purple-100 rounded-2xl flex items-center justify-center">
@@ -895,16 +951,66 @@ export default function ProductDetails() {
                         </div>
                       </div>
                     )}
-                    
-                    {/* Downloads count removed from database - keeping layout minimal */}
-                    {item.file_type && (
+
+                    {/* Creator */}
+                    {item.creator && (
                       <div className="flex items-center gap-4 p-6 bg-blue-50 rounded-2xl">
                         <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center">
-                          <FileText className="w-7 h-7 text-blue-600" />
+                          <Users className="w-7 h-7 text-blue-600" />
                         </div>
                         <div className="text-right">
-                          <p className="text-sm text-gray-600 font-medium">{detailsTexts.fileType}</p>
-                          <p className="font-bold text-gray-900 text-lg">{item.file_type.toUpperCase()}</p>
+                          <p className="text-sm text-gray-600 font-medium">יוצר התוכן</p>
+                          <p className="font-bold text-gray-900 text-lg">{item.creator.full_name}</p>
+                          {item.creator.is_content_creator && (
+                            <Badge className="mt-1 bg-blue-600 text-white text-xs">יוצר תוכן</Badge>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Access Duration */}
+                    {(item.access_days !== undefined && item.access_days !== null) || item.access_days === null ? (
+                      <div className="flex items-center gap-4 p-6 bg-green-50 rounded-2xl">
+                        <div className="w-14 h-14 bg-green-100 rounded-2xl flex items-center justify-center">
+                          <Clock className="w-7 h-7 text-green-600" />
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm text-gray-600 font-medium">זמן גישה</p>
+                          <p className="font-bold text-gray-900 text-lg">
+                            {item.access_days === null || item.access_days === undefined ? 'גישה לכל החיים' : `${item.access_days} ימים`}
+                          </p>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {/* Difficulty Level */}
+                    {item.difficulty_level && (
+                      <div className="flex items-center gap-4 p-6 bg-yellow-50 rounded-2xl">
+                        <div className="w-14 h-14 bg-yellow-100 rounded-2xl flex items-center justify-center">
+                          <Award className="w-7 h-7 text-yellow-600" />
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm text-gray-600 font-medium">רמת קושי</p>
+                          <p className="font-bold text-gray-900 text-lg">
+                            {item.difficulty_level === 'beginner' && 'מתחילים'}
+                            {item.difficulty_level === 'intermediate' && 'בינוני'}
+                            {item.difficulty_level === 'advanced' && 'מתקדמים'}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Last Updated */}
+                    {item.updated_at && (
+                      <div className="flex items-center gap-4 p-6 bg-indigo-50 rounded-2xl">
+                        <div className="w-14 h-14 bg-indigo-100 rounded-2xl flex items-center justify-center">
+                          <Calendar className="w-7 h-7 text-indigo-600" />
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm text-gray-600 font-medium">עודכן לאחרונה</p>
+                          <p className="font-bold text-gray-900 text-lg">
+                            {format(new Date(item.updated_at), 'dd/MM/yyyy', { locale: he })}
+                          </p>
                         </div>
                       </div>
                     )}
@@ -948,32 +1054,12 @@ export default function ProductDetails() {
               </Card>
             )}
 
-            {/* Tags */}
-            {item.tags && item.tags.length > 0 && item.tags.some(tag => tag && tag.trim()) && (
-              <Card className="shadow-xl bg-white/90 backdrop-blur-xl border-0 rounded-3xl">
-                <CardHeader className="bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-t-3xl">
-                  <CardTitle className="flex items-center gap-3 text-xl">
-                    <Tag className="w-6 h-6" />
-                    תגיות
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-8">
-                  <div className="flex flex-wrap gap-3 justify-end">
-                    {item.tags.filter(tag => tag && tag.trim()).map((tag, index) => (
-                      <Badge key={index} variant="outline" className="text-base px-4 py-2 rounded-full">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
           </div>
 
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Product Info */}
-            <Card className="shadow-xl bg-white/95 backdrop-blur-xl border-0 rounded-3xl sticky top-8">
+            <Card className="shadow-xl bg-white/95 backdrop-blur-xl border-0 rounded-3xl">
               <CardHeader className="bg-gradient-to-r from-indigo-500 to-blue-600 text-white rounded-t-3xl">
                 <CardTitle className="flex items-center gap-3">
                   <Info className="w-5 h-5" />
@@ -1013,6 +1099,23 @@ export default function ProductDetails() {
                     <div className="text-right">
                       <p className="text-sm text-gray-600 font-medium">{detailsTexts.modules}</p>
                       <p className="font-bold text-gray-900">{item.course_modules.length}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Tags */}
+                {item.tags && item.tags.length > 0 && item.tags.some(tag => tag && tag.trim()) && (
+                  <div className="pt-4 border-t border-gray-200">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Tag className="w-4 h-4 text-gray-600" />
+                      <p className="text-sm text-gray-600 font-medium">תגיות</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2 justify-end">
+                      {item.tags.filter(tag => tag && tag.trim()).map((tag, index) => (
+                        <Badge key={index} variant="outline" className="text-sm px-3 py-1 rounded-full bg-white">
+                          {tag}
+                        </Badge>
+                      ))}
                     </div>
                   </div>
                 )}

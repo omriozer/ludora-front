@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import ProductModal from '@/components/modals/ProductModal';
 import {
   Search,
   FileText,
@@ -47,7 +48,11 @@ export default function Files() {
   const [settings, setSettings] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState(null);
-  
+
+  // Modal states
+  const [showModal, setShowModal] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
+
   // Filter and search states
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -83,6 +88,38 @@ export default function Files() {
   useEffect(() => {
     filterFiles();
   }, [fileProducts, searchTerm, selectedCategory, sortBy]);
+
+  // Handle edit parameter from URL
+  useEffect(() => {
+    const loadEditFromUrl = async () => {
+      if (fileProducts.length > 0) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const editProductId = urlParams.get('edit');
+        if (editProductId) {
+          const productToEdit = fileProducts.find(p => p.id === editProductId);
+          if (productToEdit) {
+            // Load the actual File entity data
+            try {
+              const fileEntity = await File.findById(productToEdit.entity_id);
+              const mergedProduct = {
+                ...productToEdit,
+                file_url: fileEntity.file_url || "",
+                file_type: fileEntity.file_type || "pdf",
+              };
+              setEditingProduct(mergedProduct);
+              setShowModal(true);
+            } catch (error) {
+              console.error("Error loading file data:", error);
+            }
+            // Clean up URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+        }
+      }
+    };
+
+    loadEditFromUrl();
+  }, [fileProducts]);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -204,6 +241,37 @@ export default function Files() {
     window.location.href = url;
   };
 
+  const handleEdit = async (product) => {
+    try {
+      // Load the actual File entity data to get file_url
+      const fileEntity = await File.findById(product.entity_id);
+
+      // Merge Product and File data
+      const mergedProduct = {
+        ...product,
+        file_url: fileEntity.file_url || "",
+        file_type: fileEntity.file_type || "pdf",
+      };
+
+      setEditingProduct(mergedProduct);
+      setShowModal(true);
+    } catch (error) {
+      console.error("Error loading file data:", error);
+      setMessage({ type: 'error', text: 'שגיאה בטעינת פרטי הקובץ' });
+    }
+  };
+
+  const handleModalClose = () => {
+    setShowModal(false);
+    setEditingProduct(null);
+  };
+
+  const handleProductSaved = () => {
+    setShowModal(false);
+    setEditingProduct(null);
+    loadData(); // Reload data to show updated product
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 flex items-center justify-center">
@@ -293,6 +361,7 @@ export default function Files() {
                   file={fileProduct}
                   userPurchases={userPurchases}
                   onPurchase={handlePurchase}
+                  onEdit={handleEdit}
                   fileTexts={fileTexts}
                   currentUser={currentUser}
                 />
@@ -309,11 +378,22 @@ export default function Files() {
           </div>
         )}
       </div>
+
+      {/* Product Modal for editing */}
+      {showModal && (
+        <ProductModal
+          isOpen={showModal}
+          onClose={handleModalClose}
+          editingProduct={editingProduct}
+          onSave={handleProductSaved}
+          currentUser={currentUser}
+        />
+      )}
     </div>
   );
 }
 
-function FileCard({ file, userPurchases, onPurchase, fileTexts, currentUser }) {
+function FileCard({ file, userPurchases, onPurchase, onEdit, fileTexts, currentUser }) {
   const navigate = useNavigate();
 
   // Format price using centralized utility
@@ -485,11 +565,11 @@ function FileCard({ file, userPurchases, onPurchase, fileTexts, currentUser }) {
                 פרטים נוספים
               </Button>
 
-              {currentUser && currentUser.role === 'admin' && (
+              {currentUser && currentUser.role === 'admin' && onEdit && (
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => navigate(`/files?edit=${file.id}`)}
+                  onClick={() => onEdit(file)}
                   className="hover:bg-orange-50 border-orange-200 text-orange-600 hover:border-orange-300 transition-colors duration-200"
                   title="עריכת קובץ"
                 >

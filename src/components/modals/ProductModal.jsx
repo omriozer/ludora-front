@@ -573,7 +573,7 @@ export default function ProductModal({
 
           // For File product type uploads, we need to include the File entity ID
           if (isFileUpload) {
-            if (!editingProduct) {
+            if (!editingProduct || !editingProduct.entity_id) {
               toast({
                 title: "שגיאה בהעלאת קובץ",
                 description: "יש לשמור את המוצר תחילה על מנת להעלות קבצים. לחץ על 'צור מוצר' ולאחר מכן תוכל להעלות את הקובץ.",
@@ -581,7 +581,7 @@ export default function ProductModal({
               });
               return;
             }
-            formData.append('fileEntityId', editingProduct.id);
+            formData.append('fileEntityId', editingProduct.entity_id);
           }
 
           // Track upload progress
@@ -942,6 +942,16 @@ export default function ProductModal({
 
       if (editingProduct) {
         await entityService.update(editingProduct.id, cleanedData);
+
+        // For File products, also update the File entity with file-specific fields
+        if (formData.product_type === 'file' && editingProduct.entity_id) {
+          const { File: FileEntity } = await import('@/services/entities');
+          await FileEntity.update(editingProduct.entity_id, {
+            file_url: cleanedData.file_url || null,
+            file_type: cleanedData.file_type || null
+          });
+        }
+
         setMessage({ type: 'success', text: `${entityName} עודכן בהצלחה` });
         createdEntity = { id: editingProduct.id, ...cleanedData };
       } else {
@@ -1266,7 +1276,11 @@ export default function ProductModal({
                                   variant="outline"
                                   size="sm"
                                   onClick={() => {
-                                    setFormData(prev => ({ ...prev, youtube_video_id: "" }));
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      youtube_video_id: "",
+                                      youtube_video_title: "" // Clear title when deleting YouTube video
+                                    }));
                                     setMarketingVideoType("upload");
                                   }}
                                   className="text-red-600 border-red-300 hover:bg-red-50"
@@ -1329,25 +1343,11 @@ export default function ProductModal({
                                     <div className="mt-2 text-xs text-gray-500">
                                       Marketing video: {editingProduct.product_type}/{editingProduct.id}
                                     </div>
-                                    {formData.marketing_video_title && (
-                                      <p className="text-sm text-gray-600 mt-2 font-medium">
-                                        {formData.marketing_video_title}
-                                      </p>
-                                    )}
                                     {formData.marketing_video_duration && (
                                       <p className="text-xs text-gray-500 mt-1">
                                         משך: {Math.floor(formData.marketing_video_duration / 60)}:{(formData.marketing_video_duration % 60).toString().padStart(2, '0')} דקות
                                       </p>
                                     )}
-                                  </div>
-                                  <div className="mt-2">
-                                    <Label className="text-sm font-medium">כותרת הסרטון</Label>
-                                    <Input
-                                      value={formData.marketing_video_title || ""}
-                                      onChange={(e) => setFormData(prev => ({ ...prev, marketing_video_title: e.target.value }))}
-                                      placeholder="כותרת הסרטון להצגה באתר"
-                                      className="mt-1"
-                                    />
                                   </div>
                                 </div>
                               )}
@@ -1419,15 +1419,6 @@ export default function ProductModal({
                                 הדבק כל קישור יוטיוב והמערכת תחלץ את מזהה הוידיאו אוטומטית
                               </div>
                             </div>
-                            <div>
-                              <Label className="text-sm font-medium">כותרת הסרטון</Label>
-                              <Input
-                                value={formData.youtube_video_title || ""}
-                                onChange={(e) => setFormData(prev => ({ ...prev, youtube_video_title: e.target.value }))}
-                                placeholder="כותרת הסרטון להצגה באתר"
-                                className="mt-1"
-                              />
-                            </div>
 
                             {/* YouTube Video Preview */}
                             {formData.youtube_video_id && formData.youtube_video_id.trim() && (
@@ -1444,17 +1435,35 @@ export default function ProductModal({
                                     allowFullScreen
                                     className="rounded"
                                   />
-                                  {formData.youtube_video_title && (
-                                    <p className="text-sm text-gray-600 mt-2 font-medium">
-                                      {formData.youtube_video_title}
-                                    </p>
-                                  )}
                                 </div>
                               </div>
                             )}
                           </TabsContent>
                         </Tabs>
                       )}
+
+                      {/* Video title field - Always visible outside the tabs */}
+                      <div className="mt-4 pt-4 border-t border-gray-200">
+                        <Label className="text-sm font-medium">כותרת הסרטון</Label>
+                        <Input
+                          value={hasYouTubeVideo() ? (formData.youtube_video_title || "") : (formData.marketing_video_title || "")}
+                          onChange={(e) => {
+                            if (hasAnyMarketingVideo()) {
+                              if (hasYouTubeVideo()) {
+                                setFormData(prev => ({ ...prev, youtube_video_title: e.target.value }));
+                              } else {
+                                setFormData(prev => ({ ...prev, marketing_video_title: e.target.value }));
+                              }
+                            }
+                          }}
+                          placeholder="כותרת הסרטון להצגה באתר"
+                          className="mt-1"
+                          disabled={!hasAnyMarketingVideo()}
+                        />
+                        {!hasAnyMarketingVideo() && (
+                          <p className="text-xs text-gray-500 mt-1">הוסף סרטון כדי להגדיר כותרת</p>
+                        )}
+                      </div>
                     </div>
                   </div>
 
