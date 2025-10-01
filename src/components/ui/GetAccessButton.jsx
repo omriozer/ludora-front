@@ -80,11 +80,13 @@ export default function GetAccessButton({
         },
         body: JSON.stringify({
           buyer_user_id: userId,
-          product_id: product.id,
-          product_type: productType,
+          purchasable_id: product.entity_id || product.id,
+          purchasable_type: productType,
           payment_method: 'free',
-          payment_status: 'paid',
-          payment_amount: 0
+          payment_status: 'completed',
+          payment_amount: 0,
+          original_price: product.price || 0,
+          discount_amount: 0
         })
       });
 
