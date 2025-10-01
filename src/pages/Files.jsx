@@ -37,6 +37,7 @@ import FileAccessStatus from "@/components/files/FileAccessStatus";
 import { hasActiveAccess, getUserPurchaseForFile } from "@/components/files/fileAccessUtils";
 import { formatPrice } from "@/lib/utils";
 import PriceDisplayTag from "@/components/ui/PriceDisplayTag";
+import { apiRequest } from "@/utils/api";
 
 export default function Files() {
   const navigate = useNavigate();
@@ -57,7 +58,8 @@ export default function Files() {
   // Filter and search states
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [sortBy, setSortBy] = useState("created_date");
+  const [sortBy, setSortBy] = useState("created_at");
+  const [sortOrder, setSortOrder] = useState("DESC");
   
   // Texts
   const [fileTexts, setFileTexts] = useState({
@@ -84,11 +86,11 @@ export default function Files() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [sortBy, sortOrder]);
 
   useEffect(() => {
     filterFiles();
-  }, [fileProducts, searchTerm, selectedCategory, sortBy]);
+  }, [fileProducts, searchTerm, selectedCategory]);
 
   // Handle edit parameter from URL
   useEffect(() => {
@@ -187,9 +189,9 @@ export default function Files() {
         setUserPurchases(purchases);
       }
 
-      // Load file products and categories
+      // Load file products and categories using new endpoint
       const [fileProductsData, categoriesData] = await Promise.all([
-        Product.filter({ product_type: 'file', is_published: true }),
+        apiRequest(`/entities/products/list?product_type=file&is_published=true&sort_by=${sortBy}&sort_order=${sortOrder}`),
         Category.find({})
       ]);
 
@@ -221,19 +223,7 @@ export default function Files() {
       filtered = filtered.filter(product => product.category === selectedCategory);
     }
 
-    // Sort
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case "title":
-          return a.title.localeCompare(b.title, 'he');
-        case "price":
-          return (a.price || 0) - (b.price || 0);
-        case "created_date":
-        default:
-          return new Date(b.created_at) - new Date(a.created_at);
-      }
-    });
-
+    // Sorting is now handled by the API, no need to sort here
     setFilteredFileProducts(filtered);
   };
 
@@ -339,16 +329,30 @@ export default function Files() {
             </div>
 
 
-            <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="h-12 bg-gray-50 border-gray-200 rounded-lg w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="created_date">{fileTexts.sortByNewest}</SelectItem>
-                <SelectItem value="title">{fileTexts.sortByTitle}</SelectItem>
-                <SelectItem value="price">{fileTexts.sortByPrice}</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex gap-2">
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="h-12 bg-gray-50 border-gray-200 rounded-lg w-48">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="created_at">תאריך יצירה</SelectItem>
+                  <SelectItem value="updated_at">תאריך עדכון</SelectItem>
+                  <SelectItem value="title">כותרת</SelectItem>
+                  <SelectItem value="price">מחיר</SelectItem>
+                  <SelectItem value="downloads_count">הורדות</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={sortOrder} onValueChange={setSortOrder}>
+                <SelectTrigger className="h-12 bg-gray-50 border-gray-200 rounded-lg w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="DESC">יורד</SelectItem>
+                  <SelectItem value="ASC">עולה</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
 
