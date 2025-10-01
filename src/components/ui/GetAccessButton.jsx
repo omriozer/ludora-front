@@ -63,9 +63,14 @@ export default function GetAccessButton({
 
     try {
       const authToken = localStorage.getItem('authToken');
+
+      // Decode JWT to get user ID
+      const payload = JSON.parse(atob(authToken.split('.')[1]));
+      const userId = payload.uid;
+
       const productType = product.product_type || 'file';
 
-      clog('Creating free purchase for product:', product.id);
+      clog('Creating free purchase for product:', product.id, 'user:', userId);
 
       const response = await fetch(`${getApiBase()}/purchases`, {
         method: 'POST',
@@ -74,6 +79,7 @@ export default function GetAccessButton({
           'Authorization': `Bearer ${authToken}`
         },
         body: JSON.stringify({
+          buyer_user_id: userId,
           product_id: product.id,
           product_type: productType,
           payment_method: 'free',
