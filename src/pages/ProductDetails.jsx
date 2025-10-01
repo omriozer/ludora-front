@@ -470,27 +470,28 @@ export default function ProductDetails() {
 
         {/* Sticky Header with Back Button and Purchase Button */}
         {!hasAccess && (
-          <div className="sticky top-0 z-40 -mx-4 sm:-mx-6 lg:-mx-8 mb-8">
+          <div className="sticky top-0 z-40 -mx-4 sm:-mx-6 lg:-mx-8 mb-6 sm:mb-8">
             <div className="bg-white/95 backdrop-blur-xl border-b border-gray-200 shadow-lg">
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
-                <div className="flex items-center gap-6">
+              <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-2 sm:py-3">
+                <div className="flex items-center gap-2 sm:gap-4 md:gap-6">
                   {/* Back Button */}
                   <Button
                     variant="ghost"
                     onClick={() => window.history.back()}
-                    className="text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl px-3 py-2 flex-shrink-0"
+                    className="text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl px-2 sm:px-3 py-1.5 sm:py-2 flex-shrink-0"
                   >
-                    <ArrowLeft className="w-4 h-4 ml-2" />
-                    <span className="text-sm whitespace-nowrap">בחזרה ל{getProductTypeName(item.product_type || itemType, 'plural')}</span>
+                    <ArrowLeft className="w-3 h-3 sm:w-4 sm:h-4 ml-1 sm:ml-2" />
+                    <span className="text-xs sm:text-sm whitespace-nowrap hidden sm:inline">בחזרה ל{getProductTypeName(item.product_type || itemType, 'plural')}</span>
+                    <span className="text-xs sm:text-sm whitespace-nowrap sm:hidden">חזרה</span>
                   </Button>
 
                   {/* Product Title - Takes remaining space */}
                   <div className="flex-1 min-w-0">
-                    <div className="text-base font-semibold text-gray-800 truncate">{item.title}</div>
+                    <div className="text-sm sm:text-base font-semibold text-gray-800 truncate">{item.title}</div>
                   </div>
 
-                  {/* Price Badge */}
-                  <div className="flex-shrink-0">
+                  {/* Price Badge - Hidden on mobile */}
+                  <div className="flex-shrink-0 hidden md:block">
                     <PriceDisplayTag
                       originalPrice={item.price}
                       discount={item.discount}
@@ -503,8 +504,8 @@ export default function ProductDetails() {
                   {/* Purchase Button - Unified Design */}
                   <GetAccessButton
                     product={item}
-                    className="px-8 py-3 flex-shrink-0 text-base"
-                    size="default"
+                    className="px-3 sm:px-6 md:px-8 py-2 sm:py-3 flex-shrink-0 text-xs sm:text-sm md:text-base"
+                    size="sm"
                   />
                 </div>
               </div>
@@ -763,10 +764,10 @@ export default function ProductDetails() {
         {item.product_type === 'workshop' &&
          item.workshop_type === 'recorded' &&
          item.video_file_url && (
-          <Card className="mb-8 shadow-xl bg-white/90 backdrop-blur-xl border-0 rounded-3xl overflow-hidden">
-            <CardContent className="p-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4 text-center">{getProductTypeName('workshop', 'singular')} מוקלטת</h2>
-              
+          <Card className="mb-6 sm:mb-8 shadow-xl bg-white/90 backdrop-blur-xl border-0 rounded-2xl sm:rounded-3xl overflow-hidden">
+            <CardContent className="p-4 sm:p-6 md:p-8">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 sm:mb-4 text-center">{getProductTypeName('workshop', 'singular')} מוקלטת</h2>
+
               {purchase ? ( // Using 'purchase' which holds the active purchase for this product
                 <VideoPlayer
                   file_uri={item.video_file_url}
@@ -776,12 +777,12 @@ export default function ProductDetails() {
                   title={item.title}
                 />
               ) : (
-                <div className="bg-gray-100 rounded-lg p-8 text-center">
-                  <Play className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600 mb-4">צפייה ב{getProductTypeName('workshop', 'singular')} המוקלטת זמינה לאחר רכישה</p>
-                  <Button 
+                <div className="bg-gray-100 rounded-lg p-4 sm:p-6 md:p-8 text-center">
+                  <Play className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400 mx-auto mb-3 sm:mb-4" />
+                  <p className="text-sm sm:text-base text-gray-600 mb-3 sm:mb-4">צפייה ב{getProductTypeName('workshop', 'singular')} המוקלטת זמינה לאחר רכישה</p>
+                  <Button
                     onClick={() => navigate(`/purchase?product=${item.id}`)}
-                    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-4 px-12 text-lg font-semibold rounded-2xl shadow-xl transform hover:scale-105 transition-all duration-300"
+                    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-3 px-6 sm:py-4 sm:px-12 text-base sm:text-lg font-semibold rounded-xl sm:rounded-2xl shadow-xl transform hover:scale-105 transition-all duration-300"
                   >
                     רכוש גישה
                   </Button>
@@ -792,9 +793,9 @@ export default function ProductDetails() {
         )}
 
         {/* Main Content Grid */}
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="grid lg:grid-cols-3 gap-6 sm:gap-8">
           {/* Main Content */}
-          <div className="lg:col-span-2 space-y-8">
+          <div className="lg:col-span-2 space-y-6 sm:space-y-8">
             
             {/* General Video Section - only show if not a recorded workshop video handled above */}
             {item.video_file_url && !(item.product_type === 'workshop' && item.workshop_type === 'recorded') && (
