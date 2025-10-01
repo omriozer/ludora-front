@@ -59,49 +59,49 @@ if (typeof localStorage !== 'undefined') {
 // Generic API request helper with authentication
 export async function apiRequest(endpoint, options = {}) {
   const url = `${API_BASE}${endpoint}`;
-  
+
   clog(`🌐 API Request: ${options.method || 'GET'} ${url}`);
   clog('📊 API Base:', API_BASE);
   clog('🔑 Auth Token:', authToken ? `${authToken.substring(0, 20)}...` : 'None');
-  
+
   const headers = {
     'Content-Type': 'application/json',
     ...options.headers
   };
-  
+
   // Add auth token if available
   if (authToken) {
     headers['Authorization'] = `Bearer ${authToken}`;
   }
-  
+
   const defaultOptions = {
     credentials: 'include',
     headers
   };
-  
+
   clog('📤 Request headers:', headers);
   clog('📤 Request options:', { ...defaultOptions, ...options });
-  
+
   try {
     const response = await fetch(url, { ...defaultOptions, ...options });
     clog(`📥 Response status: ${response.status} ${response.statusText}`);
-    
+
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: response.statusText }));
       cerror('❌ API Error:', error);
-      
+
       // Log validation details if available
       if (error.details && Array.isArray(error.details)) {
         cerror('📋 Validation Details:', error.details);
       }
-      
+
       const errorMessage = typeof error.error === 'string' ? error.error :
                         error.message ||
                         JSON.stringify(error) ||
                         `API request failed: ${response.status}`;
       throw new Error(errorMessage);
     }
-    
+
     const data = await response.json();
     clog('✅ API Response:', data);
     return data;
@@ -113,6 +113,64 @@ export async function apiRequest(endpoint, options = {}) {
       toast({
         title: "בעיית חיבור",
         description: "לא הצלחנו להתחבר לשרת. אנא בדוק את החיבור לאינטרנט ונסה שוב.",
+        variant: "destructive",
+      });
+    }
+
+    throw error;
+  }
+}
+
+// File download helper - returns blob instead of JSON
+export async function apiDownload(endpoint, options = {}) {
+  const url = `${API_BASE}${endpoint}`;
+
+  clog(`📥 API Download: ${options.method || 'GET'} ${url}`);
+  clog('📊 API Base:', API_BASE);
+  clog('🔑 Auth Token:', authToken ? `${authToken.substring(0, 20)}...` : 'None');
+
+  const headers = {
+    ...options.headers
+  };
+
+  // Add auth token if available
+  if (authToken) {
+    headers['Authorization'] = `Bearer ${authToken}`;
+  }
+
+  const defaultOptions = {
+    credentials: 'include',
+    headers
+  };
+
+  clog('📤 Download headers:', headers);
+
+  try {
+    const response = await fetch(url, { ...defaultOptions, ...options });
+    clog(`📥 Download response status: ${response.status} ${response.statusText}`);
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: response.statusText }));
+      cerror('❌ Download Error:', error);
+
+      const errorMessage = typeof error.error === 'string' ? error.error :
+                        error.message ||
+                        JSON.stringify(error) ||
+                        `Download failed: ${response.status}`;
+      throw new Error(errorMessage);
+    }
+
+    const blob = await response.blob();
+    clog('✅ Download successful, blob size:', blob.size, 'type:', blob.type);
+    return blob;
+  } catch (error) {
+    cerror('🚫 Download Failed:', error);
+
+    // Show user-friendly error for network failures
+    if (error.message.includes('fetch') || error.message.includes('network') || error.message.includes('Failed to fetch')) {
+      toast({
+        title: "בעיית הורדה",
+        description: "לא הצלחנו להוריד את הקובץ. אנא נסה שוב.",
         variant: "destructive",
       });
     }

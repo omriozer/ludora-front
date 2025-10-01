@@ -16,6 +16,7 @@ import {
   Download,
   Filter,
   Eye,
+  Copyright,
   AlertCircle,
   Sparkles,
   Tag,
@@ -510,6 +511,18 @@ function FileCard({ file, onPurchase, onEdit, fileTexts, currentUser }) {
                 </span>
               </div>
             )}
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <Eye className={`w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0 ${file.allow_preview ? 'text-green-600' : 'text-gray-400'}`} />
+              <span className={`text-xs ${file.allow_preview ? 'text-green-700' : 'text-gray-500'}`}>
+                {file.allow_preview ? 'תצוגה מקדימה זמינה' : 'אין תצוגה מקדימה'}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <Copyright className={`w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0 ${file.add_copyrights_footer ? 'text-blue-600' : 'text-gray-400'}`} />
+              <span className={`text-xs ${file.add_copyrights_footer ? 'text-blue-700' : 'text-gray-500'}`}>
+                {file.add_copyrights_footer ? 'כולל כותרת זכויות יוצרים' : 'ללא כותרת זכויות יוצרים'}
+              </span>
+            </div>
 
           </div>
 

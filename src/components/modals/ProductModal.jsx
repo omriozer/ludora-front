@@ -25,7 +25,8 @@ import {
   Link as LinkIcon,
   Download,
   Trash2,
-  Play
+  Play,
+  Eye
 } from "lucide-react";
 import SecureVideoPlayer from '../SecureVideoPlayer';
 import ProductTypeSelector from './ProductTypeSelector';
@@ -34,6 +35,7 @@ import { getApiBase } from '@/utils/api.js';
 import { getMarketingVideoUrl } from '@/utils/videoUtils.js';
 import { toast } from '@/components/ui/use-toast';
 import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
+import PdfFooterPreview from '../pdf/PdfFooterPreview';
 
 // Utility function to check if feature is enabled based on settings and content creator permissions
 const getEnabledProductTypes = (settings, isContentCreatorMode = false, isAdmin = false) => {
@@ -100,6 +102,9 @@ export default function ProductModal({
   const [isSaving, setIsSaving] = useState(false);
   const [isDeletingFile, setIsDeletingFile] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(false);
+
+  // PDF Footer Preview state
+  const [showFooterPreview, setShowFooterPreview] = useState(false);
 
   // Helper functions for marketing video logic
   const [marketingVideoExists, setMarketingVideoExists] = useState(false);
@@ -193,6 +198,9 @@ export default function ProductModal({
     file_url: "",
     preview_file_url: "",
     file_type: "pdf",
+    allow_preview: true,
+    add_copyrights_footer: true,
+    is_ludora_creator: false,
     tags: [],
     target_audience: "",
     difficulty_level: "",
@@ -321,6 +329,9 @@ export default function ProductModal({
       duration_minutes: product.duration_minutes || 90,
       file_url: product.file_url || "",
       file_type: product.file_type || "pdf",
+      allow_preview: product.allow_preview ?? true,
+      add_copyrights_footer: product.add_copyrights_footer ?? true,
+      is_ludora_creator: !product.creator_user_id,
       image_is_private: product.image_is_private ?? false,
       preview_file_is_private: product.preview_file_is_private ?? false,
       file_is_private: product.file_is_private ?? false,
@@ -439,6 +450,39 @@ export default function ProductModal({
     }));
   };
 
+  // File type validation helpers using settings configuration
+  const getFileTypeConfig = (uploadType) => {
+    return globalSettings?.file_types_config?.[uploadType] || null;
+  };
+
+  const validateFileType = (file, uploadType) => {
+    const config = getFileTypeConfig(uploadType);
+    if (!config) {
+      return { valid: false, error: 'Invalid upload type' };
+    }
+
+    if (!config.mimeTypes.includes(file.type)) {
+      return {
+        valid: false,
+        error: `אנא בחר קובץ ${config.displayName} בלבד`
+      };
+    }
+
+    const maxSize = config.maxSizeMB * 1024 * 1024;
+    if (file.size > maxSize) {
+      return {
+        valid: false,
+        error: `גודל הקובץ חייב להיות קטן מ-${config.maxSizeMB}MB`
+      };
+    }
+
+    return { valid: true };
+  };
+
+  const getAcceptAttribute = (uploadType) => {
+    return getFileTypeConfig(uploadType)?.accept || '';
+  };
+
   // File upload handler (same as in Products.jsx)
   // Function to get video duration from file on client-side
   const getVideoDuration = (file) => {
@@ -468,71 +512,11 @@ export default function ProductModal({
 
     const uploadKey = moduleIndex !== null ? `module_${moduleIndex}_${fileType}` : fileType;
 
-    // Validate file type
-    if (fileType === 'image' && !file.type.startsWith('image/')) {
-      setMessage({ type: 'error', text: 'אנא בחר קובץ תמונה בלבד' });
+    // Validate file type using centralized configuration
+    const validation = validateFileType(file, fileType);
+    if (!validation.valid) {
+      setMessage({ type: 'error', text: validation.error });
       return;
-    }
-
-    if (fileType === 'video' && !file.type.startsWith('video/')) {
-      setMessage({ type: 'error', text: 'אנא בחר קובץ וידיאו בלבד' });
-      return;
-    }
-
-    if (fileType === 'workshop_video' && !file.type.startsWith('video/')) {
-      setMessage({ type: 'error', text: 'אנא בחר קובץ וידיאו בלבד' });
-      return;
-    }
-
-    if (fileType === 'marketing_video' && !file.type.startsWith('video/')) {
-      console.error(`❌ Frontend validation failed - File type: "${file.type}", File name: "${file.name}"`);
-      setMessage({ type: 'error', text: 'אנא בחר קובץ וידיאו בלבד' });
-      return;
-    }
-
-    if (fileType === 'preview_file' && file.type !== 'application/pdf') {
-      setMessage({ type: 'error', text: 'אנא בחר קובץ PDF בלבד' });
-      return;
-    }
-
-    // For File product type, allow multiple file types
-    if (fileType === 'file') {
-      const allowedMimeTypes = [
-        'application/pdf',
-        'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'application/vnd.ms-excel',
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'application/vnd.ms-powerpoint',
-        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-        'image/jpeg',
-        'image/jpg',
-        'image/png',
-        'image/gif',
-        'image/webp',
-        'application/zip',
-        'application/x-zip-compressed'
-      ];
-
-      if (!allowedMimeTypes.includes(file.type)) {
-        setMessage({ type: 'error', text: 'סוג קובץ לא נתמך. אנא בחר PDF, Word, Excel, PowerPoint, תמונה או ZIP' });
-        return;
-      }
-    }
-
-    if (fileType === 'material' && file.type !== 'application/pdf') {
-      setMessage({ type: 'error', text: 'אנא בחר קובץ PDF בלבד' });
-      return;
-    }
-
-    // Allow any file size for videos
-    // Only limit non-video files to prevent abuse
-    if (fileType !== 'video' && fileType !== 'workshop_video') {
-      let maxSize = 50 * 1024 * 1024; // 50MB for non-video files
-      if (file.size > maxSize) {
-        setMessage({ type: 'error', text: 'גודל הקובץ חייב להיות קטן מ-50MB.' });
-        return;
-      }
     }
 
     setUploadStates(prev => ({ ...prev, [uploadKey]: true }));
@@ -898,6 +882,9 @@ export default function ProductModal({
         file_url: formData.file_url || null,
         preview_file_url: formData.preview_file_url || null,
         file_type: formData.file_type || null,
+        allow_preview: formData.allow_preview ?? true,
+        add_copyrights_footer: formData.add_copyrights_footer ?? true,
+        is_ludora_creator: formData.is_ludora_creator || false,
         tags: formData.tags?.filter(tag => tag.trim()) || [],
         target_audience: (formData.target_audience && formData.target_audience.trim()) ? formData.target_audience : null,
         difficulty_level: (formData.difficulty_level && formData.difficulty_level.trim()) ? formData.difficulty_level : null,
@@ -948,7 +935,9 @@ export default function ProductModal({
           const { File: FileEntity } = await import('@/services/entities');
           await FileEntity.update(editingProduct.entity_id, {
             file_url: cleanedData.file_url || null,
-            file_type: cleanedData.file_type || null
+            file_type: cleanedData.file_type || null,
+            allow_preview: cleanedData.allow_preview ?? true,
+            add_copyrights_footer: cleanedData.add_copyrights_footer ?? true
           });
         }
 
@@ -1541,7 +1530,7 @@ export default function ProductModal({
                           <div className="flex items-center gap-2">
                             <Input
                               type="file"
-                              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.webp,.zip"
+                              accept={getAcceptAttribute('file')}
                               onChange={(e) => handleFileUpload(e, 'file')}
                               disabled={uploadStates.file || !editingProduct}
                               className="w-full sm:w-auto"
@@ -1607,9 +1596,74 @@ export default function ProductModal({
                         )}
 
                         <div className="text-xs text-gray-500 mt-2">
-                          סוגי קבצים נתמכים: PDF, Word, Excel, PowerPoint, תמונות, ZIP
+                          סוגי קבצים נתמכים: {getFileTypeConfig('file')?.displayName || 'PDF'}
                         </div>
                       </div>
+
+                      {/* Allow Preview Toggle */}
+                      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        <div className="space-y-0.5">
+                          <Label className="text-sm font-medium text-gray-900">לאפשר תצוגה מקדימה</Label>
+                          <p className="text-xs text-gray-500">
+                            כאשר מופעל, משתמשים יוכלו לצפות בתצוגה מקדימה של הקובץ לפני הרכישה
+                          </p>
+                        </div>
+                        <Switch
+                          checked={formData.allow_preview}
+                          onCheckedChange={(checked) => setFormData({ ...formData, allow_preview: checked })}
+                        />
+                      </div>
+
+                      {/* Add Copyrights Footer Toggle */}
+                      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        <div className="space-y-0.5">
+                          <Label className="text-sm font-medium text-gray-900">הוסף כותרת תחתונה עם זכויות יוצרים</Label>
+                          <p className="text-xs text-gray-500">
+                            כאשר מופעל, יוסף באופן אוטומטי כותרת תחתונה עם פרטי זכויות היוצרים של היוצר
+                          </p>
+                        </div>
+                        <Switch
+                          checked={formData.add_copyrights_footer}
+                          onCheckedChange={(checked) => setFormData({ ...formData, add_copyrights_footer: checked })}
+                        />
+                      </div>
+
+                      {/* Footer Preview Button - Show only if add_copyrights_footer is true, file is PDF, and file exists */}
+                      {formData.add_copyrights_footer &&
+                       formData.file_type === 'pdf' &&
+                       formData.file_url &&
+                       (currentUser?.role === 'admin' || currentUser?.role === 'sysadmin' || currentUser?.content_creator_agreement_sign_date) && (
+                        <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setShowFooterPreview(true)}
+                            className="w-full"
+                          >
+                            <Eye className="w-4 h-4 ml-2" />
+                            תצוגה מקדימה של כותרת תחתונה
+                          </Button>
+                          <p className="text-xs text-gray-600 mt-2">
+                            לחץ לצפייה בתצוגה מקדימה של הקובץ עם כותרת תחתונה של זכויות יוצרים
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Ludora Creator Toggle - Admin Only */}
+                      {(currentUser?.role === 'admin' || currentUser?.role === 'sysadmin') && (
+                        <div className="flex items-center justify-between p-4 bg-purple-50 rounded-lg border border-purple-200">
+                          <div className="space-y-0.5">
+                            <Label className="text-sm font-medium text-purple-900">מוצר של לודורה (למנהלים בלבד)</Label>
+                            <p className="text-xs text-purple-600">
+                              כאשר מופעל, המוצר ישויך ללודורה ולא למשתמש הנוכחי. היוצר יוצג כ"Ludora"
+                            </p>
+                          </div>
+                          <Switch
+                            checked={formData.is_ludora_creator}
+                            onCheckedChange={(checked) => setFormData({ ...formData, is_ludora_creator: checked })}
+                          />
+                        </div>
+                      )}
                     </div>
 
                     {/* Preview File Upload */}
@@ -1621,8 +1675,8 @@ export default function ProductModal({
                           <div className="flex items-center gap-2">
                             <Input
                               type="file"
-                              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.webp,.zip"
-                              onChange={(e) => handleFileUpload(e, 'preview')}
+                              accept={getAcceptAttribute('preview_file')}
+                              onChange={(e) => handleFileUpload(e, 'preview_file')}
                               disabled={uploadStates.preview || !editingProduct}
                               className="w-full sm:w-auto"
                             />
@@ -2164,6 +2218,17 @@ export default function ProductModal({
           </div>
         )}
       </div>
+
+      {/* PDF Footer Preview Modal */}
+      {formData.product_type === 'file' && formData.file_url && editingProduct?.entity_id && (
+        <PdfFooterPreview
+          isOpen={showFooterPreview}
+          onClose={() => setShowFooterPreview(false)}
+          fileEntityId={editingProduct.entity_id}
+          logoUrl={globalSettings?.public_nav_logo || ''}
+          userRole={currentUser?.role || 'user'}
+        />
+      )}
     </div>
   );
 }
