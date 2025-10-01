@@ -81,3 +81,37 @@ export function formatPrice(price, originalPrice = null, wasFree = false) {
 export function formatPriceSimple(price, wasFree = false) {
     return formatPrice(price, null, wasFree).formatted;
 }
+
+/**
+ * Calculate final price after applying discount percentage
+ * @param {number} originalPrice - The original price
+ * @param {number|null} discount - The discount percentage (0-100) or null for no discount
+ * @returns {number} - The final price after discount
+ */
+export function calculateFinalPrice(originalPrice, discount = null) {
+    const numPrice = parseFloat(originalPrice) || 0;
+
+    if (discount === null || discount === undefined || discount === 0) {
+        return numPrice;
+    }
+
+    const numDiscount = parseFloat(discount) || 0;
+    const discountAmount = (numPrice * numDiscount) / 100;
+    const finalPrice = numPrice - discountAmount;
+
+    return Math.max(0, Math.round(finalPrice * 100) / 100); // Round to 2 decimal places
+}
+
+/**
+ * Format price with discount percentage (alternative to formatPrice)
+ * @param {number} originalPrice - The original price
+ * @param {number|null} discount - The discount percentage (0-100) or null for no discount
+ * @returns {object} - Formatted price information
+ */
+export function formatPriceWithDiscount(originalPrice, discount = null) {
+    const numOriginal = parseFloat(originalPrice) || 0;
+    const finalPrice = calculateFinalPrice(numOriginal, discount);
+    const hasDiscount = discount !== null && discount !== undefined && discount > 0;
+
+    return formatPrice(finalPrice, hasDiscount ? numOriginal : null, numOriginal === 0 && !hasDiscount);
+}
