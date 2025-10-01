@@ -72,7 +72,7 @@ export default function GetAccessButton({
 
       clog('Creating free purchase for product:', product.id, 'user:', userId);
 
-      const response = await fetch(`${getApiBase()}/purchases`, {
+      const response = await fetch(`${getApiBase()}/entities/purchase`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
