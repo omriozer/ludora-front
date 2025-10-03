@@ -1,6 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { PRODUCT_TYPES, getProductTypeName } from "@/config/productTypes";
+import { getProductImageUrl } from "@/utils/videoUtils.js";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -73,10 +74,10 @@ export default function ProductCard({
   return (
     <Card className="border-none shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden">
       {/* Image with YouTube indicator */}
-      {product.image_url && (
+      {(product.image_url && product.image_url !== '') && (
         <div className="h-48 overflow-hidden relative">
           <img
-            src={product.image_url}
+            src={getProductImageUrl(product)}
             alt={product.title}
             className="w-full h-full object-cover"
           />

@@ -33,7 +33,52 @@ export function getMarketingVideoUrl(product) {
 
   if (!productId || !productType) return null;
 
-  return generateVideoUrl('marketing', productType, productId);
+  let url = generateVideoUrl('marketing', productType, productId);
+
+  // Add cache busting parameter if content was updated
+  if (url && product.updated_at) {
+    const timestamp = new Date(product.updated_at).getTime();
+    url += `?v=${timestamp}`;
+  }
+
+  return url;
+}
+
+/**
+ * Generate product image URL using predictable path
+ * @param {Object} product - Product object with id and product_type
+ * @returns {string|null} - Product image URL or null
+ */
+export function getProductImageUrl(product) {
+  if (!product) return null;
+
+  // Extract ID and product type
+  const productId = product.id || product.entity_id;
+  const productType = product.product_type;
+
+  if (!productId || !productType) return null;
+
+  // Determine filename - backward compatibility with old system
+  let filename = 'image.jpg'; // Default for new system
+
+  if (product.image_url && product.image_url !== 'HAS_IMAGE') {
+    // Old system: extract filename from stored path
+    const parts = product.image_url.split('/');
+    if (parts.length > 0) {
+      filename = parts[parts.length - 1];
+    }
+  }
+
+  // Use predictable path with appropriate filename
+  let url = `${getApiBase()}/assets/image/${productType}/${productId}/${filename}`;
+
+  // Add cache busting parameter if content was updated
+  if (product.updated_at) {
+    const timestamp = new Date(product.updated_at).getTime();
+    url += `?v=${timestamp}`;
+  }
+
+  return url;
 }
 
 /**
@@ -43,5 +88,14 @@ export function getMarketingVideoUrl(product) {
  */
 export function getContentVideoUrl(product) {
   if (!product?.id || !product?.product_type) return null;
-  return generateVideoUrl('content', product.product_type, product.id);
+
+  let url = generateVideoUrl('content', product.product_type, product.id);
+
+  // Add cache busting parameter if content was updated
+  if (url && product.updated_at) {
+    const timestamp = new Date(product.updated_at).getTime();
+    url += `?v=${timestamp}`;
+  }
+
+  return url;
 }

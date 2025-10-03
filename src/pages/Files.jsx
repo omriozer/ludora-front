@@ -39,6 +39,7 @@ import { hasActiveAccess, getUserPurchaseForFile } from "@/components/files/file
 import { formatPrice } from "@/lib/utils";
 import PriceDisplayTag from "@/components/ui/PriceDisplayTag";
 import { apiRequest } from "@/utils/api";
+import { getProductImageUrl } from "@/utils/videoUtils.js";
 import GetAccessButton from "@/components/ui/GetAccessButton";
 
 export default function Files() {
@@ -454,7 +455,7 @@ function FileCard({ file, onPurchase, onEdit, fileTexts, currentUser }) {
         {/* Fixed height image section */}
         <div className="h-40 sm:h-48 overflow-hidden relative flex-shrink-0">
           <img
-            src={file.image_url || getPlaceholderImage()}
+            src={(file.image_url && file.image_url !== '') ? getProductImageUrl(file) : getPlaceholderImage()}
             alt={file.title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />

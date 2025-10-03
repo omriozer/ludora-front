@@ -33,7 +33,7 @@ import ProductTypeSelector from './ProductTypeSelector';
 import { getProductTypeName } from '@/config/productTypes';
 import { getApiBase } from '@/utils/api.js';
 import { apiRequest, apiUploadWithProgress } from '@/services/apiClient';
-import { getMarketingVideoUrl } from '@/utils/videoUtils.js';
+import { getMarketingVideoUrl, getProductImageUrl } from '@/utils/videoUtils.js';
 import { toast } from '@/components/ui/use-toast';
 import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
 import PdfFooterPreview from '../pdf/PdfFooterPreview';
@@ -332,6 +332,7 @@ export default function ProductModal({
       add_copyrights_footer: product.add_copyrights_footer ?? true,
       is_ludora_creator: !product.creator_user_id,
       image_is_private: product.image_is_private ?? false,
+      has_image: !!(product.image_url && product.image_url !== ''), // Compute has_image from image_url
     });
 
 
@@ -525,6 +526,7 @@ export default function ProductModal({
     try {
       const isVideoFile = (fileType === 'video' || fileType === 'workshop_video' || fileType === 'marketing_video');
       const isFileUpload = (fileType === 'file');
+      const isImageUpload = (fileType === 'image');
       let result;
 
       // Detect video duration on client-side before uploading
@@ -546,8 +548,8 @@ export default function ProductModal({
         }
       }
 
-      if (isVideoFile || isFileUpload) {
-        // Use apiUploadWithProgress for file/video uploads with progress tracking
+      if (isVideoFile || isFileUpload || isImageUpload) {
+        // Use apiUploadWithProgress for file/video/image uploads with progress tracking
         const uploadFormData = new FormData();
         uploadFormData.append('file', file);
 
@@ -590,6 +592,11 @@ export default function ProductModal({
         if (isFileUpload) {
           // Use unified upload endpoint with assetType=document for file uploads
           endpoint = `/assets/upload?entityType=file&entityId=${editingProduct.entity_id}&assetType=document`;
+        } else if (isImageUpload) {
+          // Use unified upload endpoint with assetType=image for image uploads
+          const entityType = editingProduct?.product_type || formData.product_type || 'product';
+          const entityId = editingProduct?.id || 'temp';
+          endpoint = `/assets/upload?entityType=${entityType}&entityId=${entityId}&assetType=image`;
         } else if (fileType === 'marketing_video') {
           // Use new unified public video endpoint for marketing videos
           const entityType = editingProduct?.product_type || formData.product_type;
@@ -627,10 +634,12 @@ export default function ProductModal({
           setMessage({ type: 'success', text: `${fileName} הועלה בהצלחה!` });
         } else {
           // For videos and other files (but NOT file/preview_file assets), get the file reference
-          const fileReference = responseData.downloadUrl || responseData.s3Url || responseData.file_uri || responseData.streamUrl;
+          let fileReference = responseData.downloadUrl || responseData.s3Url || responseData.file_uri || responseData.streamUrl;
 
-          // Marketing videos don't need fileReference since they use predictable paths
-          const needsFileReference = fileType !== 'marketing_video';
+          // For image uploads, don't store URL - use predictable paths like marketing videos
+
+          // Marketing videos and images don't need fileReference - they use predictable paths
+          const needsFileReference = fileType !== 'marketing_video' && fileType !== 'image';
 
           if (fileReference || !needsFileReference) {
             if (moduleIndex !== null) {
@@ -646,13 +655,12 @@ export default function ProductModal({
                 )
               }));
             } else {
-              // For marketing videos and file assets, we don't store URL since we use predictable paths
-              const fieldName = fileType === 'image' ? 'image_url' :
-                fileType === 'video' ? 'video_url' :
+              // For marketing videos and images, we don't store URL since we use predictable paths
+              const fieldName = fileType === 'video' ? 'video_url' :
                 fileType === 'workshop_video' ? 'video_file_url' :
-                null; // No URL field needed for marketing videos, file assets, or preview files
+                null; // No URL field needed for marketing videos, images, file assets, or preview files
 
-              // For marketing videos, we don't update any URL field since we use predictable paths
+              // For marketing videos and images, we don't update any URL field since we use predictable paths
               // For other file types, we update the URL field
               const updateData = fieldName ? { [fieldName]: fileReference } : {};
 
@@ -676,18 +684,34 @@ export default function ProductModal({
                 setMarketingVideoExists(true);
               }
 
-              // Only set private flag for non-video files
-              if (fileType !== 'video' && fileType !== 'workshop_video' && fileType !== 'marketing_video') {
+              // For image uploads, set predictable image URL (like marketing videos)
+              if (fileType === 'image') {
+                // Set a predictable URL that the frontend can use
+                updateData.image_url = 'HAS_IMAGE'; // Flag indicating image exists at predictable path
+                updateData.has_image = true; // Set flag for display logic
+              }
+
+              // Only set private flag for non-video, non-image files
+              if (fileType !== 'video' && fileType !== 'workshop_video' && fileType !== 'marketing_video' && fileType !== 'image') {
                 const isPrivateFile = !!(responseData.file_uri || responseData.s3Url);
-                const isPrivateFieldName = fileType === 'image' ? 'image_is_private' :
-                  fileType === 'preview_file' ? 'preview_file_is_private' : 'file_is_private';
+                const isPrivateFieldName = fileType === 'preview_file' ? 'preview_file_is_private' : 'file_is_private';
                 updateData[isPrivateFieldName] = isPrivateFile;
               }
 
-              setFormData(prev => ({
-                ...prev,
-                ...updateData
-              }));
+              setFormData(prev => {
+                const newFormData = {
+                  ...prev,
+                  ...updateData
+                };
+                console.log('🖼️ Image upload - formData after update:', {
+                  fileType,
+                  updateData,
+                  oldImageUrl: prev.image_url,
+                  newImageUrl: newFormData.image_url,
+                  hasImageUrl: !!newFormData.image_url
+                });
+                return newFormData;
+              });
             }
 
             // Extract filename from original file for better user feedback
@@ -804,18 +828,56 @@ export default function ProductModal({
         return;
       }
 
-      // Handle other file types (original logic) - only for image, video, workshop_video
-      const fieldName = fileType === 'image' ? 'image_url' :
-        fileType === 'video' ? 'video_url' :
+      // Special handling for image deletion - delete from S3
+      if (fileType === 'image') {
+        if (!editingProduct?.id || !editingProduct?.product_type) {
+          console.error('Cannot delete image: Missing product ID or type');
+          setMessage({ type: 'error', text: 'שגיאה: לא ניתן למחוק את התמונה כרגע' });
+          return;
+        }
+
+        // If there's an image, delete from S3 (using predictable path)
+        if (formData.has_image) {
+          setIsDeletingFile(true);
+          try {
+            const entityType = editingProduct.product_type;
+            const entityId = editingProduct.id;
+
+            // Use predictable path (no filename needed - backend knows it's image.jpg)
+            await apiRequest(`/assets/${entityType}/${entityId}?assetType=image`, {
+              method: 'DELETE'
+            });
+
+            // Clear image fields
+            setFormData(prev => ({
+              ...prev,
+              has_image: false
+            }));
+            setMessage({ type: 'success', text: 'התמונה נמחקה בהצלחה!' });
+            console.log('Product image deleted successfully from S3');
+          } catch (error) {
+            console.error('Error deleting image:', error);
+            setMessage({ type: 'error', text: error.message || 'שגיאה במחיקת התמונה' });
+          } finally {
+            setIsDeletingFile(false);
+          }
+          return;
+        } else {
+          // No image to delete from S3, just clear form fields
+          setFormData(prev => ({
+            ...prev,
+            has_image: false
+          }));
+          return;
+        }
+      }
+
+      // Handle other file types (original logic) - only for video, workshop_video
+      const fieldName = fileType === 'video' ? 'video_url' :
         fileType === 'workshop_video' ? 'video_file_url' : null;
 
       // Prepare update data - only if there's a field to update
       const updateData = fieldName ? { [fieldName]: '' } : {};
-
-      // Only reset private flag for image files
-      if (fileType === 'image') {
-        updateData.image_is_private = false;
-      }
 
       setFormData(prev => ({
         ...prev,
@@ -1369,9 +1431,15 @@ export default function ProductModal({
                           <Loader2 className="w-4 h-4 animate-spin text-blue-600 flex-shrink-0" />
                         )}
                       </div>
-                      {formData.image_url && (
+                      {formData.has_image && editingProduct && (
                         <div className="flex items-center gap-2">
-                          <img src={formData.image_url} alt="תצוגה מקדימה" className="w-16 h-16 object-cover rounded flex-shrink-0" />
+                          <img
+                            src={getProductImageUrl(editingProduct)}
+                            alt="תצוגה מקדימה"
+                            className="w-16 h-16 object-cover rounded flex-shrink-0"
+                            onLoad={() => console.log('🖼️ Image loaded successfully:', getProductImageUrl(editingProduct))}
+                            onError={(e) => console.error('🖼️ Image failed to load:', getProductImageUrl(editingProduct), e)}
+                          />
                           <Button
                             type="button"
                             variant="outline"

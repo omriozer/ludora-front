@@ -37,7 +37,7 @@ import { getText } from "../components/utils/getText";
 import LudoraLoadingSpinner from "@/components/ui/LudoraLoadingSpinner";
 import VideoPlayer from "../components/VideoPlayer"; // Added import for VideoPlayer component
 import SecureVideoPlayer from "../components/SecureVideoPlayer";
-import { getMarketingVideoUrl } from '@/utils/videoUtils.js';
+import { getMarketingVideoUrl, getProductImageUrl } from '@/utils/videoUtils.js';
 import { getProductTypeName } from "@/config/productTypes";
 import GetFileButton from "@/components/files/GetFileButton";
 import FileAccessStatus from "@/components/files/FileAccessStatus";
@@ -582,13 +582,13 @@ export default function ProductDetails() {
 
         {/* Hero Section */}
         <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl shadow-blue-500/10 overflow-hidden mb-8">
-          {item.image_url ? (
+          {(item.image_url && item.image_url !== '') ? (
             <div className="flex flex-col">
               {/* Image Section - Full Width on Top */}
               <div className="relative w-full">
                 <div className="h-64 sm:h-80 md:h-96 overflow-hidden">
                   <img
-                    src={item.image_url}
+                    src={getProductImageUrl(item)}
                     alt={item.title}
                     className="w-full h-full object-cover"
                   />
