@@ -76,7 +76,7 @@ export default function ProductDetails() {
       startCourse: await getText("productDetails.startCourse", `התחל ${getProductTypeName('course', 'singular')}`),
       downloadFile: await getText("productDetails.downloadFile", `הורד ${getProductTypeName('file', 'singular')}`),
       watchFile: "צפיה בקובץ", // Same text as Files.jsx
-      getAccess: "קבלת גישה", // Same text as Files.jsx
+      getAccess: "רכישה", // Same text as Files.jsx
       joinWorkshop: await getText("productDetails.joinWorkshop", `הצטרף ל${getProductTypeName('workshop', 'singular')}`),
       watchRecording: await getText("productDetails.watchRecording", "צפה בהקלטה"),
       alreadyOwned: await getText("productDetails.alreadyOwned", "ברשותך"),
@@ -381,7 +381,7 @@ export default function ProductDetails() {
       case 'course':
         return detailsTexts.startCourse;
       case 'file':
-        // Use same text as Files.jsx - "צפיה בקובץ" when has access, "קבלת גישה" when no access
+        // Use same text as Files.jsx - "צפיה בקובץ" when has access, "רכישת קובץ" when no access
         return hasAccess ? detailsTexts.watchFile : detailsTexts.getAccess;
       case 'tool':
         return item.tool_url ? `גש ל${getProductTypeName('tool', 'singular')}` : detailsTexts.downloadFile;

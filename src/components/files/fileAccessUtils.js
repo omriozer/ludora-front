@@ -60,5 +60,5 @@ export const getFileAccessStatus = (userPurchase) => {
 
 // Get button text based on access status
 export const getFileButtonText = (hasAccess) => {
-  return hasAccess ? "צפיה בקובץ" : "קבלת גישה";
+  return hasAccess ? "צפיה בקובץ" : "רכישת קובץ";
 };

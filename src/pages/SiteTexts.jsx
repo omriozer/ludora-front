@@ -129,7 +129,7 @@ export default function SiteTexts() {
       { key: "catalog.noUpcoming.subtitle", text: `${getProductTypeName('workshop', 'plural')} חדשות יפורסמו בקרוב`, category: "catalog", description: `תת הודעה כשאין ${getProductTypeName('workshop', 'plural')} קרובות` },
       { key: "catalog.noRecordings", text: "אין הקלטות זמינות", category: "catalog", description: "הודעה כשאין הקלטות" },
       { key: "catalog.noRecordings.subtitle", text: "הקלטות יועלו בהמשך", category: "catalog", description: "תת הודעה כשאין הקלטות" },
-      { key: "catalog.getAccess", text: "קבלת גישה", category: "catalog", description: "כפתור לקבלת גישה" },
+      { key: "catalog.getAccess", text: "רכישה", category: "catalog", description: "כפתור לרכישה" },
       { key: "catalog.watchRecording", text: "צפיה בהקלטה", category: "catalog", description: "כפתור צפיה בהקלטה" },
       { key: "catalog.loading", text: `טוען ${getProductTypeName('workshop', 'plural')}...`, category: "catalog", description: "הודעת טעינה" },
 
