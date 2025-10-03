@@ -6,6 +6,7 @@ import { toast } from '@/components/ui/use-toast';
 import { getApiBase } from '@/utils/api';
 import { apiRequest } from '@/services/apiClient';
 import { clog, cerror } from '@/lib/utils';
+import { getProductTypeName } from '@/config/productTypes';
 
 /**
  * Unified Get Access Button Component
@@ -51,9 +52,8 @@ export default function GetAccessButton({
       return;
     }
 
-    const isFree = parseFloat(product.price) === 0;
 
-    if (isFree) {
+    if (isFree()) {
       // Auto-purchase free product
       await handleFreePurchase();
     } else {
@@ -62,6 +62,32 @@ export default function GetAccessButton({
       navigate(`/purchase?type=${productType}&id=${product.id}`);
     }
   };
+
+  const isFree = () => { 
+    return !product.price || product.price == 0;
+  }
+
+  const getAccessText = () => {
+    if (!isFree()) {
+      const productName = getProductTypeName(product?.product_type, 'singular');
+      return "לרכישת ה" + productName;
+    } else {
+      switch (product?.product_type) {
+        case 'file':
+          return 'להורדת ה' + productName;
+        case 'course':
+          return 'כניסה ל' + productName;
+        case 'workshop':
+          return 'לצפיה ב';
+        case 'tool':
+          return 'לשימוש ב' + productName;
+        case 'game':
+          return 'ל' + productName;
+        default:
+          return 'למוצר';
+      }
+    }
+  }
 
   const handleFreePurchase = async () => {
     setIsProcessing(true);
@@ -132,8 +158,6 @@ export default function GetAccessButton({
     }
   };
 
-  const isFree = parseFloat(product?.price || 0) === 0;
-
   // If user already has access, show different button
   if (hasAccess) {
     const productType = product.product_type || 'file';
@@ -145,7 +169,7 @@ export default function GetAccessButton({
       >
         <span className="relative z-10 flex items-center justify-center gap-2 sm:gap-3">
           <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6" />
-          <span>יש לך גישה - לצפייה</span>
+          <span>יש לך גישה</span>
         </span>
         <div className="absolute inset-0 bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
         <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 animate-pulse"></div>
@@ -169,7 +193,7 @@ export default function GetAccessButton({
         ) : (
           <>
             <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6 group-hover:rotate-12 transition-transform duration-300" />
-            <span>{isFree ? 'קבלת גישה חינם' : 'קבלת גישה'}</span>
+            <span>{getAccessText()}</span>
           </>
         )}
       </span>
