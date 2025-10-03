@@ -1,7 +1,9 @@
 // Enhanced API utility with comprehensive error handling
-// This is the single utility function for all API requests in the frontend
+// Re-exports apiRequest from centralized apiClient to avoid duplication
 
 import { clog, cerror } from '@/lib/utils';
+// Import and re-export apiRequest from centralized apiClient
+import { apiRequest as apiClientRequest } from '@/services/apiClient';
 
 // Get API base URL from environment
 export const getApiBase = () => {
@@ -54,137 +56,24 @@ export function getAuthToken() {
   return authToken;
 }
 
-// Main API request function with comprehensive error handling
-export async function apiRequest(endpoint, options = {}) {
-  const apiBase = getApiBase();
+// Re-export apiRequest from centralized apiClient
+// All API requests now go through the centralized apiClient for consistency
+export const apiRequest = apiClientRequest;
 
-  // Handle special endpoints that are not under /api
-  let url;
-  if (endpoint === '/health' || endpoint === '/') {
-    // Health and root endpoints are at server root, not under /api
-    url = apiBase.replace('/api', '') + endpoint;
-  } else {
-    url = `${apiBase}${endpoint}`;
-  }
+// DEPRECATED: Old implementation removed - apiRequest now comes from apiClient.js
+// function apiRequest_OLD(endpoint, options = {}) {
+//  const apiBase = getApiBase();
+//
+//  // Handle special endpoints that are not under /api
+//  let url;
+//  if (endpoint === '/health' || endpoint === '/') {
+//    // Health and root endpoints are at server root, not under /api
+//    url = apiBase.replace('/api', '') + endpoint;
+//  } else {
+//    url = `${apiBase}${endpoint}`;
+//  }
 
-  // Log request for debugging
-  clog(`🌐 API Request: ${options.method || 'GET'} ${url}`);
-  clog('📊 API Base:', apiBase);
-  clog('🔑 Auth Token:', authToken ? `${authToken.substring(0, 20)}...` : 'None');
-
-  // Prepare headers
-  const headers = {
-    'Content-Type': 'application/json',
-    ...options.headers
-  };
-
-  // Add auth token if available
-  if (authToken) {
-    headers['Authorization'] = `Bearer ${authToken}`;
-  }
-
-  // If body is FormData, remove Content-Type to let browser set boundary
-  if (options.body instanceof FormData) {
-    delete headers['Content-Type'];
-  }
-
-  const requestOptions = {
-    credentials: 'include',
-    headers,
-    ...options
-  };
-
-  if (import.meta.env.DEV) {
-    clog('📤 Request options:', requestOptions);
-  }
-
-  try {
-    const response = await fetch(url, requestOptions);
-
-    if (import.meta.env.DEV) {
-      clog(`📥 Response status: ${response.status} ${response.statusText}`);
-    }
-
-    // Handle different response statuses
-    if (!response.ok) {
-      let errorData;
-      const contentType = response.headers.get('content-type');
-
-      try {
-        if (contentType && contentType.includes('application/json')) {
-          errorData = await response.json();
-        } else {
-          errorData = { error: await response.text() || response.statusText };
-        }
-      } catch (parseError) {
-        errorData = { error: `HTTP ${response.status}: ${response.statusText}` };
-      }
-
-      // Log error details in development
-      if (import.meta.env.DEV) {
-        cerror('❌ API Error:', errorData);
-
-        // Log validation details if available
-        if (errorData.details && Array.isArray(errorData.details)) {
-          cerror('📋 Validation Details:', errorData.details);
-        }
-      }
-
-      // Extract error message
-      const errorMessage =
-        errorData.error?.message ||
-        errorData.message ||
-        errorData.error ||
-        `API request failed: ${response.status}`;
-
-      // Handle authentication errors
-      if (response.status === 401) {
-        // Clear invalid token
-        setAuthToken(null);
-
-        // Redirect to login if not already on login page
-        if (window.location.pathname !== '/login' && window.location.pathname !== '/') {
-          window.location.href = '/login';
-        }
-      }
-
-      throw new ApiError(errorMessage, response.status, errorData.details);
-    }
-
-    // Parse response
-    const contentType = response.headers.get('content-type');
-    let data;
-
-    if (contentType && contentType.includes('application/json')) {
-      data = await response.json();
-    } else {
-      data = await response.text();
-    }
-
-    if (import.meta.env.DEV) {
-      clog('✅ API Response:', data);
-    }
-
-    return data;
-
-  } catch (error) {
-    // Network errors, parse errors, etc.
-    if (error instanceof ApiError) {
-      throw error;
-    }
-
-    if (import.meta.env.DEV) {
-      cerror('🚫 API Request Failed:', error);
-    }
-
-    // Handle network errors
-    if (error.name === 'TypeError' && error.message.includes('fetch')) {
-      throw new ApiError('Network error: Unable to connect to server', 0);
-    }
-
-    throw new ApiError(error.message || 'An unexpected error occurred', 0);
-  }
-}
+// } // End of deprecated apiRequest_OLD function - removed
 
 // Convenience methods for different HTTP methods
 export const api = {

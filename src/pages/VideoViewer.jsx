@@ -88,7 +88,7 @@ export default function VideoViewer() {
       const apiBase = getApiBase();
       // Remove trailing /api from apiBase if it exists, then add the media path
       const baseUrl = apiBase.replace(/\/api\/?$/, '');
-      const finalUrl = `${baseUrl}/api/media/video/${entityType}/${entityId}`;
+      const finalUrl = `${baseUrl}/api/media/stream/${entityType}/${entityId}`;
 
       // Debug logging in development
       if (import.meta.env.DEV) {

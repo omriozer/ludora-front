@@ -152,16 +152,33 @@ export default function Workshops() {
         // User not logged in, fetchedUserForVisibility remains null
       }
 
-      // If workshops are admin only or hidden, check access
-      if (workshopsVisibility === 'admin_only' && (!fetchedUserForVisibility || fetchedUserForVisibility.role !== 'admin')) {
-        // Redirect to home or show access denied
-        navigate("/");
-        return;
+      // Check access permissions (backup check - primary protection is in ConditionalRoute)
+      const isActualAdmin = fetchedUserForVisibility?.role === 'admin' && !fetchedUserForVisibility?._isImpersonated;
+      const isContentCreator = fetchedUserForVisibility && !!fetchedUserForVisibility.content_creator_agreement_sign_date;
+
+      let hasAccess = false;
+      switch (workshopsVisibility) {
+        case 'public':
+          hasAccess = true;
+          break;
+        case 'logged_in_users':
+          hasAccess = !!fetchedUserForVisibility;
+          break;
+        case 'admin_only':
+          hasAccess = isActualAdmin;
+          break;
+        case 'admins_and_creators':
+          hasAccess = isActualAdmin || isContentCreator;
+          break;
+        case 'hidden':
+          hasAccess = false;
+          break;
+        default:
+          hasAccess = true;
       }
 
-      if (workshopsVisibility === 'hidden') {
-        // Redirect to home
-        navigate("/");
+      if (!hasAccess) {
+        navigate(fetchedUserForVisibility ? "/dashboard" : "/");
         return;
       }
 

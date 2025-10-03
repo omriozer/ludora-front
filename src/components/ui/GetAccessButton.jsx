@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { ShoppingCart, Loader2 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { getApiBase } from '@/utils/api';
+import { apiRequest } from '@/services/apiClient';
 import { clog, cerror } from '@/lib/utils';
 
 /**
@@ -76,12 +77,8 @@ export default function GetAccessButton({
 
       clog('Creating free purchase for product:', product.id, 'user:', userId);
 
-      const response = await fetch(`${getApiBase()}/entities/purchase`, {
+      const purchase = await apiRequest('/entities/purchase', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`
-        },
         body: JSON.stringify({
           buyer_user_id: userId,
           purchasable_id: product.entity_id || product.id,
@@ -93,15 +90,6 @@ export default function GetAccessButton({
           discount_amount: 0
         })
       });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        const errorMessage = errorData.error || errorData.message || 'Failed to create purchase';
-        cerror('Purchase API error:', errorData);
-        throw new Error(errorMessage);
-      }
-
-      const purchase = await response.json();
       clog('Free purchase created successfully:', purchase);
 
       toast({

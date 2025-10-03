@@ -1,22 +1,20 @@
 import { getApiBase } from './api.js';
 
 /**
- * Generate video URL for different content types - all videos go through API for security
- * @param {string} contentType - Type of content ('marketing', 'content')
+ * Generate video URL for different content types - all videos go through unified API endpoint
+ * @param {string} contentType - Type of content ('marketing', 'content') - now just for reference
  * @param {string} entityType - Entity type (product_type like 'game', 'file', etc.)
  * @param {string} entityId - Entity ID
  * @returns {string|null} - Video URL or null if parameters are missing
+ *
+ * Note: Both marketing and private videos now use the same streaming endpoint.
+ * Backend automatically determines if video is public/marketing or private/content.
  */
 export function generateVideoUrl(contentType, entityType, entityId) {
   if (!entityType || !entityId) return null;
 
-  if (contentType === 'marketing') {
-    // Marketing videos use public streaming endpoint
-    return `${getApiBase()}/files/stream-marketing-video/${entityType}/${entityId}`;
-  } else {
-    // Private content videos use private streaming endpoint
-    return `${getApiBase()}/files/stream-video/${entityType}/${entityId}`;
-  }
+  // Unified streaming endpoint - backend determines privacy and applies auth accordingly
+  return `${getApiBase()}/media/stream/${entityType}/${entityId}`;
 }
 
 /**

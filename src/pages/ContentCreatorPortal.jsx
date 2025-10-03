@@ -89,11 +89,17 @@ export default function ContentCreatorPortal() {
 
         // Moved inside useCallback to prevent dependency issues
         const shouldShowFeature = (visibility, isAdmin) => {
+          const isContentCreator = currentUser && !!currentUser.content_creator_agreement_sign_date;
+
           switch (visibility) {
             case 'public':
               return true;
+            case 'logged_in_users':
+              return !!currentUser;
             case 'admin_only':
               return isAdmin;
+            case 'admins_and_creators':
+              return isAdmin || isContentCreator;
             case 'hidden':
               return false;
             default:

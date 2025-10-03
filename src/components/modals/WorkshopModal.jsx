@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Workshop, Category, Settings } from "@/services/entities";
+import { apiUploadWithProgress } from "@/services/apiClient";
 import { getProductTypeName } from "@/config/productTypes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -191,40 +192,23 @@ export default function WorkshopModal({
       setUploadProgress(prev => ({ ...prev, video: 0 }));
 
       const formData = new FormData();
-      formData.append('video', file);
+      formData.append('file', file);
 
-      const xhr = new XMLHttpRequest();
-      
-      // Add authentication header
-      const authToken = localStorage.getItem('authToken');
-      if (authToken) {
-        xhr.setRequestHeader('Authorization', `Bearer ${authToken}`);
-      }
+      // Use centralized apiUploadWithProgress for video uploads
+      const workshopId = formData.id || 'temp';
+      const endpoint = `/assets/upload/video/private?entityType=workshop&entityId=${workshopId}`;
 
-      xhr.upload.addEventListener('progress', (e) => {
-        if (e.lengthComputable) {
-          const progress = (e.loaded / e.total) * 100;
+      const response = await apiUploadWithProgress(
+        endpoint,
+        formData,
+        (progress) => {
           setUploadProgress(prev => ({ ...prev, video: progress }));
         }
-      });
+      );
 
-      xhr.addEventListener('load', () => {
-        if (xhr.status === 200) {
-          const response = JSON.parse(xhr.responseText);
-          handleInputChange('video_file_url', response.file_uri || response.url);
-          setUploadStates(prev => ({ ...prev, video: 'success' }));
-          setMessage({ type: 'success', text: 'הווידאו הועלה בהצלחה' });
-        } else {
-          throw new Error(`Upload failed: ${xhr.status}`);
-        }
-      });
-
-      xhr.addEventListener('error', () => {
-        throw new Error('Upload failed');
-      });
-
-      xhr.open('POST', '/api/videos/upload');
-      xhr.send(formData);
+      handleInputChange('video_file_url', response.s3Key || response.url);
+      setUploadStates(prev => ({ ...prev, video: 'success' }));
+      setMessage({ type: 'success', text: 'הווידאו הועלה בהצלחה' });
       
     } catch (error) {
       console.error('Error uploading video:', error);

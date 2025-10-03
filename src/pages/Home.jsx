@@ -109,60 +109,47 @@ export default function Home() {
     loadCurrentUser();
   }, [loadSettings, loadCurrentUser]);
 
-  const shouldShowWorkshopsUpdated = () => {
+  // Helper function to check visibility for Home page items
+  const shouldShowItemByVisibility = (visibility) => {
     if (!settings) return true;
-    const visibility = settings.nav_workshops_visibility || 'public';
 
-    if (visibility === 'public') return true;
-    if (visibility === 'hidden') return false;
-    if (visibility === 'admin_only') {
-      const isActualAdmin = currentUser?.role === 'admin' && !currentUser?._isImpersonated;
-      return isActualAdmin;
+    const isActualAdmin = currentUser?.role === 'admin' && !currentUser?._isImpersonated;
+    const isContentCreator = currentUser && !!currentUser.content_creator_agreement_sign_date;
+
+    switch (visibility) {
+      case 'public':
+        return true;
+      case 'logged_in_users':
+        return !!currentUser;
+      case 'admin_only':
+        return isActualAdmin;
+      case 'admins_and_creators':
+        return isActualAdmin || isContentCreator;
+      case 'hidden':
+        return false;
+      default:
+        return true; // Default to public for unknown values
     }
+  };
 
-    return true;
+  const shouldShowWorkshopsUpdated = () => {
+    const visibility = settings?.nav_workshops_visibility || 'public';
+    return shouldShowItemByVisibility(visibility);
   };
 
   const shouldShowCoursesUpdated = () => {
-    if (!settings) return true;
-    const visibility = settings.nav_courses_visibility || 'public';
-
-    if (visibility === 'public') return true;
-    if (visibility === 'hidden') return false;
-    if (visibility === 'admin_only') {
-      const isActualAdmin = currentUser?.role === 'admin' && !currentUser?._isImpersonated;
-      return isActualAdmin;
-    }
-
-    return true;
+    const visibility = settings?.nav_courses_visibility || 'public';
+    return shouldShowItemByVisibility(visibility);
   };
 
   const shouldShowFilesUpdated = () => {
-    if (!settings) return true;
-    const visibility = settings.nav_files_visibility || 'public';
-
-    if (visibility === 'public') return true;
-    if (visibility === 'hidden') return false;
-    if (visibility === 'admin_only') {
-      const isActualAdmin = currentUser?.role === 'admin' && !currentUser?._isImpersonated;
-      return isActualAdmin;
-    }
-
-    return true;
+    const visibility = settings?.nav_files_visibility || 'public';
+    return shouldShowItemByVisibility(visibility);
   };
 
   const shouldShowGamesUpdated = () => {
-    if (!settings) return true;
-    const visibility = settings.nav_games_visibility || 'public';
-
-    if (visibility === 'public') return true;
-    if (visibility === 'hidden') return false;
-    if (visibility === 'admin_only') {
-      const isActualAdmin = currentUser?.role === 'admin' && !currentUser?._isImpersonated;
-      return isActualAdmin;
-    }
-
-    return true;
+    const visibility = settings?.nav_games_visibility || 'public';
+    return shouldShowItemByVisibility(visibility);
   };
 
   const shouldShowSubscriptionOffer = () => {

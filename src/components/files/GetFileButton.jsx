@@ -3,6 +3,7 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart } from "lucide-react";
 import { getApiBase } from "@/utils/api";
+import { apiDownload } from "@/services/apiClient";
 import { hasActiveAccess, getUserPurchaseForFile, getFileButtonText } from "./fileAccessUtils";
 
 export default function GetFileButton({
@@ -19,13 +20,22 @@ export default function GetFileButton({
   const hasAccess = hasActiveAccess(userPurchase);
   const buttonText = getFileButtonText(hasAccess);
 
-  // Handle file access - same logic as Files.jsx
-  const handleFileAccess = (file) => {
-    const authToken = localStorage.getItem('authToken');
-    if (authToken && file.id) {
-      const apiBase = getApiBase();
-      const fileUrl = `${apiBase}/media/file/download/${file.id}?authToken=${authToken}`;
-      window.open(fileUrl, '_blank');
+  // Handle file access - using apiDownload for secure authenticated downloads
+  const handleFileAccess = async (file) => {
+    if (!file.id) return;
+
+    try {
+      // Use apiDownload to get blob with auth headers
+      const blob = await apiDownload(`/assets/download/file/${file.id}`);
+
+      // Create blob URL and trigger download
+      const blobUrl = URL.createObjectURL(blob);
+      window.open(blobUrl, '_blank');
+
+      // Clean up blob URL after a delay
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+    } catch (error) {
+      console.error('Error downloading file:', error);
     }
   };
 

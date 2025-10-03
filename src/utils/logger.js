@@ -2,22 +2,13 @@
 // Sends logs to backend database via API
 
 const isDev = import.meta.env.DEV || import.meta.env.MODE === 'development';
-import { getApiBase } from '@/utils/api.js';
+import { apiRequest } from '@/services/apiClient';
 
-const API_BASE_URL = getApiBase();
-
-// Send log to backend API
+// Send log to backend API using centralized apiRequest
 const sendLogToBackend = async (message, logType = 'debug') => {
   try {
-    await fetch(`${API_BASE_URL}/logs`, {
+    await apiRequest('/logs', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        // Include auth token if available
-        ...(localStorage.getItem('authToken') && {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-        })
-      },
       body: JSON.stringify({
         source_type: 'app',
         log_type: logType,

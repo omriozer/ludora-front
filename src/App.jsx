@@ -7,6 +7,7 @@ import Layout from '@/pages/Layout';
 import { useUser } from '@/contexts/UserContext';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import AdminRoute from '@/components/auth/AdminRoute';
+import ConditionalRoute from '@/components/auth/ConditionalRoute';
 import TutorialOverlay from '@/components/TutorialOverlay';
 
 function App() {
@@ -69,9 +70,9 @@ function App() {
 				<Route
 					path='/account'
 					element={
-						<ProtectedRoute>
+						<ConditionalRoute visibilityField="nav_account_visibility">
 							<Pages.MyAccount />
-						</ProtectedRoute>
+						</ConditionalRoute>
 					}
 				/>
 				<Route
@@ -180,7 +181,11 @@ function App() {
 				/>
 				<Route
 					path='/catalog'
-					element={<Pages.GamesCatalog />}
+					element={
+						<ConditionalRoute visibilityField="nav_games_visibility">
+							<Pages.GamesCatalog />
+						</ConditionalRoute>
+					}
 				/>
 				<Route
 					path='/launcher'
@@ -189,33 +194,41 @@ function App() {
 				<Route
 					path='/creator-signup'
 					element={
-						<ProtectedRoute>
+						<ConditionalRoute visibilityField="nav_content_creators_visibility">
 							<Pages.ContentCreatorSignup />
-						</ProtectedRoute>
+						</ConditionalRoute>
 					}
 				/>
 				<Route
 					path='/creator-portal'
 					element={
-						<ProtectedRoute>
+						<ConditionalRoute visibilityField="nav_content_creators_visibility">
 							<Pages.ContentCreatorPortal />
-						</ProtectedRoute>
+						</ConditionalRoute>
 					}
 				/>
 				<Route
 					path='/workshops'
-					element={<Pages.Workshops />}
+					element={
+						<ConditionalRoute visibilityField="nav_workshops_visibility">
+							<Pages.Workshops />
+						</ConditionalRoute>
+					}
 				/>
 				<Route
 					path='/courses'
-					element={<Pages.Courses />}
+					element={
+						<ConditionalRoute visibilityField="nav_courses_visibility">
+							<Pages.Courses />
+						</ConditionalRoute>
+					}
 				/>
 				<Route
 					path='/classrooms'
 					element={
-						<ProtectedRoute>
+						<ConditionalRoute visibilityField="nav_classrooms_visibility">
 							<Pages.MyClassrooms />
-						</ProtectedRoute>
+						</ConditionalRoute>
 					}
 				/>
 				<Route
@@ -271,9 +284,9 @@ function App() {
 				<Route
 					path='/tools'
 					element={
-						<AdminRoute>
+						<ConditionalRoute visibilityField="nav_tools_visibility">
 							<Pages.Tools />
-						</AdminRoute>
+						</ConditionalRoute>
 					}
 				/>
 				<Route
@@ -287,9 +300,9 @@ function App() {
 				<Route
 					path='/files'
 					element={
-						<AdminRoute>
+						<ConditionalRoute visibilityField="nav_files_visibility">
 							<Pages.Files />
-						</AdminRoute>
+						</ConditionalRoute>
 					}
 				/>
 				<Route

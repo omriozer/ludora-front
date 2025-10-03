@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Workshop, Course, File, Tool, User, Purchase, Settings } from "@/services/entities"; // Updated imports
+import { apiDownload } from "@/services/apiClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -39,15 +40,10 @@ import { getProductTypeName } from "@/config/productTypes";
 import GetFileButton from "@/components/files/GetFileButton";
 import FileAccessStatus from "@/components/files/FileAccessStatus";
 import { hasActiveAccess, getUserPurchaseForFile } from "@/components/files/fileAccessUtils";
-import { getApiBase, purchaseUtils } from "@/utils/api.js";
+import { purchaseUtils } from "@/utils/api.js";
 import PriceDisplayTag from "@/components/ui/PriceDisplayTag";
 import GetAccessButton from "@/components/ui/GetAccessButton";
-
-// Import modular components
-import ProductHeader from "@/components/product-details/ProductHeader";
-import ProductImage from "@/components/product-details/ProductImage";
-import ProductPricing from "@/components/product-details/ProductPricing";
-import ProductMetadata from "@/components/product-details/ProductMetadata";
+import PdfViewer from "@/components/pdf/PdfViewer";
 
 export default function ProductDetails() {
   const navigate = useNavigate();
@@ -62,6 +58,7 @@ export default function ProductDetails() {
   const [error, setError] = useState(null);
   const [settings, setSettings] = useState({});
   const [detailsTexts, setDetailsTexts] = useState({});
+  const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
 
   useEffect(() => {
     loadTexts();
@@ -113,25 +110,40 @@ export default function ProductDetails() {
     });
   };
 
-  // Use same file access logic as Files.jsx
-  const handleFileAccess = (file) => {
-    // Use authenticated file download endpoint with auth token - same as Files.jsx
-    const authToken = localStorage.getItem('authToken');
-    if (authToken && file.id) {
-      const apiBase = getApiBase();
-      const fileUrl = `${apiBase}/media/file/download/${file.id}?authToken=${authToken}`;
-      window.open(fileUrl, '_blank');
+  // Enhanced file access logic with PDF viewer support
+  const handleFileAccess = async (file) => {
+    if (!file.id) return;
+
+    // Check if it's a PDF file
+    const isPdf = file.file_type === 'pdf' || file.file_name?.toLowerCase().endsWith('.pdf');
+
+    if (isPdf) {
+      // Open PDF in viewer modal
+      setPdfViewerOpen(true);
+    } else {
+      // For non-PDF files, use direct download
+      try {
+        // Use apiDownload to get blob with auth headers
+        const blob = await apiDownload(`/assets/download/file/${file.id}`);
+
+        // Create blob URL and trigger download
+        const blobUrl = URL.createObjectURL(blob);
+        window.open(blobUrl, '_blank');
+
+        // Clean up blob URL after a delay
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+      } catch (error) {
+        console.error('Error downloading file:', error);
+      }
     }
   };
 
+  // Handle PDF preview for users without access
+  const handlePdfPreview = () => {
+    setPdfViewerOpen(true);
+  };
+
   const handleDownload = async () => {
-    if (!item.file_url && !item.tool_url) {
-      console.error("No file URL or tool URL found for item:", item);
-      return;
-    }
-
-    const downloadUrl = item.file_url || item.tool_url;
-
     try {
       const userPurchase = getUserPurchaseForItem(item.id, itemType);
       if (userPurchase) {
@@ -147,13 +159,35 @@ export default function ProductDetails() {
         downloads_count: (item.file?.downloads_count || item.downloads_count || 0) + 1
       });
 
-      const response = await fetch(downloadUrl);
-      const blob = await response.blob();
+      let blob;
+      let filename;
+
+      // For File products, use assets API
+      if (itemType === 'file' && item.entity_id) {
+        blob = await apiDownload(`/assets/download/file/${item.entity_id}`);
+        filename = `${item.title || 'download'}.${item.file_type || 'pdf'}`;
+      }
+      // For Tool products, use tool_url
+      else if (itemType === 'tool' && item.tool_url) {
+        const response = await fetch(item.tool_url);
+        blob = await response.blob();
+        filename = `${item.title || 'download'}.zip`;
+      }
+      // Fallback for legacy file_url (should not happen anymore)
+      else if (item.file_url) {
+        const response = await fetch(item.file_url);
+        blob = await response.blob();
+        filename = `${item.title || 'download'}.${item.file_type || 'pdf'}`;
+      }
+      else {
+        console.error("No download method available for item:", item);
+        return;
+      }
 
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `${item.title || 'download'}.${item.file_type || 'pdf'}`;
+      link.download = filename;
       link.style.display = 'none';
 
       document.body.appendChild(link);
@@ -164,7 +198,6 @@ export default function ProductDetails() {
 
     } catch (error) {
       console.error("Error downloading file:", error);
-      window.open(downloadUrl, '_blank');
     }
   };
 
@@ -254,11 +287,18 @@ export default function ProductDetails() {
       setItem(productDetails);
       setSettings(settingsData.length > 0 ? settingsData[0] : {});
 
-      // Use centralized logic for determining access
-      // getUserPurchaseForFile expects (file_id, userPurchases), not (entityId, purchases)
-      // For products, we need to check against the product ID
-      const userPurchase = getUserPurchaseForItem(productDetails.id, productDetails.product_type || entityType);
+      // Use embedded purchase data from API response
+      // The API returns purchase information directly in productDetails.purchase
+      const userPurchase = productDetails.purchase || null;
       const hasUserAccess = hasActiveAccess(userPurchase);
+
+      // DEBUG: Log access calculation
+      console.log('Access Debug:', {
+        productId: productDetails.id,
+        userPurchase,
+        hasUserAccess,
+        paymentStatus: userPurchase?.payment_status
+      });
 
       setHasAccess(hasUserAccess);
       setPurchase(userPurchase);
@@ -404,11 +444,6 @@ export default function ProductDetails() {
     }
   };
 
-  const handlePreviewDownload = () => {
-    if (item.preview_file_url) {
-      window.open(item.preview_file_url, '_blank');
-    }
-  };
 
   if (isLoading) {
     return (
@@ -500,6 +535,36 @@ export default function ProductDetails() {
                       showDiscount={false}
                     />
                   </div>
+
+                  {/* Preview Button for PDF Files without access but with preview allowed */}
+                  {(() => {
+                    const isFile = item.product_type === 'file' || itemType === 'file';
+                    const isPdf = item.file_type === 'pdf' || item.file_name?.toLowerCase().endsWith('.pdf');
+                    const shouldShow = !hasAccess && isFile && isPdf && item.allow_preview;
+
+                    // DEBUG: Log preview button logic
+                    console.log('Preview Button Debug:', {
+                      hasAccess,
+                      isFile,
+                      isPdf,
+                      allowPreview: item.allow_preview,
+                      shouldShow,
+                      buttonText: getAccessButtonText()
+                    });
+
+                    return shouldShow;
+                  })() && (
+                    <Button
+                      onClick={handlePdfPreview}
+                      variant="outline"
+                      className="px-3 sm:px-4 py-2 sm:py-3 flex-shrink-0 text-xs sm:text-sm border-blue-200 text-blue-600 hover:bg-blue-50"
+                      size="sm"
+                    >
+                      <Eye className="w-3 h-3 sm:w-4 sm:h-4 ml-1 sm:ml-2" />
+                      <span className="hidden sm:inline">תצוגה מקדימה</span>
+                      <span className="sm:hidden">תצוגה</span>
+                    </Button>
+                  )}
 
                   {/* Purchase Button - Unified Design */}
                   <GetAccessButton
@@ -603,17 +668,6 @@ export default function ProductDetails() {
 
                 {/* Action Buttons */}
                 <div className="space-y-3 sm:space-y-4">
-                  {!hasAccess && item.product_type === 'file' && item.preview_file_url && (
-                    <Button
-                      onClick={handlePreviewDownload}
-                      variant="outline"
-                      className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-full px-6 py-3 shadow-md"
-                    >
-                      <Eye className="w-4 h-4" />
-                      {detailsTexts.freePreview}
-                    </Button>
-                  )}
-
                   {hasAccess ? (
                     <Button
                       onClick={handleProductAccess}
@@ -701,18 +755,6 @@ export default function ProductDetails() {
 
                 {/* Action Buttons */}
                 <div className="flex flex-col gap-3 sm:gap-4 max-w-md mx-auto">
-                  {!hasAccess && item.product_type === 'file' && item.preview_file_url && (
-                    <Button
-                      onClick={handlePreviewDownload}
-                      variant="outline"
-                      className="w-full flex items-center justify-center gap-2 rounded-full px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg shadow-lg"
-                      size="lg"
-                    >
-                      <Eye className="w-4 h-4 sm:w-5 sm:h-5" />
-                      {detailsTexts.freePreview}
-                    </Button>
-                  )}
-
                   {hasAccess ? (
                     <Button
                       onClick={handleProductAccess}
@@ -1108,12 +1150,6 @@ export default function ProductDetails() {
                         <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
                         <span className="text-sm font-medium text-gray-800">הורדת ה{getProductTypeName('file', 'singular')} מיד לאחר הרכישה</span>
                       </div>
-                      {item.preview_file_url && (
-                        <div className="flex items-center gap-3">
-                          <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
-                          <span className="text-sm font-medium text-gray-800">תצוגה מקדימה חינמית</span>
-                        </div>
-                      )}
                     </>
                   )}
                   
@@ -1157,6 +1193,17 @@ export default function ProductDetails() {
           </div>
         </div>
       </div>
+
+      {/* PDF Viewer Modal */}
+      {pdfViewerOpen && (item.product_type === 'file' || itemType === 'file') && (
+        <PdfViewer
+          fileId={item.entity_id || item.id}
+          fileName={item.file_name || `${item.title}.pdf`}
+          hasAccess={hasAccess}
+          allowPreview={item.allow_preview}
+          onClose={() => setPdfViewerOpen(false)}
+        />
+      )}
     </div>
   );
 }

@@ -107,7 +107,7 @@ export default function Files() {
               const fileEntity = await File.findById(productToEdit.entity_id);
               const mergedProduct = {
                 ...productToEdit,
-                file_url: fileEntity.file_url || "",
+                file_name: fileEntity.file_name || "",
                 file_type: fileEntity.file_type || "pdf",
               };
               setEditingProduct(mergedProduct);
@@ -173,14 +173,33 @@ export default function Files() {
         setCurrentUser(null);
       }
 
-      // Check access permissions
-      if (filesVisibility === 'admin_only' && (!tempCurrentUser || tempCurrentUser.role !== 'admin')) {
-        navigate("/");
-        return;
+      // Check access permissions (backup check - primary protection is in ConditionalRoute)
+      const isActualAdmin = tempCurrentUser?.role === 'admin' && !tempCurrentUser?._isImpersonated;
+      const isContentCreator = tempCurrentUser && !!tempCurrentUser.content_creator_agreement_sign_date;
+
+      let hasAccess = false;
+      switch (filesVisibility) {
+        case 'public':
+          hasAccess = true;
+          break;
+        case 'logged_in_users':
+          hasAccess = !!tempCurrentUser;
+          break;
+        case 'admin_only':
+          hasAccess = isActualAdmin;
+          break;
+        case 'admins_and_creators':
+          hasAccess = isActualAdmin || isContentCreator;
+          break;
+        case 'hidden':
+          hasAccess = false;
+          break;
+        default:
+          hasAccess = true;
       }
 
-      if (filesVisibility === 'hidden') {
-        navigate("/");
+      if (!hasAccess) {
+        navigate(tempCurrentUser ? "/dashboard" : "/");
         return;
       }
 
@@ -230,13 +249,13 @@ export default function Files() {
 
   const handleEdit = async (product) => {
     try {
-      // Load the actual File entity data to get file_url
+      // Load the actual File entity data to get file_name
       const fileEntity = await File.findById(product.entity_id);
 
       // Merge Product and File data
       const mergedProduct = {
         ...product,
-        file_url: fileEntity.file_url || "",
+        file_name: fileEntity.file_name || "",
         file_type: fileEntity.file_type || "pdf",
       };
 
@@ -517,13 +536,6 @@ function FileCard({ file, onPurchase, onEdit, fileTexts, currentUser }) {
                 {file.allow_preview ? 'תצוגה מקדימה זמינה' : 'אין תצוגה מקדימה'}
               </span>
             </div>
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <Copyright className={`w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0 ${file.add_copyrights_footer ? 'text-blue-600' : 'text-gray-400'}`} />
-              <span className={`text-xs ${file.add_copyrights_footer ? 'text-blue-700' : 'text-gray-500'}`}>
-                {file.add_copyrights_footer ? 'כולל כותרת זכויות יוצרים' : 'ללא כותרת זכויות יוצרים'}
-              </span>
-            </div>
-
           </div>
 
           {/* Tags - only show if tags exist and are not empty */}

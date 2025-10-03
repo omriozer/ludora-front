@@ -161,6 +161,14 @@ export default function FeatureControl() {
           cardBorder: 'border-green-200',
           cardBg: 'bg-green-50/30'
         };
+      case 'logged_in_users':
+        return {
+          label: 'משתמשים מחוברים',
+          icon: UserIcon,
+          color: 'bg-blue-100 text-blue-800 border-blue-200',
+          cardBorder: 'border-blue-200',
+          cardBg: 'bg-blue-50/30'
+        };
       case 'admin_only':
         return {
           label: 'מנהלים בלבד',
@@ -269,6 +277,7 @@ export default function FeatureControl() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {[
                 { key: 'public', label: 'גלוי לכולם', icon: Globe, color: 'bg-green-100 text-green-800', description: 'כל המשתמשים יכולים לראות' },
+                { key: 'logged_in_users', label: 'משתמשים מחוברים', icon: UserIcon, color: 'bg-blue-100 text-blue-800', description: 'רק משתמשים מאומתים יכולים לראות' },
                 { key: 'admin_only', label: 'מנהלים בלבד', icon: Crown, color: 'bg-yellow-100 text-yellow-800', description: 'רק מנהלי מערכת יכולים לראות' },
                 { key: 'admins_and_creators', label: 'מנהלים ויוצרי תוכן', icon: Shield, color: 'bg-purple-100 text-purple-800', description: 'מנהלים ויוצרי תוכן בלבד' },
                 { key: 'hidden', label: 'מוסתר', icon: EyeOff, color: 'bg-red-100 text-red-800', description: 'לא גלוי לאף אחד' }
@@ -378,6 +387,12 @@ export default function FeatureControl() {
                                       מנהלים ויוצרי תוכן
                                     </div>
                                   </SelectItem>
+                                  <SelectItem value="logged_in_users">
+                                    <div className="flex items-center gap-2">
+                                      <UserIcon className="w-4 h-4" />
+                                      משתמשים מחוברים
+                                    </div>
+                                  </SelectItem>
                                   <SelectItem value="admins_only">
                                     <div className="flex items-center gap-2">
                                       <Crown className="w-4 h-4" />
@@ -397,6 +412,12 @@ export default function FeatureControl() {
                                     <div className="flex items-center gap-2">
                                       <Globe className="w-4 h-4" />
                                       גלוי לכולם
+                                    </div>
+                                  </SelectItem>
+                                  <SelectItem value="logged_in_users">
+                                    <div className="flex items-center gap-2">
+                                      <UserIcon className="w-4 h-4" />
+                                      משתמשים מחוברים
                                     </div>
                                   </SelectItem>
                                   <SelectItem value="admin_only">

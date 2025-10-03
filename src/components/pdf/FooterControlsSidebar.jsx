@@ -4,6 +4,8 @@ import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { NumberInput } from '@/components/ui/number-input';
+import { Crown } from 'lucide-react';
 
 const FooterControlsSidebar = ({
   footerConfig,
@@ -50,88 +52,69 @@ const FooterControlsSidebar = ({
   };
 
   return (
-    <div className="h-full flex flex-col bg-white border-l" style={{ width: '350px' }}>
-      {/* Header */}
-      <div className="p-4 border-b bg-gray-50">
-        <h3 className="font-semibold text-lg">הגדרות כותרת תחתונה</h3>
+    <div className="h-full flex flex-col bg-white">
+      {/* Modern Header */}
+      <div className="p-5 border-b bg-gradient-to-r from-gray-50 to-slate-50">
+        <h3 className="font-bold text-lg text-gray-800">הגדרות</h3>
+        <p className="text-xs text-gray-600 mt-1">התאם את הכותרת התחתונה</p>
       </div>
 
       {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
+      <div className="flex-1 overflow-y-auto p-5 space-y-6">
         {/* Logo Controls */}
-        <div className="space-y-4">
+        <div className="space-y-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
           <div className="flex items-center justify-between">
-            <Label className="text-base font-semibold">לוגו</Label>
-            <Switch
-              checked={footerConfig.logo.visible}
-              onCheckedChange={(checked) => updateConfig('logo', 'visible', checked)}
-            />
+            <div className="flex items-center gap-2">
+              <Label className="text-base font-bold text-gray-800">לוגו</Label>
+              {isAdmin && <Crown className="w-4 h-4 text-amber-500" />}
+            </div>
+            {isAdmin && (
+              <Switch
+                checked={footerConfig.logo.visible}
+                onCheckedChange={(checked) => updateConfig('logo', 'visible', checked)}
+              />
+            )}
           </div>
 
           {footerConfig.logo.visible && (
             <>
-              {/* Logo Position */}
-              <div className="space-y-2">
-                <Label className="text-sm">מיקום אופקי (X)</Label>
-                <div className="flex items-center gap-2">
-                  <Slider
-                    value={[footerConfig.logo.position.x]}
-                    onValueChange={([value]) => updatePosition('logo', 'x', value)}
-                    min={0}
-                    max={100}
-                    step={1}
-                    className="flex-1"
-                  />
-                  <span className="text-sm w-12 text-left">{footerConfig.logo.position.x}%</span>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-sm">מיקום אנכי (Y)</Label>
-                <div className="flex items-center gap-2">
-                  <Slider
-                    value={[footerConfig.logo.position.y]}
-                    onValueChange={([value]) => updatePosition('logo', 'y', value)}
-                    min={0}
-                    max={100}
-                    step={1}
-                    className="flex-1"
-                  />
-                  <span className="text-sm w-12 text-left">{footerConfig.logo.position.y}%</span>
-                </div>
+              {/* Drag and Drop Info */}
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-800 font-medium">
+                  🖱️ גרור את הלוגו בתצוגה המקדימה כדי לשנות את מיקומו
+                </p>
               </div>
 
               {/* Logo Style - Admin Only */}
               {isAdmin && (
                 <>
                   <div className="space-y-2">
-                    <Label className="text-sm">גודל</Label>
-                    <div className="flex items-center gap-2">
-                      <Slider
-                        value={[footerConfig.logo.style.size]}
-                        onValueChange={([value]) => updateStyle('logo', 'size', value)}
-                        min={20}
-                        max={200}
-                        step={10}
-                        className="flex-1"
-                      />
-                      <span className="text-sm w-12 text-left">{footerConfig.logo.style.size}px</span>
+                    <div className="flex items-center gap-1">
+                      <Label className="text-sm">גודל</Label>
+                      <Crown className="w-3 h-3 text-orange-500" />
                     </div>
+                    <NumberInput
+                      value={footerConfig.logo.style.size}
+                      onChange={(value) => updateStyle('logo', 'size', value)}
+                      min={20}
+                      step={10}
+                      suffix="px"
+                    />
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sm">שקיפות</Label>
-                    <div className="flex items-center gap-2">
-                      <Slider
-                        value={[footerConfig.logo.style.opacity]}
-                        onValueChange={([value]) => updateStyle('logo', 'opacity', value)}
-                        min={0}
-                        max={100}
-                        step={5}
-                        className="flex-1"
-                      />
-                      <span className="text-sm w-12 text-left">{footerConfig.logo.style.opacity}%</span>
+                    <div className="flex items-center gap-1">
+                      <Label className="text-sm">שקיפות</Label>
+                      <Crown className="w-3 h-3 text-orange-500" />
                     </div>
+                    <NumberInput
+                      value={footerConfig.logo.style.opacity}
+                      onChange={(value) => updateStyle('logo', 'opacity', value)}
+                      min={0}
+                      max={100}
+                      step={5}
+                      suffix="%"
+                    />
                   </div>
                 </>
               )}
@@ -139,16 +122,19 @@ const FooterControlsSidebar = ({
           )}
         </div>
 
-        <div className="border-t pt-4"></div>
-
         {/* Copyright Text Controls */}
-        <div className="space-y-4">
+        <div className="space-y-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
           <div className="flex items-center justify-between">
-            <Label className="text-base font-semibold">טקסט זכויות יוצרים</Label>
-            <Switch
-              checked={footerConfig.text.visible}
-              onCheckedChange={(checked) => updateConfig('text', 'visible', checked)}
-            />
+            <div className="flex items-center gap-2">
+              <Label className="text-base font-bold text-gray-800">טקסט זכויות יוצרים</Label>
+              {isAdmin && <Crown className="w-4 h-4 text-amber-500" />}
+            </div>
+            {isAdmin && (
+              <Switch
+                checked={footerConfig.text.visible}
+                onCheckedChange={(checked) => updateConfig('text', 'visible', checked)}
+              />
+            )}
           </div>
 
           {footerConfig.text.visible && (
@@ -156,10 +142,16 @@ const FooterControlsSidebar = ({
               {/* Text Content - Admin Only */}
               {isAdmin && (
                 <div className="space-y-2">
-                  <Label className="text-sm">תוכן הטקסט</Label>
+                  <div className="flex items-center gap-1">
+                    <Label className="text-sm">תוכן הטקסט</Label>
+                    <Crown className="w-3 h-3 text-orange-500" />
+                  </div>
                   <Textarea
                     value={footerConfig.text.content}
-                    onChange={(e) => updateConfig('text', 'content', e.target.value)}
+                    onChange={(e) => {
+                      console.log('📝 Textarea onChange:', e.target.value);
+                      updateConfig('text', 'content', e.target.value);
+                    }}
                     rows={3}
                     className="resize-none"
                     dir="rtl"
@@ -167,57 +159,35 @@ const FooterControlsSidebar = ({
                 </div>
               )}
 
-              {/* Text Position */}
-              <div className="space-y-2">
-                <Label className="text-sm">מיקום אופקי (X)</Label>
-                <div className="flex items-center gap-2">
-                  <Slider
-                    value={[footerConfig.text.position.x]}
-                    onValueChange={([value]) => updatePosition('text', 'x', value)}
-                    min={0}
-                    max={100}
-                    step={1}
-                    className="flex-1"
-                  />
-                  <span className="text-sm w-12 text-left">{footerConfig.text.position.x}%</span>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-sm">מיקום אנכי (Y)</Label>
-                <div className="flex items-center gap-2">
-                  <Slider
-                    value={[footerConfig.text.position.y]}
-                    onValueChange={([value]) => updatePosition('text', 'y', value)}
-                    min={0}
-                    max={100}
-                    step={1}
-                    className="flex-1"
-                  />
-                  <span className="text-sm w-12 text-left">{footerConfig.text.position.y}%</span>
-                </div>
+              {/* Drag and Drop Info */}
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-800 font-medium">
+                  🖱️ גרור את הטקסט בתצוגה המקדימה כדי לשנות את מיקומו
+                </p>
               </div>
 
               {/* Text Style - Admin Only */}
               {isAdmin && (
                 <>
                   <div className="space-y-2">
-                    <Label className="text-sm">גודל גופן</Label>
-                    <div className="flex items-center gap-2">
-                      <Slider
-                        value={[footerConfig.text.style.fontSize]}
-                        onValueChange={([value]) => updateStyle('text', 'fontSize', value)}
-                        min={8}
-                        max={32}
-                        step={1}
-                        className="flex-1"
-                      />
-                      <span className="text-sm w-12 text-left">{footerConfig.text.style.fontSize}px</span>
+                    <div className="flex items-center gap-1">
+                      <Label className="text-sm">גודל גופן</Label>
+                      <Crown className="w-3 h-3 text-orange-500" />
                     </div>
+                    <NumberInput
+                      value={footerConfig.text.style.fontSize}
+                      onChange={(value) => updateStyle('text', 'fontSize', value)}
+                      min={8}
+                      step={1}
+                      suffix="px"
+                    />
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sm">צבע</Label>
+                    <div className="flex items-center gap-1">
+                      <Label className="text-sm">צבע</Label>
+                      <Crown className="w-3 h-3 text-orange-500" />
+                    </div>
                     <Input
                       type="color"
                       value={footerConfig.text.style.color}
@@ -227,18 +197,32 @@ const FooterControlsSidebar = ({
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sm">שקיפות</Label>
-                    <div className="flex items-center gap-2">
-                      <Slider
-                        value={[footerConfig.text.style.opacity]}
-                        onValueChange={([value]) => updateStyle('text', 'opacity', value)}
-                        min={0}
-                        max={100}
-                        step={5}
-                        className="flex-1"
-                      />
-                      <span className="text-sm w-12 text-left">{footerConfig.text.style.opacity}%</span>
+                    <div className="flex items-center gap-1">
+                      <Label className="text-sm">שקיפות</Label>
+                      <Crown className="w-3 h-3 text-orange-500" />
                     </div>
+                    <NumberInput
+                      value={footerConfig.text.style.opacity}
+                      onChange={(value) => updateStyle('text', 'opacity', value)}
+                      min={0}
+                      max={100}
+                      step={5}
+                      suffix="%"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-1">
+                      <Label className="text-sm">רוחב מיכל הטקסט</Label>
+                      <Crown className="w-3 h-3 text-orange-500" />
+                    </div>
+                    <NumberInput
+                      value={footerConfig.text.style.width || 300}
+                      onChange={(value) => updateStyle('text', 'width', value)}
+                      min={100}
+                      step={10}
+                      suffix="px"
+                    />
                   </div>
 
                   <div className="flex gap-4">
@@ -247,14 +231,20 @@ const FooterControlsSidebar = ({
                         checked={footerConfig.text.style.bold}
                         onCheckedChange={(checked) => updateStyle('text', 'bold', checked)}
                       />
-                      <Label className="text-sm">מודגש</Label>
+                      <div className="flex items-center gap-1">
+                        <Label className="text-sm">מודגש</Label>
+                        <Crown className="w-3 h-3 text-orange-500" />
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <Switch
                         checked={footerConfig.text.style.italic}
                         onCheckedChange={(checked) => updateStyle('text', 'italic', checked)}
                       />
-                      <Label className="text-sm">נטוי</Label>
+                      <div className="flex items-center gap-1">
+                        <Label className="text-sm">נטוי</Label>
+                        <Crown className="w-3 h-3 text-orange-500" />
+                      </div>
                     </div>
                   </div>
                 </>
@@ -263,71 +253,52 @@ const FooterControlsSidebar = ({
           )}
         </div>
 
-        <div className="border-t pt-4"></div>
-
         {/* URL Link Controls */}
-        <div className="space-y-4">
+        <div className="space-y-4 p-4 bg-purple-50 rounded-lg border border-purple-200">
           <div className="flex items-center justify-between">
-            <Label className="text-base font-semibold">קישור URL</Label>
-            <Switch
-              checked={footerConfig.url.visible}
-              onCheckedChange={(checked) => updateConfig('url', 'visible', checked)}
-            />
+            <div className="flex items-center gap-2">
+              <Label className="text-base font-bold text-gray-800">קישור URL</Label>
+              {isAdmin && <Crown className="w-4 h-4 text-amber-500" />}
+            </div>
+            {isAdmin && (
+              <Switch
+                checked={footerConfig.url.visible}
+                onCheckedChange={(checked) => updateConfig('url', 'visible', checked)}
+              />
+            )}
           </div>
 
           {footerConfig.url.visible && (
             <>
-              {/* URL Position */}
-              <div className="space-y-2">
-                <Label className="text-sm">מיקום אופקי (X)</Label>
-                <div className="flex items-center gap-2">
-                  <Slider
-                    value={[footerConfig.url.position.x]}
-                    onValueChange={([value]) => updatePosition('url', 'x', value)}
-                    min={0}
-                    max={100}
-                    step={1}
-                    className="flex-1"
-                  />
-                  <span className="text-sm w-12 text-left">{footerConfig.url.position.x}%</span>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-sm">מיקום אנכי (Y)</Label>
-                <div className="flex items-center gap-2">
-                  <Slider
-                    value={[footerConfig.url.position.y]}
-                    onValueChange={([value]) => updatePosition('url', 'y', value)}
-                    min={0}
-                    max={100}
-                    step={1}
-                    className="flex-1"
-                  />
-                  <span className="text-sm w-12 text-left">{footerConfig.url.position.y}%</span>
-                </div>
+              {/* Drag and Drop Info */}
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-800 font-medium">
+                  🖱️ גרור את הקישור בתצוגה המקדימה כדי לשנות את מיקומו
+                </p>
               </div>
 
               {/* URL Style - Admin Only */}
               {isAdmin && (
                 <>
                   <div className="space-y-2">
-                    <Label className="text-sm">גודל גופן</Label>
-                    <div className="flex items-center gap-2">
-                      <Slider
-                        value={[footerConfig.url.style.fontSize]}
-                        onValueChange={([value]) => updateStyle('url', 'fontSize', value)}
-                        min={8}
-                        max={32}
-                        step={1}
-                        className="flex-1"
-                      />
-                      <span className="text-sm w-12 text-left">{footerConfig.url.style.fontSize}px</span>
+                    <div className="flex items-center gap-1">
+                      <Label className="text-sm">גודל גופן</Label>
+                      <Crown className="w-3 h-3 text-orange-500" />
                     </div>
+                    <NumberInput
+                      value={footerConfig.url.style.fontSize}
+                      onChange={(value) => updateStyle('url', 'fontSize', value)}
+                      min={8}
+                      step={1}
+                      suffix="px"
+                    />
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sm">צבע</Label>
+                    <div className="flex items-center gap-1">
+                      <Label className="text-sm">צבע</Label>
+                      <Crown className="w-3 h-3 text-orange-500" />
+                    </div>
                     <Input
                       type="color"
                       value={footerConfig.url.style.color}
@@ -337,18 +308,18 @@ const FooterControlsSidebar = ({
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sm">שקיפות</Label>
-                    <div className="flex items-center gap-2">
-                      <Slider
-                        value={[footerConfig.url.style.opacity]}
-                        onValueChange={([value]) => updateStyle('url', 'opacity', value)}
-                        min={0}
-                        max={100}
-                        step={5}
-                        className="flex-1"
-                      />
-                      <span className="text-sm w-12 text-left">{footerConfig.url.style.opacity}%</span>
+                    <div className="flex items-center gap-1">
+                      <Label className="text-sm">שקיפות</Label>
+                      <Crown className="w-3 h-3 text-orange-500" />
                     </div>
+                    <NumberInput
+                      value={footerConfig.url.style.opacity}
+                      onChange={(value) => updateStyle('url', 'opacity', value)}
+                      min={0}
+                      max={100}
+                      step={5}
+                      suffix="%"
+                    />
                   </div>
 
                   <div className="flex gap-4">
@@ -357,14 +328,20 @@ const FooterControlsSidebar = ({
                         checked={footerConfig.url.style.bold}
                         onCheckedChange={(checked) => updateStyle('url', 'bold', checked)}
                       />
-                      <Label className="text-sm">מודגש</Label>
+                      <div className="flex items-center gap-1">
+                        <Label className="text-sm">מודגש</Label>
+                        <Crown className="w-3 h-3 text-orange-500" />
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <Switch
                         checked={footerConfig.url.style.italic}
                         onCheckedChange={(checked) => updateStyle('url', 'italic', checked)}
                       />
-                      <Label className="text-sm">נטוי</Label>
+                      <div className="flex items-center gap-1">
+                        <Label className="text-sm">נטוי</Label>
+                        <Crown className="w-3 h-3 text-orange-500" />
+                      </div>
                     </div>
                   </div>
                 </>
@@ -375,20 +352,15 @@ const FooterControlsSidebar = ({
 
         {/* Info message for content creators */}
         {isContentCreator && (
-          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-sm text-blue-800">
-              כיוצר תוכן, אתה יכול לשנות רק את מיקום האלמנטים. עיצוב וטקסט ניתנים לעריכה על ידי מנהלים בלבד.
+          <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-300 rounded-lg shadow-sm">
+            <p className="text-sm text-blue-900 font-medium">
+              💡 כיוצר תוכן, תוכל לשנות רק את מיקום האלמנטים. עיצוב וטקסט ניתנים לעריכה על ידי מנהלים בלבד.
             </p>
           </div>
         )}
       </div>
 
-      {/* Footer with note */}
-      <div className="p-4 border-t bg-gray-50">
-        <p className="text-xs text-gray-600 text-center">
-          השינויים מוצגים בתצוגה מקדימה בלבד ולא נשמרים
-        </p>
-      </div>
+      {/* Footer - Removed outdated message, changes ARE saved */}
     </div>
   );
 };

@@ -20,6 +20,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { UploadFile } from "@/services/integrations";
+import { apiRequest } from "@/services/apiClient";
 import { ContentRelationship } from "@/services/entities";
 
 import ContentTagManagementModal from '../components/modals/ContentTagManagementModal';
@@ -797,18 +798,11 @@ export default function GameContentManagement() {
       // If deleting an image, also delete the file from server
       if (activeEntity === 'Image' && entity.file_url && entity.file_url.startsWith('http')) {
         try {
-          // Delete the file from server
-          const response = await fetch('/api/delete-file', {
+          // Delete the file from server using centralized apiRequest
+          await apiRequest('/delete-file', {
             method: 'DELETE',
-            headers: {
-              'Content-Type': 'application/json',
-            },
             body: JSON.stringify({ fileUrl: entity.file_url })
           });
-          
-          if (!response.ok) {
-            console.warn('Failed to delete file from server:', entity.file_url, response.statusText);
-          }
         } catch (fileDeleteError) {
           console.warn('Error deleting file from server:', fileDeleteError);
           // Continue with database deletion even if file deletion fails
@@ -973,18 +967,11 @@ export default function GameContentManagement() {
         // If deleting an image, also delete the file from server
         if (activeEntity === 'Image' && entity.file_url && entity.file_url.startsWith('http')) {
           try {
-            // Delete the file from server
-            const response = await fetch('/api/delete-file', {
+            // Delete the file from server using centralized apiRequest
+            await apiRequest('/delete-file', {
               method: 'DELETE',
-              headers: {
-                'Content-Type': 'application/json',
-              },
               body: JSON.stringify({ fileUrl: entity.file_url })
             });
-            
-            if (!response.ok) {
-              console.warn('Failed to delete file from server during bulk delete:', entity.file_url, response.statusText);
-            }
           } catch (fileDeleteError) {
             console.warn('Error deleting file from server during bulk delete:', fileDeleteError);
             // Continue with database deletion even if file deletion fails

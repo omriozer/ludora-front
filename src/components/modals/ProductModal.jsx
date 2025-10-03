@@ -32,6 +32,7 @@ import SecureVideoPlayer from '../SecureVideoPlayer';
 import ProductTypeSelector from './ProductTypeSelector';
 import { getProductTypeName } from '@/config/productTypes';
 import { getApiBase } from '@/utils/api.js';
+import { apiRequest, apiUploadWithProgress } from '@/services/apiClient';
 import { getMarketingVideoUrl } from '@/utils/videoUtils.js';
 import { toast } from '@/components/ui/use-toast';
 import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
@@ -105,10 +106,14 @@ export default function ProductModal({
 
   // PDF Footer Preview state
   const [showFooterPreview, setShowFooterPreview] = useState(false);
+  const [footerConfig, setFooterConfig] = useState(null);
 
   // Helper functions for marketing video logic
   const [marketingVideoExists, setMarketingVideoExists] = useState(false);
-  
+
+  // Helper state for file upload
+  const [uploadedFileInfo, setUploadedFileInfo] = useState(null); // { exists: boolean, filename: string }
+
   const hasUploadedVideo = () => {
     // Check if marketing video exists on server (not relying on title)
     return marketingVideoExists;
@@ -125,28 +130,31 @@ export default function ProductModal({
   // Check if marketing video exists on server
   const checkMarketingVideoExists = async (product) => {
     if (!product?.id || !product?.product_type) return false;
-    
+
     try {
-      const response = await fetch(
-        `${getApiBase()}/files/check-marketing-video?entityType=${product.product_type}&entityId=${product.id}`,
-        {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-      
-      if (response.ok) {
-        const result = await response.json();
-        return result.exists === true;
-      }
+      const result = await apiRequest(`/assets/check/${product.product_type}/${product.id}?assetType=marketing-video`);
+      return result.exists === true;
     } catch (error) {
       console.error('Error checking marketing video:', error);
     }
-    
+
     return false;
+  };
+
+  // Check if file upload exists for File products
+  const checkFileUploadExists = async (product) => {
+    if (!product?.entity_id || product?.product_type !== 'file') return null;
+
+    try {
+      const result = await apiRequest(`/assets/check/file/${product.entity_id}?assetType=document`);
+      if (result.exists === true && result.filename) {
+        return { exists: true, filename: result.filename };
+      }
+    } catch (error) {
+      console.error('Error checking file upload:', error);
+    }
+
+    return null;
   };
 
   // Extract YouTube video ID from various URL formats
@@ -195,8 +203,6 @@ export default function ProductModal({
     price: 0,
     is_published: false,
     image_url: "",
-    file_url: "",
-    preview_file_url: "",
     file_type: "pdf",
     allow_preview: true,
     add_copyrights_footer: true,
@@ -258,13 +264,8 @@ export default function ProductModal({
         setStep('form');
         loadEditingProduct();
       } else {
-        // Check if we need type selection
-        const availableTypes = getAvailableProductTypes(enabledProductTypes, canCreateProductType);
-        if (availableTypes.length > 1) {
-          setStep('typeSelection'); // Show type selector if multiple types available
-        } else {
-          setStep('form'); // Go directly to form if only one type available
-        }
+        // Always show type selection for new products (better UX)
+        setStep('typeSelection');
         resetForm();
       }
     } else {
@@ -318,7 +319,6 @@ export default function ProductModal({
         material_is_private: module.material_is_private ?? false,
       })),
       access_days: product.access_days === null ? "" : product.access_days?.toString() || "",
-      preview_file_url: product.preview_file_url || "",
       workshop_type: product.workshop_type || (product.video_file_url ? "recorded" : "online_live"),
       scheduled_date: product.scheduled_date ? format(new Date(product.scheduled_date), "yyyy-MM-dd'T'HH:mm") : "",
       meeting_link: product.meeting_link || product.zoom_link || "",
@@ -327,14 +327,11 @@ export default function ProductModal({
       video_file_url: product.video_file_url || product.recording_url || "",
       max_participants: product.max_participants || 20,
       duration_minutes: product.duration_minutes || 90,
-      file_url: product.file_url || "",
       file_type: product.file_type || "pdf",
       allow_preview: product.allow_preview ?? true,
       add_copyrights_footer: product.add_copyrights_footer ?? true,
       is_ludora_creator: !product.creator_user_id,
       image_is_private: product.image_is_private ?? false,
-      preview_file_is_private: product.preview_file_is_private ?? false,
-      file_is_private: product.file_is_private ?? false,
     });
 
 
@@ -367,6 +364,18 @@ export default function ProductModal({
         setMarketingVideoType('upload');
       }
     }
+
+    // Check for file upload existence and load footer settings (File products only)
+    if (product.product_type === 'file' && product.entity_id) {
+      checkFileUploadExists(product).then(fileInfo => {
+        setUploadedFileInfo(fileInfo);
+      });
+
+      // Load footer_settings from product data if available
+      if (product.footer_settings) {
+        setFooterConfig(product.footer_settings);
+      }
+    }
   };
 
   const resetForm = () => {
@@ -387,8 +396,6 @@ export default function ProductModal({
       price: 0,
       is_published: false,
       image_url: "",
-      file_url: "",
-      preview_file_url: "",
       file_type: "pdf",
       tags: [],
       target_audience: "",
@@ -549,75 +556,67 @@ export default function ProductModal({
       }
 
       if (isVideoFile || isFileUpload) {
-        // Use XMLHttpRequest for real progress tracking
-        result = await new Promise((resolve, reject) => {
-          const xhr = new XMLHttpRequest();
-          const formData = new FormData();
-          formData.append('file', file);
+        // Use apiUploadWithProgress for file/video uploads with progress tracking
+        const uploadFormData = new FormData();
+        uploadFormData.append('file', file);
 
-          // For File product type uploads, we need to include the File entity ID
-          if (isFileUpload) {
-            if (!editingProduct || !editingProduct.entity_id) {
+        // For File product type uploads, we need to include the File entity ID
+        if (isFileUpload) {
+          if (!editingProduct || !editingProduct.entity_id) {
+            toast({
+              title: "שגיאה בהעלאת קובץ",
+              description: "יש לשמור את המוצר תחילה על מנת להעלות קבצים. לחץ על 'צור מוצר' ולאחר מכן תוכל להעלות את הקובץ.",
+              variant: "destructive"
+            });
+            return;
+          }
+
+          // If product is published and file exists, delete the old one first
+          if ((editingProduct?.is_published || formData.is_published) && uploadedFileInfo?.exists) {
+            try {
+              console.log('🔄 Replacing existing file for published product...');
+              await apiRequest(`/assets/file/${editingProduct.entity_id}?assetType=document`, {
+                method: 'DELETE'
+              });
+              console.log('✅ Old file deleted successfully');
+            } catch (error) {
+              console.error('❌ Error deleting old file:', error);
               toast({
-                title: "שגיאה בהעלאת קובץ",
-                description: "יש לשמור את המוצר תחילה על מנת להעלות קבצים. לחץ על 'צור מוצר' ולאחר מכן תוכל להעלות את הקובץ.",
+                title: "שגיאה במחיקת קובץ קיים",
+                description: "לא ניתן למחוק את הקובץ הקיים. נסה שנית.",
                 variant: "destructive"
               });
+              setUploadStates(prev => ({ ...prev, [uploadKey]: false }));
               return;
             }
-            formData.append('fileEntityId', editingProduct.entity_id);
           }
 
-          // Track upload progress
-          xhr.upload.onprogress = (event) => {
-            if (event.lengthComputable) {
-              const percentComplete = Math.round((event.loaded / event.total) * 100);
-              setUploadProgress(prev => ({ ...prev, [uploadKey]: percentComplete }));
-            }
-          };
+          uploadFormData.append('fileEntityId', editingProduct.entity_id);
+        }
 
-          xhr.onload = () => {
-            if (xhr.status === 200) {
-              try {
-                const response = JSON.parse(xhr.responseText);
-                resolve(response);
-              } catch (e) {
-                reject(new Error('Invalid response format'));
-              }
-            } else {
-              reject(new Error(`Upload failed with status: ${xhr.status}`));
-            }
-          };
+        // Choose endpoint based on file type
+        let endpoint;
+        if (isFileUpload) {
+          // Use unified upload endpoint with assetType=document for file uploads
+          endpoint = `/assets/upload?entityType=file&entityId=${editingProduct.entity_id}&assetType=document`;
+        } else if (fileType === 'marketing_video') {
+          // Use new unified public video endpoint for marketing videos
+          const entityType = editingProduct?.product_type || formData.product_type;
+          endpoint = `/assets/upload/video/public?entityType=${entityType}&entityId=${editingProduct?.id || 'temp'}`;
+        } else {
+          // Use new unified private video endpoint for other videos (workshop, etc.)
+          const entityType = editingProduct?.product_type || formData.product_type;
+          endpoint = `/assets/upload/video/private?entityType=${entityType}&entityId=${editingProduct?.id || 'temp'}`;
+        }
 
-          xhr.onerror = () => reject(new Error('Network error during upload'));
-          xhr.ontimeout = () => reject(new Error('Upload timeout'));
-
-          // Set a longer timeout for large files (30 minutes)
-          xhr.timeout = 30 * 60 * 1000;
-
-          // Choose endpoint based on file type
-          let endpoint;
-          if (isFileUpload) {
-            endpoint = `${getApiBase()}/media/file/upload`;
-          } else if (fileType === 'marketing_video') {
-            // Use new unified public video endpoint for marketing videos
-            const entityType = editingProduct?.product_type || formData.product_type;
-            endpoint = `${getApiBase()}/files/upload-public-video?entityType=${entityType}&entityId=${editingProduct?.id || 'temp'}`;
-          } else {
-            // Use new unified private video endpoint for other videos (workshop, etc.)
-            const entityType = editingProduct?.product_type || formData.product_type;
-            endpoint = `${getApiBase()}/files/upload-private-video?entityType=${entityType}&entityId=${editingProduct?.id || 'temp'}`;
+        // Upload with progress tracking via centralized apiClient
+        result = await apiUploadWithProgress(
+          endpoint,
+          uploadFormData,
+          (percentComplete) => {
+            setUploadProgress(prev => ({ ...prev, [uploadKey]: percentComplete }));
           }
-          xhr.open('POST', endpoint, true);
-          
-          // Add authentication header
-          const authToken = localStorage.getItem('authToken');
-          if (authToken) {
-            xhr.setRequestHeader('Authorization', `Bearer ${authToken}`);
-          }
-          
-          xhr.send(formData);
-        });
+        );
       } else {
         const { UploadFile } = await import('@/services/integrations');
         result = await UploadFile({ file });
@@ -627,71 +626,81 @@ export default function ProductModal({
       if (result) {
         // Handle different response formats: API returns data in result.data, integrations return directly
         const responseData = result.data || result;
-        const fileReference = responseData.downloadUrl || responseData.s3Url || responseData.file_uri || responseData.file_url || responseData.streamUrl;
 
-        if (fileReference) {
-          if (moduleIndex !== null) {
-            setFormData(prev => ({
-              ...prev,
-              course_modules: prev.course_modules.map((module, index) =>
-                index === moduleIndex
-                  ? {
-                      ...module,
-                      [fileType === 'video' ? 'video_url' : 'material_url']: fileReference
-                    }
-                  : module
-              )
-            }));
-          } else {
-            // For marketing videos, we don't store URL anymore since we use predictable paths
-            const fieldName = fileType === 'image' ? 'image_url' :
-              fileType === 'video' ? 'video_url' :
-              fileType === 'workshop_video' ? 'video_file_url' :
-              fileType === 'marketing_video' ? null : // No URL field needed for marketing videos
-              fileType === 'preview_file' ? 'preview_file_url' : 'file_url';
-
-            // For marketing videos, we don't update any URL field since we use predictable paths
-            // For other file types, we update the URL field
-            const updateData = fieldName ? { [fieldName]: fileReference } : {};
-            
-            // Auto-set duration for workshop videos if detected on client-side
-            if (fileType === 'workshop_video' && file.detectedDuration) {
-              const durationMinutes = Math.round(file.detectedDuration / 60);
-              updateData.duration_minutes = durationMinutes;
-              console.log(`Auto-set workshop duration to ${durationMinutes} minutes from client-side detection`);
-            }
-
-            // Auto-set duration for marketing videos if detected on client-side
-            if (fileType === 'marketing_video') {
-              if (file.detectedDuration) {
-                const durationSeconds = Math.round(file.detectedDuration);
-                updateData.marketing_video_duration = durationSeconds;
-                console.log(`Auto-set marketing video duration to ${durationSeconds} seconds from client-side detection`);
-              }
-              // Set the marketing video exists flag
-              setMarketingVideoExists(true);
-              console.log('Marketing video uploaded successfully, updated existence state');
-            }
-
-            // Only set private flag for non-video files
-            if (fileType !== 'video' && fileType !== 'workshop_video' && fileType !== 'marketing_video') {
-              const isPrivateFile = !!(responseData.file_uri || responseData.s3Url);
-              const isPrivateFieldName = fileType === 'image' ? 'image_is_private' :
-                fileType === 'preview_file' ? 'preview_file_is_private' : 'file_is_private';
-              updateData[isPrivateFieldName] = isPrivateFile;
-            }
-
-            setFormData(prev => ({
-              ...prev,
-              ...updateData
-            }));
-          }
-
-          // Extract filename from original file for better user feedback
-          const fileName = file.originalname || file.name || 'קובץ';
+        // For File uploads (assetType=document), the API already updated file_name in database
+        // No need to store URL - downloads use /assets/download/file/{entityId}
+        if (isFileUpload) {
+          // File upload complete - file_name is already saved in database by API
+          const fileName = responseData.filename || file.originalname || file.name || 'קובץ';
+          setUploadedFileInfo({ exists: true, filename: fileName });
           setMessage({ type: 'success', text: `${fileName} הועלה בהצלחה!` });
         } else {
-          throw new Error('לא התקבל קישור לקובץ מהשרת');
+          // For videos and other files (but NOT file/preview_file assets), get the file reference
+          const fileReference = responseData.downloadUrl || responseData.s3Url || responseData.file_uri || responseData.streamUrl;
+
+          if (fileReference) {
+            if (moduleIndex !== null) {
+              setFormData(prev => ({
+                ...prev,
+                course_modules: prev.course_modules.map((module, index) =>
+                  index === moduleIndex
+                    ? {
+                        ...module,
+                        [fileType === 'video' ? 'video_url' : 'material_url']: fileReference
+                      }
+                    : module
+                )
+              }));
+            } else {
+              // For marketing videos and file assets, we don't store URL since we use predictable paths
+              const fieldName = fileType === 'image' ? 'image_url' :
+                fileType === 'video' ? 'video_url' :
+                fileType === 'workshop_video' ? 'video_file_url' :
+                null; // No URL field needed for marketing videos, file assets, or preview files
+
+              // For marketing videos, we don't update any URL field since we use predictable paths
+              // For other file types, we update the URL field
+              const updateData = fieldName ? { [fieldName]: fileReference } : {};
+
+              // Auto-set duration for workshop videos if detected on client-side
+              if (fileType === 'workshop_video' && file.detectedDuration) {
+                const durationMinutes = Math.round(file.detectedDuration / 60);
+                updateData.duration_minutes = durationMinutes;
+                console.log(`Auto-set workshop duration to ${durationMinutes} minutes from client-side detection`);
+              }
+
+              // Auto-set duration for marketing videos if detected on client-side
+              if (fileType === 'marketing_video') {
+                if (file.detectedDuration) {
+                  const durationSeconds = Math.round(file.detectedDuration);
+                  updateData.marketing_video_duration = durationSeconds;
+                  console.log(`Auto-set marketing video duration to ${durationSeconds} seconds from client-side detection`);
+                }
+                // Set the marketing video exists flag
+                setMarketingVideoExists(true);
+                console.log('Marketing video uploaded successfully, updated existence state');
+              }
+
+              // Only set private flag for non-video files
+              if (fileType !== 'video' && fileType !== 'workshop_video' && fileType !== 'marketing_video') {
+                const isPrivateFile = !!(responseData.file_uri || responseData.s3Url);
+                const isPrivateFieldName = fileType === 'image' ? 'image_is_private' :
+                  fileType === 'preview_file' ? 'preview_file_is_private' : 'file_is_private';
+                updateData[isPrivateFieldName] = isPrivateFile;
+              }
+
+              setFormData(prev => ({
+                ...prev,
+                ...updateData
+              }));
+            }
+
+            // Extract filename from original file for better user feedback
+            const fileName = file.originalname || file.name || 'קובץ';
+            setMessage({ type: 'success', text: `${fileName} הועלה בהצלחה!` });
+          } else {
+            throw new Error('לא התקבל קישור לקובץ מהשרת');
+          }
         }
       } else {
         throw new Error('לא התקבלה תגובה מהשרת');
@@ -740,56 +749,75 @@ export default function ProductModal({
         try {
           const entityType = editingProduct.product_type;
           const entityId = editingProduct.id;
-          
-          const response = await fetch(
-            `${getApiBase()}/files/marketing-video?entityType=${entityType}&entityId=${entityId}`,
-            {
-              method: 'DELETE',
-              headers: {
-                'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-                'Content-Type': 'application/json'
-              }
-            }
-          );
 
-          if (response.ok) {
-            // Clear marketing video fields and update state
-            setFormData(prev => ({
-              ...prev,
-              marketing_video_title: '',
-              marketing_video_duration: ''
-            }));
-            setMarketingVideoExists(false);
-            setMessage({ type: 'success', text: 'סרטון השיווק נמחק בהצלחה!' });
-            console.log('Marketing video deleted successfully from S3');
-          } else {
-            const errorData = await response.json().catch(() => ({}));
-            console.error('Failed to delete marketing video:', errorData);
-            setMessage({ type: 'error', text: errorData.message || 'שגיאה במחיקת הסרטון' });
-          }
+          await apiRequest(`/assets/${entityType}/${entityId}?assetType=marketing-video`, {
+            method: 'DELETE'
+          });
+
+          // Clear marketing video fields and update state
+          setFormData(prev => ({
+            ...prev,
+            marketing_video_title: '',
+            marketing_video_duration: ''
+          }));
+          setMarketingVideoExists(false);
+          setMessage({ type: 'success', text: 'סרטון השיווק נמחק בהצלחה!' });
+          console.log('Marketing video deleted successfully from S3');
         } catch (error) {
           console.error('Error deleting marketing video:', error);
-          setMessage({ type: 'error', text: 'שגיאה במחיקת הסרטון' });
+          setMessage({ type: 'error', text: error.message || 'שגיאה במחיקת הסרטון' });
         } finally {
           setIsDeletingFile(false);
         }
         return;
       }
 
-      // Handle other file types (original logic)
+      // Special handling for file uploads - delete from assets
+      if (fileType === 'file') {
+        if (!editingProduct?.entity_id) {
+          console.error('Cannot delete file: Missing entity ID');
+          setMessage({ type: 'error', text: 'שגיאה: לא ניתן למחוק את הקובץ כרגע' });
+          return;
+        }
+
+        // Prevent deletion if product is published
+        if (editingProduct?.is_published || formData.is_published) {
+          toast({
+            title: "לא ניתן למחוק קובץ",
+            description: "לא ניתן למחוק קובץ ממוצר מפורסם. ניתן רק להחליף אותו בקובץ חדש.",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        setIsDeletingFile(true);
+        try {
+          await apiRequest(`/assets/file/${editingProduct.entity_id}?assetType=document`, {
+            method: 'DELETE'
+          });
+
+          setUploadedFileInfo(null);
+          setMessage({ type: 'success', text: 'הקובץ נמחק בהצלחה!' });
+        } catch (error) {
+          console.error('Error deleting file:', error);
+          setMessage({ type: 'error', text: error.message || 'שגיאה במחיקת הקובץ' });
+        } finally {
+          setIsDeletingFile(false);
+        }
+        return;
+      }
+
+      // Handle other file types (original logic) - only for image, video, workshop_video
       const fieldName = fileType === 'image' ? 'image_url' :
         fileType === 'video' ? 'video_url' :
-        fileType === 'workshop_video' ? 'video_file_url' :
-        fileType === 'preview_file' ? 'preview_file_url' : 'file_url';
+        fileType === 'workshop_video' ? 'video_file_url' : null;
 
       // Prepare update data - only if there's a field to update
       const updateData = fieldName ? { [fieldName]: '' } : {};
 
-      // Only reset private flag for non-video files
-      if (fileType !== 'video' && fileType !== 'workshop_video' && fileType !== 'marketing_video') {
-        const isPrivateFieldName = fileType === 'image' ? 'image_is_private' :
-          fileType === 'preview_file' ? 'preview_file_is_private' : 'file_is_private';
-        updateData[isPrivateFieldName] = false;
+      // Only reset private flag for image files
+      if (fileType === 'image') {
+        updateData.image_is_private = false;
       }
 
       setFormData(prev => ({
@@ -879,8 +907,6 @@ export default function ProductModal({
         price: formData.price,
         is_published: formData.is_published,
         image_url: formData.image_url || null,
-        file_url: formData.file_url || null,
-        preview_file_url: formData.preview_file_url || null,
         file_type: formData.file_type || null,
         allow_preview: formData.allow_preview ?? true,
         add_copyrights_footer: formData.add_copyrights_footer ?? true,
@@ -899,8 +925,6 @@ export default function ProductModal({
 
       // Add is_private flags if they exist and are relevant
       if (formData.image_is_private !== undefined) baseData.image_is_private = formData.image_is_private;
-      if (formData.preview_file_is_private !== undefined) baseData.preview_file_is_private = formData.preview_file_is_private;
-      if (formData.file_is_private !== undefined) baseData.file_is_private = formData.file_is_private;
 
       if (baseData.course_modules) {
         baseData.course_modules = baseData.course_modules.map(module => ({
@@ -910,8 +934,24 @@ export default function ProductModal({
         }));
       }
 
-      // Use unified Product service for all product types
-      const entityService = Product;
+      // Use appropriate entity service based on product type
+      let entityService;
+      switch (formData.product_type) {
+        case 'file':
+          entityService = File;
+          break;
+        case 'workshop':
+          entityService = Workshop;
+          break;
+        case 'course':
+          entityService = Course;
+          break;
+        case 'tool':
+          entityService = Tool;
+          break;
+        default:
+          entityService = Product; // Fallback for other types
+      }
       const entityName = getProductTypeName(formData.product_type, 'singular') || 'מוצר';
 
       // Prepare product data with product_type included
@@ -928,28 +968,81 @@ export default function ProductModal({
       let createdEntity = null;
 
       if (editingProduct) {
+        // Check if unpublishing a product with completed purchases
+        if (editingProduct.is_published && !cleanedData.is_published) {
+          try {
+            // Check if product has completed non-free purchases
+            const response = await apiRequest(`/api/purchase/check-product-purchases/${editingProduct.id}`);
+
+            if (response.hasNonFreePurchases) {
+              toast({
+                title: "לא ניתן להסיר פרסום",
+                description: `למוצר זה יש ${response.purchaseCount} רכישות שהושלמו. לא ניתן להסיר את הפרסום של מוצר שנרכש.`,
+                variant: "destructive"
+              });
+              return;
+            }
+          } catch (error) {
+            console.error('Error checking product purchases:', error);
+            // Continue with update if check fails (graceful fallback)
+          }
+        }
+
+        console.log('📝 Updating product with data:', cleanedData);
+        console.log('📝 Video fields in update:', {
+          youtube_video_id: cleanedData.youtube_video_id,
+          youtube_video_title: cleanedData.youtube_video_title,
+          marketing_video_title: cleanedData.marketing_video_title,
+          marketing_video_duration: cleanedData.marketing_video_duration,
+          video_file_url: cleanedData.video_file_url
+        });
         await entityService.update(editingProduct.id, cleanedData);
 
         // For File products, also update the File entity with file-specific fields
         if (formData.product_type === 'file' && editingProduct.entity_id) {
           const { File: FileEntity } = await import('@/services/entities');
+
+          // Prepare footer_settings WITHOUT text content (text always comes from system settings)
+          const footerSettingsToSave = footerConfig ? {
+            logo: {
+              visible: footerConfig.logo.visible,
+              position: footerConfig.logo.position,
+              style: footerConfig.logo.style
+            },
+            text: {
+              visible: footerConfig.text.visible,
+              position: footerConfig.text.position,
+              style: footerConfig.text.style
+              // NOTE: content is excluded - text always comes from system settings
+            },
+            url: {
+              visible: footerConfig.url.visible,
+              href: footerConfig.url.href,
+              position: footerConfig.url.position,
+              style: footerConfig.url.style
+            }
+          } : null;
+
           await FileEntity.update(editingProduct.entity_id, {
-            file_url: cleanedData.file_url || null,
             file_type: cleanedData.file_type || null,
             allow_preview: cleanedData.allow_preview ?? true,
-            add_copyrights_footer: cleanedData.add_copyrights_footer ?? true
+            add_copyrights_footer: cleanedData.add_copyrights_footer ?? true,
+            footer_settings: footerSettingsToSave
           });
         }
 
         setMessage({ type: 'success', text: `${entityName} עודכן בהצלחה` });
         createdEntity = { id: editingProduct.id, ...cleanedData };
       } else {
+        console.log('📝 Creating new product with data:', cleanedData);
+        console.log('📝 is_published value:', cleanedData.is_published);
         createdEntity = await entityService.create(cleanedData);
+        console.log('📝 Created entity:', createdEntity);
         setMessage({ type: 'success', text: `${entityName} נוצר בהצלחה` });
 
-        // For new File products without file_url, show message but close modal
+        // For new File products without uploaded file, show message but close modal
         // User will need to edit the product to upload file
-        if (formData.product_type === 'file' && !cleanedData.file_url) {
+        if (formData.product_type === 'file' && !uploadedFileInfo?.exists) {
           toast({
             title: "מוצר נוצר בהצלחה",
             description: "לחץ על 'עריכה' במוצר החדש כדי להעלות את הקובץ",
@@ -1498,7 +1591,10 @@ export default function ProductModal({
                     </div>
                     <Switch
                       checked={formData.is_published}
-                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_published: checked }))}
+                      onCheckedChange={(checked) => {
+                        console.log('📌 Publish toggle changed to:', checked);
+                        setFormData(prev => ({ ...prev, is_published: checked }));
+                      }}
                     />
                   </div>
                 </CardContent>
@@ -1564,25 +1660,22 @@ export default function ProductModal({
                           </div>
                         )}
 
-                        {/* Display current file URL (uploaded file) */}
-                        {(formData.file_url && !uploadStates.file) && (
+                        {/* Display current file (uploaded file from assets) */}
+                        {(uploadedFileInfo?.exists && !uploadStates.file) && (
                           <div className="flex items-center gap-2 mt-2">
                             <Download className="w-4 h-4 text-green-600 flex-shrink-0" />
                             <span className="text-sm text-green-700">
-                              {(() => {
-                                try {
-                                  const fileName = formData.file_url.split('/').pop() || 'קובץ הועלה בהצלחה';
-                                  return fileName.length > 30 ? fileName.substring(0, 30) + '...' : fileName;
-                                } catch {
-                                  return 'קובץ הועלה בהצלחה';
-                                }
-                              })()}
+                              {uploadedFileInfo.filename && uploadedFileInfo.filename.length > 30
+                                ? uploadedFileInfo.filename.substring(0, 30) + '...'
+                                : uploadedFileInfo.filename || 'קובץ הועלה בהצלחה'}
                             </span>
                             <Button
                               type="button"
                               variant="outline"
                               size="sm"
                               onClick={() => handleDeleteFile('file')}
+                              disabled={isDeletingFile || editingProduct?.is_published || formData.is_published}
+                              title={editingProduct?.is_published || formData.is_published ? "לא ניתן למחוק קובץ ממוצר מפורסם - ניתן להחליף בלבד" : "מחק קובץ"}
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
@@ -1614,24 +1707,25 @@ export default function ProductModal({
                         />
                       </div>
 
-                      {/* Add Copyrights Footer Toggle */}
-                      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
-                        <div className="space-y-0.5">
-                          <Label className="text-sm font-medium text-gray-900">הוסף כותרת תחתונה עם זכויות יוצרים</Label>
-                          <p className="text-xs text-gray-500">
-                            כאשר מופעל, יוסף באופן אוטומטי כותרת תחתונה עם פרטי זכויות היוצרים של היוצר
-                          </p>
+                      {/* Add Copyrights Footer Toggle - Admin Only */}
+                      {(currentUser?.role === 'admin' || currentUser?.role === 'sysadmin') && (
+                        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+                          <div className="space-y-0.5">
+                            <Label className="text-sm font-medium text-gray-900">הוסף כותרת תחתונה עם זכויות יוצרים</Label>
+                            <p className="text-xs text-gray-500">
+                              כאשר מופעל, יוסף באופן אוטומטי כותרת תחתונה עם פרטי זכויות היוצרים של היוצר
+                            </p>
+                          </div>
+                          <Switch
+                            checked={formData.add_copyrights_footer}
+                            onCheckedChange={(checked) => setFormData({ ...formData, add_copyrights_footer: checked })}
+                          />
                         </div>
-                        <Switch
-                          checked={formData.add_copyrights_footer}
-                          onCheckedChange={(checked) => setFormData({ ...formData, add_copyrights_footer: checked })}
-                        />
-                      </div>
+                      )}
 
-                      {/* Footer Preview Button - Show only if add_copyrights_footer is true, file is PDF, and file exists */}
+                      {/* Footer Preview Button - Show if add_copyrights_footer is true and file is PDF */}
                       {formData.add_copyrights_footer &&
                        formData.file_type === 'pdf' &&
-                       formData.file_url &&
                        (currentUser?.role === 'admin' || currentUser?.role === 'sysadmin' || currentUser?.content_creator_agreement_sign_date) && (
                         <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
                           <Button
@@ -1666,79 +1760,6 @@ export default function ProductModal({
                       )}
                     </div>
 
-                    {/* Preview File Upload */}
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">קובץ תצוגה מקדימה (אופציונלי)</Label>
-
-                      <div className="space-y-3">
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                          <div className="flex items-center gap-2">
-                            <Input
-                              type="file"
-                              accept={getAcceptAttribute('preview_file')}
-                              onChange={(e) => handleFileUpload(e, 'preview_file')}
-                              disabled={uploadStates.preview || !editingProduct}
-                              className="w-full sm:w-auto"
-                            />
-                            {uploadStates.preview && (
-                              <div className="flex items-center gap-2">
-                                <Loader2 className="w-4 h-4 animate-spin text-blue-600 flex-shrink-0" />
-                                <span className="text-sm font-medium text-blue-600">
-                                  {uploadProgress.preview || 0}%
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Progress Bar for Preview Upload */}
-                        {uploadStates.preview && uploadProgress.preview < 100 && (
-                          <div className="space-y-2">
-                            <div className="flex justify-between items-center">
-                              <span className="text-sm text-gray-600">מעלה קובץ תצוגה מקדימה...</span>
-                              <span className="text-sm font-medium text-blue-600">
-                                {uploadProgress.preview || 0}%
-                              </span>
-                            </div>
-                            <div className="w-full bg-gray-200 rounded-full h-2">
-                              <div
-                                className="bg-blue-600 h-2 rounded-full transition-all duration-300 ease-out"
-                                style={{ width: `${uploadProgress.preview || 0}%` }}
-                              ></div>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Display current preview file URL */}
-                        {(formData.preview_file_url && !uploadStates.preview) && (
-                          <div className="flex items-center gap-2 mt-2">
-                            <Download className="w-4 h-4 text-green-600 flex-shrink-0" />
-                            <span className="text-sm text-green-700">
-                              תצוגה מקדימה: {(() => {
-                                try {
-                                  const fileName = formData.preview_file_url.split('/').pop() || 'קובץ';
-                                  return fileName.length > 25 ? fileName.substring(0, 25) + '...' : fileName;
-                                } catch {
-                                  return 'קובץ תצוגה מקדימה';
-                                }
-                              })()}
-                            </span>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDeleteFile('preview')}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        )}
-
-                        <div className="text-xs text-gray-500 mt-2">
-                          קובץ תצוגה מקדימה יאפשר למשתמשים לראות חלק מהתוכן לפני הרכישה
-                        </div>
-                      </div>
-                    </div>
 
                     {/* File type is auto-detected from uploaded file, no manual selection needed */}
                     {formData.file_type && (
@@ -2220,13 +2241,14 @@ export default function ProductModal({
       </div>
 
       {/* PDF Footer Preview Modal */}
-      {formData.product_type === 'file' && formData.file_url && editingProduct?.entity_id && (
+      {formData.product_type === 'file' && editingProduct?.entity_id && (
         <PdfFooterPreview
           isOpen={showFooterPreview}
           onClose={() => setShowFooterPreview(false)}
+          onSave={(config) => setFooterConfig(config)}
           fileEntityId={editingProduct.entity_id}
-          logoUrl={globalSettings?.public_nav_logo || ''}
           userRole={currentUser?.role || 'user'}
+          initialFooterConfig={footerConfig}
         />
       )}
     </div>

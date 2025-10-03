@@ -5,6 +5,7 @@ import { UserProvider } from '@/contexts/UserContext'
 import { TutorialProvider } from '@/contexts/TutorialContext'
 import App from '@/App.jsx'
 import '@/index.css'
+import '@/styles/hebrew-fonts.css'
 
 console.log('✅ Frontend app successfully initialized with updated environment variables');
 console.log('🌐 API Base URL:', import.meta.env.VITE_API_BASE);

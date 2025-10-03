@@ -88,11 +88,7 @@ const SecureVideoPlayer = ({
     if (isYouTubeUrl(videoUrl)) return 'youtube';
 
     // Check for API video endpoints first (these are always supported)
-    if (videoUrl.includes('/api/media/video/') || 
-        videoUrl.includes('/api/file/') || 
-        videoUrl.includes('/api/videos/') ||
-        videoUrl.includes('/files/stream-marketing-video/') ||
-        videoUrl.includes('/files/stream-video/')) {
+    if (videoUrl.includes('/api/media/stream/')) {
       console.log(`🎥 SecureVideoPlayer: Detected API video endpoint: ${videoUrl}`);
       return 'video';
     }
@@ -147,7 +143,7 @@ const SecureVideoPlayer = ({
       return;
     }
 
-    if (videoUrl.includes('/api/media/video/') || videoUrl.includes('/api/file/') || videoUrl.includes('/api/videos/') || videoUrl.includes('/api/files/stream-video/')) {
+    if (videoUrl.includes('/api/media/stream/')) {
       // For secure API endpoints, add authentication token
       const token = localStorage.getItem('authToken');
       if (token) {

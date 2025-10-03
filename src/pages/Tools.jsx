@@ -119,15 +119,34 @@ export default function Tools() {
         console.log("User not logged in.");
       }
 
-      // If tools are admin only or hidden, check access and redirect
-      if (toolsVisibility === 'admin_only' && (!user || user.role !== 'admin')) {
-        navigate("/");
-        return; // Stop further execution
+      // Check access permissions (backup check - primary protection is in ConditionalRoute)
+      const isActualAdmin = user?.role === 'admin' && !user?._isImpersonated;
+      const isContentCreator = user && !!user.content_creator_agreement_sign_date;
+
+      let hasAccess = false;
+      switch (toolsVisibility) {
+        case 'public':
+          hasAccess = true;
+          break;
+        case 'logged_in_users':
+          hasAccess = !!user;
+          break;
+        case 'admin_only':
+          hasAccess = isActualAdmin;
+          break;
+        case 'admins_and_creators':
+          hasAccess = isActualAdmin || isContentCreator;
+          break;
+        case 'hidden':
+          hasAccess = false;
+          break;
+        default:
+          hasAccess = true;
       }
 
-      if (toolsVisibility === 'hidden') {
-        navigate("/");
-        return; // Stop further execution
+      if (!hasAccess) {
+        navigate(user ? "/dashboard" : "/");
+        return;
       }
 
       // If access is granted, proceed to load purchases and products

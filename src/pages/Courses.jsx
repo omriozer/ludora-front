@@ -129,16 +129,33 @@ export default function Courses() {
       // Check courses visibility
       const coursesVisibility = settings?.nav_courses_visibility || 'public';
 
-      // If courses are admin only or hidden, check access
-      if (coursesVisibility === 'admin_only' && (!tempCurrentUser || tempCurrentUser.role !== 'admin')) {
-        // Redirect to home or show access denied
-        navigate("/");
-        return;
+      // Check access permissions (backup check - primary protection is in ConditionalRoute)
+      const isActualAdmin = tempCurrentUser?.role === 'admin' && !tempCurrentUser?._isImpersonated;
+      const isContentCreator = tempCurrentUser && !!tempCurrentUser.content_creator_agreement_sign_date;
+
+      let hasAccess = false;
+      switch (coursesVisibility) {
+        case 'public':
+          hasAccess = true;
+          break;
+        case 'logged_in_users':
+          hasAccess = !!tempCurrentUser;
+          break;
+        case 'admin_only':
+          hasAccess = isActualAdmin;
+          break;
+        case 'admins_and_creators':
+          hasAccess = isActualAdmin || isContentCreator;
+          break;
+        case 'hidden':
+          hasAccess = false;
+          break;
+        default:
+          hasAccess = true;
       }
 
-      if (coursesVisibility === 'hidden') {
-        // Redirect to home
-        navigate("/");
+      if (!hasAccess) {
+        navigate(tempCurrentUser ? "/dashboard" : "/");
         return;
       }
 

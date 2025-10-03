@@ -1,0 +1,48 @@
+/**
+ * Hebrew Fonts for PDF Footer Editor
+ * These fonts match exactly what the backend uses for PDF generation
+ */
+
+@font-face {
+  font-family: 'NotoSansHebrew';
+  src: url('/fonts/NotoSansHebrew-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'NotoSansHebrew';
+  src: url('/fonts/NotoSansHebrew-Bold.ttf') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'NotoSansHebrew-Variable';
+  src: url('/fonts/NotoSansHebrew-Variable.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Hebrew Text Utility Class */
+.hebrew-text {
+  font-family: 'NotoSansHebrew', 'Arial Unicode MS', 'Segoe UI', Arial, sans-serif;
+  direction: rtl;
+  unicode-bidi: bidi-override;
+}
+
+/* Hebrew Text with Bold */
+.hebrew-text.font-bold {
+  font-family: 'NotoSansHebrew', 'Arial Unicode MS', 'Segoe UI', Arial, sans-serif;
+  font-weight: bold;
+}
+
+/* Fallback for systems without Hebrew font support */
+@supports not (font-feature-settings: "liga") {
+  .hebrew-text {
+    font-family: 'Arial Unicode MS', 'Segoe UI', Arial, sans-serif;
+  }
+}

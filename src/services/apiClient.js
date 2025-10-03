@@ -179,6 +179,94 @@ export async function apiDownload(endpoint, options = {}) {
   }
 }
 
+// File/video upload with progress tracking
+export async function apiUploadWithProgress(endpoint, formData, onProgress = null, options = {}) {
+  const url = `${API_BASE}${endpoint}`;
+
+  clog(`📤 API Upload with progress: POST ${url}`);
+  clog('📊 API Base:', API_BASE);
+  clog('🔑 Auth Token:', authToken ? `${authToken.substring(0, 20)}...` : 'None');
+
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+
+    // Track upload progress
+    if (onProgress) {
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable) {
+          const percentComplete = Math.round((e.loaded / e.total) * 100);
+          clog(`📊 Upload progress: ${percentComplete}%`);
+          onProgress(percentComplete);
+        }
+      });
+    }
+
+    xhr.addEventListener('load', () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const response = JSON.parse(xhr.responseText);
+          clog('✅ Upload successful:', response);
+          resolve(response);
+        } catch (e) {
+          cerror('❌ Invalid response format:', e);
+          reject(new Error('Invalid response format'));
+        }
+      } else {
+        cerror(`❌ Upload failed: ${xhr.status}`, xhr.responseText);
+        try {
+          const errorData = JSON.parse(xhr.responseText);
+          const errorMessage = errorData.error || errorData.message || `Upload failed with status: ${xhr.status}`;
+          reject(new Error(errorMessage));
+        } catch (e) {
+          reject(new Error(`Upload failed with status: ${xhr.status}`));
+        }
+      }
+    });
+
+    xhr.addEventListener('error', () => {
+      cerror('❌ Network error during upload');
+      toast({
+        title: "בעיית העלאה",
+        description: "שגיאת רשת במהלך העלאת הקובץ. אנא נסה שוב.",
+        variant: "destructive",
+      });
+      reject(new Error('Network error during upload'));
+    });
+
+    xhr.addEventListener('timeout', () => {
+      cerror('❌ Upload timeout');
+      toast({
+        title: "העלאה נכשלה",
+        description: "העלאת הקובץ ארכה זמן רב מדי. אנא נסה שוב.",
+        variant: "destructive",
+      });
+      reject(new Error('Upload timeout'));
+    });
+
+    // Set timeout (default 30 minutes for large video files)
+    xhr.timeout = options.timeout || (30 * 60 * 1000);
+
+    xhr.open('POST', url, true);
+
+    // Add auth token
+    if (authToken) {
+      xhr.setRequestHeader('Authorization', `Bearer ${authToken}`);
+    }
+
+    // Add custom headers (but NOT Content-Type - let browser set it with boundary for multipart)
+    if (options.headers) {
+      Object.entries(options.headers).forEach(([key, value]) => {
+        if (key.toLowerCase() !== 'content-type') {
+          xhr.setRequestHeader(key, value);
+        }
+      });
+    }
+
+    clog('📤 Sending upload request...');
+    xhr.send(formData);
+  });
+}
+
 // Entity CRUD operations class
 class EntityAPI {
   constructor(entityName) {

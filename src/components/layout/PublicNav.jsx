@@ -8,6 +8,24 @@ import { iconMap } from "@/lib/layoutUtils";
 import { NAV_ITEMS, getNavItemConfig } from "@/config/productTypes";
 import logoSm from "../../assets/images/logo_sm.png";
 
+// Helper function to check if user can see item based on visibility setting
+function canUserSeeItem(visibility, currentUser, isActualAdmin, isContentCreator) {
+  switch (visibility) {
+    case 'public':
+      return true;
+    case 'logged_in_users':
+      return !!currentUser;
+    case 'admin_only':
+      return isActualAdmin;
+    case 'admins_and_creators':
+      return isActualAdmin || isContentCreator;
+    case 'hidden':
+      return false;
+    default:
+      return true; // Default to public for unknown values
+  }
+}
+
 // Utility: get navigation items
 function getNavigationItems({ currentUser, settings, isActualAdmin, isContentCreator }) {
   const navOrder = settings?.nav_order || Object.keys(NAV_ITEMS);
@@ -21,9 +39,7 @@ function getNavigationItems({ currentUser, settings, isActualAdmin, isContentCre
     switch (itemType) {
       case 'files': {
         const filesVisibility = settings?.nav_files_visibility || 'public';
-        if (filesVisibility === 'hidden') break;
-        // Show only if: public visibility, OR admin-only and user is actual admin
-        if (filesVisibility === 'public' || (filesVisibility === 'admin_only' && isActualAdmin)) {
+        if (canUserSeeItem(filesVisibility, currentUser, isActualAdmin, isContentCreator)) {
           const iconName = settings?.nav_files_icon || navItemConfig.defaultIcon;
           const IconComponent = iconMap[iconName] || FileText;
           navItems.push({
@@ -38,8 +54,7 @@ function getNavigationItems({ currentUser, settings, isActualAdmin, isContentCre
       }
       case 'games': {
         const gamesVisibility = settings?.nav_games_visibility || 'public';
-        if (gamesVisibility === 'hidden') break;
-        if (gamesVisibility === 'public' || (gamesVisibility === 'admin_only' && isActualAdmin)) {
+        if (canUserSeeItem(gamesVisibility, currentUser, isActualAdmin, isContentCreator)) {
           const iconName = settings?.nav_games_icon || navItemConfig.defaultIcon;
           const IconComponent = iconMap[iconName] || Play;
           navItems.push({
@@ -54,8 +69,7 @@ function getNavigationItems({ currentUser, settings, isActualAdmin, isContentCre
       }
       case 'workshops': {
         const workshopsVisibility = settings?.nav_workshops_visibility || 'public';
-        if (workshopsVisibility === 'hidden') break;
-        if (workshopsVisibility === 'public' || (workshopsVisibility === 'admin_only' && isActualAdmin)) {
+        if (canUserSeeItem(workshopsVisibility, currentUser, isActualAdmin, isContentCreator)) {
           const iconName = settings?.nav_workshops_icon || navItemConfig.defaultIcon;
           const IconComponent = iconMap[iconName] || Calendar;
           navItems.push({
@@ -70,8 +84,7 @@ function getNavigationItems({ currentUser, settings, isActualAdmin, isContentCre
       }
       case 'courses': {
         const coursesVisibility = settings?.nav_courses_visibility || 'public';
-        if (coursesVisibility === 'hidden') break;
-        if (coursesVisibility === 'public' || (coursesVisibility === 'admin_only' && isActualAdmin)) {
+        if (canUserSeeItem(coursesVisibility, currentUser, isActualAdmin, isContentCreator)) {
           const iconName = settings?.nav_courses_icon || navItemConfig.defaultIcon;
           const IconComponent = iconMap[iconName] || BookOpen;
           navItems.push({
@@ -85,10 +98,9 @@ function getNavigationItems({ currentUser, settings, isActualAdmin, isContentCre
         break;
       }
       case 'classrooms': {
-        if (currentUser && settings?.subscription_system_enabled) {
+        if (settings?.subscription_system_enabled) {
           const classroomsVisibility = settings?.nav_classrooms_visibility || 'public';
-          if (classroomsVisibility === 'hidden') break;
-          if (classroomsVisibility === 'public' || (classroomsVisibility === 'admin_only' && isActualAdmin)) {
+          if (canUserSeeItem(classroomsVisibility, currentUser, isActualAdmin, isContentCreator)) {
             const iconName = settings?.nav_classrooms_icon || navItemConfig.defaultIcon;
             const IconComponent = iconMap[iconName] || GraduationCap;
             navItems.push({
@@ -103,47 +115,43 @@ function getNavigationItems({ currentUser, settings, isActualAdmin, isContentCre
         break;
       }
       case 'account': {
-        if (currentUser) {
-          const accountVisibility = settings?.nav_account_visibility || 'public';
-          if (accountVisibility === 'hidden') break;
-          if (accountVisibility === 'public' || (accountVisibility === 'admin_only' && isActualAdmin)) {
-            const iconName = settings?.nav_account_icon || navItemConfig.defaultIcon;
-            const IconComponent = iconMap[iconName] || UserIcon;
-            navItems.push({
-              title: navItemConfig.text,
-              url: "/account",
-              icon: IconComponent,
-              isAdminOnly: accountVisibility === 'admin_only',
-              gradient: navItemConfig.gradient
-            });
-          }
+        const accountVisibility = settings?.nav_account_visibility || 'public';
+        if (canUserSeeItem(accountVisibility, currentUser, isActualAdmin, isContentCreator)) {
+          const iconName = settings?.nav_account_icon || navItemConfig.defaultIcon;
+          const IconComponent = iconMap[iconName] || UserIcon;
+          navItems.push({
+            title: navItemConfig.text,
+            url: "/account",
+            icon: IconComponent,
+            isAdminOnly: accountVisibility === 'admin_only',
+            gradient: navItemConfig.gradient
+          });
         }
         break;
       }
       case 'content_creators': {
-        if (currentUser) {
-          const contentCreatorsVisibility = settings?.nav_content_creators_visibility || 'admins_and_creators';
-          if (contentCreatorsVisibility === 'hidden') break;
+        const contentCreatorsVisibility = settings?.nav_content_creators_visibility || 'admins_and_creators';
 
-          let shouldShow = false;
-          if (contentCreatorsVisibility === 'admins_only' && isActualAdmin) {
-            shouldShow = true;
-          } else if (contentCreatorsVisibility === 'admins_and_creators') {
-            // Show to admins and content creators, and also to regular users so they can sign up
-            shouldShow = true;
-          }
+        // Special handling for content creators - show to eligible users or for signup
+        let shouldShow = false;
+        if (contentCreatorsVisibility === 'admins_and_creators') {
+          // Show to admins and content creators, and also to regular logged-in users so they can sign up
+          shouldShow = !!currentUser;
+        } else {
+          // Use standard visibility check for other levels
+          shouldShow = canUserSeeItem(contentCreatorsVisibility, currentUser, isActualAdmin, isContentCreator);
+        }
 
-          if (shouldShow) {
-            const iconName = settings?.nav_content_creators_icon || navItemConfig.defaultIcon;
-            const IconComponent = iconMap[iconName] || Users;
-            navItems.push({
-              title: navItemConfig.text,
-              url: isContentCreator ? "/creator-portal" : "/creator-signup",
-              icon: IconComponent,
-              isAdminOnly: contentCreatorsVisibility === 'admins_only',
-              gradient: navItemConfig.gradient
-            });
-          }
+        if (shouldShow) {
+          const iconName = settings?.nav_content_creators_icon || navItemConfig.defaultIcon;
+          const IconComponent = iconMap[iconName] || Users;
+          navItems.push({
+            title: navItemConfig.text,
+            url: isContentCreator ? "/creator-portal" : "/creator-signup",
+            icon: IconComponent,
+            isAdminOnly: contentCreatorsVisibility === 'admin_only',
+            gradient: navItemConfig.gradient
+          });
         }
         break;
       }
