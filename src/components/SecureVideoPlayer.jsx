@@ -80,6 +80,9 @@ const SecureVideoPlayer = ({
   const [bufferedRanges, setBufferedRanges] = useState([]);
   const [retryCount, setRetryCount] = useState(0);
   const [isRetrying, setIsRetrying] = useState(false);
+  const [isBuffering, setIsBuffering] = useState(false);
+  const [bufferingTimeout, setBufferingTimeout] = useState(null);
+  const [loadingTimeout, setLoadingTimeout] = useState(null);
   const videoRef = useRef(null);
 
   // Determine video type
@@ -89,19 +92,16 @@ const SecureVideoPlayer = ({
 
     // Check for API video endpoints first (these are always supported)
     if (videoUrl.includes('/api/media/stream/')) {
-      console.log(`🎥 SecureVideoPlayer: Detected API video endpoint: ${videoUrl}`);
       return 'video';
     }
 
     // Check for direct video file formats
     if (isSupportedVideoFormat(videoUrl)) {
-      console.log(`🎥 SecureVideoPlayer: Detected supported video format: ${videoUrl}`);
       return 'video';
     }
 
-    console.warn(`❌ SecureVideoPlayer: Unsupported video URL: ${videoUrl}`);
     return 'unsupported';
-  }, [videoUrl]);
+  }, [videoUrl, contentType]);
 
   const youtubeId = React.useMemo(() => {
     if (videoType === 'youtube') {
@@ -114,32 +114,14 @@ const SecureVideoPlayer = ({
   useEffect(() => {
     if (!videoUrl) return;
 
+    // Clear previous error when URL changes
+    setError(null);
+    setRetryCount(0);
+
     // Check if this is a public marketing video (no authentication needed)
     if (isPublicMarketingVideo(videoUrl) || contentType === 'marketing') {
-      cerror('🎬 Public marketing video detected, no authentication required:', {
-        videoUrl,
-        contentType,
-        isPublicPattern: isPublicMarketingVideo(videoUrl),
-        finalUrl: videoUrl
-      });
-
-      // For marketing videos with internal API URLs, they should use direct S3 URLs instead
-      if (contentType === 'marketing' && videoUrl.includes('/api/videos/')) {
-        clog('⚠️ Marketing video using internal API URL - should use direct S3 URL instead:', {
-          videoUrl,
-          contentType,
-          note: 'This suggests the video was uploaded with old system or misconfigured'
-        });
-
-        // For now, still process it but log the issue
-        // In the future, marketing videos should always use direct S3 URLs
-        setAuthenticatedVideoUrl(videoUrl);
-        return;
-      }
-
       // Set the URL directly without any authentication
       setAuthenticatedVideoUrl(videoUrl);
-      cerror('✅ Marketing video URL set directly:', videoUrl);
       return;
     }
 
@@ -209,6 +191,18 @@ const SecureVideoPlayer = ({
       setAuthenticatedVideoUrl(videoUrl);
     }
   }, [videoUrl]);
+
+  // Cleanup timeouts on unmount or video change
+  useEffect(() => {
+    return () => {
+      if (bufferingTimeout) {
+        clearTimeout(bufferingTimeout);
+      }
+      if (loadingTimeout) {
+        clearTimeout(loadingTimeout);
+      }
+    };
+  }, [bufferingTimeout, loadingTimeout]);
 
   // Security measures to prevent downloads
   useEffect(() => {
@@ -348,7 +342,18 @@ const SecureVideoPlayer = ({
 
     setIsRetrying(true);
     setError(null);
+    setIsBuffering(false); // Clear buffering state during retry
     setRetryCount(prev => prev + 1);
+
+    // Clear any existing timeouts
+    if (bufferingTimeout) {
+      clearTimeout(bufferingTimeout);
+      setBufferingTimeout(null);
+    }
+    if (loadingTimeout) {
+      clearTimeout(loadingTimeout);
+      setLoadingTimeout(null);
+    }
 
     // Wait a moment before retrying
     await new Promise(resolve => setTimeout(resolve, 1500));
@@ -358,19 +363,20 @@ const SecureVideoPlayer = ({
         // On retry, try muted playback to avoid audio codec issues
         if (retryCount >= 0) {
           videoRef.current.muted = true;
+          setIsMuted(true);
           cerror('🔇 Retrying with muted audio to bypass audio codec issues');
         }
-        
+
         // Just reload without clearing src to preserve streaming
         videoRef.current.load();
-        
+
       } catch (error) {
         cerror('Error during video retry:', error);
       }
     }
 
     setIsRetrying(false);
-  }, [retryCount, authenticatedVideoUrl]);
+  }, [retryCount, authenticatedVideoUrl, bufferingTimeout, loadingTimeout]);
 
   const handleError = (e) => {
     cerror('Video error:', e);
@@ -408,18 +414,25 @@ const SecureVideoPlayer = ({
 
     // Handle specific error types
     const errorCode = e.target?.error?.code;
-    
-    // Only retry on decode errors, not network or loading errors
-    if (errorCode === 3 && retryCount < 1) { // MEDIA_ERR_DECODE - only 1 retry
-      cerror(`🔄 Decode error - attempting muted retry ${retryCount + 1}/1`);
+
+    // Auto-retry on network or decode errors if this is the first failure
+    if (retryCount === 0 && (errorCode === 2 || errorCode === 3)) {
+      cerror(`🔄 Initial ${errorCode === 2 ? 'network' : 'decode'} error - attempting automatic retry`);
       retryVideo();
       return;
     }
-    
-    // Don't retry on network errors or src issues - let streaming handle it naturally
+
+    // Only retry on decode errors for subsequent failures
+    if (errorCode === 3 && retryCount < 2) { // MEDIA_ERR_DECODE - up to 2 retries total
+      cerror(`🔄 Decode error - attempting muted retry ${retryCount + 1}/2`);
+      retryVideo();
+      return;
+    }
+
+    // Set appropriate error message after retries are exhausted
     if (errorCode === 3) { // MEDIA_ERR_DECODE
       setError('בעיה בקידוד הווידאו - נסה עם שמע מושתק');
-    } else if (errorCode === 2) { // MEDIA_ERR_NETWORK  
+    } else if (errorCode === 2) { // MEDIA_ERR_NETWORK
       setError('שגיאת רשת - בדוק את החיבור לאינטרנט');
     } else if (errorCode === 4) { // MEDIA_ERR_SRC_NOT_SUPPORTED
       setError('פורמט הווידאו לא נתמך בדפדפן זה');
@@ -428,12 +441,14 @@ const SecureVideoPlayer = ({
     }
     setIsLoading(false);
 
-    // Show user-friendly error message
-    toast({
-      title: "שגיאה בהשמעת הווידאו",
-      description: "לא הצלחנו להשמיע את הווידאו. אנא נסה שוב או בדוק את החיבור לאינטרנט.",
-      variant: "destructive",
-    });
+    // Only show toast after multiple failures to avoid noise
+    if (retryCount >= 1) {
+      toast({
+        title: "שגיאה בהשמעת הווידאו",
+        description: "לא הצלחנו להשמיע את הווידאו. אנא נסה שוב או בדוק את החיבור לאינטרנט.",
+        variant: "destructive",
+      });
+    }
 
     onError(e);
   };
@@ -550,11 +565,32 @@ const SecureVideoPlayer = ({
         </div>
       )}
 
-      {(isLoading || isRetrying) && !error && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-900 text-white z-10">
+      {(isLoading || isRetrying || isBuffering) && !error && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80 text-white z-10">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-            <p>{isRetrying ? `מנסה שוב... (${retryCount + 1}/3)` : 'טוען ווידאו...'}</p>
+            <p className="mb-4">
+              {isRetrying ? `מנסה שוב... (${retryCount + 1}/3)` :
+               isBuffering ? 'ממתין לנתונים...' :
+               'טוען ווידאו...'}
+            </p>
+            {isBuffering && (
+              <button
+                onClick={() => {
+                  setIsBuffering(false);
+                  if (bufferingTimeout) {
+                    clearTimeout(bufferingTimeout);
+                    setBufferingTimeout(null);
+                  }
+                  if (videoRef.current) {
+                    videoRef.current.load();
+                  }
+                }}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white text-sm transition-colors"
+              >
+                אלץ המשכה
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -568,8 +604,33 @@ const SecureVideoPlayer = ({
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
         onError={handleError}
-        onLoadStart={() => setIsLoading(true)}
-        onCanPlay={() => setIsLoading(false)}
+        onLoadStart={() => {
+          setIsLoading(true);
+          setError(null); // Clear any previous errors when starting to load
+
+          // Set a timeout to prevent infinite loading
+          if (loadingTimeout) {
+            clearTimeout(loadingTimeout);
+          }
+          const timeout = setTimeout(() => {
+            setIsLoading(false);
+            setError('הטעינה ארכה יותר מהצפוי - נסה שוב');
+          }, 15000); // 15 second timeout
+          setLoadingTimeout(timeout);
+        }}
+        onCanPlay={() => {
+          setIsLoading(false);
+          setIsBuffering(false);
+          setError(null); // Clear errors when video can play
+          if (bufferingTimeout) {
+            clearTimeout(bufferingTimeout);
+            setBufferingTimeout(null);
+          }
+          if (loadingTimeout) {
+            clearTimeout(loadingTimeout);
+            setLoadingTimeout(null);
+          }
+        }}
         onLoadedData={() => {
           cerror('✅ Video data loaded successfully');
         }}
@@ -582,15 +643,34 @@ const SecureVideoPlayer = ({
           clog('Video stalled - waiting for more data (normal for streaming)');
         }}
         onWaiting={() => {
-          // Handle waiting for data - normal for streaming
-          clog('Video waiting for data - buffering (normal for streaming)');
+          // Video is waiting for more data - show buffering spinner
+          setIsBuffering(true);
+
+          // Clear any existing timeout
+          if (bufferingTimeout) {
+            clearTimeout(bufferingTimeout);
+          }
+
+          // Set timeout to hide buffering spinner if it takes too long (30 seconds)
+          const timeout = setTimeout(() => {
+            setIsBuffering(false);
+          }, 30000);
+          setBufferingTimeout(timeout);
         }}
         onCanPlayThrough={() => {
           // Video can play through without stopping
-          cerror('✅ Video can play through - sufficient buffering');
           setIsLoading(false);
+          setIsBuffering(false);
+          if (bufferingTimeout) {
+            clearTimeout(bufferingTimeout);
+            setBufferingTimeout(null);
+          }
+          if (loadingTimeout) {
+            clearTimeout(loadingTimeout);
+            setLoadingTimeout(null);
+          }
         }}
-        preload="metadata" // Only load metadata initially to support streaming
+        preload="metadata" // Load metadata but not full video
         autoPlay={false} // Let user control playback
         playsInline
         muted={false} // Start unmuted, will be muted on retry if needed

@@ -120,7 +120,7 @@ export default function ProductModal({
   };
 
   const hasYouTubeVideo = () => {
-    return formData.youtube_video_id && formData.youtube_video_id.trim() !== '';
+    return formData.marketing_video_type === 'youtube' && formData.marketing_video_id && formData.marketing_video_id.trim() !== '';
   };
 
   const hasAnyMarketingVideo = () => {
@@ -210,8 +210,8 @@ export default function ProductModal({
     tags: [],
     target_audience: "",
     difficulty_level: "",
-    youtube_video_id: "",
-    youtube_video_title: "",
+    marketing_video_type: null,
+    marketing_video_id: "",
     marketing_video_title: "",
     marketing_video_duration: "",
     access_days: "",
@@ -342,27 +342,18 @@ export default function ProductModal({
     });
     setSelectedModuleVideoTab(initialModuleTabs);
 
-    // Check for marketing video existence and set type accordingly
-    if (product.youtube_video_id) {
-      setMarketingVideoType('youtube');
-      setMarketingVideoExists(false);
-    } else {
-      // Always check if marketing video exists on server for existing products
-      if (product.id && product.product_type) {
-        checkMarketingVideoExists(product).then(exists => {
-          setMarketingVideoExists(exists);
-          if (exists) {
-            setMarketingVideoType('upload');
-            console.log('Found existing marketing video on server');
-          } else {
-            setMarketingVideoType('upload'); // Default to upload tab when no video exists
-          }
-        });
+    // Set marketing video type based on product data
+    if (product.marketing_video_type) {
+      setMarketingVideoType(product.marketing_video_type);
+      if (product.marketing_video_type === 'uploaded') {
+        setMarketingVideoExists(true);
       } else {
-        // New product - no video exists yet
         setMarketingVideoExists(false);
-        setMarketingVideoType('upload');
       }
+    } else {
+      // No marketing video data - default to upload
+      setMarketingVideoType('upload');
+      setMarketingVideoExists(false);
     }
 
     // Check for file upload existence and load footer settings (File products only)
@@ -400,8 +391,8 @@ export default function ProductModal({
       tags: [],
       target_audience: "",
       difficulty_level: "",
-      youtube_video_id: "",
-      youtube_video_title: "",
+      marketing_video_type: null,
+      marketing_video_id: "",
       marketing_video_title: "",
       marketing_video_duration: "",
       access_days: "",
@@ -638,7 +629,10 @@ export default function ProductModal({
           // For videos and other files (but NOT file/preview_file assets), get the file reference
           const fileReference = responseData.downloadUrl || responseData.s3Url || responseData.file_uri || responseData.streamUrl;
 
-          if (fileReference) {
+          // Marketing videos don't need fileReference since they use predictable paths
+          const needsFileReference = fileType !== 'marketing_video';
+
+          if (fileReference || !needsFileReference) {
             if (moduleIndex !== null) {
               setFormData(prev => ({
                 ...prev,
@@ -666,7 +660,6 @@ export default function ProductModal({
               if (fileType === 'workshop_video' && file.detectedDuration) {
                 const durationMinutes = Math.round(file.detectedDuration / 60);
                 updateData.duration_minutes = durationMinutes;
-                console.log(`Auto-set workshop duration to ${durationMinutes} minutes from client-side detection`);
               }
 
               // Auto-set duration for marketing videos if detected on client-side
@@ -674,11 +667,13 @@ export default function ProductModal({
                 if (file.detectedDuration) {
                   const durationSeconds = Math.round(file.detectedDuration);
                   updateData.marketing_video_duration = durationSeconds;
-                  console.log(`Auto-set marketing video duration to ${durationSeconds} seconds from client-side detection`);
                 }
+                // Set marketing video type and ID for uploaded videos
+                updateData.marketing_video_type = 'uploaded';
+                updateData.marketing_video_id = editingProduct?.id || 'temp';
+
                 // Set the marketing video exists flag
                 setMarketingVideoExists(true);
-                console.log('Marketing video uploaded successfully, updated existence state');
               }
 
               // Only set private flag for non-video files
@@ -757,6 +752,8 @@ export default function ProductModal({
           // Clear marketing video fields and update state
           setFormData(prev => ({
             ...prev,
+            marketing_video_type: null,
+            marketing_video_id: '',
             marketing_video_title: '',
             marketing_video_duration: ''
           }));
@@ -914,8 +911,8 @@ export default function ProductModal({
         tags: formData.tags?.filter(tag => tag.trim()) || [],
         target_audience: (formData.target_audience && formData.target_audience.trim()) ? formData.target_audience : null,
         difficulty_level: (formData.difficulty_level && formData.difficulty_level.trim()) ? formData.difficulty_level : null,
-        youtube_video_id: (formData.youtube_video_id && formData.youtube_video_id.trim()) ? formData.youtube_video_id : null,
-        youtube_video_title: (formData.youtube_video_title && formData.youtube_video_title.trim()) ? formData.youtube_video_title : null,
+        marketing_video_type: formData.marketing_video_type || null,
+        marketing_video_id: (formData.marketing_video_id && formData.marketing_video_id.trim()) ? formData.marketing_video_id : null,
         marketing_video_title: (formData.marketing_video_title && formData.marketing_video_title.trim()) ? formData.marketing_video_title : null,
         marketing_video_duration: formData.marketing_video_duration ? parseInt(formData.marketing_video_duration) || null : null,
         access_days: formData.access_days === "" ? null : parseInt(formData.access_days) || null,
@@ -988,15 +985,57 @@ export default function ProductModal({
           }
         }
 
-        console.log('📝 Updating product with data:', cleanedData);
-        console.log('📝 Video fields in update:', {
-          youtube_video_id: cleanedData.youtube_video_id,
-          youtube_video_title: cleanedData.youtube_video_title,
+        // Split data into Product-specific and entity-specific fields
+        const productData = {
+          title: cleanedData.title,
+          description: cleanedData.description,
+          category: cleanedData.category,
+          price: cleanedData.price,
+          is_published: cleanedData.is_published,
+          image_url: cleanedData.image_url,
+          is_ludora_creator: cleanedData.is_ludora_creator,
+          tags: cleanedData.tags,
+          target_audience: cleanedData.target_audience,
+          difficulty_level: cleanedData.difficulty_level,
+          marketing_video_type: cleanedData.marketing_video_type,
+          marketing_video_id: cleanedData.marketing_video_id,
           marketing_video_title: cleanedData.marketing_video_title,
           marketing_video_duration: cleanedData.marketing_video_duration,
-          video_file_url: cleanedData.video_file_url
-        });
-        await entityService.update(editingProduct.id, cleanedData);
+          access_days: cleanedData.access_days,
+          product_type: cleanedData.product_type
+        };
+
+        const entityData = {
+          ...cleanedData
+        };
+
+        // Remove Product-specific fields from entity data (these belong in Product table)
+        delete entityData.title;
+        delete entityData.description;
+        delete entityData.category;
+        delete entityData.price;
+        delete entityData.is_published;
+        delete entityData.image_url;
+        delete entityData.is_ludora_creator;
+        delete entityData.tags;
+        delete entityData.target_audience;
+        delete entityData.difficulty_level;
+        delete entityData.marketing_video_type;
+        delete entityData.marketing_video_id;
+        delete entityData.marketing_video_title;
+        delete entityData.marketing_video_duration;
+        delete entityData.access_days;
+        delete entityData.product_type;
+
+
+        // Always update Product table with Product-specific fields (including marketing video)
+        await Product.update(editingProduct.id, productData);
+
+        // Update entity-specific table only if there are entity-specific fields
+        const hasEntityFields = Object.keys(entityData).length > 0;
+        if (hasEntityFields && editingProduct.entity_id) {
+          await entityService.update(editingProduct.entity_id, entityData);
+        }
 
         // For File products, also update the File entity with file-specific fields
         if (formData.product_type === 'file' && editingProduct.entity_id) {
@@ -1034,9 +1073,31 @@ export default function ProductModal({
         setMessage({ type: 'success', text: `${entityName} עודכן בהצלחה` });
         createdEntity = { id: editingProduct.id, ...cleanedData };
       } else {
-        console.log('📝 Creating new product with data:', cleanedData);
-        console.log('📝 is_published value:', cleanedData.is_published);
-        createdEntity = await entityService.create(cleanedData);
+        // Split data into Product-specific and entity-specific fields for creation
+        const productData = {
+          title: cleanedData.title,
+          description: cleanedData.description,
+          category: cleanedData.category,
+          price: cleanedData.price,
+          is_published: cleanedData.is_published,
+          image_url: cleanedData.image_url,
+          is_ludora_creator: cleanedData.is_ludora_creator,
+          tags: cleanedData.tags,
+          target_audience: cleanedData.target_audience,
+          difficulty_level: cleanedData.difficulty_level,
+          marketing_video_type: cleanedData.marketing_video_type,
+          marketing_video_id: cleanedData.marketing_video_id,
+          marketing_video_title: cleanedData.marketing_video_title,
+          marketing_video_duration: cleanedData.marketing_video_duration,
+          access_days: cleanedData.access_days,
+          product_type: cleanedData.product_type,
+          // Include entity-specific fields for creation since the entity doesn't exist yet
+          ...cleanedData
+        };
+
+
+        // For creation, use the appropriate entity service but ensure all data is included
+        createdEntity = await entityService.create(productData);
         console.log('📝 Created entity:', createdEntity);
         setMessage({ type: 'success', text: `${entityName} נוצר בהצלחה` });
 
@@ -1360,8 +1421,9 @@ export default function ProductModal({
                                   onClick={() => {
                                     setFormData(prev => ({
                                       ...prev,
-                                      youtube_video_id: "",
-                                      youtube_video_title: "" // Clear title when deleting YouTube video
+                                      marketing_video_type: null,
+                                      marketing_video_id: "",
+                                      marketing_video_title: "" // Clear title when deleting YouTube video
                                     }));
                                     setMarketingVideoType("upload");
                                   }}
@@ -1372,20 +1434,24 @@ export default function ProductModal({
                                 </Button>
                               </div>
                               <Input
-                                value={formData.youtube_video_id || ""}
+                                value={(formData.marketing_video_type === 'youtube' ? formData.marketing_video_id : '') || ""}
                                 onChange={(e) => {
                                   const input = e.target.value;
                                   const extractedId = extractYouTubeId(input);
-                                  setFormData(prev => ({ ...prev, youtube_video_id: extractedId || input }));
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    marketing_video_type: 'youtube',
+                                    marketing_video_id: extractedId || input
+                                  }));
                                 }}
                                 placeholder="הדבק כל קישור יוטיוב או מזהה וידיאו"
                                 className="mt-1"
                               />
-                              {formData.youtube_video_id && (
+                              {hasYouTubeVideo() && (
                                 <div className="mt-3">
                                   <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
                                     <iframe
-                                      src={`https://www.youtube.com/embed/${formData.youtube_video_id}`}
+                                      src={`https://www.youtube.com/embed/${formData.marketing_video_id}`}
                                       title="YouTube Video Preview"
                                       className="w-full h-full"
                                       frameBorder="0"
@@ -1488,11 +1554,15 @@ export default function ProductModal({
                             <div>
                               <Label className="text-sm font-medium">מזהה סרטון יוטיוב</Label>
                               <Input
-                                value={formData.youtube_video_id || ""}
+                                value={(formData.marketing_video_type === 'youtube' ? formData.marketing_video_id : '') || ""}
                                 onChange={(e) => {
                                   const input = e.target.value;
                                   const extractedId = extractYouTubeId(input);
-                                  setFormData(prev => ({ ...prev, youtube_video_id: extractedId || input }));
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    marketing_video_type: 'youtube',
+                                    marketing_video_id: extractedId || input
+                                  }));
                                 }}
                                 placeholder="הדבק כל קישור יוטיוב או מזהה וידיאו"
                                 className="mt-1"
@@ -1503,15 +1573,15 @@ export default function ProductModal({
                             </div>
 
                             {/* YouTube Video Preview */}
-                            {formData.youtube_video_id && formData.youtube_video_id.trim() && (
+                            {hasYouTubeVideo() && (
                               <div className="mt-4">
                                 <Label className="text-sm font-medium text-blue-700 mb-2 block">תצוגה מקדימה:</Label>
                                 <div className="bg-white p-2 rounded border">
                                   <iframe
                                     width="100%"
                                     height="200"
-                                    src={`https://www.youtube.com/embed/${formData.youtube_video_id.trim()}?controls=1&showinfo=0&rel=0`}
-                                    title={formData.youtube_video_title || "YouTube Video Preview"}
+                                    src={`https://www.youtube.com/embed/${formData.marketing_video_id.trim()}?controls=1&showinfo=0&rel=0`}
+                                    title={formData.marketing_video_title || "YouTube Video Preview"}
                                     frameBorder="0"
                                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                     allowFullScreen
@@ -1528,21 +1598,18 @@ export default function ProductModal({
                       <div className="mt-4 pt-4 border-t border-gray-200">
                         <Label className="text-sm font-medium">כותרת הסרטון</Label>
                         <Input
-                          value={hasYouTubeVideo() ? (formData.youtube_video_title || "") : (formData.marketing_video_title || "")}
+                          value={formData.marketing_video_title || ""}
                           onChange={(e) => {
-                            if (hasAnyMarketingVideo()) {
-                              if (hasYouTubeVideo()) {
-                                setFormData(prev => ({ ...prev, youtube_video_title: e.target.value }));
-                              } else {
-                                setFormData(prev => ({ ...prev, marketing_video_title: e.target.value }));
-                              }
-                            }
+                            setFormData(prev => ({
+                              ...prev,
+                              marketing_video_title: e.target.value
+                            }));
                           }}
                           placeholder="כותרת הסרטון להצגה באתר"
                           className="mt-1"
-                          disabled={!hasAnyMarketingVideo()}
+                          disabled={!hasYouTubeVideo() && !marketingVideoExists}
                         />
-                        {!hasAnyMarketingVideo() && (
+                        {!hasYouTubeVideo() && !marketingVideoExists && (
                           <p className="text-xs text-gray-500 mt-1">הוסף סרטון כדי להגדיר כותרת</p>
                         )}
                       </div>

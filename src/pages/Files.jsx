@@ -522,11 +522,11 @@ function FileCard({ file, onPurchase, onEdit, fileTexts, currentUser }) {
                 </span>
               </div>
             )}
-            {file.youtube_video_id && (
+            {file.marketing_video_type && file.marketing_video_id && (
               <div className="flex items-center gap-1.5 sm:gap-2">
                 <Play className="w-3 h-3 sm:w-4 sm:h-4 text-red-500 flex-shrink-0" />
                 <span className="text-red-600 text-xs truncate">
-                  {file.youtube_video_title || 'סרטון הסבר זמין'}
+                  {file.marketing_video_title || 'סרטון הסבר זמין'}
                 </span>
               </div>
             )}

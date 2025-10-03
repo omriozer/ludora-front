@@ -80,7 +80,7 @@ export default function ProductCard({
             alt={product.title}
             className="w-full h-full object-cover"
           />
-          {showYouTubeIndicator && product.youtube_video_id && (
+          {showYouTubeIndicator && product.marketing_video_type && product.marketing_video_id && (
             <div className="absolute top-2 right-2 bg-red-600 text-white px-2 py-1 rounded-full flex items-center gap-1">
               <Youtube className="w-3 h-3" />
               <span className="text-xs">סרטון</span>
@@ -151,11 +151,11 @@ export default function ProductCard({
             </div>
           )}
 
-          {product.youtube_video_id && (
+          {product.marketing_video_type && product.marketing_video_id && (
             <div className="flex items-center gap-2">
               <Youtube className="w-4 h-4 text-red-500" />
               <span className="text-red-600 text-sm">
-                {product.youtube_video_title || 'סרטון הסבר'}
+                {product.marketing_video_title || 'סרטון הסבר'}
               </span>
             </div>
           )}

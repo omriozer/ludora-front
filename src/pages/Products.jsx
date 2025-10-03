@@ -294,7 +294,7 @@ export default function Products() {
     const hasDescription = product.description && product.description.trim().length > 0;
     const hasLongDescription = product.description && product.description.trim().length > 100;
     const hasImage = product.image_url && product.image_url.trim().length > 0;
-    const hasVideo = (product.youtube_video_id && product.youtube_video_id.trim().length > 0) ||
+    const hasVideo = (product.marketing_video_type && product.marketing_video_id && product.marketing_video_id.trim().length > 0) ||
                      (product.video_file_url && product.video_file_url.trim().length > 0);
 
     return (
@@ -611,7 +611,7 @@ export default function Products() {
                                 {product.target_audience && product.target_audience.length > 15 ? `${product.target_audience.substring(0, 12)}...` : product.target_audience}
                               </Badge>
                             )}
-                            {product.youtube_video_id && (
+                            {product.marketing_video_type && product.marketing_video_id && (
                               <Badge variant="outline" className="text-xs bg-red-50 text-red-700 border-red-200">
                                 <Play className="w-3 h-3 ml-1" />
                                 סרטון
@@ -774,7 +774,7 @@ export default function Products() {
                                   {product.target_audience && product.target_audience.length > 20 ? `${product.target_audience.substring(0, 17)}...` : product.target_audience}
                                 </Badge>
                               )}
-                              {product.youtube_video_id && (
+                              {product.marketing_video_type && product.marketing_video_id && (
                                 <Badge variant="outline" className="text-xs px-2 py-0.5 bg-red-50 text-red-700 border-red-200">
                                   <Play className="w-3 h-3 ml-1" />
                                   סרטון

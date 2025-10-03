@@ -23,8 +23,17 @@ export function generateVideoUrl(contentType, entityType, entityId) {
  * @returns {string|null} - Marketing video URL or null
  */
 export function getMarketingVideoUrl(product) {
-  if (!product?.id || !product?.product_type) return null;
-  return generateVideoUrl('marketing', product.product_type, product.id);
+  if (!product) return null;
+
+  // Extract ID - can be id, entity_id, or marketing_video_id for uploaded videos
+  const productId = product.id || product.entity_id;
+
+  // Extract product type - can be product_type or itemType
+  const productType = product.product_type;
+
+  if (!productId || !productType) return null;
+
+  return generateVideoUrl('marketing', productType, productId);
 }
 
 /**

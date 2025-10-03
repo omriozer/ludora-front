@@ -36,6 +36,8 @@ import { he } from "date-fns/locale";
 import { getText } from "../components/utils/getText";
 import LudoraLoadingSpinner from "@/components/ui/LudoraLoadingSpinner";
 import VideoPlayer from "../components/VideoPlayer"; // Added import for VideoPlayer component
+import SecureVideoPlayer from "../components/SecureVideoPlayer";
+import { getMarketingVideoUrl } from '@/utils/videoUtils.js';
 import { getProductTypeName } from "@/config/productTypes";
 import GetFileButton from "@/components/files/GetFileButton";
 import FileAccessStatus from "@/components/files/FileAccessStatus";
@@ -778,25 +780,34 @@ export default function ProductDetails() {
           )}
         </div>
 
-        {/* Marketing Video - YouTube only (uploaded videos need separate handling) */}
-        {item.youtube_video_id && (
+        {/* Marketing Video - Both YouTube and uploaded videos */}
+        {item.marketing_video_type && item.marketing_video_id && (
           <Card className="mb-6 sm:mb-8 shadow-xl bg-white/90 backdrop-blur-xl border-0 rounded-2xl sm:rounded-3xl overflow-hidden">
             <CardContent className="p-4 sm:p-6 md:p-8">
-              {item.youtube_video_title && (
+              {item.marketing_video_title && (
                 <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-center text-gray-900">
-                  {item.youtube_video_title}
+                  {item.marketing_video_title}
                 </h3>
               )}
               <div className="aspect-video rounded-lg sm:rounded-2xl overflow-hidden shadow-xl sm:shadow-2xl">
-                <iframe
-                  width="100%"
-                  height="100%"
-                  src={`https://www.youtube.com/embed/${item.youtube_video_id}`}
-                  title={item.youtube_video_title || "YouTube video player"}
-                  style={{ border: 0 }}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                ></iframe>
+                {item.marketing_video_type === 'youtube' ? (
+                  <iframe
+                    width="100%"
+                    height="100%"
+                    src={`https://www.youtube.com/embed/${item.marketing_video_id}`}
+                    title={item.marketing_video_title || "YouTube video player"}
+                    style={{ border: 0 }}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                ) : (
+                  <SecureVideoPlayer
+                    videoUrl={getMarketingVideoUrl(item)}
+                    title={item.marketing_video_title || "Marketing Video"}
+                    className="h-full w-full"
+                    contentType="marketing"
+                  />
+                )}
               </div>
             </CardContent>
           </Card>
