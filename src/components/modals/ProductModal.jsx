@@ -989,11 +989,11 @@ export default function ProductModal({
         const productData = {
           title: cleanedData.title,
           description: cleanedData.description,
+          short_description: cleanedData.short_description,
           category: cleanedData.category,
           price: cleanedData.price,
           is_published: cleanedData.is_published,
           image_url: cleanedData.image_url,
-          is_ludora_creator: cleanedData.is_ludora_creator,
           tags: cleanedData.tags,
           target_audience: cleanedData.target_audience,
           difficulty_level: cleanedData.difficulty_level,
@@ -1012,11 +1012,11 @@ export default function ProductModal({
         // Remove Product-specific fields from entity data (these belong in Product table)
         delete entityData.title;
         delete entityData.description;
+        delete entityData.short_description;
         delete entityData.category;
         delete entityData.price;
         delete entityData.is_published;
         delete entityData.image_url;
-        delete entityData.is_ludora_creator;
         delete entityData.tags;
         delete entityData.target_audience;
         delete entityData.difficulty_level;
@@ -1077,11 +1077,11 @@ export default function ProductModal({
         const productData = {
           title: cleanedData.title,
           description: cleanedData.description,
+          short_description: cleanedData.short_description,
           category: cleanedData.category,
           price: cleanedData.price,
           is_published: cleanedData.is_published,
           image_url: cleanedData.image_url,
-          is_ludora_creator: cleanedData.is_ludora_creator,
           tags: cleanedData.tags,
           target_audience: cleanedData.target_audience,
           difficulty_level: cleanedData.difficulty_level,
@@ -1091,7 +1091,7 @@ export default function ProductModal({
           marketing_video_duration: cleanedData.marketing_video_duration,
           access_days: cleanedData.access_days,
           product_type: cleanedData.product_type,
-          // Include entity-specific fields for creation since the entity doesn't exist yet
+          // Include entity-specific fields and is_ludora_creator for creation
           ...cleanedData
         };
 
