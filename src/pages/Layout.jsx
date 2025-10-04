@@ -47,10 +47,12 @@ import ReturnToSelfButton from "../components/layout/ReturnToSelfButton";
 import LoginModal from "../components/LoginModal";
 import { shouldHideNavigation } from "@/lib/layoutHelpers";
 import MaintenancePage from "@/components/layout/MaintenancePage";
+import { LoginModalProvider, useLoginModal } from "@/hooks/useLoginModal";
 
-export default function Layout({ children }) {
+function LayoutContent({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
+  const { showLoginModal, openLoginModal, closeLoginModal, executeCallback } = useLoginModal();
 
   // Use UserContext instead of local state
   const { currentUser, settings, isLoading, isAuthenticated, settingsLoadFailed, login, logout } = useUser();
@@ -59,7 +61,6 @@ export default function Layout({ children }) {
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
   
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
-  const [showLoginModal, setShowLoginModal] = useState(false);
   const [message, setMessage] = useState(null);
 
   // Draggable return button states
@@ -224,7 +225,10 @@ export default function Layout({ children }) {
         console.log('🟢 Layout: Login successful, setting user...');
         await login(apiResult.user, rememberMe);
         setMessage({ type: 'success', text: 'התחברת בהצלחה!' });
-        setShowLoginModal(false);
+        closeLoginModal();
+
+        // Execute any pending callback after successful login
+        setTimeout(() => executeCallback(), 100); // Small delay to ensure state is updated
       } else {
         console.log('❌ Layout: API result invalid');
         throw new Error('Authentication failed');
@@ -257,7 +261,7 @@ export default function Layout({ children }) {
   };
 
   const onLogin = () => {
-    setShowLoginModal(true);
+    openLoginModal();
   };
 
   // Handle loading state
@@ -303,7 +307,7 @@ export default function Layout({ children }) {
         {/* Login Modal */}
         {showLoginModal && (
           <LoginModal
-            onClose={() => setShowLoginModal(false)}
+            onClose={closeLoginModal}
             onLogin={handleLoginSubmit}
           />
         )}
@@ -427,10 +431,18 @@ export default function Layout({ children }) {
 
       {showLoginModal && (
         <LoginModal
-          onClose={() => setShowLoginModal(false)}
+          onClose={closeLoginModal}
           onLogin={handleLoginSubmit}
         />
       )}
     </div>
+  );
+}
+
+export default function Layout({ children }) {
+  return (
+    <LoginModalProvider>
+      <LayoutContent>{children}</LayoutContent>
+    </LoginModalProvider>
   );
 }

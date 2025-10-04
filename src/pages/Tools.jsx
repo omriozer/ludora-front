@@ -279,9 +279,61 @@ export default function Tools() {
     }
   };
 
-  const handlePurchase = (tool) => {
-    const url = `/purchase?type=tool&id=${tool.id}`;
-    window.location.href = url;
+  const handlePurchase = async (tool) => {
+    // Import purchase helpers
+    const {
+      requireAuthentication,
+      getUserIdFromToken,
+      findProductForEntity,
+      createPendingPurchase,
+      showPurchaseSuccessToast,
+      showPurchaseErrorToast
+    } = await import('@/utils/purchaseHelpers');
+
+    // Check authentication
+    if (!requireAuthentication(navigate, '/checkout')) {
+      return;
+    }
+
+    const userId = getUserIdFromToken();
+    if (!userId) {
+      showPurchaseErrorToast('לא ניתן לזהות את המשתמש', 'בהוספה לעגלה');
+      return;
+    }
+
+    try {
+      // Find Product record for this tool
+      const productRecord = await findProductForEntity('tool', tool.id);
+
+      if (!productRecord) {
+        showPurchaseErrorToast('לא נמצא מוצר מתאים לרכישה', 'בהוספה לעגלה');
+        return;
+      }
+
+      if (!productRecord.price || productRecord.price <= 0) {
+        showPurchaseErrorToast('מחיר המוצר לא זמין', 'בהוספה לעגלה');
+        return;
+      }
+
+      // Create pending purchase
+      await createPendingPurchase({
+        entityType: 'tool',
+        entityId: tool.id,
+        price: productRecord.price,
+        userId,
+        metadata: {
+          product_title: tool.title,
+          source: 'Tools_page'
+        }
+      });
+
+      // Show success message and redirect to checkout
+      showPurchaseSuccessToast(tool.title, false);
+      navigate('/checkout');
+
+    } catch (error) {
+      showPurchaseErrorToast(error, 'בהוספה לעגלה');
+    }
   };
 
   if (isLoading) {

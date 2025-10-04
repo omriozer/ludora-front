@@ -40,13 +40,64 @@ export default function GetFileButton({
   };
 
   // Handle purchase redirect - same logic as Files.jsx
-  const handlePurchaseClick = () => {
+  const handlePurchaseClick = async () => {
     if (onPurchase) {
       onPurchase(file);
     } else {
-      // Default purchase logic
-      const url = `/purchase?type=file&id=${file.id}`;
-      window.location.href = url;
+      // Default purchase logic using new checkout system
+      try {
+        const {
+          requireAuthentication,
+          getUserIdFromToken,
+          findProductForEntity,
+          createPendingPurchase,
+          showPurchaseSuccessToast,
+          showPurchaseErrorToast
+        } = await import('@/utils/purchaseHelpers');
+
+        const { useNavigate } = await import('react-router-dom');
+        const navigate = useNavigate();
+
+        if (!requireAuthentication(navigate, '/checkout')) {
+          return;
+        }
+
+        const userId = getUserIdFromToken();
+        if (!userId) {
+          showPurchaseErrorToast('לא ניתן לזהות את המשתמש', 'בהוספה לעגלה');
+          return;
+        }
+
+        const productRecord = await findProductForEntity('file', file.id);
+
+        if (!productRecord) {
+          showPurchaseErrorToast('לא נמצא מוצר מתאים לרכישה', 'בהוספה לעגלה');
+          return;
+        }
+
+        if (!productRecord.price || productRecord.price <= 0) {
+          showPurchaseErrorToast('מחיר המוצר לא זמין', 'בהוספה לעגלה');
+          return;
+        }
+
+        await createPendingPurchase({
+          entityType: 'file',
+          entityId: file.id,
+          price: productRecord.price,
+          userId,
+          metadata: {
+            product_title: file.title,
+            source: 'GetFileButton'
+          }
+        });
+
+        showPurchaseSuccessToast(file.title, false);
+        navigate('/checkout');
+
+      } catch (error) {
+        const { showPurchaseErrorToast } = await import('@/utils/purchaseHelpers');
+        showPurchaseErrorToast(error, 'בהוספה לעגלה');
+      }
     }
   };
 

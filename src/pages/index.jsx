@@ -13,11 +13,10 @@ import Contact from './Contact';
 import SupportMessages from './SupportMessages';
 import PaymentSuccess from './PaymentSuccess';
 import PaymentResult from './PaymentResult';
-import PaymentSimulator from './PaymentSimulator';
 import VideoViewer from './VideoViewer';
 import SiteTexts from './SiteTexts';
 import Tools from './Tools';
-import ProductPurchase from './ProductPurchase';
+import Checkout from './Checkout';
 import CourseViewer from './CourseViewer';
 import Products from './Products';
 import ProductDetails from './ProductDetails';
@@ -70,11 +69,10 @@ export {
   SupportMessages,
   PaymentSuccess,
   PaymentResult,
-  PaymentSimulator,
   VideoViewer,
   SiteTexts,
   Tools,
-  ProductPurchase,
+  Checkout,
   CourseViewer,
   Products,
   ProductDetails,

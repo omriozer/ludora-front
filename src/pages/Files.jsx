@@ -243,9 +243,61 @@ export default function Files() {
     setFilteredFileProducts(filtered);
   };
 
-  const handlePurchase = (file) => {
-    const url = `/purchase?type=file&id=${file.id}`;
-    window.location.href = url;
+  const handlePurchase = async (file) => {
+    // Import purchase helpers
+    const {
+      requireAuthentication,
+      getUserIdFromToken,
+      findProductForEntity,
+      createPendingPurchase,
+      showPurchaseSuccessToast,
+      showPurchaseErrorToast
+    } = await import('@/utils/purchaseHelpers');
+
+    // Check authentication
+    if (!requireAuthentication(navigate, '/checkout')) {
+      return;
+    }
+
+    const userId = getUserIdFromToken();
+    if (!userId) {
+      showPurchaseErrorToast('לא ניתן לזהות את המשתמש', 'בהוספה לעגלה');
+      return;
+    }
+
+    try {
+      // Find Product record for this file
+      const productRecord = await findProductForEntity('file', file.id);
+
+      if (!productRecord) {
+        showPurchaseErrorToast('לא נמצא מוצר מתאים לרכישה', 'בהוספה לעגלה');
+        return;
+      }
+
+      if (!productRecord.price || productRecord.price <= 0) {
+        showPurchaseErrorToast('מחיר המוצר לא זמין', 'בהוספה לעגלה');
+        return;
+      }
+
+      // Create pending purchase
+      await createPendingPurchase({
+        entityType: 'file',
+        entityId: file.id,
+        price: productRecord.price,
+        userId,
+        metadata: {
+          product_title: file.title,
+          source: 'Files_page'
+        }
+      });
+
+      // Show success message and redirect to checkout
+      showPurchaseSuccessToast(file.title, false);
+      navigate('/checkout');
+
+    } catch (error) {
+      showPurchaseErrorToast(error, 'בהוספה לעגלה');
+    }
   };
 
   const handleEdit = async (product) => {
@@ -569,9 +621,10 @@ function FileCard({ file, onPurchase, onEdit, fileTexts, currentUser }) {
                 variant="outline"
                 size="sm"
                 onClick={handleDetailsClick}
-                className="hover:bg-gray-50 hover:border-purple-300 transition-colors duration-200 text-xs sm:text-sm px-2 sm:px-3"
+                className="rounded-full hover:bg-gray-50 hover:border-purple-300 transition-colors duration-200 text-xs sm:text-sm px-2 sm:px-3 border-2"
                 title={fileTexts.viewDetails}
               >
+                <Eye className="w-3 h-3 sm:w-4 sm:h-4 ml-1" />
                 פרטים נוספים
               </Button>
 
@@ -580,7 +633,7 @@ function FileCard({ file, onPurchase, onEdit, fileTexts, currentUser }) {
                   variant="outline"
                   size="sm"
                   onClick={() => onEdit(file)}
-                  className="hover:bg-orange-50 border-orange-200 text-orange-600 hover:border-orange-300 transition-colors duration-200 px-2 sm:px-3"
+                  className="rounded-full hover:bg-orange-50 border-orange-200 text-orange-600 hover:border-orange-300 transition-colors duration-200 px-2 sm:px-3 border-2"
                   title="עריכת קובץ"
                 >
                   <Edit className="w-3 h-3 sm:w-4 sm:h-4" />

@@ -364,11 +364,73 @@ export default function ProductDetails() {
     }
   };
 
-  const handlePurchase = () => {
-    if (itemType && itemType !== 'product') {
-      navigate(`/purchase?type=${itemType}&id=${item.id}`);
-    } else {
-      navigate(`/purchase?product=${item.id}`); // Legacy support
+  const handlePurchase = async () => {
+    // Import purchase helpers
+    const {
+      requireAuthentication,
+      getUserIdFromToken,
+      findProductForEntity,
+      createPendingPurchase,
+      showPurchaseSuccessToast,
+      showPurchaseErrorToast
+    } = await import('@/utils/purchaseHelpers');
+
+    // Check authentication
+    if (!requireAuthentication(navigate, '/checkout')) {
+      return;
+    }
+
+    const userId = getUserIdFromToken();
+    if (!userId) {
+      showPurchaseErrorToast('לא ניתן לזהות את המשתמש', 'בהוספה לעגלה');
+      return;
+    }
+
+    try {
+      let productRecord;
+      let entityType;
+      let entityId;
+
+      if (itemType && itemType !== 'product') {
+        // Handle specific entity types
+        entityType = itemType;
+        entityId = item.id;
+        productRecord = await findProductForEntity(entityType, entityId);
+      } else {
+        // Handle legacy product case - item should already be a Product
+        productRecord = item;
+        entityType = item.product_type || 'product';
+        entityId = item.entity_id || item.id;
+      }
+
+      if (!productRecord) {
+        showPurchaseErrorToast('לא נמצא מוצר מתאים לרכישה', 'בהוספה לעגלה');
+        return;
+      }
+
+      if (!productRecord.price || productRecord.price <= 0) {
+        showPurchaseErrorToast('מחיר המוצר לא זמין', 'בהוספה לעגלה');
+        return;
+      }
+
+      // Create pending purchase
+      await createPendingPurchase({
+        entityType,
+        entityId,
+        price: productRecord.price,
+        userId,
+        metadata: {
+          product_title: item.title,
+          source: 'ProductDetails_page'
+        }
+      });
+
+      // Show success message and redirect to checkout
+      showPurchaseSuccessToast(item.title, false);
+      navigate('/checkout');
+
+    } catch (error) {
+      showPurchaseErrorToast(error, 'בהוספה לעגלה');
     }
   };
 
@@ -559,7 +621,7 @@ export default function ProductDetails() {
                     <Button
                       onClick={handlePdfPreview}
                       variant="outline"
-                      className="px-3 sm:px-4 py-2 sm:py-3 flex-shrink-0 text-xs sm:text-sm border-blue-200 text-blue-600 hover:bg-blue-50"
+                      className="rounded-full px-3 sm:px-4 py-2 sm:py-3 flex-shrink-0 text-xs sm:text-sm border-blue-200 text-blue-600 hover:bg-blue-50 border-2"
                       size="sm"
                     >
                       <Eye className="w-3 h-3 sm:w-4 sm:h-4 ml-1 sm:ml-2" />
@@ -834,7 +896,7 @@ export default function ProductDetails() {
                   <Play className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400 mx-auto mb-3 sm:mb-4" />
                   <p className="text-sm sm:text-base text-gray-600 mb-3 sm:mb-4">צפייה ב{getProductTypeName('workshop', 'singular')} המוקלטת זמינה לאחר רכישה</p>
                   <Button
-                    onClick={() => navigate(`/purchase?product=${item.id}`)}
+                    onClick={handlePurchase}
                     className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-3 px-6 sm:py-4 sm:px-12 text-base sm:text-lg font-semibold rounded-xl sm:rounded-2xl shadow-xl transform hover:scale-105 transition-all duration-300"
                   >
                     רכוש גישה

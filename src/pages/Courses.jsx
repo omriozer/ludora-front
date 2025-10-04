@@ -210,9 +210,61 @@ export default function Courses() {
     window.location.href = url;
   };
 
-  const handlePurchase = (course) => {
-    const url = `/purchase?type=course&id=${course.id}`;
-    window.location.href = url;
+  const handlePurchase = async (course) => {
+    // Import purchase helpers
+    const {
+      requireAuthentication,
+      getUserIdFromToken,
+      findProductForEntity,
+      createPendingPurchase,
+      showPurchaseSuccessToast,
+      showPurchaseErrorToast
+    } = await import('@/utils/purchaseHelpers');
+
+    // Check authentication
+    if (!requireAuthentication(navigate, '/checkout')) {
+      return;
+    }
+
+    const userId = getUserIdFromToken();
+    if (!userId) {
+      showPurchaseErrorToast('לא ניתן לזהות את המשתמש', 'בהוספה לעגלה');
+      return;
+    }
+
+    try {
+      // Find Product record for this course
+      const productRecord = await findProductForEntity('course', course.id);
+
+      if (!productRecord) {
+        showPurchaseErrorToast('לא נמצא מוצר מתאים לרכישה', 'בהוספה לעגלה');
+        return;
+      }
+
+      if (!productRecord.price || productRecord.price <= 0) {
+        showPurchaseErrorToast('מחיר המוצר לא זמין', 'בהוספה לעגלה');
+        return;
+      }
+
+      // Create pending purchase
+      await createPendingPurchase({
+        entityType: 'course',
+        entityId: course.id,
+        price: productRecord.price,
+        userId,
+        metadata: {
+          product_title: course.title,
+          source: 'Courses_page'
+        }
+      });
+
+      // Show success message and redirect to checkout
+      showPurchaseSuccessToast(course.title, false);
+      navigate('/checkout');
+
+    } catch (error) {
+      showPurchaseErrorToast(error, 'בהוספה לעגלה');
+    }
   };
 
   if (isLoading) {

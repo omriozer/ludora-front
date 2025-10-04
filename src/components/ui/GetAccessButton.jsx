@@ -1,12 +1,22 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ShoppingCart, Loader2 } from 'lucide-react';
-import { toast } from '@/components/ui/use-toast';
-import { getApiBase } from '@/utils/api';
-import { apiRequest } from '@/services/apiClient';
-import { clog, cerror } from '@/lib/utils';
+import { ShoppingCart } from 'lucide-react';
+import { cerror } from '@/lib/utils';
 import { getProductTypeName } from '@/config/productTypes';
+import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
+import {
+  getUserIdFromToken,
+  requireAuthentication,
+  isAuthenticated,
+  findProductForEntity,
+  createPendingPurchase,
+  createFreePurchase,
+  showPurchaseSuccessToast,
+  showPurchaseErrorToast
+} from '@/utils/purchaseHelpers';
+import { toast } from '@/components/ui/use-toast';
+import { useLoginModal } from '@/hooks/useLoginModal';
 
 /**
  * Unified Get Access Button Component
@@ -30,6 +40,7 @@ export default function GetAccessButton({
 }) {
   const navigate = useNavigate();
   const [isProcessing, setIsProcessing] = useState(false);
+  const { openLoginModal } = useLoginModal();
 
   // Check if user already has access
   const hasAccess = product?.purchase && product.purchase.payment_status === 'completed';
@@ -40,88 +51,98 @@ export default function GetAccessButton({
       return;
     }
 
-    // Check if user is authenticated
-    const authToken = localStorage.getItem('authToken');
-    if (!authToken) {
-      toast({
-        title: "נדרשת התחברות",
-        description: "יש להתחבר כדי לקבל גישה למוצר",
-        variant: "destructive"
-      });
-      navigate('/login');
+    // Check authentication - open login modal if not logged in
+    if (!isAuthenticated()) {
+      // Pass the callback to continue after login
+      openLoginModal(() => handleGetAccess());
       return;
     }
 
+    const userId = getUserIdFromToken();
+    if (!userId) {
+      cerror('Could not get user ID from token');
+      return;
+    }
 
-    if (isFree()) {
+    if (await isFree()) {
       // Auto-purchase free product
-      await handleFreePurchase();
+      await handleFreePurchase(userId);
     } else {
-      // Redirect to purchase page for paid products
-      const productType = product.product_type || 'file';
-      navigate(`/purchase?type=${productType}&id=${product.id}`);
+      // Create pending purchase and redirect to checkout
+      await handlePaidPurchase(userId);
     }
   };
 
-  const isFree = () => { 
-    return !product.price || product.price == 0;
-  }
+  const isFree = async () => {
+    // First check if product has price directly
+    if (product.price !== undefined) {
+      return !product.price || product.price == 0;
+    }
+
+    // If no price on product, find Product record for entity
+    try {
+      const productRecord = await findProductForEntity(
+        product.product_type || 'file',
+        product.entity_id || product.id
+      );
+
+      return !productRecord?.price || productRecord.price == 0;
+    } catch (error) {
+      cerror('Error checking if product is free:', error);
+      // Default to paid if we can't determine price
+      return false;
+    }
+  };
 
   const getAccessText = () => {
-    if (!isFree()) {
-      const productName = getProductTypeName(product?.product_type, 'singular');
-      return "לרכישת ה" + productName;
-    } else {
-      switch (product?.product_type) {
-        case 'file':
-          return 'להורדת ה' + productName;
-        case 'course':
-          return 'כניסה ל' + productName;
-        case 'workshop':
-          return 'לצפיה ב';
-        case 'tool':
-          return 'לשימוש ב' + productName;
-        case 'game':
-          return 'ל' + productName;
-        default:
-          return 'למוצר';
-      }
-    }
-  }
+    const productName = getProductTypeName(product?.product_type, 'singular');
 
-  const handleFreePurchase = async () => {
+    // For paid products (price checking is now async, so we check product.price if available)
+    if (product.price && product.price > 0) {
+      return "לרכישת ה" + productName;
+    }
+
+    // For free products or unknown price
+    switch (product?.product_type) {
+      case 'file':
+        return 'להורדת ה' + productName;
+      case 'course':
+        return 'כניסה ל' + productName;
+      case 'workshop':
+        return 'לצפיה ב' + productName;
+      case 'tool':
+        return 'לשימוש ב' + productName;
+      case 'game':
+        return 'ל' + productName;
+      default:
+        return 'למוצר';
+    }
+  };
+
+  const handleFreePurchase = async (userId) => {
     setIsProcessing(true);
 
     try {
-      const authToken = localStorage.getItem('authToken');
+      const entityType = product.product_type || 'file';
+      const entityId = product.entity_id || product.id;
 
-      // Decode JWT to get user ID
-      const payload = JSON.parse(atob(authToken.split('.')[1]));
-      const userId = payload.uid;
+      // Get the actual price from Product record if needed
+      const productRecord = await findProductForEntity(entityType, entityId);
+      const price = productRecord?.price || product.price || 0;
 
-      const productType = product.product_type || 'file';
-
-      clog('Creating free purchase for product:', product.id, 'user:', userId);
-
-      const purchase = await apiRequest('/entities/purchase', {
-        method: 'POST',
-        body: JSON.stringify({
-          buyer_user_id: userId,
-          purchasable_id: product.entity_id || product.id,
-          purchasable_type: productType,
-          payment_method: 'free',
-          payment_status: 'completed',
-          payment_amount: 0,
-          original_price: product.price || 0,
-          discount_amount: 0
-        })
+      const purchase = await createFreePurchase({
+        entityType,
+        entityId,
+        price,
+        userId,
+        metadata: {
+          product_title: product.title,
+          source: 'GetAccessButton'
+        }
       });
-      clog('Free purchase created successfully:', purchase);
 
-      toast({
-        title: "המוצר התקבל בהצלחה!",
-        description: "המוצר החינמי נוסף לחשבונך",
-      });
+      // Show success message
+      showPurchaseSuccessToast(product.title, true);
 
       // Call success callback if provided
       if (onSuccess) {
@@ -129,30 +150,58 @@ export default function GetAccessButton({
       }
 
       // Redirect based on product type
-      if (productType === 'file') {
-        // For files, redirect to product details page
-        navigate(`/product-details/${productType}/${product.id}`);
+      if (entityType === 'file') {
+        navigate(`/product/${product.id}`);
       } else {
-        // For other types, just reload the page to show access
+        // For other types, reload to show access
         window.location.reload();
       }
 
     } catch (error) {
-      cerror('Error creating free purchase:', error);
+      showPurchaseErrorToast(error, 'בקבלת המוצר החינמי');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
-      // Extract error message properly
-      let errorMessage = "אירעה שגיאה בעת הוספת המוצר לחשבונך";
-      if (error && typeof error.message === 'string') {
-        errorMessage = error.message;
-      } else if (typeof error === 'string') {
-        errorMessage = error;
+  const handlePaidPurchase = async (userId) => {
+    setIsProcessing(true);
+
+    try {
+      const entityType = product.product_type || 'file';
+      const entityId = product.entity_id || product.id;
+
+      // Find Product record to get price
+      const productRecord = await findProductForEntity(entityType, entityId);
+
+      if (!productRecord) {
+        throw new Error('לא נמצא מוצר מתאים לרכישה');
       }
 
-      toast({
-        title: "שגיאה בקבלת המוצר",
-        description: errorMessage,
-        variant: "destructive"
+      if (!productRecord.price || productRecord.price <= 0) {
+        throw new Error('מחיר המוצר לא זמין');
+      }
+
+      // Create pending purchase
+      await createPendingPurchase({
+        entityType,
+        entityId,
+        price: productRecord.price,
+        userId,
+        metadata: {
+          product_title: product.title,
+          source: 'GetAccessButton'
+        }
       });
+
+      // Show success message
+      showPurchaseSuccessToast(product.title, false);
+
+      // Redirect to checkout
+      navigate('/checkout');
+
+    } catch (error) {
+      showPurchaseErrorToast(error, 'בהוספה לעגלה');
     } finally {
       setIsProcessing(false);
     }
@@ -186,10 +235,13 @@ export default function GetAccessButton({
     >
       <span className="relative z-10 flex items-center justify-center gap-2 sm:gap-3">
         {isProcessing ? (
-          <>
-            <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" />
-            <span>מעבד...</span>
-          </>
+          <LudoraLoadingSpinner
+            message="מעבד..."
+            status="loading"
+            size="sm"
+            theme="neon"
+            showParticles={false}
+          />
         ) : (
           <>
             <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6 group-hover:rotate-12 transition-transform duration-300" />

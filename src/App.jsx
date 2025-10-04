@@ -92,14 +92,6 @@ function App() {
 					}
 				/>
 				<Route
-					path='/payment-simulator'
-					element={
-						<ProtectedRoute>
-							<Pages.PaymentSimulator />
-						</ProtectedRoute>
-					}
-				/>
-				<Route
 					path='/video'
 					element={
 						<ProtectedRoute>
@@ -108,10 +100,10 @@ function App() {
 					}
 				/>
 				<Route
-					path='/purchase'
+					path='/checkout'
 					element={
 						<ProtectedRoute>
-							<Pages.ProductPurchase />
+							<Pages.Checkout />
 						</ProtectedRoute>
 					}
 				/>
@@ -133,11 +125,7 @@ function App() {
 				/>
 				<Route
 					path='/product-details'
-					element={
-						<ProtectedRoute>
-							<Pages.ProductDetails />
-						</ProtectedRoute>
-					}
+					element={<Pages.ProductDetails />}
 				/>
 				<Route
 					path='/purchases'

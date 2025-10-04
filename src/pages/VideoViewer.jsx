@@ -344,8 +344,59 @@ export default function VideoViewer() {
                 >
                   חזור
                 </Button>
-                <Button 
-                  onClick={() => navigate(`/purchase?product=${workshop?.id}`)}
+                <Button
+                  onClick={async () => {
+                    try {
+                      const {
+                        requireAuthentication,
+                        getUserIdFromToken,
+                        findProductForEntity,
+                        createPendingPurchase,
+                        showPurchaseSuccessToast,
+                        showPurchaseErrorToast
+                      } = await import('@/utils/purchaseHelpers');
+
+                      if (!requireAuthentication(navigate, '/checkout')) {
+                        return;
+                      }
+
+                      const userId = getUserIdFromToken();
+                      if (!userId) {
+                        showPurchaseErrorToast('לא ניתן לזהות את המשתמש', 'בהוספה לעגלה');
+                        return;
+                      }
+
+                      const productRecord = await findProductForEntity('workshop', workshop?.id);
+
+                      if (!productRecord) {
+                        showPurchaseErrorToast('לא נמצא מוצר מתאים לרכישה', 'בהוספה לעגלה');
+                        return;
+                      }
+
+                      if (!productRecord.price || productRecord.price <= 0) {
+                        showPurchaseErrorToast('מחיר המוצר לא זמין', 'בהוספה לעגלה');
+                        return;
+                      }
+
+                      await createPendingPurchase({
+                        entityType: 'workshop',
+                        entityId: workshop?.id,
+                        price: productRecord.price,
+                        userId,
+                        metadata: {
+                          product_title: workshop?.title,
+                          source: 'VideoViewer_page'
+                        }
+                      });
+
+                      showPurchaseSuccessToast(workshop?.title, false);
+                      navigate('/checkout');
+
+                    } catch (error) {
+                      const { showPurchaseErrorToast } = await import('@/utils/purchaseHelpers');
+                      showPurchaseErrorToast(error, 'בהוספה לעגלה');
+                    }
+                  }}
                   className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700"
                 >
                   <ArrowRight className="w-4 h-4 ml-2" />
