@@ -29,7 +29,8 @@ import {
   Zap,
   Tag,
   ArrowLeft,
-  Info
+  Info,
+  GraduationCap
 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
@@ -37,7 +38,7 @@ import LudoraLoadingSpinner from "@/components/ui/LudoraLoadingSpinner";
 import VideoPlayer from "../components/VideoPlayer"; // Added import for VideoPlayer component
 import SecureVideoPlayer from "../components/SecureVideoPlayer";
 import { getMarketingVideoUrl, getProductImageUrl } from '@/utils/videoUtils.js';
-import { getProductTypeName } from "@/config/productTypes";
+import { getProductTypeName, formatGradeRange } from "@/config/productTypes";
 import GetFileButton from "@/components/files/GetFileButton";
 import FileAccessStatus from "@/components/files/FileAccessStatus";
 import { hasActiveAccess, getUserPurchaseForFile } from "@/components/files/fileAccessUtils";
@@ -1035,6 +1036,36 @@ export default function ProductDetails() {
                       </div>
                     )}
 
+                    {/* Grade Range */}
+                    {item.type_attributes && formatGradeRange(item.type_attributes.grade_min, item.type_attributes.grade_max) && (
+                      <div className="flex items-center gap-4 p-6 bg-orange-50 rounded-2xl">
+                        <div className="w-14 h-14 bg-orange-100 rounded-2xl flex items-center justify-center">
+                          <GraduationCap className="w-7 h-7 text-orange-600" />
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm text-gray-600 font-medium">כיתות יעד</p>
+                          <p className="font-bold text-gray-900 text-lg">
+                            {formatGradeRange(item.type_attributes.grade_min, item.type_attributes.grade_max)}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Subject */}
+                    {item.type_attributes && item.type_attributes.subject && (
+                      <div className="flex items-center gap-4 p-6 bg-cyan-50 rounded-2xl">
+                        <div className="w-14 h-14 bg-cyan-100 rounded-2xl flex items-center justify-center">
+                          <BookOpen className="w-7 h-7 text-cyan-600" />
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm text-gray-600 font-medium">מקצוע</p>
+                          <p className="font-bold text-gray-900 text-lg">
+                            {item.type_attributes.subject}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Creator */}
                     {item.creator && (
                       <div className="flex items-center gap-4 p-6 bg-blue-50 rounded-2xl">
@@ -1066,22 +1097,6 @@ export default function ProductDetails() {
                       </div>
                     ) : null}
 
-                    {/* Difficulty Level */}
-                    {item.difficulty_level && (
-                      <div className="flex items-center gap-4 p-6 bg-yellow-50 rounded-2xl">
-                        <div className="w-14 h-14 bg-yellow-100 rounded-2xl flex items-center justify-center">
-                          <Award className="w-7 h-7 text-yellow-600" />
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm text-gray-600 font-medium">רמת קושי</p>
-                          <p className="font-bold text-gray-900 text-lg">
-                            {item.difficulty_level === 'beginner' && 'מתחילים'}
-                            {item.difficulty_level === 'intermediate' && 'בינוני'}
-                            {item.difficulty_level === 'advanced' && 'מתקדמים'}
-                          </p>
-                        </div>
-                      </div>
-                    )}
 
                     {/* Last Updated */}
                     {item.updated_at && (

@@ -30,7 +30,7 @@ import {
 } from "lucide-react";
 import SecureVideoPlayer from '../SecureVideoPlayer';
 import ProductTypeSelector from './ProductTypeSelector';
-import { getProductTypeName } from '@/config/productTypes';
+import { getProductTypeName, getAttributeSchema, validateTypeAttributes } from '@/config/productTypes';
 import { getApiBase } from '@/utils/api.js';
 import { apiRequest, apiUploadWithProgress } from '@/services/apiClient';
 import { getMarketingVideoUrl, getProductImageUrl } from '@/utils/videoUtils.js';
@@ -209,7 +209,7 @@ export default function ProductModal({
     is_ludora_creator: false,
     tags: [],
     target_audience: "",
-    difficulty_level: "",
+    type_attributes: {},
     marketing_video_type: null,
     marketing_video_id: "",
     marketing_video_title: "",
@@ -391,7 +391,7 @@ export default function ProductModal({
       file_type: "pdf",
       tags: [],
       target_audience: "",
-      difficulty_level: "",
+      type_attributes: {},
       marketing_video_type: null,
       marketing_video_id: "",
       marketing_video_title: "",
@@ -972,7 +972,7 @@ export default function ProductModal({
         is_ludora_creator: formData.is_ludora_creator || false,
         tags: formData.tags?.filter(tag => tag.trim()) || [],
         target_audience: (formData.target_audience && formData.target_audience.trim()) ? formData.target_audience : null,
-        difficulty_level: (formData.difficulty_level && formData.difficulty_level.trim()) ? formData.difficulty_level : null,
+        type_attributes: formData.type_attributes || {},
         marketing_video_type: formData.marketing_video_type || null,
         marketing_video_id: (formData.marketing_video_id && formData.marketing_video_id.trim()) ? formData.marketing_video_id : null,
         marketing_video_title: (formData.marketing_video_title && formData.marketing_video_title.trim()) ? formData.marketing_video_title : null,
@@ -1058,7 +1058,7 @@ export default function ProductModal({
           image_url: cleanedData.image_url,
           tags: cleanedData.tags,
           target_audience: cleanedData.target_audience,
-          difficulty_level: cleanedData.difficulty_level,
+          type_attributes: cleanedData.type_attributes,
           marketing_video_type: cleanedData.marketing_video_type,
           marketing_video_id: cleanedData.marketing_video_id,
           marketing_video_title: cleanedData.marketing_video_title,
@@ -1081,7 +1081,7 @@ export default function ProductModal({
         delete entityData.image_url;
         delete entityData.tags;
         delete entityData.target_audience;
-        delete entityData.difficulty_level;
+        delete entityData.type_attributes;
         delete entityData.marketing_video_type;
         delete entityData.marketing_video_id;
         delete entityData.marketing_video_title;
@@ -1146,7 +1146,7 @@ export default function ProductModal({
           image_url: cleanedData.image_url,
           tags: cleanedData.tags,
           target_audience: cleanedData.target_audience,
-          difficulty_level: cleanedData.difficulty_level,
+          type_attributes: cleanedData.type_attributes,
           marketing_video_type: cleanedData.marketing_video_type,
           marketing_video_id: cleanedData.marketing_video_id,
           marketing_video_title: cleanedData.marketing_video_title,
@@ -1360,22 +1360,120 @@ export default function ProductModal({
                         </SelectContent>
                       </Select>
                     </div>
-                    <div>
-                      <Label className="text-sm font-medium">רמת קושי</Label>
-                      <Select
-                        value={formData.difficulty_level || ""}
-                        onValueChange={(value) => setFormData(prev => ({ ...prev, difficulty_level: value }))}
-                      >
-                        <SelectTrigger className="mt-1">
-                          <SelectValue placeholder="בחר רמת קושי" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="beginner">מתחילים</SelectItem>
-                          <SelectItem value="intermediate">בינוני</SelectItem>
-                          <SelectItem value="advanced">מתקדמים</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    {/* Type-specific attributes */}
+                    {Object.entries(getAttributeSchema(formData.product_type)).map(([key, schema]) => (
+                      <div key={key}>
+                        <Label className="text-sm font-medium">{schema.label}</Label>
+                        {schema.type === 'number' && (
+                          <Input
+                            type="number"
+                            min={schema.min}
+                            max={schema.max}
+                            step={schema.step || 1}
+                            placeholder={schema.placeholder || ""}
+                            value={formData.type_attributes[key] || ""}
+                            onChange={(e) => {
+                              const value = e.target.value === "" ? undefined : parseFloat(e.target.value);
+                              setFormData(prev => ({
+                                ...prev,
+                                type_attributes: {
+                                  ...prev.type_attributes,
+                                  [key]: value
+                                }
+                              }));
+                            }}
+                            className="mt-1"
+                          />
+                        )}
+                        {schema.type === 'text' && (
+                          <Input
+                            type="text"
+                            placeholder={schema.placeholder || ""}
+                            value={formData.type_attributes[key] || ""}
+                            onChange={(e) => {
+                              const value = e.target.value.trim() === "" ? undefined : e.target.value;
+                              setFormData(prev => ({
+                                ...prev,
+                                type_attributes: {
+                                  ...prev.type_attributes,
+                                  [key]: value
+                                }
+                              }));
+                            }}
+                            className="mt-1"
+                          />
+                        )}
+                        {schema.type === 'select' && (
+                          <Select
+                            value={formData.type_attributes[key] ? String(formData.type_attributes[key]) : ""}
+                            onValueChange={(value) => {
+                              const newValue = key === 'grade_min' || key === 'grade_max' ? parseInt(value) : value;
+
+                              setFormData(prev => {
+                                let newTypeAttributes = {
+                                  ...prev.type_attributes,
+                                  [key]: newValue
+                                };
+
+                                // Grade validation logic
+                                if (key === 'grade_min' || key === 'grade_max') {
+                                  const currentMinGrade = prev.type_attributes.grade_min;
+                                  const currentMaxGrade = prev.type_attributes.grade_max;
+
+                                  if (key === 'grade_min') {
+                                    // If setting min grade and max grade exists, ensure max > min
+                                    if (currentMaxGrade && newValue >= currentMaxGrade) {
+                                      // Clear max grade if min is >= max
+                                      newTypeAttributes.grade_max = undefined;
+                                    }
+                                  } else if (key === 'grade_max') {
+                                    // If setting max grade and min grade exists, ensure max > min
+                                    if (currentMinGrade && newValue <= currentMinGrade) {
+                                      // Clear min grade if max is <= min
+                                      newTypeAttributes.grade_min = undefined;
+                                    }
+                                  }
+                                }
+
+                                return {
+                                  ...prev,
+                                  type_attributes: newTypeAttributes
+                                };
+                              });
+                            }}
+                          >
+                            <SelectTrigger className="mt-1">
+                              <SelectValue placeholder={schema.placeholder || `בחר ${schema.label}`} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {schema.options?.map((option) => (
+                                <SelectItem key={option.value} value={String(option.value)}>
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                        {schema.type === 'boolean' && (
+                          <div className="flex items-center space-x-2 mt-1">
+                            <Switch
+                              checked={formData.type_attributes[key] || false}
+                              onCheckedChange={(checked) => setFormData(prev => ({
+                                ...prev,
+                                type_attributes: {
+                                  ...prev.type_attributes,
+                                  [key]: checked
+                                }
+                              }))}
+                            />
+                            <span className="text-sm text-gray-600">{schema.description}</span>
+                          </div>
+                        )}
+                        {schema.description && schema.type !== 'boolean' && (
+                          <p className="text-xs text-gray-500 mt-1">{schema.description}</p>
+                        )}
+                      </div>
+                    ))}
                   </div>
 
                   <div>

@@ -156,6 +156,305 @@ export const getNavItemConfig = (key) => {
   return NAV_ITEMS[key] || null;
 };
 
+// Type-specific attribute schemas
+export const TYPE_ATTRIBUTE_SCHEMAS = {
+  file: {
+    grade_min: {
+      type: 'select',
+      label: 'כיתה מינימלית',
+      description: 'הכיתה הנמוכה ביותר המתאימה לקובץ',
+      placeholder: 'בחר כיתה מינימלית',
+      options: [
+        { value: 1, label: 'כיתה א\'' },
+        { value: 2, label: 'כיתה ב\'' },
+        { value: 3, label: 'כיתה ג\'' },
+        { value: 4, label: 'כיתה ד\'' },
+        { value: 5, label: 'כיתה ה\'' },
+        { value: 6, label: 'כיתה ו\'' },
+        { value: 7, label: 'כיתה ז\'' },
+        { value: 8, label: 'כיתה ח\'' },
+        { value: 9, label: 'כיתה ט\'' },
+        { value: 10, label: 'כיתה י\'' },
+        { value: 11, label: 'כיתה יא\'' },
+        { value: 12, label: 'כיתה יב\'' }
+      ],
+      validate: (value, allAttributes) => {
+        if (!value) return true; // Optional field
+        const gradeMax = allAttributes.grade_max;
+        if (gradeMax && value >= gradeMax) {
+          return 'הכיתה המינימלית חייבת להיות נמוכה מהכיתה המקסימלית';
+        }
+        return true;
+      }
+    },
+    grade_max: {
+      type: 'select',
+      label: 'כיתה מקסימלית',
+      description: 'הכיתה הגבוהה ביותר המתאימה לקובץ',
+      placeholder: 'בחר כיתה מקסימלית',
+      options: [
+        { value: 1, label: 'כיתה א\'' },
+        { value: 2, label: 'כיתה ב\'' },
+        { value: 3, label: 'כיתה ג\'' },
+        { value: 4, label: 'כיתה ד\'' },
+        { value: 5, label: 'כיתה ה\'' },
+        { value: 6, label: 'כיתה ו\'' },
+        { value: 7, label: 'כיתה ז\'' },
+        { value: 8, label: 'כיתה ח\'' },
+        { value: 9, label: 'כיתה ט\'' },
+        { value: 10, label: 'כיתה י\'' },
+        { value: 11, label: 'כיתה יא\'' },
+        { value: 12, label: 'כיתה יב\'' }
+      ],
+      validate: (value, allAttributes) => {
+        if (!value) return true; // Optional field
+        const gradeMin = allAttributes.grade_min;
+        if (gradeMin && value <= gradeMin) {
+          return 'הכיתה המקסימלית חייבת להיות גבוהה מהכיתה המינימלית';
+        }
+        return true;
+      }
+    },
+    subject: {
+      type: 'text',
+      label: 'מקצוע',
+      description: 'המקצוע הרלוונטי לקובץ',
+      placeholder: 'הזן שם מקצוע (אופציונלי)',
+      nullable: true
+    }
+  },
+  workshop: {
+    duration_minutes: {
+      type: 'number',
+      min: 15,
+      max: 480,
+      label: 'משך בדקות',
+      description: 'משך ההדרכה בדקות',
+      placeholder: 'למשל: 90'
+    },
+    max_participants: {
+      type: 'number',
+      min: 1,
+      max: 1000,
+      label: 'מספר משתתפים מקסימלי',
+      description: 'מספר המשתתפים המקסימלי בהדרכה',
+      placeholder: 'למשל: 30'
+    },
+    workshop_type: {
+      type: 'select',
+      label: 'סוג הדרכה',
+      description: 'האם ההדרכה חיה או מוקלטת',
+      placeholder: 'בחר סוג הדרכה',
+      options: [
+        { value: 'live', label: 'הדרכה חיה' },
+        { value: 'recorded', label: 'הדרכה מוקלטת' },
+        { value: 'hybrid', label: 'משולב' }
+      ]
+    }
+  },
+  course: {
+    estimated_hours: {
+      type: 'number',
+      min: 0.5,
+      max: 200,
+      step: 0.5,
+      label: 'שעות לימוד משוערות',
+      description: 'מספר שעות הלימוד המשוער להשלמת הקורס',
+      placeholder: 'למשל: 12.5'
+    },
+    modules_count: {
+      type: 'number',
+      min: 1,
+      max: 50,
+      label: 'מספר מודולים',
+      description: 'מספר המודולים בקורס',
+      placeholder: 'למשל: 8'
+    },
+    skill_level: {
+      type: 'select',
+      label: 'רמת מיומנות',
+      description: 'רמת המיומנות הנדרשת לקורס',
+      placeholder: 'בחר רמת מיומנות',
+      options: [
+        { value: 'beginner', label: 'מתחילים' },
+        { value: 'intermediate', label: 'בינוני' },
+        { value: 'advanced', label: 'מתקדמים' }
+      ]
+    }
+  },
+  game: {
+    min_age: {
+      type: 'number',
+      min: 3,
+      max: 18,
+      label: 'גיל מינימלי',
+      description: 'הגיל המינימלי המתאים למשחק',
+      placeholder: 'למשל: 6'
+    },
+    max_age: {
+      type: 'number',
+      min: 3,
+      max: 99,
+      label: 'גיל מקסימלי',
+      description: 'הגיל המקסימלי המתאים למשחק',
+      placeholder: 'למשל: 12'
+    },
+    game_type: {
+      type: 'select',
+      label: 'סוג משחק',
+      description: 'קטגוריית המשחק',
+      placeholder: 'בחר סוג משחק',
+      options: [
+        { value: 'memory', label: 'זיכרון' },
+        { value: 'puzzle', label: 'פאזל' },
+        { value: 'quiz', label: 'חידון' },
+        { value: 'adventure', label: 'הרפתקאות' },
+        { value: 'educational', label: 'חינוכי' }
+      ]
+    },
+    estimated_duration: {
+      type: 'number',
+      min: 1,
+      max: 120,
+      label: 'משך משחק משוער (דקות)',
+      description: 'משך המשחק הממוצע בדקות',
+      placeholder: 'למשל: 15'
+    }
+  },
+  tool: {
+    complexity: {
+      type: 'select',
+      label: 'רמת מורכבות',
+      description: 'רמת המורכבות של הכלי',
+      placeholder: 'בחר רמת מורכבות',
+      options: [
+        { value: 'simple', label: 'פשוט' },
+        { value: 'medium', label: 'בינוני' },
+        { value: 'complex', label: 'מורכב' }
+      ]
+    },
+    requires_setup: {
+      type: 'boolean',
+      label: 'דורש הגדרה',
+      description: 'האם הכלי דורש הגדרה מוקדמת'
+    },
+    platform: {
+      type: 'select',
+      label: 'פלטפורמה',
+      description: 'הפלטפורמה הנדרשת להפעלת הכלי',
+      placeholder: 'בחר פלטפורמה',
+      options: [
+        { value: 'web', label: 'דפדפן' },
+        { value: 'windows', label: 'Windows' },
+        { value: 'mac', label: 'Mac' },
+        { value: 'mobile', label: 'נייד' },
+        { value: 'cross-platform', label: 'חוצה פלטפורמות' }
+      ]
+    }
+  }
+};
+
+// Helper function to get attributes schema for a product type
+export const getAttributeSchema = (productType) => {
+  return TYPE_ATTRIBUTE_SCHEMAS[productType] || {};
+};
+
+// Helper function to get all available attributes for a product type
+export const getProductTypeAttributes = (productType) => {
+  const schema = getAttributeSchema(productType);
+  return Object.keys(schema);
+};
+
+// Helper function to validate type attributes
+export const validateTypeAttributes = (productType, attributes) => {
+  const schema = getAttributeSchema(productType);
+  const errors = [];
+
+  for (const [key, value] of Object.entries(attributes)) {
+    const fieldSchema = schema[key];
+    if (!fieldSchema) continue;
+
+    // Required field validation
+    if (fieldSchema.required && (value === undefined || value === null || value === '')) {
+      errors.push(`${fieldSchema.label} הוא שדה חובה`);
+      continue;
+    }
+
+    // Skip validation for empty optional fields
+    if (!fieldSchema.required && (value === undefined || value === null || value === '')) {
+      continue;
+    }
+
+    // Type validation
+    if (fieldSchema.type === 'number' && typeof value !== 'number') {
+      errors.push(`${fieldSchema.label} חייב להיות מספר`);
+      continue;
+    }
+    if (fieldSchema.type === 'select' && typeof value !== 'string') {
+      errors.push(`${fieldSchema.label} חייב להיות טקסט`);
+      continue;
+    }
+    if (fieldSchema.type === 'boolean' && typeof value !== 'boolean') {
+      errors.push(`${fieldSchema.label} חייב להיות כן/לא`);
+      continue;
+    }
+
+    // Range validation for numbers
+    if (fieldSchema.type === 'number') {
+      if (fieldSchema.min !== undefined && value < fieldSchema.min) {
+        errors.push(`${fieldSchema.label} חייב להיות לפחות ${fieldSchema.min}`);
+      }
+      if (fieldSchema.max !== undefined && value > fieldSchema.max) {
+        errors.push(`${fieldSchema.label} חייב להיות לכל היותר ${fieldSchema.max}`);
+      }
+    }
+
+    // Options validation for select fields
+    if (fieldSchema.type === 'select' && fieldSchema.options) {
+      const validValues = fieldSchema.options.map(opt => opt.value);
+      if (!validValues.includes(value)) {
+        const validLabels = fieldSchema.options.map(opt => opt.label).join(', ');
+        errors.push(`${fieldSchema.label} חייב להיות אחד מהערכים: ${validLabels}`);
+      }
+    }
+  }
+
+  return errors;
+};
+
+// Helper function to get Hebrew grade label from number
+export const getGradeLabel = (gradeNumber) => {
+  const gradeLabels = {
+    1: 'כיתה א\'',
+    2: 'כיתה ב\'',
+    3: 'כיתה ג\'',
+    4: 'כיתה ד\'',
+    5: 'כיתה ה\'',
+    6: 'כיתה ו\'',
+    7: 'כיתה ז\'',
+    8: 'כיתה ח\'',
+    9: 'כיתה ט\'',
+    10: 'כיתה י\'',
+    11: 'כיתה יא\'',
+    12: 'כיתה יב\''
+  };
+  return gradeLabels[gradeNumber] || `כיתה ${gradeNumber}`;
+};
+
+// Helper function to format grade range
+export const formatGradeRange = (gradeMin, gradeMax) => {
+  if (!gradeMin && !gradeMax) return null;
+  if (gradeMin && gradeMax) {
+    if (gradeMin === gradeMax) {
+      return getGradeLabel(gradeMin);
+    }
+    return `${getGradeLabel(gradeMin)} - ${getGradeLabel(gradeMax)}`;
+  }
+  if (gradeMin) return `מ${getGradeLabel(gradeMin)}`;
+  if (gradeMax) return `עד ${getGradeLabel(gradeMax)}`;
+  return null;
+};
+
 // Export arrays for iteration
 export const PRODUCT_TYPE_KEYS = Object.keys(PRODUCT_TYPES);
 export const NAV_ITEM_KEYS = Object.keys(NAV_ITEMS);

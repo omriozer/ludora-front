@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Product, File, Category, Purchase, User, Settings } from "@/services/entities"; // Using Product entity for file products
-import { PRODUCT_TYPES, getProductTypeName } from "@/config/productTypes";
+import { PRODUCT_TYPES, getProductTypeName, formatGradeRange } from "@/config/productTypes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,7 +27,9 @@ import {
   Play,
   Edit,
   TrendingUp,
-  CheckCircle
+  CheckCircle,
+  GraduationCap,
+  BookOpen
 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
@@ -59,6 +61,8 @@ export default function Files() {
   // Filter and search states
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedGrade, setSelectedGrade] = useState("all");
+  const [selectedSubject, setSelectedSubject] = useState("all");
   const [sortBy, setSortBy] = useState("created_at");
   const [sortOrder, setSortOrder] = useState("DESC");
   
@@ -68,6 +72,8 @@ export default function Files() {
     subtitle: "כלים דיגיטליים, תבניות ומשאבים מוכנים להורדה שיעזרו לכם ליצור חוויות למידה מהנות",
     searchPlaceholder: `חפש ${getProductTypeName('file', 'plural')}...`,
     allCategories: "כל הקטגוריות",
+    allGrades: "כל הכיתות",
+    allSubjects: "כל המקצועות",
     sortByNewest: "החדשים ביותר",
     sortByTitle: "לפי כותרת",
     sortByPrice: "לפי מחיר",
@@ -91,7 +97,7 @@ export default function Files() {
 
   useEffect(() => {
     filterFiles();
-  }, [fileProducts, searchTerm, selectedCategory]);
+  }, [fileProducts, searchTerm, selectedCategory, selectedGrade, selectedSubject]);
 
   // Handle edit parameter from URL
   useEffect(() => {
@@ -134,6 +140,7 @@ export default function Files() {
         subtitle: "כלים דיגיטליים, תבניות ומשאבים מוכנים להורדה שיעזרו לכם ליצור חוויות למידה מהנות",
         searchPlaceholder: `חפש ${getProductTypeName('file', 'plural')}...`,
         allCategories: "כל הקטגוריות",
+        allGrades: "כל הכיתות",
         sortByNewest: "החדשים ביותר",
         sortByTitle: "לפי כותרת",
         sortByPrice: "לפי מחיר",
@@ -236,6 +243,38 @@ export default function Files() {
     // Category filter
     if (selectedCategory !== "all") {
       filtered = filtered.filter(product => product.category === selectedCategory);
+    }
+
+    // Grade filter
+    if (selectedGrade !== "all") {
+      const gradeNum = parseInt(selectedGrade);
+      filtered = filtered.filter(product => {
+        if (!product.type_attributes) return false;
+        const { grade_min, grade_max } = product.type_attributes;
+
+        // If both grade_min and grade_max are set, check if selected grade is in range
+        if (grade_min && grade_max) {
+          return gradeNum >= grade_min && gradeNum <= grade_max;
+        }
+        // If only grade_min is set, check if selected grade is >= min
+        if (grade_min && !grade_max) {
+          return gradeNum >= grade_min;
+        }
+        // If only grade_max is set, check if selected grade is <= max
+        if (!grade_min && grade_max) {
+          return gradeNum <= grade_max;
+        }
+        // If neither is set, don't filter by grade
+        return false;
+      });
+    }
+
+    // Subject filter
+    if (selectedSubject !== "all") {
+      filtered = filtered.filter(product => {
+        if (!product.type_attributes) return false;
+        return product.type_attributes.subject === selectedSubject;
+      });
     }
 
     // Sorting is now handled by the API, no need to sort here
@@ -391,6 +430,54 @@ export default function Files() {
                   {categories.map((category) => (
                     <SelectItem key={category.id} value={category.name}>
                       {category.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Grade filter - full width on mobile, flex on larger screens */}
+            <div className="flex items-center gap-2 w-full">
+              <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500 flex-shrink-0" />
+              <Select value={selectedGrade} onValueChange={setSelectedGrade}>
+                <SelectTrigger className="h-10 sm:h-12 bg-gray-50 border-gray-200 rounded-lg w-full">
+                  <SelectValue placeholder={fileTexts.allGrades} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{fileTexts.allGrades}</SelectItem>
+                  <SelectItem value="1">כיתה א'</SelectItem>
+                  <SelectItem value="2">כיתה ב'</SelectItem>
+                  <SelectItem value="3">כיתה ג'</SelectItem>
+                  <SelectItem value="4">כיתה ד'</SelectItem>
+                  <SelectItem value="5">כיתה ה'</SelectItem>
+                  <SelectItem value="6">כיתה ו'</SelectItem>
+                  <SelectItem value="7">כיתה ז'</SelectItem>
+                  <SelectItem value="8">כיתה ח'</SelectItem>
+                  <SelectItem value="9">כיתה ט'</SelectItem>
+                  <SelectItem value="10">כיתה י'</SelectItem>
+                  <SelectItem value="11">כיתה יא'</SelectItem>
+                  <SelectItem value="12">כיתה יב'</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Subject filter - full width on mobile, flex on larger screens */}
+            <div className="flex items-center gap-2 w-full">
+              <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-500 flex-shrink-0" />
+              <Select value={selectedSubject} onValueChange={setSelectedSubject}>
+                <SelectTrigger className="h-10 sm:h-12 bg-gray-50 border-gray-200 rounded-lg w-full">
+                  <SelectValue placeholder={fileTexts.allSubjects} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{fileTexts.allSubjects}</SelectItem>
+                  {/* Get unique subjects from fileProducts */}
+                  {Array.from(new Set(
+                    fileProducts
+                      .filter(file => file.type_attributes && file.type_attributes.subject)
+                      .map(file => file.type_attributes.subject)
+                  )).sort().map((subject) => (
+                    <SelectItem key={subject} value={subject}>
+                      {subject}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -564,13 +651,19 @@ function FileCard({ file, onPurchase, onEdit, fileTexts, currentUser }) {
                 <span className="text-gray-700 truncate">{file.target_audience}</span>
               </div>
             )}
-            {file.difficulty_level && (
+            {file.type_attributes && formatGradeRange(file.type_attributes.grade_min, file.type_attributes.grade_max) && (
               <div className="flex items-center gap-1.5 sm:gap-2">
-                <Star className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400 flex-shrink-0" />
-                <span className="text-gray-700">
-                  {file.difficulty_level === 'beginner' && 'מתחילים'}
-                  {file.difficulty_level === 'intermediate' && 'בינוני'}
-                  {file.difficulty_level === 'advanced' && 'מתקדמים'}
+                <GraduationCap className="w-3 h-3 sm:w-4 sm:h-4 text-blue-400 flex-shrink-0" />
+                <span className="text-blue-700 truncate">
+                  {formatGradeRange(file.type_attributes.grade_min, file.type_attributes.grade_max)}
+                </span>
+              </div>
+            )}
+            {file.type_attributes && file.type_attributes.subject && (
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <BookOpen className="w-3 h-3 sm:w-4 sm:h-4 text-cyan-500 flex-shrink-0" />
+                <span className="text-cyan-700 truncate">
+                  {file.type_attributes.subject}
                 </span>
               </div>
             )}
