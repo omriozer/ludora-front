@@ -50,7 +50,7 @@ export const reducer = (state, action) => {
       // Auto-close the toast after the specified duration
       const duration = action.toast.duration || TOAST_REMOVE_DELAY;
       setTimeout(() => {
-        dispatch({ type: actionTypes.DISMISS_TOAST, toastId: action.toast.id });
+        dispatch({ type: actionTypes.REMOVE_TOAST, toastId: action.toast.id });
       }, duration);
 
       return {
@@ -116,7 +116,31 @@ function dispatch(action) {
   });
 }
 
-function toast({ ...props }) {
+function toast({ position = 'bottom-right', variant = 'default', duration, ...props }) {
+  // Check for duplicate toasts based on title and description
+  const isDuplicate = memoryState.toasts.some(existingToast =>
+    existingToast.title === props.title &&
+    existingToast.description === props.description &&
+    existingToast.variant === variant
+  );
+
+  if (isDuplicate) {
+    console.log('Duplicate toast prevented:', props.title);
+
+    // Find the existing toast and return its methods
+    const existingToast = memoryState.toasts.find(t =>
+      t.title === props.title &&
+      t.description === props.description &&
+      t.variant === variant
+    );
+
+    return {
+      id: existingToast.id,
+      dismiss: () => dispatch({ type: actionTypes.REMOVE_TOAST, toastId: existingToast.id }),
+      update: (newProps) => dispatch({ type: actionTypes.UPDATE_TOAST, toast: { ...newProps, id: existingToast.id } }),
+    };
+  }
+
   const id = genId();
 
   const update = (props) =>
@@ -126,13 +150,16 @@ function toast({ ...props }) {
     });
 
   const dismiss = () =>
-    dispatch({ type: actionTypes.DISMISS_TOAST, toastId: id });
+    dispatch({ type: actionTypes.REMOVE_TOAST, toastId: id });
 
   dispatch({
     type: actionTypes.ADD_TOAST,
     toast: {
       ...props,
       id,
+      position,
+      variant,
+      duration,
       open: true,
       onOpenChange: (open) => {
         if (!open) dismiss();
@@ -163,7 +190,7 @@ function useToast() {
   return {
     ...state,
     toast,
-    dismiss: (toastId) => dispatch({ type: actionTypes.DISMISS_TOAST, toastId }),
+    dismiss: (toastId) => dispatch({ type: actionTypes.REMOVE_TOAST, toastId }),
   };
 }
 

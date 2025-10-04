@@ -2,7 +2,7 @@ import './App.css';
 import './styles/tutorial.css';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import * as Pages from '@/pages/index.jsx';
-import { Toaster } from '@/components/ui/toaster';
+import { EnhancedToaster } from '@/components/ui/enhanced-toast';
 import Layout from '@/pages/Layout';
 import { useUser } from '@/contexts/UserContext';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
@@ -421,7 +421,7 @@ function App() {
 					element={<Pages.NotFound />}
 				/>
 				</Routes>
-				<Toaster />
+				<EnhancedToaster />
 				<TutorialOverlay />
 			</Layout>
 		</ConfirmationProvider>

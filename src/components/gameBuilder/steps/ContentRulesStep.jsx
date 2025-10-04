@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import ContentStageConnector from '@/components/shared/ContentRuleConnector';
 import { GAME_TYPES, getGameTypeConfig } from '@/config/gameTypes';
+import { showWarning, showConfirm } from '@/utils/messaging';
 
 // Game type specific stage templates
 const STAGE_TEMPLATES = {
@@ -89,7 +90,7 @@ function StageEditor({ stage, onSave, onCancel, gameType }) {
 
   const handleSave = () => {
     if (!editedStage.name.trim()) {
-      alert('שם השלב הוא שדה חובה');
+      showWarning('שם השלב הוא שדה חובה', null, { duration: 6000 });
       return;
     }
 
@@ -416,8 +417,13 @@ export default function ContentStagesStep({ data, onDataChange }) {
     setEditingStage(null);
   };
 
-  const handleDeleteStage = (stageId) => {
-    if (confirm('האם אתה בטוח שברצונך למחוק את השלב? פעולה זו לא ניתנת לביטול.')) {
+  const handleDeleteStage = async (stageId) => {
+    const confirmed = await showConfirm(
+      'מחיקת שלב',
+      'האם אתה בטוח שברצונך למחוק את השלב? פעולה זו לא ניתנת לביטול.',
+      { variant: 'danger' }
+    );
+    if (confirmed) {
       const updatedStages = stages.filter(stage => stage.id !== stageId);
       updateStages(updatedStages);
     }

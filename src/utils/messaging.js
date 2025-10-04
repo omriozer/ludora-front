@@ -22,24 +22,43 @@ import { toast } from '@/components/ui/use-toast';
  * @param {string} title - Main message title
  * @param {string} [description] - Optional detailed message
  * @param {Object} [options] - Additional toast options
- * @param {number} [options.duration] - Auto-dismiss duration in ms (default: 5000)
+ * @param {number} [options.duration] - Auto-dismiss duration in ms
  * @param {boolean} [options.persistent] - Whether to disable auto-dismiss
+ * @param {string} [options.position] - Toast position (default varies by type)
  */
 export function showToast(type, title, description = null, options = {}) {
-  const variantMap = {
-    success: 'default',
-    error: 'destructive',
-    warning: 'destructive',
-    info: 'default'
+  // Smart defaults based on message type
+  const defaults = {
+    success: {
+      variant: 'success',
+      duration: 5000,
+      position: 'bottom-right'
+    },
+    error: {
+      variant: 'error',
+      duration: 8000,
+      position: 'top-center'
+    },
+    warning: {
+      variant: 'warning',
+      duration: 10000,
+      position: 'top-center'
+    },
+    info: {
+      variant: 'info',
+      duration: 7000,
+      position: 'bottom-right'
+    }
   };
 
-  const variant = variantMap[type] || 'default';
+  const config = defaults[type] || defaults.info;
 
   return toast({
     title,
     description,
-    variant,
-    duration: options.persistent ? Infinity : (options.duration || 5000),
+    variant: config.variant,
+    position: options.position || config.position,
+    duration: options.persistent ? Infinity : (options.duration || config.duration),
     ...options
   });
 }
@@ -85,62 +104,30 @@ export function showInfo(title, description, options = {}) {
 }
 
 /**
- * Store for global message state (simple implementation)
- * For a more robust solution, consider using a proper state management library
+ * Legacy global message functions - now redirect to enhanced toasts
+ * @deprecated Use showToast() functions instead
  */
-let globalMessageState = {
-  message: null,
-  type: null,
-  listeners: []
-};
 
 /**
- * Show a global fixed message (typically for system announcements)
+ * Show a global message (now uses top-center toast)
  * @param {string} type - 'error' | 'info'
  * @param {string} message - The message to display
  */
 export function showGlobalMessage(type, message) {
-  globalMessageState.message = message;
-  globalMessageState.type = type;
+  console.warn('showGlobalMessage is deprecated. Use showError() or showInfo() instead.');
 
-  // Notify all listeners (GlobalMessage components)
-  globalMessageState.listeners.forEach(listener => listener(globalMessageState));
+  if (type === 'error') {
+    showError(message, null, { position: 'top-center', duration: 12000 });
+  } else {
+    showInfo(message, null, { position: 'top-center', duration: 10000 });
+  }
 }
 
 /**
- * Hide the current global message
+ * @deprecated Global messages are now toasts that auto-dismiss
  */
 export function hideGlobalMessage() {
-  globalMessageState.message = null;
-  globalMessageState.type = null;
-
-  // Notify all listeners
-  globalMessageState.listeners.forEach(listener => listener(globalMessageState));
-}
-
-/**
- * Subscribe to global message changes (used by GlobalMessage component)
- * @param {Function} listener - Callback function
- * @returns {Function} Unsubscribe function
- */
-export function subscribeToGlobalMessage(listener) {
-  globalMessageState.listeners.push(listener);
-
-  // Return unsubscribe function
-  return () => {
-    const index = globalMessageState.listeners.indexOf(listener);
-    if (index > -1) {
-      globalMessageState.listeners.splice(index, 1);
-    }
-  };
-}
-
-/**
- * Get current global message state
- * @returns {Object} Current global message state
- */
-export function getGlobalMessageState() {
-  return { ...globalMessageState };
+  console.warn('hideGlobalMessage is deprecated. Toasts auto-dismiss or can be closed manually.');
 }
 
 // Global reference to confirmation provider (will be set by ConfirmationProvider)

@@ -167,11 +167,11 @@ export async function apiDownload(endpoint, options = {}) {
 
     // Show user-friendly error for network failures
     if (error.message.includes('fetch') || error.message.includes('network') || error.message.includes('Failed to fetch')) {
-      toast({
-        title: "בעיית הורדה",
-        description: "לא הצלחנו להוריד את הקובץ. אנא נסה שוב.",
-        variant: "destructive",
-      });
+      showError(
+        "בעיית הורדה",
+        "לא הצלחנו להוריד את הקובץ. אנא נסה שוב.",
+        { duration: 8000 }
+      );
     }
 
     throw error;
@@ -224,21 +224,21 @@ export async function apiUploadWithProgress(endpoint, formData, onProgress = nul
 
     xhr.addEventListener('error', () => {
       cerror('❌ Network error during upload');
-      toast({
-        title: "בעיית העלאה",
-        description: "שגיאת רשת במהלך העלאת הקובץ. אנא נסה שוב.",
-        variant: "destructive",
-      });
+      showError(
+        "בעיית העלאה",
+        "שגיאת רשת במהלך העלאת הקובץ. אנא נסה שוב.",
+        { duration: 8000 }
+      );
       reject(new Error('Network error during upload'));
     });
 
     xhr.addEventListener('timeout', () => {
       cerror('❌ Upload timeout');
-      toast({
-        title: "העלאה נכשלה",
-        description: "העלאת הקובץ ארכה זמן רב מדי. אנא נסה שוב.",
-        variant: "destructive",
-      });
+      showError(
+        "העלאה נכשלה",
+        "העלאת הקובץ ארכה זמן רב מדי. אנא נסה שוב.",
+        { duration: 10000 }
+      );
       reject(new Error('Upload timeout'));
     });
 
@@ -454,11 +454,11 @@ async function loginWithFirebaseAuth() {
     cerror('Firebase login error:', error);
 
     // Show user-friendly error message
-    toast({
-      title: "שגיאה בהתחברות",
-      description: "לא הצלחנו להתחבר עם Google. אנא נסה שוב.",
-      variant: "destructive",
-    });
+    showError(
+      "שגיאה בהתחברות",
+      "לא הצלחנו להתחבר עם Google. אנא נסה שוב.",
+      { duration: 8000 }
+    );
 
     throw new Error('שגיאה בהתחברות עם Google');
   }

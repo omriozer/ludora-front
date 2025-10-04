@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { SubscriptionPlan, User, Settings } from "@/services/entities";
+import { showConfirm } from '@/utils/messaging';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -266,7 +267,12 @@ export default function SubscriptionSettings() {
   };
 
   const handleDelete = async (planId) => {
-    if (!window.confirm('האם אתה בטוח שברצונך למחוק תוכנית מנוי זו? פעולה זו לא ניתנת לביטול.')) {
+    const confirmed = await showConfirm(
+      'מחיקת תוכנית מנוי',
+      'האם אתה בטוח שברצונך למחוק תוכנית מנוי זו? פעולה זו לא ניתנת לביטול.',
+      { variant: 'danger' }
+    );
+    if (!confirmed) {
       return;
     }
 
