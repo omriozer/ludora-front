@@ -36,7 +36,6 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
-import { getText } from "../components/utils/getText";
 import SubscriptionModal from "../components/SubscriptionModal";
 import { processSubscriptionCallbacks } from "@/services/functions";
 
@@ -304,22 +303,22 @@ const MyAccount = () => {
     setIsLoading(true);
     try {
       const texts = {
-        title: await getText("account.title", "החשבון שלי"),
-        subtitle: await getText("account.subtitle", "נהלי את ההרשמות והגישה להקלטות שלך"),
-        personalInfo: await getText("account.personalInfo", "פרטים אישיים"),
-        fullName: await getText("account.fullName", "שם מלא"),
-        email: await getText("account.email", "אימייל"),
-        phone: await getText("account.phone", "טלפון"),
-        subscriptionInfo: await getText("account.subscriptionInfo", "מידע מנוי"),
-        mySubscription: await getText("account.mySubscription", "המנוי שלי"),
-        currentPlan: await getText("account.currentPlan", "תוכנית נוכחית"),
-        changePlan: await getText("account.changePlan", "שינוי תוכנית"),
-        purchaseHistory: await getText("account.purchaseHistory", "היסטוריית רכישות"),
-        noHistory: await getText("account.noHistory", "אין היסטוריית רכישות"),
-        loading: await getText("account.loading", "טוען נתונים..."),
-        edit: await getText("account.edit", "עריכה"),
-        save: await getText("account.save", "שמירה"),
-        cancel: await getText("account.cancel", "ביטול")
+        title: "החשבון שלי",
+        subtitle: "נהלי את ההרשמות והגישה להקלטות שלך",
+        personalInfo: "פרטים אישיים",
+        fullName: "שם מלא",
+        email: "אימייל",
+        phone: "טלפון",
+        subscriptionInfo: "מידע מנוי",
+        mySubscription: "המנוי שלי",
+        currentPlan: "תוכנית נוכחית",
+        changePlan: "שינוי תוכנית",
+        purchaseHistory: "היסטוריית רכישות",
+        noHistory: "אין היסטוריית רכישות",
+        loading: "טוען נתונים...",
+        edit: "עריכה",
+        save: "שמירה",
+        cancel: "ביטול"
       };
       setAccountTexts(texts);
 

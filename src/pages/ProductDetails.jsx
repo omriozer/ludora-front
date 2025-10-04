@@ -33,7 +33,6 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
-import { getText } from "../components/utils/getText";
 import LudoraLoadingSpinner from "@/components/ui/LudoraLoadingSpinner";
 import VideoPlayer from "../components/VideoPlayer"; // Added import for VideoPlayer component
 import SecureVideoPlayer from "../components/SecureVideoPlayer";
@@ -68,33 +67,33 @@ export default function ProductDetails() {
 
   const loadTexts = async () => {
     const texts = {
-      loading: await getText("productDetails.loading", "טוען פרטי מוצר..."),
-      notFound: await getText("productDetails.notFound", "מוצר לא נמצא"),
-      errorLoadingData: await getText("productDetails.errorLoadingData", "שגיאה בטעינת הנתונים"),
-      productIdMissing: await getText("productDetails.productIdMissing", "מזהה מוצר חסר"),
-      buyNow: await getText("productDetails.buyNow", "רכישה עכשיו"),
-      startCourse: await getText("productDetails.startCourse", `התחל ${getProductTypeName('course', 'singular')}`),
-      downloadFile: await getText("productDetails.downloadFile", `הורד ${getProductTypeName('file', 'singular')}`),
+      loading: "טוען פרטי מוצר...",
+      notFound: "מוצר לא נמצא",
+      errorLoadingData: "שגיאה בטעינת הנתונים",
+      productIdMissing: "מזהה מוצר חסר",
+      buyNow: "רכישה עכשיו",
+      startCourse: `התחל ${getProductTypeName('course', 'singular')}`,
+      downloadFile: `הורד ${getProductTypeName('file', 'singular')}`,
       watchFile: "צפיה בקובץ", // Same text as Files.jsx
       getAccess: "רכישה", // Same text as Files.jsx
-      joinWorkshop: await getText("productDetails.joinWorkshop", `הצטרף ל${getProductTypeName('workshop', 'singular')}`),
-      watchRecording: await getText("productDetails.watchRecording", "צפה בהקלטה"),
-      alreadyOwned: await getText("productDetails.alreadyOwned", "ברשותך"),
-      accessUntil: await getText("productDetails.accessUntil", "גישה עד"),
-      lifetimeAccess: await getText("productDetails.lifetimeAccess", "גישה לכל החיים"),
-      minutes: await getText("productDetails.minutes", "דקות"),
-      modules: await getText("productDetails.modules", "מודולים"),
-      targetAudience: await getText("productDetails.targetAudience", "קהל יעד"),
-      previewVideo: await getText("productDetails.previewVideo", "סרטון תצוגה מקדימה"),
-      courseModules: await getText("productDetails.courseModules", `מודולי ה${getProductTypeName('course', 'singular')}`),
-      scheduledFor: await getText("productDetails.scheduledFor", "מתוכנן ל"),
-      maxParticipants: await getText("productDetails.maxParticipants", "משתתפים מקסימלי"),
-      recordingAvailable: await getText("productDetails.recordingAvailable", "הקלטה זמינה"),
-      freePreview: await getText("productDetails.freePreview", "תצוגה מקדימה חינם"),
-      downloads: await getText("productDetails.downloads", "הורדות"),
-      fileType: await getText("productDetails.fileType", `סוג ${getProductTypeName('file', 'singular')}`),
-      whatsIncluded: await getText("productDetails.whatsIncluded", "מה כלול במוצר"),
-      productFeatures: await getText("productDetails.productFeatures", "תכונות המוצר"),
+      joinWorkshop: `הצטרף ל${getProductTypeName('workshop', 'singular')}`,
+      watchRecording: "צפה בהקלטה",
+      alreadyOwned: "ברשותך",
+      accessUntil: "גישה עד",
+      lifetimeAccess: "גישה לכל החיים",
+      minutes: "דקות",
+      modules: "מודולים",
+      targetAudience: "קהל יעד",
+      previewVideo: "סרטון תצוגה מקדימה",
+      courseModules: `מודולי ה${getProductTypeName('course', 'singular')}`,
+      scheduledFor: "מתוכנן ל",
+      maxParticipants: "משתתפים מקסימלי",
+      recordingAvailable: "הקלטה זמינה",
+      freePreview: "תצוגה מקדימה חינם",
+      downloads: "הורדות",
+      fileType: `סוג ${getProductTypeName('file', 'singular')}`,
+      whatsIncluded: "מה כלול במוצר",
+      productFeatures: "תכונות המוצר",
       productInfo: "מידע על המוצר",
       productOverview: "סקירת המוצר",
       additionalInfo: "מידע נוסף"

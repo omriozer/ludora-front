@@ -31,7 +31,6 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
-import { getText } from "../components/utils/getText";
 import { motion } from "framer-motion";
 import GetFileButton from "@/components/files/GetFileButton";
 import FileAccessStatus from "@/components/files/FileAccessStatus";
@@ -131,25 +130,25 @@ export default function Files() {
     try {
       // Load texts
       const texts = {
-        title: await getText("files.title", getProductTypeName('file', 'plural')),
-        subtitle: await getText("files.subtitle", "כלים דיגיטליים, תבניות ומשאבים מוכנים להורדה שיעזרו לכם ליצור חוויות למידה מהנות"),
-        searchPlaceholder: await getText("files.searchPlaceholder", `חפש ${getProductTypeName('file', 'plural')}...`),
-        allCategories: await getText("files.allCategories", "כל הקטגוריות"),
-        sortByNewest: await getText("files.sortByNewest", "החדשים ביותר"),
-        sortByTitle: await getText("files.sortByTitle", "לפי כותרת"),
-        sortByPrice: await getText("files.sortByPrice", "לפי מחיר"),
-        noFiles: await getText("files.noFiles", `לא נמצאו ${getProductTypeName('file', 'plural')}`),
-        noFilesDesc: await getText("files.noFilesDesc", "נסה לשנות את הסינון או החיפוש"),
-        downloadFile: await getText("files.downloadFile", `הורדת ${getProductTypeName('file', 'singular')}`),
-        previewFile: await getText("files.previewFile", "תצוגה מקדימה"),
-        getAccess: await getText("files.getAccess", "רכישה"),
-        owned: await getText("files.owned", "ברשותך"),
-        lifetimeAccess: await getText("files.lifetimeAccess", "גישה לכל החיים"),
-        accessUntil: await getText("files.accessUntil", "גישה עד"),
-        professionalFiles: await getText("files.professionalFiles", getProductTypeName('file', 'plural')),
-        viewDetails: await getText("files.viewDetails", "צפייה בפרטים"),
-        downloads: await getText("files.downloads", "הורדות"),
-        fileType: await getText("files.fileType", `סוג ${getProductTypeName('file', 'singular')}`)
+        title: getProductTypeName('file', 'plural'),
+        subtitle: "כלים דיגיטליים, תבניות ומשאבים מוכנים להורדה שיעזרו לכם ליצור חוויות למידה מהנות",
+        searchPlaceholder: `חפש ${getProductTypeName('file', 'plural')}...`,
+        allCategories: "כל הקטגוריות",
+        sortByNewest: "החדשים ביותר",
+        sortByTitle: "לפי כותרת",
+        sortByPrice: "לפי מחיר",
+        noFiles: `לא נמצאו ${getProductTypeName('file', 'plural')}`,
+        noFilesDesc: "נסה לשנות את הסינון או החיפוש",
+        downloadFile: `הורדת ${getProductTypeName('file', 'singular')}`,
+        previewFile: "תצוגה מקדימה",
+        getAccess: "רכישה",
+        owned: "ברשותך",
+        lifetimeAccess: "גישה לכל החיים",
+        accessUntil: "גישה עד",
+        professionalFiles: getProductTypeName('file', 'plural'),
+        viewDetails: "צפייה בפרטים",
+        downloads: "הורדות",
+        fileType: `סוג ${getProductTypeName('file', 'singular')}`
       };
       setFileTexts(texts);
 

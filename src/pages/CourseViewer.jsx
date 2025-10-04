@@ -17,7 +17,6 @@ import {
   ArrowLeft,
   AlertCircle
 } from "lucide-react";
-import { getText } from "../components/utils/getText";
 import VideoPlayer from '../components/VideoPlayer'; // Added import for VideoPlayer
 import { PRODUCT_TYPES, getProductTypeName } from "@/config/productTypes";
 
@@ -34,20 +33,20 @@ export default function CourseViewer() {
   const loadData = useCallback(async () => {
     try {
       const texts = {
-        title: await getText("courseViewer.title", `צופה ${getProductTypeName('course', 'singular')}`),
-        moduleCompleted: await getText("courseViewer.moduleCompleted", "מודול הושלם"),
-        nextModule: await getText("courseViewer.nextModule", "המודול הבא"),
-        prevModule: await getText("courseViewer.prevModule", "המודול הקודם"),
-        courseProgress: await getText("courseViewer.courseProgress", `התקדמות ב${getProductTypeName('course', 'singular')}`),
-        modules: await getText("courseViewer.modules", "מודולים"),
-        duration: await getText("courseViewer.duration", "משך"),
-        materials: await getText("courseViewer.materials", "חומרי עזר"),
-        completed: await getText("courseViewer.completed", "הושלם"),
-        locked: await getText("courseViewer.locked", "נעול"),
-        noAccess: await getText("courseViewer.noAccess", `אין לך גישה ל${getProductTypeName('course', 'singular')} זה`),
-        accessExpired: await getText("courseViewer.accessExpired", `הגישה ל${getProductTypeName('course', 'singular')} פגה`),
-        courseNotFound: await getText("courseViewer.courseNotFound", `ה${getProductTypeName('course', 'singular')} לא נמצא`),
-        loading: await getText("courseViewer.loading", `טוען ${getProductTypeName('course', 'singular')}...`)
+        title: `צופה ${getProductTypeName('course', 'singular')}`,
+        moduleCompleted: "מודול הושלם",
+        nextModule: "המודול הבא",
+        prevModule: "המודול הקודם",
+        courseProgress: `התקדמות ב${getProductTypeName('course', 'singular')}`,
+        modules: "מודולים",
+        duration: "משך",
+        materials: "חומרי עזר",
+        completed: "הושלם",
+        locked: "נעול",
+        noAccess: `אין לך גישה ל${getProductTypeName('course', 'singular')} זה`,
+        accessExpired: `הגישה ל${getProductTypeName('course', 'singular')} פגה`,
+        courseNotFound: `ה${getProductTypeName('course', 'singular')} לא נמצא`,
+        loading: `טוען ${getProductTypeName('course', 'singular')}...`
       };
       setCourseTexts(texts);
 

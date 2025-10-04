@@ -24,7 +24,6 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
-import { getText } from "../components/utils/getText";
 import { motion } from "framer-motion";
 import LudoraLoadingSpinner from "@/components/ui/LudoraLoadingSpinner";
 import PriceDisplayTag from "@/components/ui/PriceDisplayTag";
@@ -184,26 +183,26 @@ export default function Workshops() {
 
       // If not redirected, proceed with loading texts and other data
       const texts = {
-        title: await getText("catalog.title", `קטלוג ${getProductTypeName('workshop', 'plural')}`),
-        subtitle: await getText("catalog.subtitle", `${getProductTypeName('workshop', 'plural')} אונליין ומוקלטות לבחירתך במגוון תחומים`),
-        search: await getText("catalog.search", `חפשי ${getProductTypeName('workshop', 'singular')}...`),
-        registerNow: await getText("catalog.registerNow", "הירשמו עכשיו"),
-        upcoming: await getText("catalog.upcoming", `${getProductTypeName('workshop', 'plural')} קרובות`),
-        recordings: await getText("catalog.recordings", "הקלטות"),
-        allCategories: await getText("catalog.allCategories", "כל הקטגוריות"),
-        noUpcoming: await getText("catalog.noUpcoming", `אין ${getProductTypeName('workshop', 'plural')} קרובות`),
-        noUpcomingSubtitle: await getText("catalog.noUpcoming.subtitle", `${getProductTypeName('workshop', 'plural')} חדשות יפורסמו בקרוב`),
-        noRecordings: await getText("catalog.noRecordings", "אין הקלטות זמינות"),
-        noRecordingsSubtitle: await getText("catalog.noRecordings.subtitle", "הקלטות יועלו בהמשך"),
-        getAccess: await getText("catalog.getAccess", "רכישה"),
-        watchRecording: await getText("catalog.watchRecording", "צפייה בהקלטה"),
-        loading: await getText("catalog.loading", `טוען ${getProductTypeName('workshop', 'plural')}...`),
-        accessUntil: await getText("catalog.accessUntil", "גישה עד"),
-        lifetimeAccess: await getText("catalog.lifetimeAccess", "גישה לכל החיים"),
-        owned: await getText("catalog.owned", "ברשותך"),
-        recordingNotYetAvailable: await getText("catalog.recordingNotYetAvailable", "הקלטה עדיין לא זמינה"),
-        professionalWorkshops: await getText("catalog.professionalWorkshops", `${getProductTypeName('workshop', 'plural')} מקצועיות`),
-        viewDetails: await getText("catalog.viewDetails", "צפייה בפרטים")
+        title: `קטלוג ${getProductTypeName('workshop', 'plural')}`,
+        subtitle: `${getProductTypeName('workshop', 'plural')} אונליין ומוקלטות לבחירתך במגוון תחומים`,
+        search: `חפשי ${getProductTypeName('workshop', 'singular')}...`,
+        registerNow: "הירשמו עכשיו",
+        upcoming: `${getProductTypeName('workshop', 'plural')} קרובות`,
+        recordings: "הקלטות",
+        allCategories: "כל הקטגוריות",
+        noUpcoming: `אין ${getProductTypeName('workshop', 'plural')} קרובות`,
+        noUpcomingSubtitle: `${getProductTypeName('workshop', 'plural')} חדשות יפורסמו בקרוב`,
+        noRecordings: "אין הקלטות זמינות",
+        noRecordingsSubtitle: "הקלטות יועלו בהמשך",
+        getAccess: "רכישה",
+        watchRecording: "צפייה בהקלטה",
+        loading: `טוען ${getProductTypeName('workshop', 'plural')}...`,
+        accessUntil: "גישה עד",
+        lifetimeAccess: "גישה לכל החיים",
+        owned: "ברשותך",
+        recordingNotYetAvailable: "הקלטה עדיין לא זמינה",
+        professionalWorkshops: `${getProductTypeName('workshop', 'plural')} מקצועיות`,
+        viewDetails: "צפייה בפרטים"
       };
       setCatalogTexts(texts);
 

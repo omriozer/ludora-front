@@ -41,7 +41,7 @@ import ParentConsent from "./ParentConsent";
 import { loginWithFirebase } from "@/services/apiClient";
 import { firebaseAuth } from "@/lib/firebase";
 import PublicNav from "../components/layout/PublicNav";
-import GlobalMessage from "@/components/ui/GlobalMessage";
+import { showSuccess, showError } from '@/utils/messaging';
 import ReturnToSelfButton from "../components/layout/ReturnToSelfButton";
 import LoginModal from "../components/LoginModal";
 import { shouldHideNavigation } from "@/lib/layoutHelpers";
@@ -60,7 +60,6 @@ function LayoutContent({ children }) {
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
   
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
-  const [message, setMessage] = useState(null);
 
   // Draggable return button states
   const [showReturnButton, setShowReturnButton] = useState(false);
@@ -223,7 +222,7 @@ function LayoutContent({ children }) {
       if (apiResult.valid && apiResult.user) {
         console.log('🟢 Layout: Login successful, setting user...');
         await login(apiResult.user, rememberMe);
-        setMessage({ type: 'success', text: 'התחברת בהצלחה!' });
+        showSuccess('התחברת בהצלחה!');
         closeLoginModal();
 
         // Execute any pending callback after successful login
@@ -244,7 +243,7 @@ function LayoutContent({ children }) {
           errorMessage = 'בעיה בהגדרות הזיהוי. צרו קשר עם התמיכה.';
         }
       }
-      setMessage({ type: 'error', text: errorMessage });
+      showError(errorMessage);
       throw error;
     }
   };
@@ -281,14 +280,6 @@ function LayoutContent({ children }) {
 
     return (
       <>
-        {/* Global Message */}
-        {message && (
-          <GlobalMessage
-            type={message.type}
-            message={message.text}
-            onClose={() => setMessage(null)}
-          />
-        )}
 
         <MaintenancePage
           showReturnButton={showReturnButton}
@@ -325,14 +316,6 @@ function LayoutContent({ children }) {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex">
       <SkipLink />
 
-      {/* Global Message */}
-      {message && (
-        <GlobalMessage
-          type={message.type}
-          message={message.text}
-          onClose={() => setMessage(null)}
-        />
-      )}
 
       {/* Navigation */}
       {!hideNav && (

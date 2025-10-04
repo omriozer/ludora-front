@@ -19,7 +19,6 @@ import {
   ShoppingCart,
   Edit
 } from "lucide-react";
-import { getText } from "../components/utils/getText";
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
 
@@ -71,28 +70,28 @@ export default function Tools() {
   const loadData = async () => {
     try {
       const texts = {
-        title: await getText("tools.title", getProductTypeName('tool', 'plural')),
-        subtitle: await getText("tools.subtitle", "תבניות, מצגות וחומרי עזר מוכנים להורדה"),
-        search: await getText("tools.search", `חפש ${getProductTypeName('tool', 'singular')}...`),
-        allCategories: await getText("tools.allCategories", "כל הקטגוריות"),
-        allDifficulties: await getText("tools.allDifficulties", "כל הרמות"),
-        beginner: await getText("tools.beginner", "מתחיל"),
-        intermediate: await getText("tools.intermediate", "בינוני"),
-        advanced: await getText("tools.advanced", "מתקדם"),
-        noTools: await getText("tools.noTools", `אין ${getProductTypeName('tool', 'plural')} זמינים`),
-        noToolsSubtitle: await getText("tools.noToolsSubtitle", `${getProductTypeName('tool', 'plural')} חדשים יועלו בקרוב`),
-        loading: await getText("tools.loading", `טוען ${getProductTypeName('tool', 'plural')}...`),
-        owned: await getText("tools.owned", "ברשותך"),
-        targetAudience: await getText("tools.targetAudience", "קהל יעד"),
-        viewDetails: await getText("tools.viewDetails", "פרטים נוספים"),
-        downloadTool: await getText("tools.downloadTool", `הורדת ${getProductTypeName('tool', 'singular')}`),
-        getAccess: await getText("tools.getAccess", "רכישה"),
-        lifetimeAccess: await getText("tools.lifetimeAccess", "גישה לכל החיים"),
-        accessUntil: await getText("tools.accessUntil", "גישה עד"),
-        downloadsCount: await getText("tools.downloadsCount", "הורדות"),
-        previewAvailable: await getText("tools.previewAvailable", "תצוגה מקדימה זמינה"),
-        downloadPreview: await getText("tools.downloadPreview", "הורד תצוגה מקדימה"),
-        digitalTools: await getText("tools.digitalTools", getProductTypeName('tool', 'plural'))
+        title: getProductTypeName('tool', 'plural'),
+        subtitle: "תבניות, מצגות וחומרי עזר מוכנים להורדה",
+        search: `חפש ${getProductTypeName('tool', 'singular')}...`,
+        allCategories: "כל הקטגוריות",
+        allDifficulties: "כל הרמות",
+        beginner: "מתחיל",
+        intermediate: "בינוני",
+        advanced: "מתקדם",
+        noTools: `אין ${getProductTypeName('tool', 'plural')} זמינים`,
+        noToolsSubtitle: `${getProductTypeName('tool', 'plural')} חדשים יועלו בקרוב`,
+        loading: `טוען ${getProductTypeName('tool', 'plural')}...`,
+        owned: "ברשותך",
+        targetAudience: "קהל יעד",
+        viewDetails: "פרטים נוספים",
+        downloadTool: `הורדת ${getProductTypeName('tool', 'singular')}`,
+        getAccess: "רכישה",
+        lifetimeAccess: "גישה לכל החיים",
+        accessUntil: "גישה עד",
+        downloadsCount: "הורדות",
+        previewAvailable: "תצוגה מקדימה זמינה",
+        downloadPreview: "הורד תצוגה מקדימה",
+        digitalTools: getProductTypeName('tool', 'plural')
       };
       setToolsTexts(texts);
 

@@ -19,7 +19,6 @@ import {
   Eye,
   Edit
 } from "lucide-react";
-import { getText } from "../components/utils/getText";
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
 
@@ -84,25 +83,25 @@ export default function Courses() {
   const loadData = async () => {
     try {
       const texts = {
-        title: await getText("courses.title", `${getProductTypeName('course', 'plural')} מקצועיים`),
-        subtitle: await getText("courses.subtitle", `${getProductTypeName('course', 'plural')} מקיפים לפיתוח מקצועי של מורים`),
-        search: await getText("courses.search", `חפשו ${getProductTypeName('course', 'singular')}...`),
-        startCourse: await getText("courses.startCourse", `התחלת ${getProductTypeName('course', 'singular')}`),
-        continueCourse: await getText("courses.continueCourse", `המשך ${getProductTypeName('course', 'singular')}`),
-        getAccess: await getText("courses.getAccess", "רכישה"),
-        owned: await getText("courses.owned", "ברשותך"),
-        allCategories: await getText("courses.allCategories", "כל הקטגוריות"),
-        modules: await getText("courses.modules", "מודולים"),
-        totalDuration: await getText("courses.totalDuration", "משך כולל"),
-        noCourses: await getText("courses.noCourses", `אין ${getProductTypeName('course', 'plural')} זמינים`),
-        noCoursesSubtitle: await getText("courses.noCourses.subtitle", `${getProductTypeName('course', 'plural')} חדשים יתווספו בקרוב`),
-        loading: await getText("courses.loading", `טוען ${getProductTypeName('course', 'plural')}...`),
-        enrolled: await getText("courses.enrolled", "נרשמת"),
-        targetAudience: await getText("courses.targetAudience", "קהל יעד"),
-        minutes: await getText("courses.minutes", "דקות"),
-        lifetimeAccess: await getText("courses.lifetimeAccess", "גישה לכל החיים"),
-        accessUntil: await getText("courses.accessUntil", "גישה עד"),
-        professionalCourses: await getText("courses.professionalCourses", `${getProductTypeName('course', 'plural')} מקצועיים`)
+        title: `${getProductTypeName('course', 'plural')} מקצועיים`,
+        subtitle: `${getProductTypeName('course', 'plural')} מקיפים לפיתוח מקצועי של מורים`,
+        search: `חפשו ${getProductTypeName('course', 'singular')}...`,
+        startCourse: `התחלת ${getProductTypeName('course', 'singular')}`,
+        continueCourse: `המשך ${getProductTypeName('course', 'singular')}`,
+        getAccess: "רכישה",
+        owned: "ברשותך",
+        allCategories: "כל הקטגוריות",
+        modules: "מודולים",
+        totalDuration: "משך כולל",
+        noCourses: `אין ${getProductTypeName('course', 'plural')} זמינים`,
+        noCoursesSubtitle: `${getProductTypeName('course', 'plural')} חדשים יתווספו בקרוב`,
+        loading: `טוען ${getProductTypeName('course', 'plural')}...`,
+        enrolled: "נרשמת",
+        targetAudience: "קהל יעד",
+        minutes: "דקות",
+        lifetimeAccess: "גישה לכל החיים",
+        accessUntil: "גישה עד",
+        professionalCourses: `${getProductTypeName('course', 'plural')} מקצועיים`
       };
       setCoursesTexts(texts);
 

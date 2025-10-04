@@ -9,7 +9,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { SupportMessage, User } from '@/services/entities';
 import { SendEmail } from '@/services/integrations';
 import { Mail, Send, Loader2, CheckCircle } from 'lucide-react';
-import { getText } from "../components/utils/getText";
 import { getProductTypeName } from "@/config/productTypes";
 
 export default function Contact() {
@@ -30,17 +29,17 @@ export default function Contact() {
 
   const loadContactTexts = async () => {
     const texts = {
-      title: await getText("contact.title", "צור קשר"),
-      subtitle: await getText("contact.subtitle", "נשמח לעמוד לרשותך בכל שאלה או בקשה"),
-      fullName: await getText("form.fullName", "שם מלא"),
-      email: await getText("form.email", "דוא\"ל"), // Correctly escaped for JavaScript string
-      phone: await getText("form.phone", "טלפון"),
-      subject: await getText("contact.subject", "נושא"),
-      content: await getText("contact.content", "תוכן הפנייה"),
-      send: await getText("contact.send", "שלח פנייה"),
-      sending: await getText("contact.sending", "שולח..."),
-      successMessage: await getText("contact.success", "הפנייה נשלחה בהצלחה! ניצור איתך קשר בהקדם."),
-      errorMessage: await getText("contact.error", "אירעה שגיאה בשליחת הפנייה. אנא נסה/י שנית מאוחר יותר.")
+      title: "צור קשר",
+      subtitle: "נשמח לעמוד לרשותך בכל שאלה או בקשה",
+      fullName: "שם מלא",
+      email: "דוא\"ל", // Correctly escaped for JavaScript string
+      phone: "טלפון",
+      subject: "נושא",
+      content: "תוכן הפנייה",
+      send: "שלח פנייה",
+      sending: "שולח...",
+      successMessage: "הפנייה נשלחה בהצלחה! ניצור איתך קשר בהקדם.",
+      errorMessage: "אירעה שגיאה בשליחת הפנייה. אנא נסה/י שנית מאוחר יותר."
     };
     setContactTexts(texts);
   };
