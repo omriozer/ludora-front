@@ -141,16 +141,6 @@ export default function ProductCard({
             </div>
           )}
 
-          {product.difficulty_level && (
-            <div className="flex items-center gap-2">
-              <Star className="w-4 h-4 text-gray-400" />
-              <span className="text-gray-700">
-                {product.difficulty_level === 'beginner' && 'מתחילים'}
-                {product.difficulty_level === 'intermediate' && 'בינוני'}
-                {product.difficulty_level === 'advanced' && 'מתקדמים'}
-              </span>
-            </div>
-          )}
 
           {product.marketing_video_type && product.marketing_video_id && (
             <div className="flex items-center gap-2">

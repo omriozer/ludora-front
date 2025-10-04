@@ -62,7 +62,7 @@ export default function RuleCustomizer({ rule, onSave, onCancel }) {
   };
 
   const getDifficultyLevels = () => {
-    return Object.keys(customizedRule.config?.difficulty_levels || {});
+    return Object.keys(customizedRule.config?.difficulty_settings || {});
   };
 
   const renderBasicSettings = () => (
@@ -200,7 +200,7 @@ export default function RuleCustomizer({ rule, onSave, onCancel }) {
         </CardHeader>
         <CardContent className="space-y-4">
           {getDifficultyLevels().map((level) => {
-            const levelConfig = customizedRule.config?.difficulty_levels?.[level];
+            const levelConfig = customizedRule.config?.difficulty_settings?.[level];
             if (!levelConfig) return null;
 
             return (
@@ -217,7 +217,7 @@ export default function RuleCustomizer({ rule, onSave, onCancel }) {
                       type="number"
                       value={levelConfig.time_limit || 30}
                       onChange={(e) => handleConfigChange(
-                        `difficulty_levels.${level}.time_limit`,
+                        `difficulty_settings.${level}.time_limit`,
                         parseInt(e.target.value)
                       )}
                       min="5"
@@ -232,7 +232,7 @@ export default function RuleCustomizer({ rule, onSave, onCancel }) {
                         type="number"
                         value={levelConfig.options_count || 3}
                         onChange={(e) => handleConfigChange(
-                          `difficulty_levels.${level}.options_count`,
+                          `difficulty_settings.${level}.options_count`,
                           parseInt(e.target.value)
                         )}
                         min="2"
@@ -249,7 +249,7 @@ export default function RuleCustomizer({ rule, onSave, onCancel }) {
                       type="number"
                       value={levelConfig.hints_allowed || 1}
                       onChange={(e) => handleConfigChange(
-                        `difficulty_levels.${level}.hints_allowed`,
+                        `difficulty_settings.${level}.hints_allowed`,
                         parseInt(e.target.value)
                       )}
                       min="0"

@@ -598,13 +598,6 @@ export default function Products() {
                         {/* Tags and Additional Info */}
                         <div className="mt-4 pt-3 border-t border-slate-100">
                           <div className="flex flex-wrap gap-2 justify-center">
-                            {product.difficulty_level && (
-                              <Badge variant="outline" className="text-xs bg-indigo-50 text-indigo-700 border-indigo-200">
-                                {product.difficulty_level === 'beginner' && 'מתחילים'}
-                                {product.difficulty_level === 'intermediate' && 'בינוני'}
-                                {product.difficulty_level === 'advanced' && 'מתקדמים'}
-                              </Badge>
-                            )}
                             {product.target_audience && (
                               <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
                                 <Users className="w-3 h-3 ml-1" />
@@ -761,13 +754,6 @@ export default function Products() {
                               </p>
                             )}
                             <div className="flex flex-wrap gap-1 justify-end mt-1">
-                              {product.difficulty_level && (
-                                <Badge variant="outline" className="text-xs px-2 py-0.5 bg-indigo-50 text-indigo-700 border-indigo-200">
-                                  {product.difficulty_level === 'beginner' && 'מתחילים'}
-                                  {product.difficulty_level === 'intermediate' && 'בינוני'}
-                                  {product.difficulty_level === 'advanced' && 'מתקדמים'}
-                                </Badge>
-                              )}
                               {product.target_audience && (
                                 <Badge variant="outline" className="text-xs px-2 py-0.5 bg-blue-50 text-blue-700 border-blue-200">
                                   <Users className="w-3 h-3 ml-1" />

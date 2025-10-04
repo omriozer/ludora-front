@@ -30,7 +30,6 @@ export default function Tools() {
   const [filteredTools, setFilteredTools] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [selectedDifficulty, setSelectedDifficulty] = useState("all");
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState(null);
   const [userPurchases, setUserPurchases] = useState([]);
@@ -39,10 +38,6 @@ export default function Tools() {
     subtitle: "תבניות, מצגות וחומרי עזר מוכנים להורדה",
     search: `חפש ${getProductTypeName('tool', 'singular')}...`,
     allCategories: "כל הקטגוריות",
-    allDifficulties: "כל הרמות",
-    beginner: "מתחיל",
-    intermediate: "בינוני",
-    advanced: "מתקדם",
     noTools: `אין ${getProductTypeName('tool', 'plural')} זמינים`,
     noToolsSubtitle: `${getProductTypeName('tool', 'plural')} חדשים יועלו בקרוב`,
     loading: `טוען ${getProductTypeName('tool', 'plural')}...`,
@@ -65,7 +60,7 @@ export default function Tools() {
 
   useEffect(() => {
     filterTools();
-  }, [tools, searchTerm, selectedCategory, selectedDifficulty]);
+  }, [tools, searchTerm, selectedCategory]);
 
   const loadData = async () => {
     try {
@@ -74,10 +69,6 @@ export default function Tools() {
         subtitle: "תבניות, מצגות וחומרי עזר מוכנים להורדה",
         search: `חפש ${getProductTypeName('tool', 'singular')}...`,
         allCategories: "כל הקטגוריות",
-        allDifficulties: "כל הרמות",
-        beginner: "מתחיל",
-        intermediate: "בינוני",
-        advanced: "מתקדם",
         noTools: `אין ${getProductTypeName('tool', 'plural')} זמינים`,
         noToolsSubtitle: `${getProductTypeName('tool', 'plural')} חדשים יועלו בקרוב`,
         loading: `טוען ${getProductTypeName('tool', 'plural')}...`,
@@ -180,10 +171,6 @@ export default function Tools() {
 
     if (selectedCategory !== "all") {
       filtered = filtered.filter(product => product.category === selectedCategory);
-    }
-
-    if (selectedDifficulty !== "all") {
-      filtered = filtered.filter(product => product.difficulty_level === selectedDifficulty);
     }
 
     setFilteredTools(filtered);
@@ -369,24 +356,21 @@ export default function Tools() {
             />
           </div>
           
-          <div className="flex gap-2">
-            <div className="flex items-center gap-2 min-w-48">
-              <Filter className="w-5 h-5 text-gray-500" />
-              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger>
-                  <SelectValue placeholder={toolsTexts.allCategories} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{toolsTexts.allCategories}</SelectItem>
-                  {categories.map((category) => (
-                    <SelectItem key={category.id} value={category.name}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
+          <div className="flex items-center gap-2 min-w-48">
+            <Filter className="w-5 h-5 text-gray-500" />
+            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <SelectTrigger>
+                <SelectValue placeholder={toolsTexts.allCategories} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{toolsTexts.allCategories}</SelectItem>
+                {categories.map((category) => (
+                  <SelectItem key={category.id} value={category.name}>
+                    {category.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -422,18 +406,6 @@ export default function Tools() {
 function ToolCard({ tool, userPurchase, onDownload, onPurchase, toolsTexts, getFileIcon, hasActiveAccess, currentUser }) {
   const navigate = useNavigate();
   const hasAccess = hasActiveAccess(userPurchase);
-
-  const difficultyColors = {
-    beginner: "bg-green-100 text-green-800",
-    intermediate: "bg-yellow-100 text-yellow-800",
-    advanced: "bg-red-100 text-red-800"
-  };
-
-  const difficultyLabels = {
-    beginner: toolsTexts.beginner,
-    intermediate: toolsTexts.intermediate,
-    advanced: toolsTexts.advanced
-  };
 
   const handleDetailsClick = () => {
     navigate(`/tool-details?type=tool&id=${tool.id}`);

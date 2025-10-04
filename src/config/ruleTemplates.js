@@ -58,7 +58,7 @@ export const RULE_TEMPLATES = {
       min_options: 3,
       max_options: 6,
       scoring: { correct: 10, incorrect: -2, time_bonus: true },
-      difficulty_levels: {
+      difficulty_settings: {
         easy: { time_limit: 30, options_count: 3 },
         medium: { time_limit: 20, options_count: 4 },
         hard: { time_limit: 15, options_count: 6 }
@@ -83,7 +83,7 @@ export const RULE_TEMPLATES = {
       min_options: 3,
       max_options: 5,
       scoring: { correct: 15, incorrect: -3, time_bonus: true },
-      difficulty_levels: {
+      difficulty_settings: {
         easy: { time_limit: 25, direction: 'hebrew_to_english' },
         medium: { time_limit: 20, direction: 'english_to_hebrew' },
         hard: { time_limit: 15, direction: 'both' }
@@ -107,7 +107,7 @@ export const RULE_TEMPLATES = {
       min_options: 3,
       max_options: 5,
       scoring: { correct: 12, incorrect: -2, time_bonus: true },
-      difficulty_levels: {
+      difficulty_settings: {
         easy: { time_limit: 30, options_count: 3 },
         medium: { time_limit: 20, options_count: 4 },
         hard: { time_limit: 15, options_count: 5 }
@@ -132,7 +132,7 @@ export const RULE_TEMPLATES = {
       min_options: 3,
       max_options: 6,
       scoring: { correct: 8, incorrect: -1, time_bonus: false },
-      difficulty_levels: {
+      difficulty_settings: {
         easy: { time_limit: 40, options_count: 3 },
         medium: { time_limit: 30, options_count: 4 },
         hard: { time_limit: 20, options_count: 6 }
@@ -157,7 +157,7 @@ export const RULE_TEMPLATES = {
       min_options: 2,
       max_options: 4,
       scoring: { correct: 10, incorrect: -2, time_bonus: false },
-      difficulty_levels: {
+      difficulty_settings: {
         easy: { time_limit: 45, categories_count: 2 },
         medium: { time_limit: 35, categories_count: 3 },
         hard: { time_limit: 25, categories_count: 4 }
@@ -183,7 +183,7 @@ export const RULE_TEMPLATES = {
       min_options: 3,
       max_options: 4,
       scoring: { correct: 15, incorrect: -3, time_bonus: true },
-      difficulty_levels: {
+      difficulty_settings: {
         easy: { time_limit: 40, options_count: 3 },
         medium: { time_limit: 30, options_count: 4 },
         hard: { time_limit: 20, options_count: 4 }
@@ -207,7 +207,7 @@ export const RULE_TEMPLATES = {
       allow_partial_match: true,
       case_sensitive: false,
       scoring: { correct: 20, incorrect: -1, time_bonus: true },
-      difficulty_levels: {
+      difficulty_settings: {
         easy: { time_limit: 60, partial_match: true },
         medium: { time_limit: 45, partial_match: true },
         hard: { time_limit: 30, partial_match: false }
@@ -232,7 +232,7 @@ export const RULE_TEMPLATES = {
       detection_mode: 'manual', // manual, automatic (future)
       confirmation_required: true,
       scoring: { correct: 25, incorrect: -1, discovery_bonus: 5 },
-      difficulty_levels: {
+      difficulty_settings: {
         easy: { time_limit: 120, objects_count: 3 },
         medium: { time_limit: 90, objects_count: 5 },
         hard: { time_limit: 60, objects_count: 7 }
@@ -256,7 +256,7 @@ export const RULE_TEMPLATES = {
       completion_mode: 'sequential', // sequential, any_order
       hint_system: true,
       scoring: { correct: 20, incorrect: 0, speed_bonus: true },
-      difficulty_levels: {
+      difficulty_settings: {
         easy: { time_limit: 300, items_count: 5, hints_allowed: 3 },
         medium: { time_limit: 240, items_count: 7, hints_allowed: 2 },
         hard: { time_limit: 180, items_count: 10, hints_allowed: 1 }

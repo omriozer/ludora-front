@@ -112,7 +112,7 @@ export default function LivePreview({
         <div className="flex items-center justify-center gap-4 text-sm text-gray-600">
           <div className="flex items-center gap-1">
             <Clock className="w-4 h-4" />
-            <span>{rule.config?.difficulty_levels?.medium?.time_limit || 20}s</span>
+            <span>{rule.config?.difficulty_settings?.medium?.time_limit || 20}s</span>
           </div>
           <div className="flex items-center gap-1">
             <Target className="w-4 h-4" />
@@ -167,7 +167,7 @@ export default function LivePreview({
         <div className="flex items-center justify-center gap-4 text-sm text-gray-600">
           <div className="flex items-center gap-1">
             <Clock className="w-4 h-4" />
-            <span>{rule.config?.difficulty_levels?.medium?.time_limit || 25}s</span>
+            <span>{rule.config?.difficulty_settings?.medium?.time_limit || 25}s</span>
           </div>
           <div className="flex items-center gap-1">
             <Target className="w-4 h-4" />

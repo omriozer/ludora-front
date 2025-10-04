@@ -26,7 +26,7 @@ export default function RuleTemplateGrid({ templates, onSelectTemplate, onPrevie
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {templates.map((template) => {
-        const difficultyColor = getDifficultyColor(template.config?.difficulty_levels);
+        const difficultyColor = getDifficultyColor(template.config?.difficulty_settings);
         const compatibility = getCompatibilityBadge(template.compatible_game_types);
 
         return (
@@ -54,8 +54,8 @@ export default function RuleTemplateGrid({ templates, onSelectTemplate, onPrevie
                     variant="outline"
                     className={`text-${difficultyColor}-600 border-${difficultyColor}-200`}
                   >
-                    {template.config?.difficulty_levels ?
-                      `${Object.keys(template.config.difficulty_levels).length} רמות` :
+                    {template.config?.difficulty_settings ?
+                      `${Object.keys(template.config.difficulty_settings).length} רמות` :
                       'רמה אחת'
                     }
                   </Badge>
@@ -83,11 +83,11 @@ export default function RuleTemplateGrid({ templates, onSelectTemplate, onPrevie
                   </div>
                 </div>
 
-                {template.config?.difficulty_levels?.easy && (
+                {template.config?.difficulty_settings?.easy && (
                   <div className="flex items-center gap-2 text-xs text-gray-600">
                     <Clock className="w-3 h-3" />
                     <span>זמן:</span>
-                    <span>{template.config.difficulty_levels.easy.time_limit}s</span>
+                    <span>{template.config.difficulty_settings.easy.time_limit}s</span>
                   </div>
                 )}
               </div>

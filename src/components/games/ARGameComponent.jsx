@@ -170,14 +170,14 @@ export default function ARGameComponent({
       type: 'object_detection',
       target: targetItem,
       instruction: `מצא בסביבה: ${targetItem.text || targetItem.name}`,
-      timeLimit: config.difficulty_levels?.medium?.time_limit || 60,
+      timeLimit: config.difficulty_settings?.medium?.time_limit || 60,
       scoring: config.scoring
     };
   };
 
   const generateScavengerHuntTask = (rule, ruleContent, config) => {
     const words = ruleContent.Word || [];
-    const itemsCount = config.difficulty_levels?.medium?.items_count || 5;
+    const itemsCount = config.difficulty_settings?.medium?.items_count || 5;
     const huntItems = words.slice(0, itemsCount);
 
     return {
@@ -185,7 +185,7 @@ export default function ARGameComponent({
       items: huntItems,
       currentItem: 0,
       instruction: `ציד אוצרות - מצא ${huntItems.length} פריטים`,
-      timeLimit: config.difficulty_levels?.medium?.time_limit || 300,
+      timeLimit: config.difficulty_settings?.medium?.time_limit || 300,
       scoring: config.scoring
     };
   };
@@ -209,7 +209,7 @@ export default function ARGameComponent({
       correctAnswer: correctWord,
       options: allOptions,
       instruction: 'מצא את העצם בתמונה ובחר את המילה המתאימה',
-      timeLimit: config.difficulty_levels?.medium?.time_limit || 30,
+      timeLimit: config.difficulty_settings?.medium?.time_limit || 30,
       scoring: config.scoring
     };
   };
