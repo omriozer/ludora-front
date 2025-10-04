@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, Suspense } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useUser } from "@/contexts/UserContext";
 import { isStaff } from "@/lib/userUtils";
-import { initializeKeyMode, setShowKeysMode, getShowKeysMode } from "../components/utils/getText";
 import {
   BookOpen,
   Users,
