@@ -19,7 +19,7 @@ import {
   LogIn
 } from 'lucide-react';
 import { clog, cerror } from '@/lib/utils';
-import { toast } from '@/components/ui/use-toast';
+import { showError } from '@/utils/messaging';
 
 const GAME_TYPE_NAMES = {
   'sharp_and_smooth': 'חד וחלק',
@@ -686,7 +686,7 @@ export default function GameLauncher() {
           await elem.msRequestFullscreen();
         } else {
           clog('Fullscreen API not supported on this device');
-          alert('מסך מלא לא נתמך במכשיר זה');
+          showError('מסך מלא לא נתמך במכשיר זה');
         }
       } else {
         if (document.exitFullscreen) {
@@ -701,7 +701,7 @@ export default function GameLauncher() {
       }
     } catch (error) {
       cerror('Error toggling fullscreen:', error);
-      alert('שגיאה בכניסה למסך מלא');
+      showError('שגיאה בכניסה למסך מלא');
     }
   };
 

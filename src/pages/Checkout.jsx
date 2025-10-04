@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Settings, Purchase, SiteText } from "@/services/entities";
+import { User, Settings, Purchase } from "@/services/entities";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -41,17 +41,6 @@ import {
 import paymentClient from "@/services/paymentClient";
 import { toast } from "@/components/ui/use-toast";
 
-// Simple getText function for this page
-const getTextForPage = async (key, fallback) => {
-  try {
-    const texts = await SiteText.find();
-    const textItem = texts.find(item => item.key === key);
-    return textItem ? textItem.text : fallback;
-  } catch (error) {
-    console.warn(`Could not load text for key ${key}, using fallback:`, error);
-    return fallback;
-  }
-};
 
 export default function Checkout() {
   const navigate = useNavigate();
@@ -96,23 +85,6 @@ export default function Checkout() {
     setError(null);
 
     try {
-      // Load dynamic texts
-      const texts = {
-        checkoutTitle: await getTextForPage("checkout.title", "עגלת קניות"),
-        emptyCart: await getTextForPage("checkout.emptyCart", "עגלת הקניות ריקה"),
-        emptyCartDescription: await getTextForPage("checkout.emptyCartDescription", "אין פריטים בעגלת הקניות. לחצו כאן לחזרה לקטלוג"),
-        items: await getTextForPage("checkout.items", "פריטים"),
-        orderSummary: await getTextForPage("checkout.orderSummary", "סיכום הזמנה"),
-        subtotal: await getTextForPage("checkout.subtotal", "סכום ביניים"),
-        total: await getTextForPage("checkout.total", "סכום כולל"),
-        proceedToPayment: await getTextForPage("checkout.proceedToPayment", "המשך לתשלום"),
-        securePayment: await getTextForPage("checkout.securePayment", "תשלום מאובטח"),
-        removeItem: await getTextForPage("checkout.removeItem", "הסר פריט"),
-        backToCatalog: await getTextForPage("checkout.backToCatalog", "חזרה לקטלוג"),
-        processing: await getTextForPage("checkout.processing", "מעבד תשלום..."),
-        payplusSecurePayment: await getTextForPage("checkout.payplusSecurePayment", "תשלום מאובטח באמצעות PayPlus")
-      };
-      setCheckoutTexts(texts);
 
       // Check authentication
       if (!requireAuthentication(navigate, '/checkout')) {

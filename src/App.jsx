@@ -9,13 +9,15 @@ import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import AdminRoute from '@/components/auth/AdminRoute';
 import ConditionalRoute from '@/components/auth/ConditionalRoute';
 import TutorialOverlay from '@/components/TutorialOverlay';
+import { ConfirmationProvider } from '@/components/ui/ConfirmationProvider';
 
 function App() {
 	const { currentUser, isLoading } = useUser();
 
 	return (
-		<Layout>
-			<Routes>
+		<ConfirmationProvider>
+			<Layout>
+				<Routes>
 				<Route
 					path='/'
 					element={
@@ -262,14 +264,6 @@ function App() {
 					}
 				/>
 				<Route
-					path='/texts'
-					element={
-						<AdminRoute>
-							<Pages.SiteTexts />
-						</AdminRoute>
-					}
-				/>
-				<Route
 					path='/tools'
 					element={
 						<ConditionalRoute visibilityField="nav_tools_visibility">
@@ -426,10 +420,11 @@ function App() {
 					path='*'
 					element={<Pages.NotFound />}
 				/>
-			</Routes>
-			<Toaster />
-			<TutorialOverlay />
-		</Layout>
+				</Routes>
+				<Toaster />
+				<TutorialOverlay />
+			</Layout>
+		</ConfirmationProvider>
 	);
 }
 

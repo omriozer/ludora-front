@@ -3,7 +3,7 @@
 
 import { getApiBase } from '@/utils/api.js';
 import { clog, cerror } from '@/lib/utils';
-import { toast } from '@/components/ui/use-toast';
+import { showError } from '@/utils/messaging';
 
 // Use centralized API base configuration
 const API_BASE = getApiBase();
@@ -110,11 +110,10 @@ export async function apiRequest(endpoint, options = {}) {
 
     // Show user-friendly error for network failures
     if (error.message.includes('fetch') || error.message.includes('network') || error.message.includes('Failed to fetch')) {
-      toast({
-        title: "בעיית חיבור",
-        description: "לא הצלחנו להתחבר לשרת. אנא בדוק את החיבור לאינטרנט ונסה שוב.",
-        variant: "destructive",
-      });
+      showError(
+        "בעיית חיבור",
+        "לא הצלחנו להתחבר לשרת. אנא בדוק את החיבור לאינטרנט ונסה שוב."
+      );
     }
 
     throw error;
@@ -372,7 +371,6 @@ export const Category = new EntityAPI('category');
 export const Coupon = new EntityAPI('coupon');
 export const SupportMessage = new EntityAPI('supportmessage');
 export const Notification = new EntityAPI('notification');
-export const SiteText = new EntityAPI('sitetext');
 
 // New dedicated entity types
 export const Product = new EntityAPI('product');

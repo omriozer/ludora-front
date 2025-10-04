@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import RuleBuilder from '@/components/shared/RuleBuilder';
+import { showSuccess } from '@/utils/messaging';
 
 export default function RuleBuilderTest() {
   const [showRuleBuilder, setShowRuleBuilder] = useState(false);
 
   const handleRuleCreated = (rule) => {
     console.log('Rule created:', rule);
-    alert('כלל נוצר בהצלחה! בדוק את הקונסול לפרטים');
+    showSuccess('כלל נוצר בהצלחה!', 'בדוק את הקונסול לפרטים');
     setShowRuleBuilder(false);
   };
 

@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Settings, User } from "@/services/entities";
 import { UploadFile } from "@/services/integrations";
+import { showConfirm } from '@/utils/messaging';
 import {
   Palette,
   Save,
@@ -107,8 +108,9 @@ export default function BrandSettings() {
     setIsUploading(false);
   };
 
-  const handleLogoDelete = () => {
-    if (!confirm('האם אתה בטוח שברצונך למחוק את הלוגו?')) return;
+  const handleLogoDelete = async () => {
+    const confirmed = await showConfirm('מחיקת לוגו', 'האם אתה בטוח שברצונך למחוק את הלוגו?');
+    if (!confirmed) return;
     handleInputChange('logo_url', '');
     showMessage('success', 'הלוגו נמחק');
   };

@@ -2,7 +2,7 @@
 // Reusable functions for purchase creation and management
 
 import { apiRequest } from '@/services/apiClient';
-import { toast } from '@/components/ui/use-toast';
+import { showInfo, showSuccess, showError } from '@/utils/messaging';
 import { clog, cerror } from '@/lib/utils';
 import { Product } from '@/services/entities';
 
@@ -230,11 +230,10 @@ export async function clearPendingPurchases(userId) {
  */
 export function requireAuthentication(navigate, redirectTo = '/checkout') {
   if (!isAuthenticated()) {
-    toast({
-      title: "נדרשת התחברות",
-      description: "יש להתחבר כדי לבצע פעולה זו. לחצו על כפתור 'התחבר' בתפריט העליון.",
-      variant: "destructive"
-    });
+    showError(
+      "נדרשת התחברות",
+      "יש להתחבר כדי לבצע פעולה זו. לחצו על כפתור 'התחבר' בתפריט העליון."
+    );
     return false;
   }
   return true;
@@ -271,11 +270,7 @@ export function showPurchaseSuccessToast(productTitle, isFree = false) {
     ? `"${productTitle}" נוסף לחשבונך`
     : `"${productTitle}" נוסף לעגלת הקניות`;
 
-  toast({
-    title,
-    description,
-    variant: "default"
-  });
+  showSuccess(title, description);
 }
 
 /**
@@ -292,11 +287,7 @@ export function showPurchaseErrorToast(error, context = "בעת הרכישה") {
     errorMessage = error;
   }
 
-  toast({
-    title: "שגיאה ברכישה",
-    description: errorMessage,
-    variant: "destructive"
-  });
+  showError("שגיאה ברכישה", errorMessage);
 }
 
 /**

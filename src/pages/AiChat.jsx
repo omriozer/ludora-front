@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { User, Purchase, Settings, SiteText, Category, Workshop, Course, File, Tool } from "@/services/entities";
+import { User, Purchase, Settings, Category, Workshop, Course, File, Tool } from "@/services/entities";
 import { InvokeLLM } from "@/services/integrations";
 import { getProductTypeName } from "@/config/productTypes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

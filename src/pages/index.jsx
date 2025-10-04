@@ -14,7 +14,6 @@ import SupportMessages from './SupportMessages';
 import PaymentSuccess from './PaymentSuccess';
 import PaymentResult from './PaymentResult';
 import VideoViewer from './VideoViewer';
-import SiteTexts from './SiteTexts';
 import Tools from './Tools';
 import Checkout from './Checkout';
 import CourseViewer from './CourseViewer';
@@ -70,7 +69,6 @@ export {
   PaymentSuccess,
   PaymentResult,
   VideoViewer,
-  SiteTexts,
   Tools,
   Checkout,
   CourseViewer,

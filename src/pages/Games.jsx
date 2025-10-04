@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { getGameTypeName, getGameTypeIcon, getDeviceCompatibilityText } from "@/config/gameTypes";
 import { getProductTypeName } from "@/config/productTypes";
+import { showConfirm } from '@/utils/messaging';
 
 export default function Games() {
   const navigate = useNavigate();
@@ -63,7 +64,11 @@ export default function Games() {
 
 
     const handleDeleteGame = async (gameId) => {
-      if (!window.confirm(`האם אתה בטוח שברצונך למחוק ${getProductTypeName('game', 'singular')} זה?`)) return;
+      const confirmed = await showConfirm(
+        'מחיקת משחק',
+        `האם אתה בטוח שברצונך למחוק ${getProductTypeName('game', 'singular')} זה?`
+      );
+      if (!confirmed) return;
       try {
         console.log('🗑️ Deleting game and its relationships:', gameId);
         

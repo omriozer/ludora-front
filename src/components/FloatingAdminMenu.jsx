@@ -31,6 +31,7 @@ import {
   School,        // Added for school management feature
   HelpCircle     // Added for help system
 } from "lucide-react";
+import { showSuccess, showError } from '@/utils/messaging';
 
 export default function FloatingAdminMenu({ currentUser }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -223,10 +224,10 @@ export default function FloatingAdminMenu({ currentUser }) {
       });
 
       // Show confirmation
-      alert(newMaintenanceState ? 'מצב תחזוקה הופעל' : 'מצב תחזוקה בוטל');
+      showSuccess(newMaintenanceState ? 'מצב תחזוקה הופעל' : 'מצב תחזוקה בוטל');
     } catch (error) {
       console.error('Error toggling maintenance mode:', error);
-      alert('שגיאה בעדכון מצב תחזוקה');
+      showError('שגיאה בעדכון מצב תחזוקה');
     }
     setIsUpdatingMaintenance(false);
   };
