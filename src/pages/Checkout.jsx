@@ -40,10 +40,12 @@ import {
 } from "@/utils/purchaseHelpers";
 import paymentClient from "@/services/paymentClient";
 import { toast } from "@/components/ui/use-toast";
+import { useCart } from "@/contexts/CartContext";
 
 
 export default function Checkout() {
   const navigate = useNavigate();
+  const { removeFromCart } = useCart();
 
   const [cartItems, setCartItems] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
@@ -151,6 +153,9 @@ export default function Checkout() {
       // Remove from local state
       const updatedItems = cartItems.filter(item => item.id !== purchaseId);
       setCartItems(updatedItems);
+
+      // Notify cart context about the removal
+      removeFromCart(purchaseId);
 
       // Recalculate pricing
       calculatePricing(updatedItems);

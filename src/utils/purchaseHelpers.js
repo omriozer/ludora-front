@@ -302,6 +302,31 @@ export function calculateTotalPrice(purchases) {
 }
 
 /**
+ * Check if user has existing purchase for a specific product
+ * @param {string} userId - User ID
+ * @param {string} entityType - Type of entity (file, workshop, course, tool, game)
+ * @param {string} entityId - ID of the entity
+ * @returns {Promise<object|null>} Existing purchase record or null if none found
+ */
+export async function checkExistingPurchase(userId, entityType, entityId) {
+  try {
+    const allPurchases = await getAllNonRefundedPurchases(userId);
+    const existingPurchase = allPurchases.find(p =>
+      p.purchasable_type === entityType && p.purchasable_id === entityId
+    );
+
+    if (existingPurchase) {
+      clog('Found existing purchase for product:', { entityType, entityId, purchase: existingPurchase });
+    }
+
+    return existingPurchase || null;
+  } catch (error) {
+    cerror('Error checking existing purchase:', error);
+    return null;
+  }
+}
+
+/**
  * Group purchases by type for display
  * @param {array} purchases - Array of purchase records
  * @returns {object} Grouped purchases { products: [...], subscriptions: [...] }

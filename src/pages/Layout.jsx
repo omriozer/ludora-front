@@ -47,6 +47,7 @@ import LoginModal from "../components/LoginModal";
 import { shouldHideNavigation } from "@/lib/layoutHelpers";
 import MaintenancePage from "@/components/layout/MaintenancePage";
 import { LoginModalProvider, useLoginModal } from "@/hooks/useLoginModal";
+import { CartProvider } from "@/contexts/CartContext";
 
 function LayoutContent({ children }) {
   const location = useLocation();
@@ -313,111 +314,113 @@ function LayoutContent({ children }) {
 
   // Main layout
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex">
-      <SkipLink />
+    <CartProvider>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex">
+        <SkipLink />
 
 
-      {/* Navigation */}
-      {!hideNav && (
-        <PublicNav
-          currentUser={currentUser}
-          handleLogin={onLogin}
-          handleLogout={onLogout}
-          settings={settings}
-        />
-      )}
+        {/* Navigation */}
+        {!hideNav && (
+          <PublicNav
+            currentUser={currentUser}
+            handleLogin={onLogin}
+            handleLogout={onLogout}
+            settings={settings}
+          />
+        )}
 
-      {/* Main Content Area */}
-      <div
-        className={`flex flex-col flex-1 min-h-screen transition-all duration-300 ${
-          !hideNav && !isDesktop ? 'pt-16' : ''
-        }`}
-        style={{
-          marginRight: !hideNav ? 'var(--nav-width, 0px)' : '0',
-        }}
-      >
-        {/* Main Content */}
-        <main className="flex-1">
-          <Suspense fallback={
-            <div className="flex items-center justify-center min-h-[400px]">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            </div>
-          }>
-            {children}
-          </Suspense>
-        </main>
+        {/* Main Content Area */}
+        <div
+          className={`flex flex-col flex-1 min-h-screen transition-all duration-300 ${
+            !hideNav && !isDesktop ? 'pt-16' : ''
+          }`}
+          style={{
+            marginRight: !hideNav ? 'var(--nav-width, 0px)' : '0',
+          }}
+        >
+          {/* Main Content */}
+          <main className="flex-1">
+            <Suspense fallback={
+              <div className="flex items-center justify-center min-h-[400px]">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              </div>
+            }>
+              {children}
+            </Suspense>
+          </main>
 
-        {/* Footer */}
-        {!hideNav && <Footer />}
+          {/* Footer */}
+          {!hideNav && <Footer />}
+        </div>
+
+        {/* Floating Admin Menu */}
+        {!isLoading && currentUser && isStaff(currentUser) && (
+          <FloatingAdminMenu currentUser={currentUser} />
+        )}
+
+        {/* Return to Self Button for Admin */}
+        {showReturnButton && (
+          <ReturnToSelfButton
+            position={returnButtonPosition}
+            onMouseDown={(e) => {
+              setIsDraggingReturn(true);
+              const rect = e.currentTarget.getBoundingClientRect();
+              setReturnDragOffset({
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+              });
+            }}
+            onTouchStart={(e) => {
+              const touch = e.touches[0];
+              setIsDraggingReturn(true);
+              const rect = e.currentTarget.getBoundingClientRect();
+              setReturnDragOffset({
+                x: touch.clientX - rect.left,
+                y: touch.clientY - rect.top
+              });
+              e.preventDefault();
+            }}
+            onTouchMove={(e) => {
+              if (!isDraggingReturn) return;
+              const touch = e.touches[0];
+              const newX = touch.clientX - returnDragOffset.x;
+              const newY = touch.clientY - returnDragOffset.y;
+
+              const buttonSize = 56;
+              const maxX = window.innerWidth - buttonSize;
+              const maxY = window.innerHeight - buttonSize;
+
+              setReturnButtonPosition({
+                x: Math.max(0, Math.min(newX, maxX)),
+                y: Math.max(0, Math.min(newY, maxY))
+              });
+              e.preventDefault();
+            }}
+            onTouchEnd={() => setIsDraggingReturn(false)}
+            onClick={handleReturnToSelf}
+          />
+        )}
+
+        {/* Notification Bell */}
+        {/* {currentUser && <NotificationBell currentUser={currentUser} />} */}
+
+        {/* Modals */}
+        {showSubscriptionModal && (
+          <SubscriptionModal
+            currentUser={currentUser}
+            onClose={() => setShowSubscriptionModal(false)}
+            onSubscriptionChange={handleSubscriptionChange}
+          />
+        )}
+
+        {showLoginModal && (
+          <LoginModal
+            onClose={closeLoginModal}
+            onLogin={handleLoginSubmit}
+          />
+        )}
       </div>
-
-      {/* Floating Admin Menu */}
-      {!isLoading && currentUser && isStaff(currentUser) && (
-        <FloatingAdminMenu currentUser={currentUser} />
-      )}
-
-      {/* Return to Self Button for Admin */}
-      {showReturnButton && (
-        <ReturnToSelfButton
-          position={returnButtonPosition}
-          onMouseDown={(e) => {
-            setIsDraggingReturn(true);
-            const rect = e.currentTarget.getBoundingClientRect();
-            setReturnDragOffset({
-              x: e.clientX - rect.left,
-              y: e.clientY - rect.top
-            });
-          }}
-          onTouchStart={(e) => {
-            const touch = e.touches[0];
-            setIsDraggingReturn(true);
-            const rect = e.currentTarget.getBoundingClientRect();
-            setReturnDragOffset({
-              x: touch.clientX - rect.left,
-              y: touch.clientY - rect.top
-            });
-            e.preventDefault();
-          }}
-          onTouchMove={(e) => {
-            if (!isDraggingReturn) return;
-            const touch = e.touches[0];
-            const newX = touch.clientX - returnDragOffset.x;
-            const newY = touch.clientY - returnDragOffset.y;
-
-            const buttonSize = 56;
-            const maxX = window.innerWidth - buttonSize;
-            const maxY = window.innerHeight - buttonSize;
-
-            setReturnButtonPosition({
-              x: Math.max(0, Math.min(newX, maxX)),
-              y: Math.max(0, Math.min(newY, maxY))
-            });
-            e.preventDefault();
-          }}
-          onTouchEnd={() => setIsDraggingReturn(false)}
-          onClick={handleReturnToSelf}
-        />
-      )}
-
-      {/* Notification Bell */}
-      {/* {currentUser && <NotificationBell currentUser={currentUser} />} */}
-
-      {/* Modals */}
-      {showSubscriptionModal && (
-        <SubscriptionModal
-          currentUser={currentUser}
-          onClose={() => setShowSubscriptionModal(false)}
-          onSubscriptionChange={handleSubscriptionChange}
-        />
-      )}
-
-      {showLoginModal && (
-        <LoginModal
-          onClose={closeLoginModal}
-          onLogin={handleLoginSubmit}
-        />
-      )}
-    </div>
+    </CartProvider>
   );
 }
 

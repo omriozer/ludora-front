@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ShoppingCart } from 'lucide-react';
+import { ShoppingCart, Plus } from 'lucide-react';
 import { cerror } from '@/lib/utils';
 import { getProductTypeName } from '@/config/productTypes';
 import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
@@ -13,10 +13,12 @@ import {
   createPendingPurchase,
   createFreePurchase,
   showPurchaseSuccessToast,
-  showPurchaseErrorToast
+  showPurchaseErrorToast,
+  checkExistingPurchase
 } from '@/utils/purchaseHelpers';
 import { toast } from '@/components/ui/use-toast';
 import { useLoginModal } from '@/hooks/useLoginModal';
+import { useCart } from '@/contexts/CartContext';
 
 /**
  * Unified Get Access Button Component
@@ -30,20 +32,55 @@ import { useLoginModal } from '@/hooks/useLoginModal';
  * @param {string} size - Button size variant
  * @param {boolean} fullWidth - Whether button should be full width
  * @param {function} onSuccess - Callback after successful free purchase
+ * @param {boolean} withCartButton - Whether to show add to cart button alongside (default: true)
  */
 export default function GetAccessButton({
   product,
   className = '',
   size = 'lg',
   fullWidth = false,
-  onSuccess
+  onSuccess,
+  withCartButton = true
 }) {
   const navigate = useNavigate();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [existingPurchase, setExistingPurchase] = useState(null);
+  const [isCheckingPurchase, setIsCheckingPurchase] = useState(true);
   const { openLoginModal } = useLoginModal();
+  const { addToCart } = useCart();
 
   // Check if user already has access
   const hasAccess = product?.purchase && product.purchase.payment_status === 'completed';
+
+  // Check for existing purchases on component mount
+  useEffect(() => {
+    const checkForExistingPurchase = async () => {
+      if (!isAuthenticated() || !product) {
+        setIsCheckingPurchase(false);
+        return;
+      }
+
+      const userId = getUserIdFromToken();
+      if (!userId) {
+        setIsCheckingPurchase(false);
+        return;
+      }
+
+      try {
+        const entityType = product.product_type || 'file';
+        const entityId = product.entity_id || product.id;
+        const existing = await checkExistingPurchase(userId, entityType, entityId);
+        setExistingPurchase(existing);
+      } catch (error) {
+        cerror('Error checking existing purchase:', error);
+      } finally {
+        setIsCheckingPurchase(false);
+      }
+    };
+
+    checkForExistingPurchase();
+  }, [product]);
 
   const handleGetAccess = async () => {
     if (!product) {
@@ -194,6 +231,9 @@ export default function GetAccessButton({
         }
       });
 
+      // Notify cart context about the addition
+      addToCart();
+
       // Show success message
       showPurchaseSuccessToast(product.title, false);
 
@@ -204,6 +244,91 @@ export default function GetAccessButton({
       showPurchaseErrorToast(error, 'בהוספה לעגלה');
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handleAddToCart = async () => {
+    if (!product) {
+      cerror('No product provided to GetAccessButton');
+      return;
+    }
+
+    // Check authentication - open login modal if not logged in
+    if (!isAuthenticated()) {
+      // Pass the callback to continue after login
+      openLoginModal(() => handleAddToCart());
+      return;
+    }
+
+    const userId = getUserIdFromToken();
+    if (!userId) {
+      cerror('Could not get user ID from token');
+      return;
+    }
+
+    // Only add to cart for paid products
+    if (await isFree()) {
+      // For free products, use the main button
+      return;
+    }
+
+    // Check if already has existing purchase - should not reach here if button is properly disabled
+    if (existingPurchase) {
+      const status = existingPurchase.payment_status;
+      if (status === 'pending') {
+        showPurchaseErrorToast('המוצר כבר נמצא בעגלת הקניות שלך', 'הוספה לעגלה');
+      } else if (status === 'completed') {
+        showPurchaseErrorToast('כבר רכשת את המוצר הזה', 'הוספה לעגלה');
+      }
+      return;
+    }
+
+    setIsAddingToCart(true);
+
+    try {
+      const entityType = product.product_type || 'file';
+      const entityId = product.entity_id || product.id;
+
+      // Find Product record to get price
+      const productRecord = await findProductForEntity(entityType, entityId);
+
+      if (!productRecord) {
+        throw new Error('לא נמצא מוצר מתאים לרכישה');
+      }
+
+      if (!productRecord.price || productRecord.price <= 0) {
+        throw new Error('מחיר המוצר לא זמין');
+      }
+
+      // Create pending purchase
+      await createPendingPurchase({
+        entityType,
+        entityId,
+        price: productRecord.price,
+        userId,
+        metadata: {
+          product_title: product.title,
+          source: 'AddToCartButton'
+        }
+      });
+
+      // Update existing purchase state
+      setExistingPurchase({
+        purchasable_type: entityType,
+        purchasable_id: entityId,
+        payment_status: 'pending'
+      });
+
+      // Notify cart context about the addition
+      addToCart();
+
+      // Show success message (but don't redirect)
+      showPurchaseSuccessToast(product.title, false);
+
+    } catch (error) {
+      showPurchaseErrorToast(error, 'בהוספה לעגלה');
+    } finally {
+      setIsAddingToCart(false);
     }
   };
 
@@ -226,6 +351,124 @@ export default function GetAccessButton({
     );
   }
 
+  // Show loading if still checking for existing purchases
+  if (isCheckingPurchase) {
+    return (
+      <Button disabled className={`${fullWidth ? 'w-full' : ''} ${className}`} size={size}>
+        <LudoraLoadingSpinner
+          message="טוען..."
+          status="loading"
+          size="sm"
+          theme="neon"
+          showParticles={false}
+        />
+      </Button>
+    );
+  }
+
+  // Determine purchase state
+  const existingStatus = existingPurchase?.payment_status;
+  const isInCart = existingStatus === 'pending';
+  const isAlreadyPurchased = existingStatus === 'completed';
+
+  // For paid products, potentially show both buttons
+  const isPaidProduct = product.price && product.price > 0;
+  const shouldShowCartButton = withCartButton && isPaidProduct && !hasAccess && !existingPurchase;
+
+  // Handle existing purchase states
+  if (existingPurchase && !hasAccess) {
+    if (isInCart) {
+      // Product is in cart - show "In Cart" button
+      return (
+        <Button
+          onClick={() => navigate('/checkout')}
+          className={`group relative overflow-hidden bg-gradient-to-r from-yellow-500 via-yellow-600 to-orange-600 hover:from-yellow-600 hover:via-orange-600 hover:to-red-600 text-white font-bold rounded-full shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 border-2 border-yellow-400/20 ${fullWidth ? 'w-full' : ''} ${className}`}
+          size={size}
+        >
+          <span className="relative z-10 flex items-center justify-center gap-2 sm:gap-3">
+            <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6" />
+            <span>בעגלה - לתשלום</span>
+          </span>
+          <div className="absolute inset-0 bg-gradient-to-r from-orange-600 via-red-600 to-pink-600 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+          <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 animate-pulse"></div>
+        </Button>
+      );
+    } else if (isAlreadyPurchased) {
+      // Product is purchased but awaiting confirmation - show "Processing" button
+      return (
+        <Button
+          disabled
+          className={`bg-gradient-to-r from-gray-400 via-gray-500 to-gray-600 text-white font-bold rounded-full shadow-xl border-2 border-gray-300/20 opacity-75 cursor-not-allowed ${fullWidth ? 'w-full' : ''} ${className}`}
+          size={size}
+        >
+          <span className="flex items-center justify-center gap-2 sm:gap-3">
+            <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6" />
+            <span>ממתין לאישור תשלום</span>
+          </span>
+        </Button>
+      );
+    }
+  }
+
+  if (shouldShowCartButton) {
+    return (
+      <div className={`flex items-center gap-2 ${fullWidth ? 'w-full' : ''}`}>
+        {/* Main Get Access Button */}
+        <Button
+          onClick={handleGetAccess}
+          disabled={isProcessing}
+          className={`group relative overflow-hidden bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600 hover:from-blue-600 hover:via-indigo-600 hover:to-purple-600 text-white font-bold rounded-full shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 border-2 border-blue-400/20 flex-1 ${className}`}
+          size={size}
+        >
+          <span className="relative z-10 flex items-center justify-center gap-2 sm:gap-3">
+            {isProcessing ? (
+              <LudoraLoadingSpinner
+                message="מעבד..."
+                status="loading"
+                size="sm"
+                theme="neon"
+                showParticles={false}
+              />
+            ) : (
+              <>
+                <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6 group-hover:rotate-12 transition-transform duration-300" />
+                <span>{getAccessText()}</span>
+              </>
+            )}
+          </span>
+          <div className="absolute inset-0 bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+          <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 animate-pulse"></div>
+        </Button>
+
+        {/* Add to Cart Button */}
+        <Button
+          onClick={handleAddToCart}
+          disabled={isAddingToCart}
+          className="group relative overflow-hidden bg-gradient-to-r from-orange-500 via-orange-600 to-red-600 hover:from-orange-600 hover:via-red-600 hover:to-pink-600 text-white font-bold rounded-full shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 border-2 border-orange-400/20"
+          size={size}
+          title="הוסף לעגלה"
+        >
+          <span className="relative z-10 flex items-center justify-center">
+            {isAddingToCart ? (
+              <LudoraLoadingSpinner
+                message=""
+                status="loading"
+                size="sm"
+                theme="neon"
+                showParticles={false}
+              />
+            ) : (
+              <Plus className="w-5 h-5 sm:w-6 sm:h-6 group-hover:rotate-180 transition-transform duration-300" />
+            )}
+          </span>
+          <div className="absolute inset-0 bg-gradient-to-r from-red-600 via-pink-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+          <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 animate-pulse"></div>
+        </Button>
+      </div>
+    );
+  }
+
+  // Single button (default behavior)
   return (
     <Button
       onClick={handleGetAccess}

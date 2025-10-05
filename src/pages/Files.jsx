@@ -29,7 +29,8 @@ import {
   TrendingUp,
   CheckCircle,
   GraduationCap,
-  BookOpen
+  BookOpen,
+  X
 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
@@ -42,9 +43,11 @@ import PriceDisplayTag from "@/components/ui/PriceDisplayTag";
 import { apiRequest } from "@/utils/api";
 import { getProductImageUrl } from "@/utils/videoUtils.js";
 import GetAccessButton from "@/components/ui/GetAccessButton";
+import { useCart } from "@/contexts/CartContext";
 
 export default function Files() {
   const navigate = useNavigate();
+  const { addToCart } = useCart();
 
   const [fileProducts, setFileProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -65,7 +68,7 @@ export default function Files() {
   const [selectedSubject, setSelectedSubject] = useState("all");
   const [sortBy, setSortBy] = useState("created_at");
   const [sortOrder, setSortOrder] = useState("DESC");
-  
+
   // Texts
   const [fileTexts, setFileTexts] = useState({
     title: getProductTypeName('file', 'plural'),
@@ -141,6 +144,7 @@ export default function Files() {
         searchPlaceholder: `חפש ${getProductTypeName('file', 'plural')}...`,
         allCategories: "כל הקטגוריות",
         allGrades: "כל הכיתות",
+        allSubjects: "כל המקצועות",
         sortByNewest: "החדשים ביותר",
         sortByTitle: "לפי כותרת",
         sortByPrice: "לפי מחיר",
@@ -219,7 +223,7 @@ export default function Files() {
 
       setFileProducts(fileProductsData);
       setCategories(categoriesData);
-      
+
     } catch (error) {
       console.error("Error loading data:", error);
       setMessage({ type: 'error', text: `שגיאה בטעינת ${getProductTypeName('file', 'plural')}` });
@@ -369,6 +373,13 @@ export default function Files() {
     loadData(); // Reload data to show updated product
   };
 
+  const clearAllFilters = () => {
+    setSearchTerm("");
+    setSelectedCategory("all");
+    setSelectedGrade("all");
+    setSelectedSubject("all");
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 flex items-center justify-center">
@@ -381,131 +392,155 @@ export default function Files() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="text-center mb-8 sm:mb-12">
-          <div className="inline-flex items-center gap-2 bg-purple-600 text-white rounded-full px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium mb-4 sm:mb-6">
-            <FileText className="w-3 h-3 sm:w-4 sm:h-4" />
-            {fileTexts.professionalFiles}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 relative overflow-hidden">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiM5Q0E5QjciIGZpbGwtb3BhY2l0eT0iMC4xIj48Y2lyY2xlIGN4PSIzMCIgY3k9IjMwIiByPSIxLjUiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-30"></div>
+
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-32">
+        {/* Enhanced Compact Header */}
+        <div className="flex items-center justify-between py-2 mb-3">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-lg">
+              <FileText className="w-4 h-4 text-white" />
+            </div>
+            <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
+              {fileTexts.title}
+            </h1>
           </div>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-3 sm:mb-4 px-4">
-            {fileTexts.title}
-          </h1>
-          <p className="text-base sm:text-lg md:text-xl text-gray-600 max-w-3xl mx-auto px-4">
-            {fileTexts.subtitle}
-          </p>
+          <div className="text-xs text-gray-500">
+            {filteredFileProducts.length} קבצים
+          </div>
         </div>
 
         {message && (
-          <Alert variant={message.type === 'error' ? 'destructive' : 'default'} className="mb-6">
+          <Alert variant={message.type === 'error' ? 'destructive' : 'default'} className="mb-6 mx-4 sm:mx-0">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>{message.text}</AlertDescription>
           </Alert>
         )}
 
-        {/* Search and Filter */}
-        <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 mb-8">
-          <div className="flex flex-col gap-4">
-            {/* Search bar - full width */}
-            <div className="relative w-full">
-              <Search className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 sm:w-5 sm:h-5" />
+        {/* Ultra Compact Search and Filters */}
+        <div className="mb-3" dir="rtl">
+          <div className="flex flex-wrap items-center gap-2 p-2 bg-white/50 rounded-lg border">
+            {/* Compact Search - Right side */}
+            <div className="flex items-center gap-1 flex-1 min-w-48">
               <Input
                 placeholder={fileTexts.searchPlaceholder}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pr-10 sm:pr-12 h-10 sm:h-12 bg-gray-50 border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm sm:text-base"
+                className="h-7 text-xs border-0 bg-transparent focus-visible:ring-0 p-1 text-right"
+                dir="rtl"
               />
+              <Search className="w-4 h-4 text-gray-400" />
             </div>
 
-            {/* Category filter - full width on mobile, flex on larger screens */}
-            <div className="flex items-center gap-2 w-full">
-              <Filter className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 flex-shrink-0" />
-              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger className="h-10 sm:h-12 bg-gray-50 border-gray-200 rounded-lg w-full">
-                  <SelectValue placeholder={fileTexts.allCategories} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{fileTexts.allCategories}</SelectItem>
-                  {categories.map((category) => (
-                    <SelectItem key={category.id} value={category.name}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Reset button first (rightmost in RTL) */}
+            {(searchTerm || selectedCategory !== "all" || selectedGrade !== "all" || selectedSubject !== "all") && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={clearAllFilters}
+                className="h-7 px-3 text-xs text-red-600 border-red-200 bg-red-50 hover:bg-red-100 hover:border-red-300 font-medium"
+              >
+                <X className="w-3 h-3 mr-1" />
+                נקה
+              </Button>
+            )}
 
-            {/* Grade filter - full width on mobile, flex on larger screens */}
-            <div className="flex items-center gap-2 w-full">
-              <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500 flex-shrink-0" />
-              <Select value={selectedGrade} onValueChange={setSelectedGrade}>
-                <SelectTrigger className="h-10 sm:h-12 bg-gray-50 border-gray-200 rounded-lg w-full">
-                  <SelectValue placeholder={fileTexts.allGrades} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{fileTexts.allGrades}</SelectItem>
-                  <SelectItem value="1">כיתה א'</SelectItem>
-                  <SelectItem value="2">כיתה ב'</SelectItem>
-                  <SelectItem value="3">כיתה ג'</SelectItem>
-                  <SelectItem value="4">כיתה ד'</SelectItem>
-                  <SelectItem value="5">כיתה ה'</SelectItem>
-                  <SelectItem value="6">כיתה ו'</SelectItem>
-                  <SelectItem value="7">כיתה ז'</SelectItem>
-                  <SelectItem value="8">כיתה ח'</SelectItem>
-                  <SelectItem value="9">כיתה ט'</SelectItem>
-                  <SelectItem value="10">כיתה י'</SelectItem>
-                  <SelectItem value="11">כיתה יא'</SelectItem>
-                  <SelectItem value="12">כיתה יב'</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Compact Filters in RTL order */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Sort Order Toggle Button */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSortOrder(sortOrder === "DESC" ? "ASC" : "DESC")}
+                className="h-7 px-2 text-xs border-gray-300 hover:bg-gray-50 flex items-center gap-1"
+                title={`מיון ${sortOrder === "DESC" ? "יורד" : "עולה"} - לחץ להחלפה`}
+              >
+                {sortOrder === "DESC" ? (
+                  <>
+                    <span className="text-xs">יורד</span>
+                    <TrendingUp className="w-3 h-3 rotate-180" />
+                  </>
+                ) : (
+                  <>
+                    <span className="text-xs">עולה</span>
+                    <TrendingUp className="w-3 h-3" />
+                  </>
+                )}
+              </Button>
 
-            {/* Subject filter - full width on mobile, flex on larger screens */}
-            <div className="flex items-center gap-2 w-full">
-              <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-500 flex-shrink-0" />
-              <Select value={selectedSubject} onValueChange={setSelectedSubject}>
-                <SelectTrigger className="h-10 sm:h-12 bg-gray-50 border-gray-200 rounded-lg w-full">
-                  <SelectValue placeholder={fileTexts.allSubjects} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{fileTexts.allSubjects}</SelectItem>
-                  {/* Get unique subjects from fileProducts */}
-                  {Array.from(new Set(
-                    fileProducts
-                      .filter(file => file.type_attributes && file.type_attributes.subject)
-                      .map(file => file.type_attributes.subject)
-                  )).sort().map((subject) => (
-                    <SelectItem key={subject} value={subject}>
-                      {subject}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Sort controls - stacked on mobile, side by side on larger screens */}
-            <div className="flex flex-col sm:flex-row gap-2 w-full">
               <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="h-10 sm:h-12 bg-gray-50 border-gray-200 rounded-lg w-full sm:flex-1">
-                  <SelectValue />
+                <SelectTrigger className="h-7 text-xs w-20 border-gray-300 text-right" dir="rtl">
+                  <SelectValue>
+                    {sortBy === "created_at" ? "חדש" :
+                     sortBy === "updated_at" ? "עודכן" :
+                     sortBy === "title" ? "שם" :
+                     sortBy === "price" ? "מחיר" :
+                     sortBy === "downloads_count" ? "הורדות" : "מיון"}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="created_at">תאריך יצירה</SelectItem>
-                  <SelectItem value="updated_at">תאריך עדכון</SelectItem>
-                  <SelectItem value="title">כותרת</SelectItem>
+                  <SelectItem value="created_at">החדשים ביותר</SelectItem>
+                  <SelectItem value="updated_at">עודכנו לאחרונה</SelectItem>
+                  <SelectItem value="title">שם הקובץ</SelectItem>
                   <SelectItem value="price">מחיר</SelectItem>
                   <SelectItem value="downloads_count">הורדות</SelectItem>
                 </SelectContent>
               </Select>
 
-              <Select value={sortOrder} onValueChange={setSortOrder}>
-                <SelectTrigger className="h-10 sm:h-12 bg-gray-50 border-gray-200 rounded-lg w-full sm:w-32">
-                  <SelectValue />
+              <Select value={selectedGrade} onValueChange={setSelectedGrade}>
+                <SelectTrigger className="h-7 text-xs w-20 border-gray-300 text-right" dir="rtl">
+                  <SelectValue>
+                    {selectedGrade === "all" ? "כיתה" :
+                     selectedGrade === "1" ? "א" : selectedGrade === "2" ? "ב" : selectedGrade === "3" ? "ג" :
+                     selectedGrade === "4" ? "ד" : selectedGrade === "5" ? "ה" : selectedGrade === "6" ? "ו" :
+                     selectedGrade === "7" ? "ז" : selectedGrade === "8" ? "ח" : selectedGrade === "9" ? "ט" :
+                     selectedGrade === "10" ? "י" : selectedGrade === "11" ? "יא" : "יב"}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="DESC">יורד</SelectItem>
-                  <SelectItem value="ASC">עולה</SelectItem>
+                  <SelectItem value="all">{fileTexts.allGrades}</SelectItem>
+                  {Array.from({length: 12}, (_, i) => i + 1).map((grade) => (
+                    <SelectItem key={grade} value={String(grade)}>
+                      כיתה {grade === 1 ? "א" : grade === 2 ? "ב" : grade === 3 ? "ג" :
+                            grade === 4 ? "ד" : grade === 5 ? "ה" : grade === 6 ? "ו" :
+                            grade === 7 ? "ז" : grade === 8 ? "ח" : grade === 9 ? "ט" :
+                            grade === 10 ? "י" : grade === 11 ? "יא" : "יב"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={selectedSubject} onValueChange={setSelectedSubject}>
+                <SelectTrigger className="h-7 text-xs w-24 border-gray-300 text-right" dir="rtl">
+                  <SelectValue placeholder="מקצוע">
+                    {selectedSubject === "all" ? fileTexts.allSubjects : selectedSubject}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{fileTexts.allSubjects}</SelectItem>
+                  {Array.from(new Set(
+                    fileProducts
+                      .filter(file => file.type_attributes && file.type_attributes.subject)
+                      .map(file => file.type_attributes.subject)
+                  )).sort().map((subject) => (
+                    <SelectItem key={subject} value={subject}>{subject}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                <SelectTrigger className="h-7 text-xs w-24 border-gray-300 text-right" dir="rtl">
+                  <SelectValue placeholder="קטגוריה">
+                    {selectedCategory === "all" ? fileTexts.allCategories : selectedCategory}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{fileTexts.allCategories}</SelectItem>
+                  {categories.map((category) => (
+                    <SelectItem key={category.id} value={category.name}>{category.name}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -514,28 +549,68 @@ export default function Files() {
 
         {/* Files Grid */}
         {filteredFileProducts.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            {filteredFileProducts.map((fileProduct) => {
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6 }}
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"
+          >
+            {filteredFileProducts.map((fileProduct, index) => {
               return (
-                <FileCard
+                <motion.div
                   key={fileProduct.id}
-                  file={fileProduct}
-                  onPurchase={handlePurchase}
-                  onEdit={handleEdit}
-                  fileTexts={fileTexts}
-                  currentUser={currentUser}
-                />
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{
+                    duration: 0.5,
+                    delay: index * 0.1,
+                    ease: "easeOut"
+                  }}
+                  className="h-full"
+                >
+                  <FileCard
+                    file={fileProduct}
+                    onPurchase={handlePurchase}
+                    onEdit={handleEdit}
+                    fileTexts={fileTexts}
+                    currentUser={currentUser}
+                  />
+                </motion.div>
               );
             })}
-          </div>
+          </motion.div>
         ) : (
-          <div className="text-center py-16">
-            <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <FileText className="w-10 h-10 text-purple-600" />
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            className="text-center py-16 sm:py-24"
+          >
+            <div className="max-w-md mx-auto">
+              <div className="relative mb-8">
+                <div className="w-24 h-24 sm:w-32 sm:h-32 bg-gradient-to-br from-purple-100 to-blue-100 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl">
+                  <FileText className="w-12 h-12 sm:w-16 sm:h-16 text-purple-600" />
+                </div>
+              </div>
+
+              <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">{fileTexts.noFiles}</h3>
+              <p className="text-lg text-gray-600 mb-8 leading-relaxed">{fileTexts.noFilesDesc}</p>
+
+              <div className="space-y-3">
+                <Button
+                  variant="outline"
+                  onClick={clearAllFilters}
+                  className="w-full sm:w-auto bg-white/80 backdrop-blur-sm hover:bg-white border-2 border-gray-200 hover:border-purple-300 text-gray-700 hover:text-purple-700 rounded-full px-6 py-3 font-semibold transition-all duration-300 hover:shadow-lg"
+                >
+                  <Search className="w-5 h-5 mr-2" />
+                  נקה את כל הפילטרים
+                </Button>
+                <div className="text-sm text-gray-500 mt-4">
+                  או נסה לחפש עם מילות מפתח אחרות
+                </div>
+              </div>
             </div>
-            <h3 className="text-xl font-semibold text-gray-700 mb-2">{fileTexts.noFiles}</h3>
-            <p className="text-gray-500">{fileTexts.noFilesDesc}</p>
-          </div>
+          </motion.div>
         )}
       </div>
 
@@ -558,7 +633,7 @@ function FileCard({ file, onPurchase, onEdit, fileTexts, currentUser }) {
 
   const fileTypeIcons = {
     pdf: "📄",
-    ppt: "📊", 
+    ppt: "📊",
     docx: "📝",
     zip: "🗜️",
     other: "📎"

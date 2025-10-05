@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
-  FileText, Play, Calendar, BookOpen, UserIcon, Users, GraduationCap, Menu, X, Crown, LogIn, LogOut, ShieldAlert, ChevronLeft, ChevronRight
+  FileText, Play, Calendar, BookOpen, UserIcon, Users, GraduationCap, Menu, X, Crown, LogIn, LogOut, ShieldAlert, ChevronLeft, ChevronRight, ShoppingCart
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { iconMap } from "@/lib/layoutUtils";
 import { NAV_ITEMS, getNavItemConfig } from "@/config/productTypes";
 import logoSm from "../../assets/images/logo_sm.png";
+import { useCart } from "@/contexts/CartContext";
 
 // Helper function to check if user can see item based on visibility setting
 function canUserSeeItem(visibility, currentUser, isActualAdmin, isContentCreator) {
@@ -180,6 +181,9 @@ const PublicNav = ({ currentUser, handleLogout, handleLogin, settings }) => {
     return window.innerWidth < 1024;
   });
 
+  // Cart functionality
+  const { cartCount } = useCart();
+
   useEffect(() => {
     setIsImpersonating(currentUser && currentUser._isImpersonated);
   }, [currentUser]);
@@ -257,14 +261,33 @@ const PublicNav = ({ currentUser, handleLogout, handleLogin, settings }) => {
               )}
             </Link>
 
-            {/* Menu Toggle Button */}
-            <button
-              onClick={() => setIsCollapsed(!isCollapsed)}
-              className="p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200"
-              aria-label={isCollapsed ? "פתח תפריט" : "סגור תפריט"}
-            >
-              {isCollapsed ? <Menu className="w-6 h-6" /> : <X className="w-6 h-6" />}
-            </button>
+            {/* Cart Icon and Menu Toggle */}
+            <div className="flex items-center gap-2">
+              {/* Cart Icon - only show if user is authenticated and collapsed (menu closed) */}
+              {currentUser && isCollapsed && (
+                <Link
+                  to="/checkout"
+                  className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200"
+                  title="עגלת קניות"
+                >
+                  <ShoppingCart className="w-6 h-6 text-gray-700" />
+                  {cartCount > 0 && (
+                    <div className="absolute -top-1 -left-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold shadow-lg">
+                      {cartCount > 99 ? '99+' : cartCount}
+                    </div>
+                  )}
+                </Link>
+              )}
+
+              {/* Menu Toggle Button */}
+              <button
+                onClick={() => setIsCollapsed(!isCollapsed)}
+                className="p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200"
+                aria-label={isCollapsed ? "פתח תפריט" : "סגור תפריט"}
+              >
+                {isCollapsed ? <Menu className="w-6 h-6" /> : <X className="w-6 h-6" />}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -422,6 +445,25 @@ const PublicNav = ({ currentUser, handleLogout, handleLogin, settings }) => {
             </Button>
           ) : (
             <div className="space-y-3">
+              {/* Cart Icon (for authenticated users) */}
+              <Link
+                to="/checkout"
+                className={`relative flex items-center gap-2 font-bold transition-all duration-300 hover:bg-gray-100 rounded-lg ${
+                  isCollapsed ? 'w-12 h-12 p-0 justify-center' : 'w-full justify-center py-3 px-3'
+                }`}
+                title={isCollapsed ? "עגלת קניות" : undefined}
+              >
+                <ShoppingCart className="w-5 h-5 text-blue-600" />
+                {!isCollapsed && <span className="text-blue-600">עגלת קניות</span>}
+                {cartCount > 0 && (
+                  <div className={`absolute bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold shadow-lg ${
+                    isCollapsed ? '-top-1 -left-1 w-5 h-5' : '-top-1 left-2 w-5 h-5'
+                  }`}>
+                    {cartCount > 99 ? '99+' : cartCount}
+                  </div>
+                )}
+              </Link>
+
               {/* User Info (only when expanded) */}
               {!isCollapsed && (
                 <div className="text-center">
