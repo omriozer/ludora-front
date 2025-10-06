@@ -10,7 +10,7 @@ import { applyCoupon } from "@/services/functions";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export default function PaymentModal({ product, user, settings, isTestMode = true, onClose }) {
+export default function PaymentModal({ product, user, settings, isTestMode = (import.meta.env.VITE_API_BASE?.includes('localhost') || import.meta.env.DEV), onClose }) {
   const navigate = useNavigate();
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState(null);
