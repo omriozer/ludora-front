@@ -87,12 +87,82 @@ export default function PaymentResult() {
   const loadPaymentResult = async () => {
     try {
       const urlParams = new URLSearchParams(window.location.search);
+
+      // Check for PayPlus parameters first
+      const transactionUid = urlParams.get('transaction_uid');
+      const pageRequestUid = urlParams.get('page_request_uid');
+
+      // Fallback to original parameters
       const paymentStatus = urlParams.get('status');
       const orderNumber = urlParams.get('order');
       const type = urlParams.get('type'); // 'game' or undefined (defaults to 'product')
       const freeParam = urlParams.get('free'); // 'true' if free item
 
-      setStatus(paymentStatus);
+      let finalStatus = paymentStatus;
+      let finalOrderNumber = orderNumber;
+
+      // Handle PayPlus redirect parameters
+      if (pageRequestUid && !paymentStatus) {
+        console.log('🔍 PayPlus redirect detected, finding purchase by page_request_uid:', pageRequestUid);
+
+        try {
+          // Find purchase by PayPlus page_request_uid in metadata
+          const purchases = await Purchase.filter({
+            metadata: {
+              payplus_page_request_uid: pageRequestUid
+            }
+          });
+
+          if (purchases && purchases.length > 0) {
+            const purchaseData = purchases[0];
+            console.log('✅ Found purchase via PayPlus UID:', purchaseData.id);
+
+            finalOrderNumber = purchaseData.order_number;
+
+            // Determine status from purchase and transaction presence
+            if (transactionUid && purchaseData.payment_status === 'pending') {
+              // Payment completed (we have transaction_uid), but webhook may not have fired yet
+              finalStatus = 'success';
+              console.log('💳 Payment successful - transaction_uid present:', transactionUid);
+
+              // Try to update purchase status in background (webhook fallback)
+              try {
+                console.log('🔄 Attempting to update purchase status as fallback for webhook...');
+                await Purchase.update(purchaseData.id, {
+                  payment_status: 'completed',
+                  metadata: {
+                    ...purchaseData.metadata,
+                    transaction_uid: transactionUid,
+                    payment_completed_via_fallback: true,
+                    payment_completed_at: new Date().toISOString()
+                  }
+                });
+                console.log('✅ Purchase status updated via fallback mechanism');
+              } catch (updateError) {
+                console.warn('⚠️ Could not update purchase status via fallback:', updateError);
+              }
+            } else {
+              // Use existing purchase status
+              const statusMap = {
+                'completed': 'success',
+                'failed': 'failure',
+                'cancelled': 'cancel',
+                'pending': transactionUid ? 'success' : 'pending'
+              };
+              finalStatus = statusMap[purchaseData.payment_status] || 'unknown';
+              console.log('📊 Using purchase status:', purchaseData.payment_status, '→', finalStatus);
+            }
+          } else {
+            console.warn('⚠️ No purchase found for PayPlus page_request_uid:', pageRequestUid);
+            finalStatus = transactionUid ? 'success' : 'unknown';
+          }
+        } catch (searchError) {
+          console.error('❌ Error searching for purchase by PayPlus UID:', searchError);
+          finalStatus = transactionUid ? 'success' : 'unknown';
+        }
+      }
+
+      setStatus(finalStatus);
       setItemType(type === 'game' ? 'game' : 'product');
       setIsFree(freeParam === 'true');
 
@@ -104,11 +174,11 @@ export default function PaymentResult() {
         console.log('User not authenticated');
       }
 
-      if (orderNumber) {
+      if (finalOrderNumber) {
         // Find purchase by order number
-        console.log('🔍 Looking for purchase with order:', orderNumber);
+        console.log('🔍 Looking for purchase with order:', finalOrderNumber);
         try {
-          const purchases = await Purchase.filter({ order_number: orderNumber });
+          const purchases = await Purchase.filter({ order_number: finalOrderNumber });
           
           if (purchases.length > 0) {
             const purchaseData = purchases[0];
@@ -186,7 +256,7 @@ export default function PaymentResult() {
               }
             }
           } else {
-            console.error('❌ Purchase not found for order:', orderNumber);
+            console.error('❌ Purchase not found for order:', finalOrderNumber);
             setError('רכישה לא נמצאה');
           }
         } catch (purchaseError) {
