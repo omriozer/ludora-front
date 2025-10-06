@@ -39,8 +39,10 @@ class PaymentClient {
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          // For existing purchase flow - send only required fields
-          purchaseId: purchaseIds[0],
+          // Multi-item cart support - send all purchase IDs
+          purchaseIds: purchaseIds, // Send all IDs for multi-item
+          purchaseId: purchaseIds[0], // Keep for backward compatibility
+          totalAmount: totalAmount,
           returnUrl: returnUrl || callbackUrl,
           callbackUrl,
           environment: environment === 'sandbox' ? 'test' : environment, // Map sandbox to test

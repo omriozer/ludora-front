@@ -33,7 +33,7 @@ import { PRODUCT_TYPES, getProductTypeName } from "@/config/productTypes";
 import {
   getUserIdFromToken,
   requireAuthentication,
-  getPendingPurchases,
+  getCartPurchases,
   calculateTotalPrice,
   groupPurchasesByType,
   showPurchaseErrorToast
@@ -109,12 +109,12 @@ export default function Checkout() {
       const settingsData = await Settings.find();
       setSettings(settingsData.length > 0 ? settingsData[0] : {});
 
-      // Load pending purchases (cart items)
-      const pendingPurchases = await getPendingPurchases(userId);
-      setCartItems(pendingPurchases);
+      // Load cart purchases (cart items)
+      const cartPurchases = await getCartPurchases(userId);
+      setCartItems(cartPurchases);
 
       // Calculate pricing
-      calculatePricing(pendingPurchases);
+      calculatePricing(cartPurchases);
 
     } catch (err) {
       console.error('Error loading checkout data:', err);
