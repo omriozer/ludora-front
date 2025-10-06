@@ -9,6 +9,7 @@ import { createPayplusPaymentPage } from "@/services/functions";
 import { applyCoupon } from "@/services/functions";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { getCartPurchases } from "@/utils/purchaseHelpers";
 
 export default function PaymentModal({ product, user, settings, isTestMode = (import.meta.env.VITE_API_BASE?.includes('localhost') || import.meta.env.DEV), onClose }) {
   const navigate = useNavigate();
@@ -102,9 +103,6 @@ export default function PaymentModal({ product, user, settings, isTestMode = (im
         }
       }
 
-      // Create purchase record with new schema
-      const orderNumber = generateOrderNumber();
-
       // Calculate access expiration for new schema
       let accessExpiresAt = null;
       if (!purchasedLifetimeAccess && purchasedAccessDays && purchasedAccessDays > 0) {
@@ -112,26 +110,63 @@ export default function PaymentModal({ product, user, settings, isTestMode = (im
         accessExpiresAt.setDate(accessExpiresAt.getDate() + purchasedAccessDays);
       }
 
-      const purchaseData = {
-        order_number: orderNumber,
-        buyer_user_id: user.id, // Use user ID instead of email/name/phone
-        purchasable_type: product.product_type, // New polymorphic structure
-        purchasable_id: product.entity_id || product.id, // Entity ID for polymorphic reference
-        payment_amount: finalPrice,
-        original_price: product.price,
-        discount_amount: discountAmount,
-        coupon_code: appliedCoupon?.code || null,
-        payment_status: 'pending',
-        access_expires_at: accessExpiresAt, // New access control field
-        metadata: {
-          environment: isTestMode ? 'test' : 'production',
-          product_title: product.title,
-          access_days: purchasedAccessDays,
-          lifetime_access: purchasedLifetimeAccess
-        }
-      };
+      // First, check if there's an existing cart purchase for this product
+      const cartPurchases = await getCartPurchases(user.id);
+      let existingCartPurchase = cartPurchases.find(p =>
+        p.purchasable_type === product.product_type &&
+        p.purchasable_id === (product.entity_id || product.id)
+      );
 
-      const purchase = await Purchase.create(purchaseData);
+      let purchase;
+
+      if (existingCartPurchase) {
+        // Update existing cart purchase to pending status and apply any discounts
+        console.log('Found existing cart purchase, transitioning to payment:', existingCartPurchase.id);
+
+        const updateData = {
+          payment_status: 'pending',
+          payment_amount: finalPrice,
+          discount_amount: discountAmount,
+          coupon_code: appliedCoupon?.code || null,
+          access_expires_at: accessExpiresAt,
+          metadata: {
+            ...existingCartPurchase.metadata,
+            environment: isTestMode ? 'test' : 'production',
+            product_title: product.title,
+            access_days: purchasedAccessDays,
+            lifetime_access: purchasedLifetimeAccess,
+            transitioned_to_payment_at: new Date().toISOString()
+          }
+        };
+
+        purchase = await Purchase.update(existingCartPurchase.id, updateData);
+      } else {
+        // Create new purchase record (fallback for direct payment)
+        console.log('No cart purchase found, creating new purchase for payment');
+
+        const orderNumber = generateOrderNumber();
+        const purchaseData = {
+          order_number: orderNumber,
+          buyer_user_id: user.id,
+          purchasable_type: product.product_type,
+          purchasable_id: product.entity_id || product.id,
+          payment_amount: finalPrice,
+          original_price: product.price,
+          discount_amount: discountAmount,
+          coupon_code: appliedCoupon?.code || null,
+          payment_status: 'pending',
+          access_expires_at: accessExpiresAt,
+          metadata: {
+            environment: isTestMode ? 'test' : 'production',
+            product_title: product.title,
+            access_days: purchasedAccessDays,
+            lifetime_access: purchasedLifetimeAccess,
+            created_via: 'direct_payment'
+          }
+        };
+
+        purchase = await Purchase.create(purchaseData);
+      }
 
       // Create PayPlus payment page
       const paymentResponse = await createPayplusPaymentPage({

@@ -89,9 +89,9 @@ export async function createPendingPurchase({
       payment_amount: price,
       original_price: price,
       discount_amount: 0,
-      payment_status: 'pending',
+      payment_status: 'cart',
       metadata: {
-        created_via: 'checkout_flow',
+        created_via: 'add_to_cart',
         ...metadata
       }
     };
@@ -149,7 +149,31 @@ export async function createFreePurchase(params) {
 }
 
 /**
- * Get all pending purchases for a user
+ * Get all cart purchases for a user (includes both 'cart' and 'pending' statuses)
+ * @param {string} userId - User ID
+ * @returns {Promise<array>} Array of cart purchase records
+ */
+export async function getCartPurchases(userId) {
+  try {
+    // Import Purchase here to avoid circular dependency
+    const { Purchase } = await import('@/services/entities');
+
+    const purchases = await Purchase.filter({
+      buyer_user_id: userId,
+      payment_status: ['cart', 'pending'] // Include both cart and pending items
+    });
+
+    clog(`Found ${purchases.length} cart purchases for user ${userId}`);
+    return purchases || [];
+
+  } catch (error) {
+    cerror('Error getting cart purchases:', error);
+    return [];
+  }
+}
+
+/**
+ * Get all pending purchases for a user (legacy function for backward compatibility)
  * @param {string} userId - User ID
  * @returns {Promise<array>} Array of pending purchase records
  */
@@ -199,7 +223,31 @@ export async function getAllNonRefundedPurchases(userId) {
 }
 
 /**
- * Clear all pending purchases for a user (e.g., after successful payment)
+ * Clear all cart and pending purchases for a user (e.g., after successful payment)
+ * @param {string} userId - User ID
+ * @returns {Promise<boolean>} Success status
+ */
+export async function clearCartPurchases(userId) {
+  try {
+    const cartPurchases = await getCartPurchases(userId);
+
+    for (const purchase of cartPurchases) {
+      await apiRequest(`/entities/purchase/${purchase.id}`, {
+        method: 'DELETE'
+      });
+    }
+
+    clog(`Cleared ${cartPurchases.length} cart purchases for user ${userId}`);
+    return true;
+
+  } catch (error) {
+    cerror('Error clearing cart purchases:', error);
+    return false;
+  }
+}
+
+/**
+ * Clear all pending purchases for a user (legacy function for backward compatibility)
  * @param {string} userId - User ID
  * @returns {Promise<boolean>} Success status
  */

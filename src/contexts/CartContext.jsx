@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { getPendingPurchases, getUserIdFromToken, isAuthenticated } from '@/utils/purchaseHelpers';
+import { getCartPurchases, getUserIdFromToken, isAuthenticated } from '@/utils/purchaseHelpers';
 import { clog, cerror } from '@/lib/utils';
 
 const CartContext = createContext();
@@ -26,10 +26,10 @@ export function CartProvider({ children }) {
         return;
       }
 
-      const pendingPurchases = await getPendingPurchases(userId);
-      setCartItems(pendingPurchases);
-      setCartCount(pendingPurchases.length);
-      clog(`Cart loaded: ${pendingPurchases.length} items`);
+      const cartPurchases = await getCartPurchases(userId);
+      setCartItems(cartPurchases);
+      setCartCount(cartPurchases.length);
+      clog(`Cart loaded: ${cartPurchases.length} items`);
     } catch (error) {
       cerror('Error loading cart items:', error);
       setCartItems([]);
