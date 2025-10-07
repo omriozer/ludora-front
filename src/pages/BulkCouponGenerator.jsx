@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { User } from "@/services/entities";
+import { getApiBase } from "@/utils/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,7 +30,6 @@ import {
 import { Link } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
 import { clog, cerror } from "@/lib/utils";
-import { getApiBase } from "@/utils/api";
 
 export default function BulkCouponGenerator() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -104,7 +103,13 @@ export default function BulkCouponGenerator() {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const user = await User.me();
+      const userResponse = await fetch(`${getApiBase()}/entities/user/me`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      const user = await userResponse.json();
       setCurrentUser(user);
       setIsAdmin(user.role === 'admin');
 

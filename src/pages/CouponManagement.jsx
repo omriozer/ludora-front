@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Coupon, User } from "@/services/entities";
+import { getApiBase } from "@/utils/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -70,12 +70,26 @@ export default function CouponManagement() {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const user = await User.me();
+      // Get current user
+      const userResponse = await fetch(`${getApiBase()}/entities/user/me`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      const user = await userResponse.json();
       setCurrentUser(user);
       setIsAdmin(user.role === 'admin');
 
       if (user.role === 'admin') {
-        const couponsData = await Coupon.find({}, '-created_at');
+        // Get all coupons
+        const couponsResponse = await fetch(`${getApiBase()}/entities/coupon`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        const couponsData = await couponsResponse.json();
         setCoupons(couponsData);
       }
     } catch (error) {
@@ -151,7 +165,13 @@ export default function CouponManagement() {
     }
 
     try {
-      await Coupon.remove(couponId);
+      await fetch(`${getApiBase()}/entities/coupon/${couponId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
       setMessage({ type: 'success', text: 'הקופון נמחק בהצלחה' });
       toast({
         title: "קופון נמחק",
@@ -174,7 +194,14 @@ export default function CouponManagement() {
   const handleToggleStatus = async (coupon) => {
     try {
       const newStatus = !coupon.is_active;
-      await Coupon.update(coupon.id, { is_active: newStatus });
+      await fetch(`${getApiBase()}/entities/coupon/${coupon.id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ is_active: newStatus })
+      });
       setMessage({
         type: 'success',
         text: newStatus ? 'הקופון הופעל בהצלחה' : 'הקופון הושבת בהצלחה'
@@ -204,7 +231,14 @@ export default function CouponManagement() {
       delete duplicatedCoupon.updated_at;
       delete duplicatedCoupon.usage_count;
 
-      await Coupon.create(duplicatedCoupon);
+      await fetch(`${getApiBase()}/entities/coupon`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(duplicatedCoupon)
+      });
       setMessage({ type: 'success', text: 'הקופון שוכפל בהצלחה' });
       toast({
         title: "קופון שוכפל",

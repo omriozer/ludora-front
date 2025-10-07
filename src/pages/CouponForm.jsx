@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Coupon, User, Product, Workshop, Course, File, Tool, Game } from "@/services/entities";
+import { getApiBase } from "@/utils/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -73,7 +73,14 @@ export default function CouponForm() {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const user = await User.me();
+      // Get current user
+      const userResponse = await fetch(`${getApiBase()}/entities/user/me`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      const user = await userResponse.json();
       setCurrentUser(user);
       setIsAdmin(user.role === 'admin');
 
@@ -83,12 +90,45 @@ export default function CouponForm() {
       }
 
       // Load products for targeting options
+      const [workshopsResponse, coursesResponse, filesResponse, toolsResponse, gamesResponse] = await Promise.all([
+        fetch(`${getApiBase()}/entities/workshop`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          }
+        }),
+        fetch(`${getApiBase()}/entities/course`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          }
+        }),
+        fetch(`${getApiBase()}/entities/file`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          }
+        }),
+        fetch(`${getApiBase()}/entities/tool`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          }
+        }),
+        fetch(`${getApiBase()}/entities/game`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          }
+        })
+      ]);
+
       const [workshopsData, coursesData, filesData, toolsData, gamesData] = await Promise.all([
-        Workshop.find({}, '-created_date'),
-        Course.find({}, '-created_date'),
-        File.find({}, '-created_date'),
-        Tool.find({}, '-created_date'),
-        Game.find({}, '-created_date')
+        workshopsResponse.json(),
+        coursesResponse.json(),
+        filesResponse.json(),
+        toolsResponse.json(),
+        gamesResponse.json()
       ]);
 
       const allProducts = [
@@ -102,7 +142,13 @@ export default function CouponForm() {
 
       // Load existing coupon if editing
       if (isEditing) {
-        const coupon = await Coupon.findByPk(id);
+        const couponResponse = await fetch(`${getApiBase()}/entities/coupon/${id}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        const coupon = await couponResponse.json();
         if (coupon) {
           setFormData({
             code: coupon.code || '',
@@ -223,14 +269,28 @@ export default function CouponForm() {
       };
 
       if (isEditing) {
-        await Coupon.update(id, couponData);
+        await fetch(`${getApiBase()}/entities/coupon/${id}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(couponData)
+        });
         toast({
           title: "קופון עודכן",
           description: "הקופון עודכן בהצלחה במערכת",
           variant: "default"
         });
       } else {
-        await Coupon.create(couponData);
+        await fetch(`${getApiBase()}/entities/coupon`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(couponData)
+        });
         toast({
           title: "קופון נוצר",
           description: "הקופון נוצר בהצלחה במערכת",

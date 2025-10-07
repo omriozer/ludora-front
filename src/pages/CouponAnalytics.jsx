@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Coupon, User, Transaction, Purchase } from "@/services/entities";
+import { getApiBase } from "@/utils/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -73,7 +73,27 @@ export default function CouponAnalytics() {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const user = await User.me();
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        setMessage({ type: 'error', text: 'נדרש להתחבר מחדש' });
+        return;
+      }
+
+      const apiBase = getApiBase();
+
+      // Get current user
+      const userResponse = await fetch(`${apiBase}/auth/me`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!userResponse.ok) {
+        throw new Error('Failed to get user data');
+      }
+
+      const user = await userResponse.json();
       setCurrentUser(user);
       setIsAdmin(user.role === 'admin');
 
@@ -82,15 +102,34 @@ export default function CouponAnalytics() {
       }
 
       // Load all relevant data
-      const [couponsData, transactionsData, purchasesData] = await Promise.all([
-        Coupon.find({}, '-created_at'),
-        Transaction.find({}, '-created_at').catch(() => []), // Transactions might not exist in all setups
-        Purchase.find({}, '-created_at')
+      const [couponsResponse, transactionsResponse, purchasesResponse] = await Promise.all([
+        fetch(`${apiBase}/entities/coupon`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }),
+        fetch(`${apiBase}/entities/transaction`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }).catch(() => null), // Transactions might not exist in all setups
+        fetch(`${apiBase}/entities/purchase`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
       ]);
 
-      setCoupons(couponsData || []);
-      setTransactions(transactionsData || []);
-      setPurchases(purchasesData || []);
+      const couponsData = couponsResponse.ok ? await couponsResponse.json() : [];
+      const transactionsData = transactionsResponse && transactionsResponse.ok ? await transactionsResponse.json() : [];
+      const purchasesData = purchasesResponse.ok ? await purchasesResponse.json() : [];
+
+      setCoupons(Array.isArray(couponsData) ? couponsData : []);
+      setTransactions(Array.isArray(transactionsData) ? transactionsData : []);
+      setPurchases(Array.isArray(purchasesData) ? purchasesData : []);
 
     } catch (error) {
       cerror("Error loading analytics data:", error);
