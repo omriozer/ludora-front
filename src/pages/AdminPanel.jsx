@@ -123,6 +123,12 @@ export default function AdminPanel() {
       url: "/schools",
       description: "נהל את רשימת מוסדות החינוך במערכת"
     },
+    {
+      title: "קופוני הנחה",
+      icon: Tag,
+      url: "/coupons",
+      description: "צור וניהל קופוני הנחה ומבצעים למערכת"
+    },
     // Add other admin features here if necessary in the future
   ];
 

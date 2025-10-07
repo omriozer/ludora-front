@@ -416,6 +416,48 @@ function App() {
 					}
 				/>
 
+				{/* Coupon Admin Routes */}
+				<Route
+					path='/coupons'
+					element={
+						<AdminRoute>
+							<Pages.CouponManagement />
+						</AdminRoute>
+					}
+				/>
+				<Route
+					path='/coupons/create'
+					element={
+						<AdminRoute>
+							<Pages.CouponForm />
+						</AdminRoute>
+					}
+				/>
+				<Route
+					path='/coupons/edit/:id'
+					element={
+						<AdminRoute>
+							<Pages.CouponForm />
+						</AdminRoute>
+					}
+				/>
+				<Route
+					path='/coupons/analytics'
+					element={
+						<AdminRoute>
+							<Pages.CouponAnalytics />
+						</AdminRoute>
+					}
+				/>
+				<Route
+					path='/coupons/bulk-generate'
+					element={
+						<AdminRoute>
+							<Pages.BulkCouponGenerator />
+						</AdminRoute>
+					}
+				/>
+
 				<Route
 					path='*'
 					element={<Pages.NotFound />}

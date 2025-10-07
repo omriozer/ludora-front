@@ -295,6 +295,12 @@ export default function FloatingAdminMenu({ currentUser }) {
           description: "ניהול רכישות ותשלומים"
         },
         {
+          title: "קופוני הנחה",
+          url: "/coupons",
+          icon: <Tag className="w-4 h-4" />,
+          description: "יצירה וניהול קופונים ומבצעים"
+        },
+        {
           title: "ניהול בתי ספר",
           url: "/schools",
           icon: <School className="w-4 h-4" />,

@@ -41,6 +41,8 @@ import {
 import paymentClient from "@/services/paymentClient";
 import { toast } from "@/components/ui/use-toast";
 import { useCart } from "@/contexts/CartContext";
+import CouponInput from "@/components/CouponInput";
+import couponClient from "@/services/couponClient";
 
 
 export default function Checkout() {
@@ -54,6 +56,9 @@ export default function Checkout() {
   const [error, setError] = useState(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [paymentEnvironment, setPaymentEnvironment] = useState('production');
+
+  // Coupon management
+  const [appliedCoupons, setAppliedCoupons] = useState([]);
 
   // Pricing breakdown
   const [pricingBreakdown, setPricingBreakdown] = useState({
@@ -124,19 +129,24 @@ export default function Checkout() {
     setIsLoading(false);
   }, [navigate]);
 
-  // Calculate pricing breakdown
-  const calculatePricing = (purchases) => {
+  // Calculate pricing breakdown with applied coupons
+  const calculatePricing = (purchases, coupons = appliedCoupons) => {
     const subtotal = calculateTotalPrice(purchases);
-    const discounts = 0; // TODO: Implement coupon system
+
+    // Calculate total discounts from applied coupons
+    const discounts = coupons.reduce((total, coupon) => {
+      return total + (coupon.discountAmount || 0);
+    }, 0);
+
     const tax = 0; // No tax for now
-    const total = subtotal - discounts + tax;
+    const total = Math.max(0, subtotal - discounts + tax); // Ensure total doesn't go negative
 
     setPricingBreakdown({
       subtotal,
       discounts,
       tax,
       total,
-      appliedCoupons: []
+      appliedCoupons: coupons
     });
   };
 
@@ -165,6 +175,47 @@ export default function Checkout() {
     }
   };
 
+  // Handle coupon application
+  const handleCouponApplied = (couponData) => {
+    try {
+      const newCoupon = {
+        code: couponData.couponCode,
+        id: couponData.couponId,
+        discountAmount: couponData.discountAmount,
+        discountType: couponData.discountType,
+        priority: couponData.priority,
+        finalAmount: couponData.finalAmount
+      };
+
+      const updatedCoupons = [...appliedCoupons, newCoupon];
+      setAppliedCoupons(updatedCoupons);
+
+      // Recalculate pricing with new coupon
+      calculatePricing(cartItems, updatedCoupons);
+
+    } catch (error) {
+      console.error('Error handling coupon application:', error);
+      showPurchaseErrorToast(error, 'בהחלת הקופון');
+    }
+  };
+
+  // Handle coupon removal
+  const handleCouponRemoved = (couponToRemove) => {
+    try {
+      const updatedCoupons = appliedCoupons.filter(
+        coupon => coupon.code !== couponToRemove.code
+      );
+      setAppliedCoupons(updatedCoupons);
+
+      // Recalculate pricing without removed coupon
+      calculatePricing(cartItems, updatedCoupons);
+
+    } catch (error) {
+      console.error('Error handling coupon removal:', error);
+      showPurchaseErrorToast(error, 'בהסרת הקופון');
+    }
+  };
+
   // Proceed to payment
   const handleProceedToPayment = async () => {
     if (cartItems.length === 0) {
@@ -187,13 +238,22 @@ export default function Checkout() {
       // Use admin-selected environment or default to production
       const environment = paymentEnvironment;
 
-      // Create PayPlus payment page
+      // Create PayPlus payment page with coupon information
       const paymentResponse = await paymentClient.createCheckoutPaymentPage({
         purchaseIds,
         totalAmount,
         userId,
         returnUrl: `${window.location.origin}/payment-result`,
-        environment
+        environment,
+        // Include coupon information for transaction tracking
+        appliedCoupons: appliedCoupons.map(coupon => ({
+          code: coupon.code,
+          id: coupon.id,
+          discountAmount: coupon.discountAmount,
+          discountType: coupon.discountType
+        })),
+        originalAmount: pricingBreakdown.subtotal, // Store original amount before discounts
+        totalDiscount: pricingBreakdown.discounts
       });
 
       if (paymentResponse.success && paymentResponse.data?.payment_url) {
@@ -389,9 +449,27 @@ export default function Checkout() {
                     </div>
 
                     {pricingBreakdown.discounts > 0 && (
-                      <div className="flex justify-between text-green-600">
-                        <span>הנחות</span>
-                        <span>-₪{pricingBreakdown.discounts.toFixed(2)}</span>
+                      <div className="space-y-1">
+                        {/* Individual coupon discounts */}
+                        {appliedCoupons.map((coupon, index) => (
+                          <div key={index} className="flex justify-between text-green-600">
+                            <span className="text-sm">
+                              קופון {coupon.code}
+                              {coupon.discountType === 'percentage' && (
+                                <span className="text-xs ml-1">({coupon.discountValue}%)</span>
+                              )}
+                            </span>
+                            <span>-₪{coupon.discountAmount?.toFixed(2)}</span>
+                          </div>
+                        ))}
+
+                        {/* Total discounts summary */}
+                        {appliedCoupons.length > 1 && (
+                          <div className="flex justify-between text-green-700 font-medium border-t border-green-200 pt-1">
+                            <span>סה"כ הנחות</span>
+                            <span>-₪{pricingBreakdown.discounts.toFixed(2)}</span>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -401,6 +479,20 @@ export default function Checkout() {
                         <span className="text-blue-600">₪{pricingBreakdown.total.toFixed(2)}</span>
                       </div>
                     </div>
+                  </div>
+
+                  {/* Coupon Input Section */}
+                  <div className="border-t pt-4">
+                    <CouponInput
+                      cartItems={cartItems}
+                      cartTotal={pricingBreakdown.subtotal}
+                      userId={currentUser?.id}
+                      onCouponApplied={handleCouponApplied}
+                      onCouponRemoved={handleCouponRemoved}
+                      appliedCoupons={appliedCoupons}
+                      disabled={isProcessingPayment}
+                      showSuggestions={true}
+                    />
                   </div>
 
                   {/* Admin Environment Toggle */}
