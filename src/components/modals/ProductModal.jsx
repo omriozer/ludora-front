@@ -982,6 +982,15 @@ export default function ProductModal({
         total_duration_minutes: formData.total_duration_minutes
       };
 
+      // Debug logging
+      console.log('🔍 Form submission debug:');
+      console.log('   formData.short_description:', formData.short_description);
+      console.log('   formData.is_published:', formData.is_published);
+      console.log('   formData.tags:', formData.tags);
+      console.log('   baseData.short_description:', baseData.short_description);
+      console.log('   baseData.is_published:', baseData.is_published);
+      console.log('   baseData.tags:', baseData.tags);
+
       // Add is_private flags if they exist and are relevant
       if (formData.image_is_private !== undefined) baseData.image_is_private = formData.image_is_private;
 
@@ -1090,6 +1099,13 @@ export default function ProductModal({
         delete entityData.product_type;
 
 
+        // Debug logging for Product.update
+        console.log('🔍 Product.update debug:');
+        console.log('   productData:', productData);
+        console.log('   productData.short_description:', productData.short_description);
+        console.log('   productData.is_published:', productData.is_published);
+        console.log('   productData.tags:', productData.tags);
+
         // Always update Product table with Product-specific fields (including marketing video)
         await Product.update(editingProduct.id, productData);
 
@@ -1157,6 +1173,13 @@ export default function ProductModal({
           ...cleanedData
         };
 
+
+        // Debug logging for entity creation
+        console.log('🔍 Entity.create debug:');
+        console.log('   productData:', productData);
+        console.log('   productData.short_description:', productData.short_description);
+        console.log('   productData.is_published:', productData.is_published);
+        console.log('   productData.tags:', productData.tags);
 
         // For creation, use the appropriate entity service but ensure all data is included
         createdEntity = await entityService.create(productData);
