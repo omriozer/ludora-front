@@ -1,65 +1,51 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Product, File, Category, Purchase, User, Settings } from "@/services/entities"; // Using Product entity for file products
-import { PRODUCT_TYPES, getProductTypeName, formatGradeRange } from "@/config/productTypes";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { File, Category, User, Settings } from "@/services/entities";
+import { getProductTypeName, formatGradeRange } from "@/config/productTypes";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ProductModal from '@/components/modals/ProductModal';
 import {
   Search,
   FileText,
-  Download,
-  Filter,
   Eye,
-  Copyright,
   AlertCircle,
-  Sparkles,
-  Tag,
-  ShoppingCart,
-  Star,
   Users,
-  Clock,
   Play,
   Edit,
   TrendingUp,
-  CheckCircle,
   GraduationCap,
   BookOpen,
   X
 } from "lucide-react";
-import { format } from "date-fns";
-import { he } from "date-fns/locale";
 import { motion } from "framer-motion";
-import GetFileButton from "@/components/files/GetFileButton";
 import FileAccessStatus from "@/components/files/FileAccessStatus";
-import { hasActiveAccess, getUserPurchaseForFile } from "@/components/files/fileAccessUtils";
-import { formatPrice } from "@/lib/utils";
 import PriceDisplayTag from "@/components/ui/PriceDisplayTag";
 import { apiRequest } from "@/utils/api";
 import { getProductImageUrl } from "@/utils/videoUtils.js";
 import ProductActionBar from "@/components/ui/ProductActionBar";
-import { useCart } from "@/contexts/CartContext";
+import PdfViewer from "@/components/pdf/PdfViewer";
+import { apiDownload } from "@/services/apiClient";
 
 export default function Files() {
   const navigate = useNavigate();
-  const { addToCart } = useCart();
 
   const [fileProducts, setFileProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [filteredFileProducts, setFilteredFileProducts] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
-  const [settings, setSettings] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState(null);
 
   // Modal states
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+  const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
+  const [selectedFileForViewer, setSelectedFileForViewer] = useState(null);
 
   // Filter and search states
   const [searchTerm, setSearchTerm] = useState("");
@@ -320,62 +306,41 @@ export default function Files() {
     );
   };
 
-  const handlePurchase = async (file) => {
-    // Import purchase helpers
-    const {
-      requireAuthentication,
-      getUserIdFromToken,
-      findProductForEntity,
-      createPendingPurchase,
-      showPurchaseSuccessToast,
-      showPurchaseErrorToast
-    } = await import('@/utils/purchaseHelpers');
+  // Enhanced file access logic with PDF viewer support (same as ProductDetails)
+  const handleFileAccess = async (file) => {
+    if (!file.id && !file.entity_id) return;
 
-    // Check authentication
-    if (!requireAuthentication(navigate, '/checkout')) {
-      return;
-    }
+    // Check if it's a PDF file
+    const isPdf = file.file_type === 'pdf' || file.file_name?.toLowerCase().endsWith('.pdf');
 
-    const userId = getUserIdFromToken();
-    if (!userId) {
-      showPurchaseErrorToast('לא ניתן לזהות את המשתמש', 'בהוספה לעגלה');
-      return;
-    }
+    if (isPdf) {
+      // Open PDF in viewer modal
+      setSelectedFileForViewer(file);
+      setPdfViewerOpen(true);
+    } else {
+      // For non-PDF files, use direct download
+      try {
+        // Use apiDownload to get blob with auth headers
+        const blob = await apiDownload(`/assets/download/file/${file.entity_id || file.id}`);
 
-    try {
-      // Find Product record for this file
-      const productRecord = await findProductForEntity('file', file.id);
+        // Create blob URL and open in new tab
+        const blobUrl = URL.createObjectURL(blob);
+        window.open(blobUrl, '_blank');
 
-      if (!productRecord) {
-        showPurchaseErrorToast('לא נמצא מוצר מתאים לרכישה', 'בהוספה לעגלה');
-        return;
+        // Clean up blob URL after a delay
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+      } catch (error) {
+        console.error('Error downloading file:', error);
       }
-
-      if (!productRecord.price || productRecord.price <= 0) {
-        showPurchaseErrorToast('מחיר המוצר לא זמין', 'בהוספה לעגלה');
-        return;
-      }
-
-      // Create pending purchase
-      await createPendingPurchase({
-        entityType: 'file',
-        entityId: file.id,
-        price: productRecord.price,
-        userId,
-        metadata: {
-          product_title: file.title,
-          source: 'Files_page'
-        }
-      });
-
-      // Show success message and redirect to checkout
-      showPurchaseSuccessToast(file.title, false);
-      navigate('/checkout');
-
-    } catch (error) {
-      showPurchaseErrorToast(error, 'בהוספה לעגלה');
     }
   };
+
+  // Handle PDF preview for users without access (same as ProductDetails)
+  const handlePdfPreview = (file) => {
+    setSelectedFileForViewer(file);
+    setPdfViewerOpen(true);
+  };
+
 
   const handleEdit = async (product) => {
     try {
@@ -605,11 +570,12 @@ export default function Files() {
                 >
                   <FileCard
                     file={fileProduct}
-                    onPurchase={handlePurchase}
                     onCartUpdate={handleCartUpdate}
                     onEdit={handleEdit}
                     fileTexts={fileTexts}
                     currentUser={currentUser}
+                    onFileAccess={handleFileAccess}
+                    onPdfPreview={handlePdfPreview}
                   />
                 </motion.div>
               );
@@ -660,11 +626,25 @@ export default function Files() {
           currentUser={currentUser}
         />
       )}
+
+      {/* PDF Viewer Modal (same as ProductDetails) */}
+      {pdfViewerOpen && selectedFileForViewer && (
+        <PdfViewer
+          fileId={selectedFileForViewer.entity_id || selectedFileForViewer.id}
+          fileName={selectedFileForViewer.file_name || `${selectedFileForViewer.title}.pdf`}
+          hasAccess={selectedFileForViewer.purchase?.payment_status === 'completed'}
+          allowPreview={selectedFileForViewer.allow_preview}
+          onClose={() => {
+            setPdfViewerOpen(false);
+            setSelectedFileForViewer(null);
+          }}
+        />
+      )}
     </div>
   );
 }
 
-function FileCard({ file, onPurchase, onCartUpdate, onEdit, fileTexts, currentUser }) {
+function FileCard({ file, onCartUpdate, onEdit, fileTexts, currentUser, onFileAccess, onPdfPreview }) {
   const navigate = useNavigate();
 
   // Handle successful cart addition
@@ -856,6 +836,8 @@ function FileCard({ file, onPurchase, onCartUpdate, onEdit, fileTexts, currentUs
                 className="text-xs sm:text-sm"
                 showCartButton={true}
                 onPurchaseSuccess={handleCartSuccess}
+                onFileAccess={onFileAccess}
+                onPdfPreview={onPdfPreview}
               />
             </div>
           </div>
@@ -864,3 +846,5 @@ function FileCard({ file, onPurchase, onCartUpdate, onEdit, fileTexts, currentUs
     </motion.div>
   );
 }
+
+// Add PDF viewer modal at the end of the Files component (same as ProductDetails)
