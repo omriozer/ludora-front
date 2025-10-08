@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Workshop, Course, File, Tool, User, Purchase, Settings } from "@/services/entities"; // Updated imports
+import { User, Purchase, Settings } from "@/services/entities";
 import { apiDownload } from "@/services/apiClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,19 +12,13 @@ import {
   Users,
   Play,
   BookOpen,
-  Download,
   FileText,
   Eye,
-  ShoppingCart,
   CheckCircle,
   AlertCircle,
-  Star,
-  ArrowRight,
   Monitor,
   Video,
   Globe,
-  Target,
-  Award,
   Package,
   Zap,
   Tag,
@@ -39,9 +33,8 @@ import VideoPlayer from "../components/VideoPlayer"; // Added import for VideoPl
 import SecureVideoPlayer from "../components/SecureVideoPlayer";
 import { getMarketingVideoUrl, getProductImageUrl } from '@/utils/videoUtils.js';
 import { getProductTypeName, formatGradeRange } from "@/config/productTypes";
-import GetFileButton from "@/components/files/GetFileButton";
 import FileAccessStatus from "@/components/files/FileAccessStatus";
-import { hasActiveAccess, getUserPurchaseForFile } from "@/components/files/fileAccessUtils";
+import { hasActiveAccess } from "@/components/files/fileAccessUtils";
 import { purchaseUtils } from "@/utils/api.js";
 import PriceDisplayTag from "@/components/ui/PriceDisplayTag";
 import ProductActionBar from "@/components/ui/ProductActionBar";
@@ -52,15 +45,15 @@ export default function ProductDetails() {
 
   const [item, setItem] = useState(null); // Renamed from product to item for generic use
   const [itemType, setItemType] = useState(null); // Track what type of entity we're viewing
-  const [currentUser, setCurrentUser] = useState(null);
   const [userPurchases, setUserPurchases] = useState([]);
   const [hasAccess, setHasAccess] = useState(false);
   const [purchase, setPurchase] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [settings, setSettings] = useState({});
   const [detailsTexts, setDetailsTexts] = useState({});
   const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [settings, setSettings] = useState({});
 
   useEffect(() => {
     loadTexts();
@@ -145,76 +138,29 @@ export default function ProductDetails() {
     setPdfViewerOpen(true);
   };
 
-  const handleDownload = async () => {
-    try {
-      const userPurchase = getUserPurchaseForItem(item.id, itemType);
-      if (userPurchase) {
-        await Purchase.update(userPurchase.id, {
-          download_count: (userPurchase.download_count || 0) + 1,
-          last_accessed: new Date().toISOString()
-        });
-      }
+  // Handle course access
+  const handleCourseAccess = (course) => {
+    navigate(`/course?course=${course.entity_id || course.id}`);
+  };
 
-      // Update item download count based on type
-      const EntityClass = getEntityClass(itemType);
-      await EntityClass.update(item.id, {
-        downloads_count: (item.file?.downloads_count || item.downloads_count || 0) + 1
-      });
+  // Handle workshop access
+  const handleWorkshopAccess = (workshop) => {
+    const now = new Date();
+    const scheduledDate = workshop.scheduled_date ? new Date(workshop.scheduled_date) : null;
+    const isLive = scheduledDate && scheduledDate > now;
 
-      let blob;
-      let filename;
-
-      // For File products, use assets API
-      if (itemType === 'file' && item.entity_id) {
-        blob = await apiDownload(`/assets/download/file/${item.entity_id}`);
-        filename = `${item.title || 'download'}.${item.file_type || 'pdf'}`;
-      }
-      // For Tool products, use tool_url
-      else if (itemType === 'tool' && item.tool_url) {
-        const response = await fetch(item.tool_url);
-        blob = await response.blob();
-        filename = `${item.title || 'download'}.zip`;
-      }
-      // Fallback for legacy file_url (should not happen anymore)
-      else if (item.file_url) {
-        const response = await fetch(item.file_url);
-        blob = await response.blob();
-        filename = `${item.title || 'download'}.${item.file_type || 'pdf'}`;
-      }
-      else {
-        console.error("No download method available for item:", item);
-        return;
-      }
-
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = filename;
-      link.style.display = 'none';
-
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      window.URL.revokeObjectURL(url);
-
-    } catch (error) {
-      console.error("Error downloading file:", error);
+    if (isLive && workshop.zoom_link) {
+      // Live workshop - open Zoom link
+      window.open(workshop.zoom_link, '_blank');
+    } else if (workshop.recording_url || workshop.video_file_url) {
+      // Recorded workshop - navigate to video viewer
+      navigate(`/video?workshop=${workshop.entity_id || workshop.id}`);
+    } else {
+      // Fallback - navigate to workshop details
+      navigate(`/product-details?type=workshop&id=${workshop.entity_id || workshop.id}`);
     }
   };
 
-  // Helper function to get the right entity class
-  const getEntityClass = (type) => {
-    switch (type) {
-      case 'workshop': return Workshop;
-      case 'course': return Course;
-      case 'file': return File;
-      case 'tool': return Tool;
-      default:
-        console.error('Unknown entity type:', type);
-        return File; // Default to File for safety
-    }
-  };
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -315,180 +261,6 @@ export default function ProductDetails() {
     loadData();
   }, [loadData]);
 
-  const handleProductAccess = () => {
-    if (!item) return;
-
-    switch (itemType) {
-      case 'course':
-        navigate(`/course?course=${item.id}`);
-        break;
-      case 'file':
-        // Use same file access logic as Files.jsx
-        handleFileAccess(item);
-        break;
-      case 'tool':
-        if (item.tool_url) {
-          window.open(item.tool_url, '_blank');
-        } else {
-          handleDownload();
-        }
-        break;
-      case 'workshop':
-        if (item.recording_url) {
-          navigate(`/video?workshop=${item.id}`);
-        } else if (item.zoom_link && new Date(item.scheduled_date) > new Date()) {
-          window.open(item.zoom_link, '_blank');
-        }
-        break;
-      default:
-        // Legacy product types
-        switch (item.product_type) {
-          case 'course':
-            navigate(`/course?course=${item.id}`);
-            break;
-          case 'file':
-            // Use same file access logic as Files.jsx
-            handleFileAccess(item);
-            break;
-          case 'workshop':
-            if (item.recording_url) {
-              navigate(`/video?workshop=${item.id}`);
-            } else if (item.zoom_link && new Date(item.scheduled_date) > new Date()) {
-              window.open(item.zoom_link, '_blank');
-            }
-            break;
-          default:
-            break;
-        }
-        break;
-    }
-  };
-
-  const handlePurchase = async () => {
-    // Import purchase helpers
-    const {
-      requireAuthentication,
-      getUserIdFromToken,
-      findProductForEntity,
-      createPendingPurchase,
-      showPurchaseSuccessToast,
-      showPurchaseErrorToast
-    } = await import('@/utils/purchaseHelpers');
-
-    // Check authentication
-    if (!requireAuthentication(navigate, '/checkout')) {
-      return;
-    }
-
-    const userId = getUserIdFromToken();
-    if (!userId) {
-      showPurchaseErrorToast('לא ניתן לזהות את המשתמש', 'בהוספה לעגלה');
-      return;
-    }
-
-    try {
-      let productRecord;
-      let entityType;
-      let entityId;
-
-      if (itemType && itemType !== 'product') {
-        // Handle specific entity types
-        entityType = itemType;
-        entityId = item.id;
-        productRecord = await findProductForEntity(entityType, entityId);
-      } else {
-        // Handle legacy product case - item should already be a Product
-        productRecord = item;
-        entityType = item.product_type || 'product';
-        entityId = item.entity_id || item.id;
-      }
-
-      if (!productRecord) {
-        showPurchaseErrorToast('לא נמצא מוצר מתאים לרכישה', 'בהוספה לעגלה');
-        return;
-      }
-
-      if (!productRecord.price || productRecord.price <= 0) {
-        showPurchaseErrorToast('מחיר המוצר לא זמין', 'בהוספה לעגלה');
-        return;
-      }
-
-      // Create pending purchase
-      await createPendingPurchase({
-        entityType,
-        entityId,
-        price: productRecord.price,
-        userId,
-        metadata: {
-          product_title: item.title,
-          source: 'ProductDetails_page'
-        }
-      });
-
-      // Show success message and redirect to checkout
-      showPurchaseSuccessToast(item.title, false);
-      navigate('/checkout');
-
-    } catch (error) {
-      showPurchaseErrorToast(error, 'בהוספה לעגלה');
-    }
-  };
-
-  const getAccessButtonText = () => {
-    if (!item) return detailsTexts.buyNow;
-
-    const type = itemType === 'product' ? item.product_type : itemType;
-
-    switch (type) {
-      case 'course':
-        return detailsTexts.startCourse;
-      case 'file':
-        // Use same text as Files.jsx - "צפיה בקובץ" when has access, "רכישת קובץ" when no access
-        return hasAccess ? detailsTexts.watchFile : detailsTexts.getAccess;
-      case 'tool':
-        return item.tool_url ? `גש ל${getProductTypeName('tool', 'singular')}` : detailsTexts.downloadFile;
-      case 'workshop':
-        const now = new Date();
-        const scheduledDate = item.scheduled_date ? new Date(item.scheduled_date) : null;
-
-        if (scheduledDate && scheduledDate > now) {
-          return detailsTexts.joinWorkshop;
-        } else if (item.recording_url) {
-          return detailsTexts.watchRecording;
-        } else {
-          return detailsTexts.getAccess;
-        }
-      default:
-        return detailsTexts.getAccess;
-    }
-  };
-
-
-  const getAccessButtonIcon = () => {
-    if (!item) return <ShoppingCart className="w-5 h-5 ml-2" />;
-
-    const type = itemType === 'product' ? item.product_type : itemType;
-
-    switch (type) {
-      case 'course':
-        return <BookOpen className="w-5 h-5 ml-2" />;
-      case 'file':
-        return <Download className="w-5 h-5 ml-2" />;
-      case 'tool':
-        return item.tool_url ? <Globe className="w-5 h-5 ml-2" /> : <Download className="w-5 h-5 ml-2" />;
-      case 'workshop':
-        const now = new Date();
-        const scheduledDate = item.scheduled_date ? new Date(item.scheduled_date) : null;
-        
-        if (scheduledDate && scheduledDate > now) {
-          return <Users className="w-5 h-5 ml-2" />;
-        } else {
-          return <Play className="w-5 h-5 ml-2" />;
-        }
-      default:
-        return <ArrowRight className="w-5 h-5 ml-2" />;
-    }
-  };
 
 
   const getProductTypeLabel = (type) => {
@@ -612,8 +384,7 @@ export default function ProductDetails() {
                       isFile,
                       isPdf,
                       allowPreview: item.allow_preview,
-                      shouldShow,
-                      buttonText: getAccessButtonText()
+                      shouldShow
                     });
 
                     return shouldShow;
@@ -735,26 +506,17 @@ export default function ProductDetails() {
 
                 {/* Action Buttons */}
                 <div className="space-y-3 sm:space-y-4">
-                  {hasAccess ? (
-                    <Button
-                      onClick={handleProductAccess}
-                      className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-3 sm:py-4 text-base sm:text-lg font-semibold rounded-2xl shadow-lg transform hover:scale-105 transition-all duration-300"
-                      size="lg"
-                    >
-                      {getAccessButtonIcon()}
-                      {getAccessButtonText()}
-                    </Button>
-                  ) : (
-                    <ProductActionBar
-                      product={{...item, purchase: purchase}}
-                      className="py-3 sm:py-4 text-base sm:text-lg"
-                      size="lg"
-                      fullWidth={true}
-                      showCartButton={true}
-                      onFileAccess={handleFileAccess}
-                      onPdfPreview={handlePdfPreview}
-                    />
-                  )}
+                  <ProductActionBar
+                    product={{...item, purchase: purchase}}
+                    className="py-3 sm:py-4 text-base sm:text-lg font-semibold rounded-2xl shadow-lg"
+                    size="lg"
+                    fullWidth={true}
+                    showCartButton={true}
+                    onFileAccess={handleFileAccess}
+                    onPdfPreview={handlePdfPreview}
+                    onCourseAccess={handleCourseAccess}
+                    onWorkshopAccess={handleWorkshopAccess}
+                  />
                 </div>
               </div>
             </div>
@@ -825,26 +587,17 @@ export default function ProductDetails() {
 
                 {/* Action Buttons */}
                 <div className="flex flex-col gap-3 sm:gap-4 max-w-md mx-auto">
-                  {hasAccess ? (
-                    <Button
-                      onClick={handleProductAccess}
-                      className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-3 sm:py-4 px-8 sm:px-12 text-base sm:text-lg font-semibold rounded-2xl shadow-xl transform hover:scale-105 transition-all duration-300"
-                      size="lg"
-                    >
-                      {getAccessButtonIcon()}
-                      {getAccessButtonText()}
-                    </Button>
-                  ) : (
-                    <ProductActionBar
-                      product={{...item, purchase: purchase}}
-                      className="py-3 sm:py-4 px-8 sm:px-12 text-base sm:text-lg"
-                      size="lg"
-                      fullWidth={true}
-                      showCartButton={true}
-                      onFileAccess={handleFileAccess}
-                      onPdfPreview={handlePdfPreview}
-                    />
-                  )}
+                  <ProductActionBar
+                    product={{...item, purchase: purchase}}
+                    className="py-3 sm:py-4 px-8 sm:px-12 text-base sm:text-lg font-semibold rounded-2xl shadow-xl"
+                    size="lg"
+                    fullWidth={true}
+                    showCartButton={true}
+                    onFileAccess={handleFileAccess}
+                    onPdfPreview={handlePdfPreview}
+                    onCourseAccess={handleCourseAccess}
+                    onWorkshopAccess={handleWorkshopAccess}
+                  />
                 </div>
               </div>
             </div>
@@ -904,12 +657,13 @@ export default function ProductDetails() {
                 <div className="bg-gray-100 rounded-lg p-4 sm:p-6 md:p-8 text-center">
                   <Play className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400 mx-auto mb-3 sm:mb-4" />
                   <p className="text-sm sm:text-base text-gray-600 mb-3 sm:mb-4">צפייה ב{getProductTypeName('workshop', 'singular')} המוקלטת זמינה לאחר רכישה</p>
-                  <Button
-                    onClick={handlePurchase}
-                    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-3 px-6 sm:py-4 sm:px-12 text-base sm:text-lg font-semibold rounded-xl sm:rounded-2xl shadow-xl transform hover:scale-105 transition-all duration-300"
-                  >
-                    רכוש גישה
-                  </Button>
+                  <ProductActionBar
+                    product={{...item, purchase: purchase}}
+                    className="py-3 px-6 sm:py-4 sm:px-12 text-base sm:text-lg font-semibold rounded-xl sm:rounded-2xl shadow-xl"
+                    size="lg"
+                    showCartButton={false}
+                    onWorkshopAccess={handleWorkshopAccess}
+                  />
                 </div>
               )}
             </CardContent>

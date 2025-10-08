@@ -274,7 +274,18 @@ class EntityAPI {
   }
 
   async find(query = {}) {
-    const searchParams = new URLSearchParams(query);
+    const searchParams = new URLSearchParams();
+
+    // Handle query parameters properly, including arrays
+    for (const [key, value] of Object.entries(query)) {
+      if (Array.isArray(value)) {
+        // For arrays, add multiple entries with the same key
+        value.forEach(item => searchParams.append(key, item));
+      } else {
+        searchParams.set(key, value);
+      }
+    }
+
     const queryString = searchParams.toString();
     const endpoint = queryString ? `${this.basePath}?${queryString}` : this.basePath;
     return apiRequest(endpoint);
@@ -282,8 +293,18 @@ class EntityAPI {
 
   // Add filter method as an alias to find for compatibility
   async filter(query = {}, options = null) {
-    const searchParams = new URLSearchParams(query);
-    
+    const searchParams = new URLSearchParams();
+
+    // Handle query parameters properly, including arrays
+    for (const [key, value] of Object.entries(query)) {
+      if (Array.isArray(value)) {
+        // For arrays, add multiple entries with the same key
+        value.forEach(item => searchParams.append(key, item));
+      } else {
+        searchParams.set(key, value);
+      }
+    }
+
     // Handle different option formats
     if (options) {
       if (options.order) {
@@ -293,7 +314,7 @@ class EntityAPI {
         // If options is a simple string or array, use it directly
         searchParams.set('sort', Array.isArray(options) ? JSON.stringify(options) : options);
       }
-      
+
       // Handle other options like limit, offset
       if (options.limit) {
         searchParams.set('limit', options.limit.toString());
@@ -302,7 +323,7 @@ class EntityAPI {
         searchParams.set('offset', options.offset.toString());
       }
     }
-    
+
     const queryString = searchParams.toString();
     const endpoint = queryString ? `${this.basePath}?${queryString}` : this.basePath;
     return apiRequest(endpoint);

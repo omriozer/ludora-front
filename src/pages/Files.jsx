@@ -42,7 +42,7 @@ import { formatPrice } from "@/lib/utils";
 import PriceDisplayTag from "@/components/ui/PriceDisplayTag";
 import { apiRequest } from "@/utils/api";
 import { getProductImageUrl } from "@/utils/videoUtils.js";
-import GetAccessButton from "@/components/ui/GetAccessButton";
+import ProductActionBar from "@/components/ui/ProductActionBar";
 import { useCart } from "@/contexts/CartContext";
 
 export default function Files() {
@@ -214,14 +214,38 @@ export default function Files() {
         return;
       }
 
-      // Load file products and categories using new endpoint
-      // Products now include purchase data from the API
+      // Load file products and categories - then enrich with purchase data
       const [fileProductsData, categoriesData] = await Promise.all([
         apiRequest(`/entities/products/list?product_type=file&is_published=true&sort_by=${sortBy}&sort_order=${sortOrder}`),
         Category.find({})
       ]);
 
-      setFileProducts(fileProductsData);
+      // If user is logged in, enrich products with purchase data
+      let enrichedProducts = fileProductsData;
+      if (tempCurrentUser) {
+        try {
+          const { Purchase } = await import('@/services/entities');
+          const userPurchases = await Purchase.filter({
+            buyer_user_id: tempCurrentUser.id
+          });
+
+          // Attach purchase data to each product
+          enrichedProducts = fileProductsData.map(product => {
+            const purchase = userPurchases.find(p =>
+              p.purchasable_type === 'file' && p.purchasable_id === product.entity_id
+            );
+            return {
+              ...product,
+              purchase: purchase || null
+            };
+          });
+        } catch (error) {
+          console.error('Error loading user purchases:', error);
+          // Continue with products without purchase data
+        }
+      }
+
+      setFileProducts(enrichedProducts);
       setCategories(categoriesData);
 
     } catch (error) {
@@ -283,6 +307,17 @@ export default function Files() {
 
     // Sorting is now handled by the API, no need to sort here
     setFilteredFileProducts(filtered);
+  };
+
+  // Handle when item is added to cart - update the product state
+  const handleCartUpdate = (productId, newPurchase) => {
+    setFileProducts(prevProducts =>
+      prevProducts.map(product =>
+        product.id === productId
+          ? { ...product, purchase: newPurchase }
+          : product
+      )
+    );
   };
 
   const handlePurchase = async (file) => {
@@ -571,6 +606,7 @@ export default function Files() {
                   <FileCard
                     file={fileProduct}
                     onPurchase={handlePurchase}
+                    onCartUpdate={handleCartUpdate}
                     onEdit={handleEdit}
                     fileTexts={fileTexts}
                     currentUser={currentUser}
@@ -628,8 +664,15 @@ export default function Files() {
   );
 }
 
-function FileCard({ file, onPurchase, onEdit, fileTexts, currentUser }) {
+function FileCard({ file, onPurchase, onCartUpdate, onEdit, fileTexts, currentUser }) {
   const navigate = useNavigate();
+
+  // Handle successful cart addition
+  const handleCartSuccess = (newPurchase) => {
+    if (onCartUpdate) {
+      onCartUpdate(file.id, newPurchase);
+    }
+  };
 
   const fileTypeIcons = {
     pdf: "📄",
@@ -807,10 +850,12 @@ function FileCard({ file, onPurchase, onEdit, fileTexts, currentUser }) {
                 </Button>
               )}
 
-              <GetAccessButton
+              <ProductActionBar
                 product={file}
                 size="sm"
                 className="text-xs sm:text-sm"
+                showCartButton={true}
+                onPurchaseSuccess={handleCartSuccess}
               />
             </div>
           </div>

@@ -32,11 +32,12 @@ export const useProductAccess = (product) => {
                       (purchase.access_expires_at && new Date(purchase.access_expires_at) > new Date()));
 
     // Determine cart/purchase state
-    const isInCart = purchase && purchase.payment_status === 'pending';
+    const isInCart = purchase && purchase.payment_status === 'cart';
     const isPurchased = purchase && purchase.payment_status === 'completed';
 
     // Determine what actions are available
-    const canAddToCart = !isFree && !hasAccess && !isInCart && !isPurchased;
+    const hasPurchaseRecord = !!purchase; // ANY purchase record exists
+    const canAddToCart = !isFree && !hasPurchaseRecord; // No add to cart if ANY purchase exists
     const canPurchase = !hasAccess && !isPurchased;
 
     // Determine access action based on product type

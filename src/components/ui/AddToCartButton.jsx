@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
+import { Plus, CheckCircle } from 'lucide-react';
 import { cerror } from '@/lib/utils';
 import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
 import { useLoginModal } from '@/hooks/useLoginModal';

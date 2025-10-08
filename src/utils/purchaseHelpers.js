@@ -12,7 +12,8 @@ import { Product } from '@/services/entities';
  */
 export function getUserIdFromToken() {
   try {
-    const authToken = localStorage.getItem('authToken');
+    // Check both token naming conventions - newer parts use 'token', older parts use 'authToken'
+    const authToken = localStorage.getItem('authToken') || localStorage.getItem('token');
     if (!authToken) return null;
 
     const payload = JSON.parse(atob(authToken.split('.')[1]));
@@ -28,7 +29,9 @@ export function getUserIdFromToken() {
  * @returns {boolean} Authentication status
  */
 export function isAuthenticated() {
-  return !!getUserIdFromToken();
+  // Check both token naming conventions
+  const authToken = localStorage.getItem('authToken') || localStorage.getItem('token');
+  return !!authToken && !!getUserIdFromToken();
 }
 
 /**
@@ -149,7 +152,7 @@ export async function createFreePurchase(params) {
 }
 
 /**
- * Get all cart purchases for a user (includes both 'cart' and 'pending' statuses)
+ * Get all cart purchases for a user (only 'cart' status - items added to cart but not yet in checkout)
  * @param {string} userId - User ID
  * @returns {Promise<array>} Array of cart purchase records
  */
@@ -160,7 +163,7 @@ export async function getCartPurchases(userId) {
 
     const purchases = await Purchase.filter({
       buyer_user_id: userId,
-      payment_status: ['cart', 'pending'] // Include both cart and pending items
+      payment_status: 'cart' // Only cart items, not pending payment processing
     });
 
     clog(`Found ${purchases.length} cart purchases for user ${userId}`);
