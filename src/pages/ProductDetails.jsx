@@ -44,7 +44,7 @@ import FileAccessStatus from "@/components/files/FileAccessStatus";
 import { hasActiveAccess, getUserPurchaseForFile } from "@/components/files/fileAccessUtils";
 import { purchaseUtils } from "@/utils/api.js";
 import PriceDisplayTag from "@/components/ui/PriceDisplayTag";
-import GetAccessButton from "@/components/ui/GetAccessButton";
+import ProductActionBar from "@/components/ui/ProductActionBar";
 import PdfViewer from "@/components/pdf/PdfViewer";
 
 export default function ProductDetails() {
@@ -631,10 +631,13 @@ export default function ProductDetails() {
                   )}
 
                   {/* Purchase Button - Unified Design */}
-                  <GetAccessButton
+                  <ProductActionBar
                     product={{...item, purchase: purchase}}
                     className="px-3 sm:px-6 md:px-8 py-2 sm:py-3 flex-shrink-0 text-xs sm:text-sm md:text-base"
                     size="sm"
+                    showCartButton={false}
+                    onFileAccess={handleFileAccess}
+                    onPdfPreview={handlePdfPreview}
                   />
                 </div>
               </div>
@@ -742,11 +745,14 @@ export default function ProductDetails() {
                       {getAccessButtonText()}
                     </Button>
                   ) : (
-                    <GetAccessButton
+                    <ProductActionBar
                       product={{...item, purchase: purchase}}
                       className="py-3 sm:py-4 text-base sm:text-lg"
                       size="lg"
                       fullWidth={true}
+                      showCartButton={true}
+                      onFileAccess={handleFileAccess}
+                      onPdfPreview={handlePdfPreview}
                     />
                   )}
                 </div>
@@ -829,11 +835,14 @@ export default function ProductDetails() {
                       {getAccessButtonText()}
                     </Button>
                   ) : (
-                    <GetAccessButton
+                    <ProductActionBar
                       product={{...item, purchase: purchase}}
                       className="py-3 sm:py-4 px-8 sm:px-12 text-base sm:text-lg"
                       size="lg"
                       fullWidth={true}
+                      showCartButton={true}
+                      onFileAccess={handleFileAccess}
+                      onPdfPreview={handlePdfPreview}
                     />
                   )}
                 </div>
