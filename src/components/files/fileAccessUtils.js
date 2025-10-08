@@ -6,11 +6,10 @@ import { he } from "date-fns/locale";
 // Same logic as Files.jsx for checking active access
 export const hasActiveAccess = (purchase) => {
   if (!purchase) return false;
-  if (purchase.purchased_lifetime_access) return true;
-  if (purchase.access_until && new Date(purchase.access_until) > new Date()) return true;
-  if (!purchase.access_until && !purchase.purchased_lifetime_access) {
-    return true; // Backwards compatibility
-  }
+  // null access_expires_at = lifetime access
+  if (!purchase.access_expires_at) return true;
+  // future access_expires_at = has access
+  if (purchase.access_expires_at && new Date(purchase.access_expires_at) > new Date()) return true;
   return false;
 };
 
@@ -42,12 +41,10 @@ export const getFileAccessStatus = (userPurchase) => {
   let statusText = texts.owned;
   let statusDetail = null;
 
-  if (userPurchase.purchased_lifetime_access) {
-    statusDetail = texts.lifetimeAccess;
-  } else if (userPurchase.access_until) {
-    statusDetail = `${texts.accessUntil} ${format(new Date(userPurchase.access_until), 'dd/MM/yyyy', { locale: he })}`;
-  } else {
-    statusDetail = texts.lifetimeAccess; // Backwards compatibility
+  if (!userPurchase.access_expires_at) {
+    statusDetail = texts.lifetimeAccess; // null = lifetime access
+  } else if (userPurchase.access_expires_at) {
+    statusDetail = `${texts.accessUntil} ${format(new Date(userPurchase.access_expires_at), 'dd/MM/yyyy', { locale: he })}`;
   }
 
   return {

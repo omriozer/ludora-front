@@ -53,9 +53,8 @@ export default function GetAccessButton({
 
   // Check if user already has access (completed purchase with valid access)
   const hasAccess = existingPurchase && existingPurchase.payment_status === 'completed' &&
-                    (existingPurchase.purchased_lifetime_access ||
-                     (existingPurchase.access_until && new Date(existingPurchase.access_until) > new Date()) ||
-                     (!existingPurchase.access_until && !existingPurchase.purchased_lifetime_access)); // Backwards compatibility
+                    (!existingPurchase.access_expires_at || // null = lifetime access
+                     (existingPurchase.access_expires_at && new Date(existingPurchase.access_expires_at) > new Date())); // future date = has access
 
   const handleGetAccess = async () => {
     if (!product) {
