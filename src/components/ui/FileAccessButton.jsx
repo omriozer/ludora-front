@@ -41,7 +41,7 @@ export default function FileAccessButton({
 
       if (isPdf && onPdfPreview) {
         // Open PDF in viewer modal
-        onPdfPreview();
+        onPdfPreview(product);
       } else if (onFileAccess) {
         // Use custom file access handler
         await onFileAccess(product);
