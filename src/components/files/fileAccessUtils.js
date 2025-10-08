@@ -19,7 +19,7 @@ export const getUserPurchaseForFile = (fileId, userPurchases) => {
   return userPurchases.find(purchase =>
     ((purchase.purchasable_type === 'file' && purchase.purchasable_id === fileId) ||
      (purchase.product_id === fileId)) && // Backwards compatibility
-    purchase.payment_status === 'paid'
+    (purchase.payment_status === 'completed' || purchase.payment_status === 'paid') // Support both statuses
   );
 };
 

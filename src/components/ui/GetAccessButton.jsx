@@ -45,42 +45,17 @@ export default function GetAccessButton({
   const navigate = useNavigate();
   const [isProcessing, setIsProcessing] = useState(false);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
-  const [existingPurchase, setExistingPurchase] = useState(null);
-  const [isCheckingPurchase, setIsCheckingPurchase] = useState(true);
   const { openLoginModal } = useLoginModal();
   const { addToCart } = useCart();
 
-  // Check if user already has access
-  const hasAccess = product?.purchase && product.purchase.payment_status === 'completed';
+  // Use purchase data from product prop (coming from API response)
+  const existingPurchase = product?.purchase || null;
 
-  // Check for existing purchases on component mount
-  useEffect(() => {
-    const checkForExistingPurchase = async () => {
-      if (!isAuthenticated() || !product) {
-        setIsCheckingPurchase(false);
-        return;
-      }
-
-      const userId = getUserIdFromToken();
-      if (!userId) {
-        setIsCheckingPurchase(false);
-        return;
-      }
-
-      try {
-        const entityType = product.product_type || 'file';
-        const entityId = product.entity_id || product.id;
-        const existing = await checkExistingPurchase(userId, entityType, entityId);
-        setExistingPurchase(existing);
-      } catch (error) {
-        cerror('Error checking existing purchase:', error);
-      } finally {
-        setIsCheckingPurchase(false);
-      }
-    };
-
-    checkForExistingPurchase();
-  }, [product]);
+  // Check if user already has access (completed purchase with valid access)
+  const hasAccess = existingPurchase && existingPurchase.payment_status === 'completed' &&
+                    (existingPurchase.purchased_lifetime_access ||
+                     (existingPurchase.access_until && new Date(existingPurchase.access_until) > new Date()) ||
+                     (!existingPurchase.access_until && !existingPurchase.purchased_lifetime_access)); // Backwards compatibility
 
   const handleGetAccess = async () => {
     if (!product) {
@@ -312,13 +287,6 @@ export default function GetAccessButton({
         }
       });
 
-      // Update existing purchase state
-      setExistingPurchase({
-        purchasable_type: entityType,
-        purchasable_id: entityId,
-        payment_status: 'pending'
-      });
-
       // Notify cart context about the addition
       addToCart();
 
@@ -351,20 +319,7 @@ export default function GetAccessButton({
     );
   }
 
-  // Show loading if still checking for existing purchases
-  if (isCheckingPurchase) {
-    return (
-      <Button disabled className={`${fullWidth ? 'w-full' : ''} ${className}`} size={size}>
-        <LudoraLoadingSpinner
-          message="טוען..."
-          status="loading"
-          size="sm"
-          theme="neon"
-          showParticles={false}
-        />
-      </Button>
-    );
-  }
+  // No need for loading state since purchase data comes from API response
 
   // Determine purchase state
   const existingStatus = existingPurchase?.payment_status;

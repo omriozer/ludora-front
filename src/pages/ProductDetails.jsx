@@ -632,7 +632,7 @@ export default function ProductDetails() {
 
                   {/* Purchase Button - Unified Design */}
                   <GetAccessButton
-                    product={item}
+                    product={{...item, purchase: purchase}}
                     className="px-3 sm:px-6 md:px-8 py-2 sm:py-3 flex-shrink-0 text-xs sm:text-sm md:text-base"
                     size="sm"
                   />
@@ -743,7 +743,7 @@ export default function ProductDetails() {
                     </Button>
                   ) : (
                     <GetAccessButton
-                      product={item}
+                      product={{...item, purchase: purchase}}
                       className="py-3 sm:py-4 text-base sm:text-lg"
                       size="lg"
                       fullWidth={true}
@@ -830,7 +830,7 @@ export default function ProductDetails() {
                     </Button>
                   ) : (
                     <GetAccessButton
-                      product={item}
+                      product={{...item, purchase: purchase}}
                       className="py-3 sm:py-4 px-8 sm:px-12 text-base sm:text-lg"
                       size="lg"
                       fullWidth={true}
