@@ -48,6 +48,7 @@ import SchoolManagement from './SchoolManagement';
 import ParentConsent from './ParentConsent';
 import StudentInvitations from './StudentInvitations';
 import GameBuilder from '../components/gameBuilder/GameBuilderV2';
+import CouponDashboard from './CouponDashboard';
 import CouponManagement from './CouponManagement';
 import CouponForm from './CouponForm';
 import CouponAnalytics from './CouponAnalytics';
@@ -110,6 +111,7 @@ export {
   AdminHelp,
   GameCreationTutorial,
   Documentation,
+  CouponDashboard,
   CouponManagement,
   CouponForm,
   CouponAnalytics,

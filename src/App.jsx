@@ -421,6 +421,14 @@ function App() {
 					path='/coupons'
 					element={
 						<AdminRoute>
+							<Pages.CouponDashboard />
+						</AdminRoute>
+					}
+				/>
+				<Route
+					path='/coupons/manage'
+					element={
+						<AdminRoute>
 							<Pages.CouponManagement />
 						</AdminRoute>
 					}
