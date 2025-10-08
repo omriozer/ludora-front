@@ -16,6 +16,7 @@ import {
 import { getGameTypeName, getGameTypeIcon, getDeviceCompatibilityText } from "@/config/gameTypes";
 import { getProductTypeName } from "@/config/productTypes";
 import { showConfirm } from '@/utils/messaging';
+import LudoraLoadingSpinner from "@/components/ui/LudoraLoadingSpinner";
 
 export default function Games() {
   const navigate = useNavigate();
@@ -215,10 +216,11 @@ export default function Games() {
   if (isLoading) {
     return (
       <div className="p-4 bg-gray-50 min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">טוען נתונים...</p>
-        </div>
+        <LudoraLoadingSpinner
+          message="טוען נתונים..."
+          size="lg"
+          theme="gaming"
+        />
       </div>
     );
   }

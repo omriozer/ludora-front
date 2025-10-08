@@ -48,6 +48,7 @@ import { shouldHideNavigation } from "@/lib/layoutHelpers";
 import MaintenancePage from "@/components/layout/MaintenancePage";
 import { LoginModalProvider, useLoginModal } from "@/hooks/useLoginModal";
 import { CartProvider } from "@/contexts/CartContext";
+import LudoraLoadingSpinner from "@/components/ui/LudoraLoadingSpinner";
 
 function LayoutContent({ children }) {
   const location = useLocation();
@@ -267,10 +268,12 @@ function LayoutContent({ children }) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-2 text-gray-600">טוען...</p>
-        </div>
+        <LudoraLoadingSpinner
+          message="טוען את המערכת..."
+          size="lg"
+          theme="educational"
+          showLogo={true}
+        />
       </div>
     );
   }
@@ -342,7 +345,11 @@ function LayoutContent({ children }) {
           <main className="flex-1">
             <Suspense fallback={
               <div className="flex items-center justify-center min-h-[400px]">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <LudoraLoadingSpinner
+                  message="טוען עמוד..."
+                  size="md"
+                  theme="educational"
+                />
               </div>
             }>
               {children}

@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Crown, Gift, Wrench } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
+import LudoraLoadingSpinner from "@/components/ui/LudoraLoadingSpinner";
 
 export default function Dashboard() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -63,10 +64,12 @@ export default function Dashboard() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-indigo-50/50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">טוען דאשבורד...</p>
-        </div>
+        <LudoraLoadingSpinner
+          message="טוען דאשבורד..."
+          size="lg"
+          theme="educational"
+          showLogo={true}
+        />
       </div>
     );
   }

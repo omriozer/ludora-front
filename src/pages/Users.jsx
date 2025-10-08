@@ -48,6 +48,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { format } from 'date-fns'; // parseISO is not strictly needed if dates are always Date objects from the picker
 import { he } from 'date-fns/locale';
 import { cn } from '@/lib/utils'; // Assuming cn utility is available for styling conditional classes
+import LudoraLoadingSpinner from "@/components/ui/LudoraLoadingSpinner";
 
 // Helper component for confirmation dialog
 function ConfirmationDialog({
@@ -720,8 +721,11 @@ export default function UsersPage() {
 	if (isLoading) {
 		return (
 			<div className='flex items-center justify-center min-h-screen bg-gray-50 p-4'>
-				<Loader2 className='w-8 h-8 text-blue-600 mx-auto mb-4 animate-spin' />
-				<span className='mr-2 text-gray-600'>טוען נתונים...</span>
+				<LudoraLoadingSpinner
+					message="טוען נתונים..."
+					size="lg"
+					theme="science"
+				/>
 			</div>
 		);
 	}

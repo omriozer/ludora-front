@@ -446,9 +446,9 @@ export const formatGradeRange = (gradeMin, gradeMax) => {
   if (!gradeMin && !gradeMax) return null;
   if (gradeMin && gradeMax) {
     if (gradeMin === gradeMax) {
-      return getGradeLabel(gradeMin);
+      return `מתאים ל${getGradeLabel(gradeMin)}`;
     }
-    return `${getGradeLabel(gradeMin)} - ${getGradeLabel(gradeMax)}`;
+    return `מ${getGradeLabel(gradeMin)} - עד ${getGradeLabel(gradeMax)}`;
   }
   if (gradeMin) return `מ${getGradeLabel(gradeMin)}`;
   if (gradeMax) return `עד ${getGradeLabel(gradeMax)}`;

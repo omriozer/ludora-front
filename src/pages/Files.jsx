@@ -30,6 +30,7 @@ import { getProductImageUrl } from "@/utils/videoUtils.js";
 import ProductActionBar from "@/components/ui/ProductActionBar";
 import PdfViewer from "@/components/pdf/PdfViewer";
 import { apiDownload } from "@/services/apiClient";
+import LudoraLoadingSpinner from "@/components/ui/LudoraLoadingSpinner";
 
 export default function Files() {
   const navigate = useNavigate();
@@ -202,7 +203,7 @@ export default function Files() {
 
       // Load file products and categories - then enrich with purchase data
       const [fileProductsData, categoriesData] = await Promise.all([
-        apiRequest(`/entities/products/list?product_type=file&is_published=true&sort_by=${sortBy}&sort_order=${sortOrder}`),
+        apiRequest(`/entities/products/list?product_type=file&sort_by=${sortBy}&sort_order=${sortOrder}`),
         Category.find({})
       ]);
 
@@ -383,10 +384,11 @@ export default function Files() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-4 border-purple-500 border-t-transparent mx-auto mb-6"></div>
-          <p className="text-gray-600 text-lg">טוען {getProductTypeName('file', 'plural')}...</p>
-        </div>
+        <LudoraLoadingSpinner
+          message={`טוען ${getProductTypeName('file', 'plural')}...`}
+          size="lg"
+          theme="creative"
+        />
       </div>
     );
   }

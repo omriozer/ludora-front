@@ -26,11 +26,13 @@ import {
   Download,
   Trash2,
   Play,
-  Eye
+  Eye,
+  GraduationCap,
+  Upload as UploadIcon
 } from "lucide-react";
 import SecureVideoPlayer from '../SecureVideoPlayer';
 import ProductTypeSelector from './ProductTypeSelector';
-import { getProductTypeName, getAttributeSchema, validateTypeAttributes } from '@/config/productTypes';
+import { getProductTypeName, getAttributeSchema, validateTypeAttributes, formatGradeRange } from '@/config/productTypes';
 import { getApiBase } from '@/utils/api.js';
 import { apiRequest, apiUploadWithProgress } from '@/services/apiClient';
 import { getMarketingVideoUrl, getProductImageUrl } from '@/utils/videoUtils.js';
@@ -219,6 +221,39 @@ export default function ProductModal({
 
   const [formData, setFormData] = useState(initialFormData);
   const [tagsInputValue, setTagsInputValue] = useState('');
+  const [saveAndContinue, setSaveAndContinue] = useState(false);
+
+  // Helper functions to determine what sections are available
+  const isNewProduct = !editingProduct;
+  const isFileProduct = formData.product_type === 'file';
+  const hasUploadedFile = editingProduct && uploadedFileInfo?.exists;
+
+  // Determine which sections should be disabled
+  const sectionsAvailableAfterCreation = {
+    imageUpload: isNewProduct,
+    marketingVideo: isNewProduct,
+    fileUpload: isNewProduct && isFileProduct,
+    publishToggle: isNewProduct || (isFileProduct && !hasUploadedFile)
+  };
+
+  // Determine if Save and Continue button should be shown
+  const shouldShowSaveAndContinue = Object.values(sectionsAvailableAfterCreation).some(disabled => disabled);
+
+  // Helper component for disabled sections
+  const DisabledSectionMessage = ({ title, message, icon: Icon }) => (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <Icon className="w-5 h-5 text-gray-400" />
+        <Label className="text-sm font-medium text-gray-400">{title}</Label>
+      </div>
+      <div className="p-4 bg-gray-50 border-2 border-dashed border-gray-200 rounded-lg text-center">
+        <div className="flex flex-col items-center gap-2">
+          <Icon className="w-8 h-8 text-gray-300" />
+          <p className="text-sm text-gray-500 max-w-md">{message}</p>
+        </div>
+      </div>
+    </div>
+  );
 
   // Helper functions for default access settings (same as in Products.jsx)
   const getDefaultAccessDays = (productType, settings) => {
@@ -900,13 +935,14 @@ export default function ProductModal({
     }));
   };
 
-  const handleSave = async () => {
+  const handleSave = async (continueEditing = false) => {
     if (!formData.title.trim() || !formData.description.trim()) {
       setMessage({ type: 'error', text: 'כותרת ותיאור ארוך הם שדות חובה' });
       return;
     }
 
     setIsSaving(true);
+    setSaveAndContinue(continueEditing);
 
     // Validate workshop-specific requirements
     if (formData.product_type === 'workshop') {
@@ -1171,16 +1207,28 @@ export default function ProductModal({
         }
       }
 
-      // For all other cases, close modal after delay
-      setTimeout(() => {
-        if (onSave) onSave();
-        onClose();
-      }, 1500);
+      // Handle save and continue vs save and close
+      if (saveAndContinue && !editingProduct) {
+        // If save and continue for new product, refresh with the created product data
+        setTimeout(() => {
+          // Set the created entity as the editing product to enable additional sections
+          setEditingProduct(createdEntity);
+          setIsSaving(false);
+          setMessage({ type: 'success', text: `${entityName} נשמר בהצלחה! כעת ניתן להעלות תמונות, וידאו ועוד` });
+        }, 500);
+      } else {
+        // For save and close, keep loading state until modal closes
+        setTimeout(() => {
+          if (onSave) onSave();
+          setIsSaving(false); // Clear loading state just before closing
+          onClose();
+        }, 1500);
+      }
 
     } catch (error) {
       console.error('Error saving product:', error);
       console.error('Error details:', error.message);
-      
+
       // If it's a validation error, show more helpful message
       if (error.message === 'Validation failed') {
         console.error('Check the API Error logs above for specific validation details');
@@ -1188,8 +1236,17 @@ export default function ProductModal({
       } else {
         setMessage({ type: 'error', text: 'שגיאה בשמירת המוצר' });
       }
-    } finally {
+
+      // Always clear loading state on error
       setIsSaving(false);
+    } finally {
+      // For editing existing products, clear loading state immediately
+      if (editingProduct) {
+        setIsSaving(false);
+      }
+      // For new products, loading state is handled in the save logic above:
+      // - "save and continue": cleared in setTimeout after 500ms
+      // - "save and close": cleared in setTimeout just before modal closes
     }
 
     setTimeout(() => setMessage(null), 5000);
@@ -1358,7 +1415,109 @@ export default function ProductModal({
                       </Select>
                     </div>
                     {/* Type-specific attributes */}
-                    {Object.entries(getAttributeSchema(formData.product_type)).map(([key, schema]) => (
+                    {/* Special handling for grade fields - show them on same line with preview */}
+                    {formData.product_type === 'file' && (
+                      <div className="space-y-4">
+                        <div>
+                          <Label className="text-sm font-medium mb-2 block">טווח כיתות</Label>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {/* Grade Min */}
+                            <div>
+                              <Label className="text-xs text-gray-600">כיתה מינימלית</Label>
+                              <Select
+                                value={formData.type_attributes.grade_min ? String(formData.type_attributes.grade_min) : ""}
+                                onValueChange={(value) => {
+                                  const newValue = parseInt(value);
+                                  setFormData(prev => {
+                                    let newTypeAttributes = {
+                                      ...prev.type_attributes,
+                                      grade_min: newValue
+                                    };
+
+                                    // Validation: if max exists and new min > max, clear max
+                                    if (prev.type_attributes.grade_max && newValue > prev.type_attributes.grade_max) {
+                                      newTypeAttributes.grade_max = undefined;
+                                    }
+
+                                    return {
+                                      ...prev,
+                                      type_attributes: newTypeAttributes
+                                    };
+                                  });
+                                }}
+                              >
+                                <SelectTrigger className="mt-1">
+                                  <SelectValue placeholder="בחר כיתה מינימלית" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {[1,2,3,4,5,6,7,8,9,10,11,12].map((grade) => (
+                                    <SelectItem key={grade} value={String(grade)}>
+                                      כיתה {['א','ב','ג','ד','ה','ו','ז','ח','ט','י','יא','יב'][grade-1]}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            {/* Grade Max */}
+                            <div>
+                              <Label className="text-xs text-gray-600">כיתה מקסימלית</Label>
+                              <Select
+                                value={formData.type_attributes.grade_max ? String(formData.type_attributes.grade_max) : ""}
+                                onValueChange={(value) => {
+                                  const newValue = parseInt(value);
+                                  setFormData(prev => {
+                                    let newTypeAttributes = {
+                                      ...prev.type_attributes,
+                                      grade_max: newValue
+                                    };
+
+                                    // Validation: if min exists and new max < min, clear min
+                                    if (prev.type_attributes.grade_min && newValue < prev.type_attributes.grade_min) {
+                                      newTypeAttributes.grade_min = undefined;
+                                    }
+
+                                    return {
+                                      ...prev,
+                                      type_attributes: newTypeAttributes
+                                    };
+                                  });
+                                }}
+                              >
+                                <SelectTrigger className="mt-1">
+                                  <SelectValue placeholder="בחר כיתה מקסימלית" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {[1,2,3,4,5,6,7,8,9,10,11,12].map((grade) => (
+                                    <SelectItem key={grade} value={String(grade)}>
+                                      כיתה {['א','ב','ג','ד','ה','ו','ז','ח','ט','י','יא','יב'][grade-1]}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+
+                          {/* Grade Range Preview */}
+                          {(formData.type_attributes.grade_min || formData.type_attributes.grade_max) && (
+                            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                              <Label className="text-xs text-blue-600 font-medium">תצוגה מקדימה בכרטיס הקובץ:</Label>
+                              <div className="flex items-center gap-2 mt-1">
+                                <GraduationCap className="w-4 h-4 text-blue-400" />
+                                <span className="text-blue-700 text-sm">
+                                  {formatGradeRange(formData.type_attributes.grade_min, formData.type_attributes.grade_max)}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Regular type-specific attributes (excluding grade fields for files) */}
+                    {Object.entries(getAttributeSchema(formData.product_type))
+                      .filter(([key]) => !(formData.product_type === 'file' && (key === 'grade_min' || key === 'grade_max')))
+                      .map(([key, schema]) => (
                       <div key={key}>
                         <Label className="text-sm font-medium">{schema.label}</Label>
                         {schema.type === 'number' && (
@@ -1404,39 +1563,13 @@ export default function ProductModal({
                           <Select
                             value={formData.type_attributes[key] ? String(formData.type_attributes[key]) : ""}
                             onValueChange={(value) => {
-                              const newValue = key === 'grade_min' || key === 'grade_max' ? parseInt(value) : value;
-
-                              setFormData(prev => {
-                                let newTypeAttributes = {
+                              setFormData(prev => ({
+                                ...prev,
+                                type_attributes: {
                                   ...prev.type_attributes,
-                                  [key]: newValue
-                                };
-
-                                // Grade validation logic
-                                if (key === 'grade_min' || key === 'grade_max') {
-                                  const currentMinGrade = prev.type_attributes.grade_min;
-                                  const currentMaxGrade = prev.type_attributes.grade_max;
-
-                                  if (key === 'grade_min') {
-                                    // If setting min grade and max grade exists, ensure max > min
-                                    if (currentMaxGrade && newValue >= currentMaxGrade) {
-                                      // Clear max grade if min is >= max
-                                      newTypeAttributes.grade_max = undefined;
-                                    }
-                                  } else if (key === 'grade_max') {
-                                    // If setting max grade and min grade exists, ensure max > min
-                                    if (currentMinGrade && newValue <= currentMinGrade) {
-                                      // Clear min grade if max is <= min
-                                      newTypeAttributes.grade_min = undefined;
-                                    }
-                                  }
+                                  [key]: value
                                 }
-
-                                return {
-                                  ...prev,
-                                  type_attributes: newTypeAttributes
-                                };
-                              });
+                              }));
                             }}
                           >
                             <SelectTrigger className="mt-1">
@@ -1513,8 +1646,15 @@ export default function ProductModal({
                   </div>
 
                   {/* Image Upload */}
-                  <div className="space-y-4">
-                    <Label className="text-sm font-medium">תמונה למוצר</Label>
+                  {sectionsAvailableAfterCreation.imageUpload ? (
+                    <DisabledSectionMessage
+                      title="תמונה למוצר"
+                      message="ניתן להעלות תמונה רק לאחר שמירת המוצר. לחץ על 'שמור והמשך' כדי לפתוח אפשרות זו."
+                      icon={UploadIcon}
+                    />
+                  ) : (
+                    <div className="space-y-4">
+                      <Label className="text-sm font-medium">תמונה למוצר</Label>
                     <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                       <div className="flex items-center gap-2">
                         <Input
@@ -1549,6 +1689,7 @@ export default function ProductModal({
                       )}
                     </div>
                   </div>
+                  )}
 
                   {/* Duration field only for workshops and courses */}
                   {(formData.product_type === 'workshop' || formData.product_type === 'course') && (
@@ -2457,17 +2598,42 @@ export default function ProductModal({
         {/* Footer */}
         {step === 'form' && (editingProduct || getAvailableProductTypes(enabledProductTypes, canCreateProductType).length > 0) && (
           <div className="flex flex-col sm:flex-row justify-end gap-2 p-6 border-t">
-            <Button variant="outline" onClick={handleCancel} className="order-2 sm:order-1">
+            <Button variant="outline" onClick={handleCancel} className="order-3 sm:order-1">
               ביטול
             </Button>
-            <Button 
-              onClick={handleSave} 
-              className="order-1 sm:order-2"
-              disabled={isSaving || isLoadingData}
-            >
-              <Save className="w-4 h-4 ml-2" />
-              {editingProduct ? 'עדכן מוצר' : 'צור מוצר'}
-            </Button>
+
+            {shouldShowSaveAndContinue ? (
+              // Show dual buttons when sections will be available after save
+              <>
+                <Button
+                  onClick={() => handleSave(false)}
+                  variant="outline"
+                  className="order-2 sm:order-2"
+                  disabled={isSaving || isLoadingData}
+                >
+                  <Save className="w-4 h-4 ml-2" />
+                  {editingProduct ? 'שמור וסגור' : 'שמור וסגור'}
+                </Button>
+                <Button
+                  onClick={() => handleSave(true)}
+                  className="order-1 sm:order-3"
+                  disabled={isSaving || isLoadingData}
+                >
+                  <Save className="w-4 h-4 ml-2" />
+                  {editingProduct ? 'שמור והמשך' : 'שמור והמשך'}
+                </Button>
+              </>
+            ) : (
+              // Show single button when no sections need to be enabled
+              <Button
+                onClick={() => handleSave(false)}
+                className="order-1 sm:order-2"
+                disabled={isSaving || isLoadingData}
+              >
+                <Save className="w-4 h-4 ml-2" />
+                {editingProduct ? 'עדכן מוצר' : 'צור מוצר'}
+              </Button>
+            )}
           </div>
         )}
       </div>
