@@ -28,9 +28,7 @@ import { toast } from "@/components/ui/use-toast";
 import { clog, cerror } from "@/lib/utils";
 
 export default function CouponAnalytics() {
-  const [currentUser, setCurrentUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [message, setMessage] = useState(null);
 
   // Data
@@ -73,33 +71,13 @@ export default function CouponAnalytics() {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const token = localStorage.getItem('authToken');
+      const token = localStorage.getItem('token');
       if (!token) {
         setMessage({ type: 'error', text: 'נדרש להתחבר מחדש' });
         return;
       }
 
       const apiBase = getApiBase();
-
-      // Get current user
-      const userResponse = await fetch(`${apiBase}/auth/me`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!userResponse.ok) {
-        throw new Error('Failed to get user data');
-      }
-
-      const user = await userResponse.json();
-      setCurrentUser(user);
-      setIsAdmin(user.role === 'admin');
-
-      if (user.role !== 'admin') {
-        return;
-      }
 
       // Load all relevant data
       const [couponsResponse, transactionsResponse, purchasesResponse] = await Promise.all([
@@ -294,21 +272,6 @@ export default function CouponAnalytics() {
       variant: "default"
     });
   };
-
-  if (!isAdmin) {
-    return (
-      <div className="p-4 md:p-8 bg-gray-50 min-h-screen">
-        <div className="max-w-4xl mx-auto">
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              אין לך הרשאות גישה לדוחות קופונים. רק מנהלים יכולים לגשת לאזור זה.
-            </AlertDescription>
-          </Alert>
-        </div>
-      </div>
-    );
-  }
 
   if (isLoading) {
     return (

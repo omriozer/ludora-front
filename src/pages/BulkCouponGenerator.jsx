@@ -32,9 +32,7 @@ import { toast } from "@/components/ui/use-toast";
 import { clog, cerror } from "@/lib/utils";
 
 export default function BulkCouponGenerator() {
-  const [currentUser, setCurrentUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [message, setMessage] = useState(null);
 
   // Generation state
@@ -87,7 +85,7 @@ export default function BulkCouponGenerator() {
   };
 
   useEffect(() => {
-    loadData();
+    setIsLoading(false);
   }, []);
 
   useEffect(() => {
@@ -100,29 +98,6 @@ export default function BulkCouponGenerator() {
     }
   }, [patternSettings, patternValidation]);
 
-  const loadData = async () => {
-    setIsLoading(true);
-    try {
-      const userResponse = await fetch(`${getApiBase()}/entities/user/me`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      const user = await userResponse.json();
-      setCurrentUser(user);
-      setIsAdmin(user.role === 'admin');
-
-      if (user.role !== 'admin') {
-        return;
-      }
-    } catch (error) {
-      cerror("Error loading data:", error);
-      setMessage({ type: 'error', text: 'שגיאה בטעינת הנתונים' });
-    }
-    setIsLoading(false);
-  };
-
   const validatePattern = async () => {
     if (!patternSettings.pattern) {
       setPatternValidation(null);
@@ -130,7 +105,7 @@ export default function BulkCouponGenerator() {
     }
 
     try {
-      const token = localStorage.getItem('authToken');
+      const token = localStorage.getItem('token');
       const response = await fetch(`${getApiBase()}/functions/validateCouponPattern`, {
         method: 'POST',
         headers: {
@@ -155,7 +130,7 @@ export default function BulkCouponGenerator() {
     if (!patternValidation?.isValid) return;
 
     try {
-      const token = localStorage.getItem('authToken');
+      const token = localStorage.getItem('token');
       const response = await fetch(`${getApiBase()}/functions/getCouponPresetPatterns`, {
         method: 'GET',
         headers: {
@@ -210,7 +185,7 @@ export default function BulkCouponGenerator() {
     setGeneratedCoupons([]);
 
     try {
-      const token = localStorage.getItem('authToken');
+      const token = localStorage.getItem('token');
 
       // Prepare coupon data
       const couponData = {
@@ -303,21 +278,6 @@ export default function BulkCouponGenerator() {
       variant: "default"
     });
   };
-
-  if (!isAdmin) {
-    return (
-      <div className="p-4 md:p-8 bg-gray-50 min-h-screen">
-        <div className="max-w-4xl mx-auto">
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              אין לך הרשאות גישה ליצירה בכמות של קופונים. רק מנהלים יכולים לגשת לאזור זה.
-            </AlertDescription>
-          </Alert>
-        </div>
-      </div>
-    );
-  }
 
   if (isLoading) {
     return (

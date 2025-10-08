@@ -39,9 +39,7 @@ const ITEMS_PER_PAGE = 20;
 export default function CouponManagement() {
   const [coupons, setCoupons] = useState([]);
   const [filteredCoupons, setFilteredCoupons] = useState([]);
-  const [currentUser, setCurrentUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [message, setMessage] = useState(null);
 
   // Filters and search
@@ -70,28 +68,15 @@ export default function CouponManagement() {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      // Get current user
-      const userResponse = await fetch(`${getApiBase()}/entities/user/me`, {
+      // Get all coupons
+      const couponsResponse = await fetch(`${getApiBase()}/entities/coupon`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'application/json'
         }
       });
-      const user = await userResponse.json();
-      setCurrentUser(user);
-      setIsAdmin(user.role === 'admin');
-
-      if (user.role === 'admin') {
-        // Get all coupons
-        const couponsResponse = await fetch(`${getApiBase()}/entities/coupon`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        const couponsData = await couponsResponse.json();
-        setCoupons(couponsData);
-      }
+      const couponsData = await couponsResponse.json();
+      setCoupons(couponsData);
     } catch (error) {
       cerror("Error loading coupon data:", error);
       setMessage({ type: 'error', text: 'שגיאה בטעינת הנתונים' });
@@ -296,21 +281,6 @@ export default function CouponManagement() {
         return <Badge variant="outline">לא מוגדר</Badge>;
     }
   };
-
-  if (!isAdmin) {
-    return (
-      <div className="p-4 md:p-8 bg-gray-50 min-h-screen">
-        <div className="max-w-4xl mx-auto">
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              אין לך הרשאות גישה לניהול קופונים. רק מנהלים יכולים לגשת לאזור זה.
-            </AlertDescription>
-          </Alert>
-        </div>
-      </div>
-    );
-  }
 
   if (isLoading) {
     return (

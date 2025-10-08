@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useUser } from "@/contexts/UserContext";
 import { getApiBase } from "@/utils/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -32,11 +33,10 @@ export default function CouponForm() {
   const { id } = useParams();
   const navigate = useNavigate();
   const isEditing = !!id;
+  const { currentUser, isLoading: userLoading } = useUser();
 
-  const [currentUser, setCurrentUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [message, setMessage] = useState(null);
 
   // Products for targeting
@@ -67,27 +67,14 @@ export default function CouponForm() {
   const [validationErrors, setValidationErrors] = useState({});
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (currentUser && !userLoading) {
+      loadData();
+    }
+  }, [currentUser, userLoading]);
 
   const loadData = async () => {
     setIsLoading(true);
     try {
-      // Get current user
-      const userResponse = await fetch(`${getApiBase()}/entities/user/me`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      const user = await userResponse.json();
-      setCurrentUser(user);
-      setIsAdmin(user.role === 'admin');
-
-      if (user.role !== 'admin') {
-        navigate('/');
-        return;
-      }
 
       // Load products for targeting options
       const [workshopsResponse, coursesResponse, filesResponse, toolsResponse, gamesResponse] = await Promise.all([
@@ -310,21 +297,6 @@ export default function CouponForm() {
     }
     setIsSaving(false);
   };
-
-  if (!isAdmin) {
-    return (
-      <div className="p-4 md:p-8 bg-gray-50 min-h-screen">
-        <div className="max-w-4xl mx-auto">
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              אין לך הרשאות גישה לניהול קופונים. רק מנהלים יכולים לגשת לאזור זה.
-            </AlertDescription>
-          </Alert>
-        </div>
-      </div>
-    );
-  }
 
   if (isLoading) {
     return (
