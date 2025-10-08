@@ -185,8 +185,7 @@ export default function ProductModal({
 
     return '';
   };
-
-  const [formData, setFormData] = useState({
+  const initialFormData = {
     title: "",
     short_description: "",
     description: "",
@@ -204,9 +203,6 @@ export default function ProductModal({
     is_published: false,
     image_url: "",
     file_type: "pdf",
-    allow_preview: true,
-    add_copyrights_footer: true,
-    is_ludora_creator: false,
     tags: [],
     target_audience: "",
     type_attributes: {},
@@ -215,11 +211,14 @@ export default function ProductModal({
     marketing_video_title: "",
     marketing_video_duration: "",
     access_days: "",
-    is_lifetime_access: false,
+    is_lifetime_access: true,
     downloads_count: 0,
     course_modules: [],
     total_duration_minutes: 0,
-  });
+  };
+
+  const [formData, setFormData] = useState(initialFormData);
+  const [tagsInputValue, setTagsInputValue] = useState('');
 
   // Helper functions for default access settings (same as in Products.jsx)
   const getDefaultAccessDays = (productType, settings) => {
@@ -368,43 +367,18 @@ export default function ProductModal({
         setFooterConfig(product.footer_settings);
       }
     }
+
+    // Set tags input value for editing
+    const tags = product.tags || [];
+    setTagsInputValue(tags.join(', '));
   };
 
   const resetForm = () => {
-    setFormData({
-      title: "",
-      short_description: "",
-      description: "",
-      category: "",
-      product_type: "workshop",
-      workshop_type: "recorded",
-      scheduled_date: "",
-      meeting_link: "",
-      meeting_password: "",
-      meeting_platform: "",
-      video_file_url: "",
-      max_participants: 20,
-      duration_minutes: 90,
-      price: 0,
-      is_published: false,
-      image_url: "",
-      file_type: "pdf",
-      tags: [],
-      target_audience: "",
-      type_attributes: {},
-      marketing_video_type: null,
-      marketing_video_id: "",
-      marketing_video_title: "",
-      marketing_video_duration: "",
-      access_days: "",
-      is_lifetime_access: false,
-      downloads_count: 0,
-      course_modules: [],
-      total_duration_minutes: 0,
-    });
+    setFormData(initialFormData);
     setSelectedModuleVideoTab({});
     setMarketingVideoType('youtube');
     setMarketingVideoExists(false);
+    setTagsInputValue('');
   };
 
   const handleProductTypeSelect = async (productType) => {
@@ -1523,8 +1497,10 @@ export default function ProductModal({
                   <div>
                     <Label className="text-sm font-medium">תגיות (מופרדות בפסיק)</Label>
                     <Input
-                      value={Array.isArray(formData.tags) ? formData.tags.join(', ') : ''}
+                      value={tagsInputValue}
                       onChange={(e) => {
+                        setTagsInputValue(e.target.value);
+                        // Update tags in real-time as user types
                         const tags = e.target.value.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
                         setFormData(prev => ({ ...prev, tags }));
                       }}
@@ -1532,7 +1508,7 @@ export default function ProductModal({
                       className="mt-1"
                     />
                     <div className="text-xs text-gray-500 mt-1">
-                      הקלד תגיות מופרדות בפסיקים
+                      הקלד תגיות מופרדות בפסיקים ({Array.isArray(formData.tags) ? formData.tags.length : 0} תגיות)
                     </div>
                   </div>
 
