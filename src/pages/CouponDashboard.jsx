@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { useUser } from "@/contexts/UserContext";
 import { getApiBase } from "@/utils/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,9 +23,8 @@ import { toast } from "@/components/ui/use-toast";
 import { clog, cerror } from "@/lib/utils";
 
 export default function CouponDashboard() {
-  const [currentUser, setCurrentUser] = useState(null);
+  const { currentUser, isLoading: userLoading } = useUser();
   const [isLoading, setIsLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [stats, setStats] = useState({
     totalCoupons: 0,
     activeCoupons: 0,
@@ -33,50 +33,39 @@ export default function CouponDashboard() {
   });
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (currentUser && !userLoading) {
+      loadData();
+    }
+  }, [currentUser, userLoading]);
 
   const loadData = async () => {
     setIsLoading(true);
     try {
-      // Get current user
-      const userResponse = await fetch(`${getApiBase()}/entities/user/me`, {
+      // Get coupon statistics
+      const couponsResponse = await fetch(`${getApiBase()}/entities/coupon`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'application/json'
         }
       });
-      const user = await userResponse.json();
-      setCurrentUser(user);
-      setIsAdmin(user.role === 'admin');
+      const coupons = await couponsResponse.json();
 
-      if (user.role === 'admin') {
-        // Get coupon statistics
-        const couponsResponse = await fetch(`${getApiBase()}/entities/coupon`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        const coupons = await couponsResponse.json();
+      // Calculate statistics
+      const now = new Date();
+      const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-        // Calculate statistics
-        const now = new Date();
-        const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+      const stats = {
+        totalCoupons: coupons.length,
+        activeCoupons: coupons.filter(c => c.is_active).length,
+        totalUsage: coupons.reduce((sum, c) => sum + (c.usage_count || 0), 0),
+        expiringSoon: coupons.filter(c => {
+          if (!c.valid_until || !c.is_active) return false;
+          const expiryDate = new Date(c.valid_until);
+          return expiryDate <= nextWeek && expiryDate >= now;
+        }).length
+      };
 
-        const stats = {
-          totalCoupons: coupons.length,
-          activeCoupons: coupons.filter(c => c.is_active).length,
-          totalUsage: coupons.reduce((sum, c) => sum + (c.usage_count || 0), 0),
-          expiringSoon: coupons.filter(c => {
-            if (!c.valid_until || !c.is_active) return false;
-            const expiryDate = new Date(c.valid_until);
-            return expiryDate <= nextWeek && expiryDate >= now;
-          }).length
-        };
-
-        setStats(stats);
-      }
+      setStats(stats);
     } catch (error) {
       cerror("Error loading coupon dashboard data:", error);
       toast({
@@ -88,15 +77,12 @@ export default function CouponDashboard() {
     setIsLoading(false);
   };
 
-  if (!isAdmin) {
+  // Show loading while user context is loading
+  if (userLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Card className="w-96">
-          <CardContent className="p-6 text-center">
-            <h2 className="text-xl font-bold mb-2">אין הרשאה</h2>
-            <p>אין לך הרשאות לגשת לדף זה</p>
-          </CardContent>
-        </Card>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <span className="mr-3">טוען...</span>
       </div>
     );
   }
