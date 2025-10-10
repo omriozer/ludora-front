@@ -76,6 +76,7 @@ export default function PaymentModal({ product, user, settings, isTestMode = (im
   const handlePayment = async () => {
     setIsCreatingPayment(true);
     setError(null);
+    console.log('🎯 PaymentModal: Starting payment process...');
 
     try {
       // Calculate access details based on product settings
@@ -179,7 +180,14 @@ export default function PaymentModal({ product, user, settings, isTestMode = (im
         totalDiscount: discountAmount
       });
 
+      console.log('🎯 PaymentModal: Payment response received:', {
+        success: paymentResponse.data?.success,
+        hasPaymentUrl: !!paymentResponse.data?.payment_url,
+        paymentUrl: paymentResponse.data?.payment_url
+      });
+
       if (paymentResponse.data?.success && paymentResponse.data?.payment_url) {
+        console.log('🎯 PaymentModal: Setting iframe to show with URL:', paymentResponse.data.payment_url);
         setPaymentUrl(paymentResponse.data.payment_url);
         setShowIframe(true);
       } else {
@@ -196,27 +204,87 @@ export default function PaymentModal({ product, user, settings, isTestMode = (im
 
   // Handle iframe messages from PayPlus
   useEffect(() => {
-    const handleMessage = (event) => {
+    const handleMessage = async (event) => {
+      console.log('🎯 PaymentModal: Received message from iframe:', event.data);
+
       if (event.data && typeof event.data === 'string') {
         try {
           const data = JSON.parse(event.data);
+          console.log('🎯 PaymentModal: Parsed message data:', data);
+
           if (data.type === 'payplus_payment_complete') {
-            // Payment completed, redirect to results page
-            window.location.href = `/PaymentResult?status=${data.status}&purchaseId=${data.purchaseId || data.orderNumber}`;  // Updated for new schema
+            console.log('🎯 PaymentModal: Payment completed with status:', data.status);
+
+            // Update purchases to pending status since payment was submitted
+            if (data.status === 'success') {
+              try {
+                // Import Purchase here to avoid circular dependency
+                const { Purchase } = await import('@/services/entities');
+
+                // Get the cart purchases that are currently in payment
+                const cartPurchases = await import('@/utils/purchaseHelpers').then(m => m.getCartPurchases(user.id));
+                const purchasesToUpdate = cartPurchases.filter(p => p.metadata?.payment_in_progress === true);
+
+                // Update them to pending status (waiting for webhook confirmation)
+                for (const purchase of purchasesToUpdate) {
+                  await Purchase.update(purchase.id, {
+                    payment_status: 'pending',
+                    metadata: {
+                      ...purchase.metadata,
+                      payment_submitted_at: new Date().toISOString(),
+                      payment_in_progress: false
+                    }
+                  });
+                }
+
+                console.log(`🎯 PaymentModal: Updated ${purchasesToUpdate.length} purchases to pending status`);
+              } catch (error) {
+                console.error('🎯 PaymentModal: Error updating purchase status:', error);
+              }
+            } else {
+              // Payment failed/cancelled - reset payment_in_progress flag
+              try {
+                const { Purchase } = await import('@/services/entities');
+                const cartPurchases = await import('@/utils/purchaseHelpers').then(m => m.getCartPurchases(user.id));
+                const purchasesToReset = cartPurchases.filter(p => p.metadata?.payment_in_progress === true);
+
+                for (const purchase of purchasesToReset) {
+                  await Purchase.update(purchase.id, {
+                    metadata: {
+                      ...purchase.metadata,
+                      payment_in_progress: false,
+                      payment_failed_at: new Date().toISOString()
+                    }
+                  });
+                }
+
+                console.log(`🎯 PaymentModal: Reset ${purchasesToReset.length} purchases after payment failure`);
+              } catch (error) {
+                console.error('🎯 PaymentModal: Error resetting purchase status:', error);
+              }
+            }
+
+            // Redirect to results page
+            window.location.href = `/PaymentResult?status=${data.status}&purchaseId=${data.purchaseId || data.orderNumber}`;
           }
         } catch (e) {
-          // Not a PayPlus message, ignore
+          console.log('🎯 PaymentModal: Message not JSON or not PayPlus message, ignoring');
         }
       }
     };
 
     if (showIframe) {
+      console.log('🎯 PaymentModal: Adding message listener for iframe');
       window.addEventListener('message', handleMessage);
-      return () => window.removeEventListener('message', handleMessage);
+      return () => {
+        console.log('🎯 PaymentModal: Removing message listener for iframe');
+        window.removeEventListener('message', handleMessage);
+      };
     }
-  }, [showIframe]);
+  }, [showIframe, user.id]);
 
   if (showIframe && paymentUrl) {
+    console.log('🎯 PaymentModal: Rendering iframe with URL:', paymentUrl);
     return (
       <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
         <div className="bg-white rounded-lg w-full max-w-4xl h-[90vh] flex flex-col">
@@ -225,7 +293,33 @@ export default function PaymentModal({ product, user, settings, isTestMode = (im
             <Button
               variant="ghost"
               size="icon"
-              onClick={onClose}
+              onClick={() => {
+                console.log('🎯 PaymentModal: Close button clicked, resetting payment_in_progress');
+                // Reset payment_in_progress when modal is closed
+                const resetPaymentFlags = async () => {
+                  try {
+                    const { Purchase } = await import('@/services/entities');
+                    const { getCartPurchases } = await import('@/utils/purchaseHelpers');
+                    const cartPurchases = await getCartPurchases(user.id);
+                    const purchasesToReset = cartPurchases.filter(p => p.metadata?.payment_in_progress === true);
+
+                    for (const purchase of purchasesToReset) {
+                      await Purchase.update(purchase.id, {
+                        metadata: {
+                          ...purchase.metadata,
+                          payment_in_progress: false,
+                          payment_cancelled_at: new Date().toISOString()
+                        }
+                      });
+                    }
+                    console.log(`🎯 PaymentModal: Reset ${purchasesToReset.length} purchases after modal close`);
+                  } catch (error) {
+                    console.error('🎯 PaymentModal: Error resetting purchases on close:', error);
+                  }
+                };
+                resetPaymentFlags();
+                onClose();
+              }}
             >
               <X className="w-4 h-4" />
             </Button>
@@ -235,6 +329,8 @@ export default function PaymentModal({ product, user, settings, isTestMode = (im
               src={paymentUrl}
               className="w-full h-full border-0"
               title="PayPlus Payment"
+              onLoad={() => console.log('🎯 PaymentModal: Iframe loaded successfully')}
+              onError={(e) => console.error('🎯 PaymentModal: Iframe error:', e)}
             />
           </div>
         </div>

@@ -74,6 +74,12 @@ export async function createPendingPurchase({
   try {
     clog('Creating pending purchase:', { entityType, entityId, price, userId });
 
+    // Check if payment is currently in progress for this product
+    const paymentInProgress = await isPaymentInProgress(userId, entityType, entityId);
+    if (paymentInProgress) {
+      throw new Error('תשלום עבור המוצר הזה כבר בתהליך. אנא המתן לסיום התשלום או נסה שוב מאוחר יותר.');
+    }
+
     // Check if user already has any non-refunded purchase for this product
     const existingPurchases = await getAllNonRefundedPurchases(userId);
     const existingPurchase = existingPurchases.find(p =>
@@ -374,6 +380,44 @@ export async function checkExistingPurchase(userId, entityType, entityId) {
   } catch (error) {
     cerror('Error checking existing purchase:', error);
     return null;
+  }
+}
+
+/**
+ * Check if payment is currently in progress for a specific product
+ * @param {string} userId - User ID
+ * @param {string} entityType - Type of entity (file, workshop, course, tool, game)
+ * @param {string} entityId - ID of the entity
+ * @returns {Promise<boolean>} True if payment is in progress
+ */
+export async function isPaymentInProgress(userId, entityType, entityId) {
+  try {
+    const cartPurchases = await getCartPurchases(userId);
+    const inProgressPurchase = cartPurchases.find(p =>
+      p.purchasable_type === entityType &&
+      p.purchasable_id === entityId &&
+      p.metadata?.payment_in_progress === true
+    );
+
+    if (inProgressPurchase) {
+      // Check if payment page was created more than 10 minutes ago (stale)
+      const createdAt = new Date(inProgressPurchase.metadata.payment_page_created_at);
+      const now = new Date();
+      const minutesElapsed = (now - createdAt) / (1000 * 60);
+
+      if (minutesElapsed > 10) {
+        clog('Payment in progress but stale (>10 minutes), allowing retry');
+        return false;
+      }
+
+      clog('Payment in progress for product:', { entityType, entityId, purchase: inProgressPurchase });
+      return true;
+    }
+
+    return false;
+  } catch (error) {
+    cerror('Error checking payment in progress:', error);
+    return false;
   }
 }
 
