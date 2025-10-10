@@ -41,7 +41,7 @@ class PaymentClient {
         body: JSON.stringify({
           // Multi-item cart support - send all purchase IDs
           purchaseIds: purchaseIds, // Send all IDs for multi-item
-          purchaseId: purchaseIds[0], // Keep for backward compatibility
+          userId: userId, // Required for payment session management
           totalAmount: totalAmount,
           returnUrl: returnUrl || callbackUrl,
           callbackUrl,

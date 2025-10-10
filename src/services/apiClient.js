@@ -562,6 +562,20 @@ export async function checkPaymentStatus(data) {
   });
 }
 
+export async function cleanupStuckPaymentSessions(data) {
+  return apiRequest('/functions/cleanupStuckPaymentSessions', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  });
+}
+
+export async function cleanupUserStuckSessions(data) {
+  return apiRequest('/functions/cleanupUserStuckSessions', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  });
+}
+
 export async function handlePayplusProductCallback(data) {
   return apiRequest('/functions/handlePayplusProductCallback', {
     method: 'POST',

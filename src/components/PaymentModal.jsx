@@ -120,11 +120,10 @@ export default function PaymentModal({ product, user, settings, isTestMode = (im
       let purchase;
 
       if (existingCartPurchase) {
-        // Update existing cart purchase to pending status and apply any discounts
-        console.log('Found existing cart purchase, transitioning to payment:', existingCartPurchase.id);
+        // Update existing cart purchase with discount info but keep in cart status
+        console.log('Found existing cart purchase, updating with discount info:', existingCartPurchase.id);
 
         const updateData = {
-          payment_status: 'pending',
           payment_amount: finalPrice,
           discount_amount: discountAmount,
           coupon_code: appliedCoupon?.code || null,
@@ -135,14 +134,14 @@ export default function PaymentModal({ product, user, settings, isTestMode = (im
             product_title: product.title,
             access_days: purchasedAccessDays,
             lifetime_access: purchasedLifetimeAccess,
-            transitioned_to_payment_at: new Date().toISOString()
+            payment_preparation_at: new Date().toISOString()
           }
         };
 
         purchase = await Purchase.update(existingCartPurchase.id, updateData);
       } else {
-        // Create new purchase record (fallback for direct payment)
-        console.log('No cart purchase found, creating new purchase for payment');
+        // Create new purchase record in cart status
+        console.log('No cart purchase found, creating new purchase in cart status');
 
         const orderNumber = generateOrderNumber();
         const purchaseData = {
@@ -154,7 +153,7 @@ export default function PaymentModal({ product, user, settings, isTestMode = (im
           original_price: product.price,
           discount_amount: discountAmount,
           coupon_code: appliedCoupon?.code || null,
-          payment_status: 'pending',
+          payment_status: 'cart', // Keep in cart status until PayPlus success
           access_expires_at: accessExpiresAt,
           metadata: {
             environment: isTestMode ? 'test' : 'production',
@@ -168,11 +167,16 @@ export default function PaymentModal({ product, user, settings, isTestMode = (im
         purchase = await Purchase.create(purchaseData);
       }
 
-      // Create PayPlus payment page
+      // Create PayPlus payment page - PaymentService will handle status transitions
       const paymentResponse = await createPayplusPaymentPage({
-        purchaseId: purchase.id,
+        purchaseIds: [purchase.id], // Use purchaseIds array for consistency
+        amount: finalPrice,
+        userId: user.id,
         environment: isTestMode ? 'test' : 'production',
-        frontendOrigin: window.location.origin
+        frontendOrigin: window.location.origin,
+        appliedCoupons: appliedCoupon ? [appliedCoupon] : [],
+        originalAmount: product.price,
+        totalDiscount: discountAmount
       });
 
       if (paymentResponse.data?.success && paymentResponse.data?.payment_url) {
