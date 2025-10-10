@@ -43,6 +43,7 @@ import { toast } from "@/components/ui/use-toast";
 import { useCart } from "@/contexts/CartContext";
 import CouponInput from "@/components/CouponInput";
 import couponClient from "@/services/couponClient";
+import PaymentModal from "@/components/PaymentModal";
 
 
 export default function Checkout() {
@@ -56,6 +57,7 @@ export default function Checkout() {
   const [error, setError] = useState(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [paymentEnvironment, setPaymentEnvironment] = useState('production');
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   // Coupon management
   const [appliedCoupons, setAppliedCoupons] = useState([]);
@@ -223,57 +225,46 @@ export default function Checkout() {
       return;
     }
 
-    setIsProcessingPayment(true);
+    // Open PaymentModal instead of redirecting
+    setShowPaymentModal(true);
+  };
 
+  // Handle modal close
+  const handlePaymentModalClose = () => {
+    setShowPaymentModal(false);
+    setIsProcessingPayment(false);
+  };
+
+  // Handle successful payment (clear cart and reload data)
+  const handlePaymentSuccess = async () => {
     try {
-      const userId = getUserIdFromToken();
-      if (!userId) {
-        throw new Error('לא ניתן לזהות את המשתמש');
-      }
+      // Clear local cart state
+      setCartItems([]);
 
-      // Extract purchase IDs from cart items
-      const purchaseIds = cartItems.map(item => item.id);
-      const totalAmount = pricingBreakdown.total;
+      // Notify cart context to update
+      cartItems.forEach(item => removeFromCart(item.id));
 
-      // Use admin-selected environment or default to production
-      const environment = paymentEnvironment;
+      // Recalculate pricing for empty cart
+      calculatePricing([]);
 
-      // Create PayPlus payment page with coupon information
-      const paymentResponse = await paymentClient.createCheckoutPaymentPage({
-        purchaseIds,
-        totalAmount,
-        userId,
-        returnUrl: `${window.location.origin}/payment-result`,
-        environment,
-        // Include coupon information for transaction tracking
-        appliedCoupons: appliedCoupons.map(coupon => ({
-          code: coupon.code,
-          id: coupon.id,
-          discountAmount: coupon.discountAmount,
-          discountType: coupon.discountType
-        })),
-        originalAmount: pricingBreakdown.subtotal, // Store original amount before discounts
-        totalDiscount: pricingBreakdown.discounts
+      // Show success message
+      toast({
+        title: "תשלום הושלם בהצלחה!",
+        description: "הפריטים נרכשו והוסרו מהעגלה",
+        variant: "default",
       });
 
-      if (paymentResponse.success && paymentResponse.data?.payment_url) {
-        // Redirect to PayPlus payment page
-        window.location.href = paymentResponse.data.payment_url;
-      } else {
-        throw new Error('לא ניתן ליצור דף תשלום');
-      }
+      // Close modal
+      setShowPaymentModal(false);
+      setIsProcessingPayment(false);
+
+      // Optionally reload checkout data to ensure sync
+      setTimeout(() => {
+        loadCheckoutData();
+      }, 1000);
 
     } catch (error) {
-      console.error('Payment error:', error);
-
-      // Show user-friendly error message
-      toast({
-        title: "שגיאה בעיבוד התשלום",
-        description: error.message || "אירעה שגיאה בעת יצירת דף התשלום. אנא נסו שוב.",
-        variant: "destructive",
-      });
-
-      setIsProcessingPayment(false);
+      console.error('Error handling payment success:', error);
     }
   };
 
@@ -567,6 +558,24 @@ export default function Checkout() {
           </div>
         </div>
       </div>
+
+      {/* Payment Modal */}
+      {showPaymentModal && currentUser && (
+        <PaymentModal
+          product={{
+            title: `עגלת קניות (${cartItems.length} פריטים)`,
+            price: pricingBreakdown.total,
+            product_type: 'cart',
+            id: 'cart-checkout',
+            entity_id: 'cart-checkout'
+          }}
+          user={currentUser}
+          settings={settings}
+          isTestMode={paymentEnvironment === 'test'}
+          onClose={handlePaymentModalClose}
+          onSuccess={handlePaymentSuccess}
+        />
+      )}
     </div>
   );
 }
