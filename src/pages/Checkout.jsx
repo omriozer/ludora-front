@@ -24,7 +24,8 @@ import {
   Clock,
   Tag,
   Percent,
-  Shield
+  Shield,
+  X
 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
@@ -43,7 +44,6 @@ import { toast } from "@/components/ui/use-toast";
 import { useCart } from "@/contexts/CartContext";
 import CouponInput from "@/components/CouponInput";
 import couponClient from "@/services/couponClient";
-import PaymentModal from "@/components/PaymentModal";
 
 
 export default function Checkout() {
@@ -58,6 +58,7 @@ export default function Checkout() {
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [paymentEnvironment, setPaymentEnvironment] = useState('production');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentUrl, setPaymentUrl] = useState('');
 
   // Coupon management
   const [appliedCoupons, setAppliedCoupons] = useState([]);
@@ -156,6 +157,58 @@ export default function Checkout() {
     loadCheckoutData();
   }, [loadCheckoutData]);
 
+  // Handle iframe messages from PayPlus
+  useEffect(() => {
+    const handleMessage = async (event) => {
+      // Filter out non-PayPlus messages (React DevTools, etc.)
+      if (!event.data ||
+          event.data.source === 'react-devtools-bridge' ||
+          event.data.source === 'react-devtools-content-script' ||
+          event.data.source === 'react-devtools-inject-script') {
+        return;
+      }
+
+      console.log('🎯 Checkout: Received message from PayPlus iframe:', event.data);
+
+      if (typeof event.data === 'string') {
+        try {
+          const data = JSON.parse(event.data);
+          console.log('🎯 Checkout: Parsed message data:', data);
+
+          if (data.type === 'payplus_payment_complete') {
+            console.log('🎯 Checkout: Payment completed with status:', data.status);
+
+            if (data.status === 'success') {
+              // Payment was successful - trigger success handler
+              await handlePaymentSuccess();
+            } else {
+              // Payment failed/cancelled - just close modal
+              handlePaymentModalClose();
+
+              toast({
+                title: "תשלום לא הושלם",
+                description: "התשלום בוטל או נכשל. הפריטים נשמרו בעגלה.",
+                variant: "destructive",
+              });
+            }
+          }
+        } catch (e) {
+          // Silently ignore non-JSON messages
+          return;
+        }
+      }
+    };
+
+    if (showPaymentModal && paymentUrl) {
+      console.log('🎯 Checkout: Adding message listener for PayPlus iframe');
+      window.addEventListener('message', handleMessage);
+      return () => {
+        console.log('🎯 Checkout: Removing message listener for PayPlus iframe');
+        window.removeEventListener('message', handleMessage);
+      };
+    }
+  }, [showPaymentModal, paymentUrl]);
+
   // Remove item from cart
   const handleRemoveItem = async (purchaseId) => {
     try {
@@ -225,14 +278,66 @@ export default function Checkout() {
       return;
     }
 
-    // Open PaymentModal instead of redirecting
-    setShowPaymentModal(true);
+    setIsProcessingPayment(true);
+
+    try {
+      const userId = getUserIdFromToken();
+      if (!userId) {
+        throw new Error('לא ניתן לזהות את המשתמש');
+      }
+
+      // Extract purchase IDs from cart items
+      const purchaseIds = cartItems.map(item => item.id);
+      const totalAmount = pricingBreakdown.total;
+
+      // Use admin-selected environment or default to production
+      const environment = paymentEnvironment;
+
+      // Create PayPlus payment page with coupon information
+      const paymentResponse = await paymentClient.createCheckoutPaymentPage({
+        purchaseIds,
+        totalAmount,
+        userId,
+        returnUrl: `${window.location.origin}/payment-result`,
+        environment,
+        // Include coupon information for transaction tracking
+        appliedCoupons: appliedCoupons.map(coupon => ({
+          code: coupon.code,
+          id: coupon.id,
+          discountAmount: coupon.discountAmount,
+          discountType: coupon.discountType
+        })),
+        originalAmount: pricingBreakdown.subtotal, // Store original amount before discounts
+        totalDiscount: pricingBreakdown.discounts
+      });
+
+      if (paymentResponse.success && paymentResponse.data?.payment_url) {
+        // Set payment URL and show modal with PayPlus iframe
+        setPaymentUrl(paymentResponse.data.payment_url);
+        setShowPaymentModal(true);
+      } else {
+        throw new Error('לא ניתן ליצור דף תשלום');
+      }
+
+    } catch (error) {
+      console.error('Payment error:', error);
+
+      // Show user-friendly error message
+      toast({
+        title: "שגיאה בעיבוד התשלום",
+        description: error.message || "אירעה שגיאה בעת יצירת דף התשלום. אנא נסו שוב.",
+        variant: "destructive",
+      });
+
+      setIsProcessingPayment(false);
+    }
   };
 
   // Handle modal close
   const handlePaymentModalClose = () => {
     setShowPaymentModal(false);
     setIsProcessingPayment(false);
+    setPaymentUrl('');
   };
 
   // Handle successful payment (clear cart and reload data)
@@ -559,22 +664,31 @@ export default function Checkout() {
         </div>
       </div>
 
-      {/* Payment Modal */}
-      {showPaymentModal && currentUser && (
-        <PaymentModal
-          product={{
-            title: `עגלת קניות (${cartItems.length} פריטים)`,
-            price: pricingBreakdown.total,
-            product_type: 'cart',
-            id: 'cart-checkout',
-            entity_id: 'cart-checkout'
-          }}
-          user={currentUser}
-          settings={settings}
-          isTestMode={paymentEnvironment === 'test'}
-          onClose={handlePaymentModalClose}
-          onSuccess={handlePaymentSuccess}
-        />
+      {/* PayPlus Payment Modal - Iframe Only */}
+      {showPaymentModal && paymentUrl && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg w-full max-w-4xl h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h2 className="text-xl font-semibold">תשלום מאובטח</h2>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handlePaymentModalClose}
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+            <div className="flex-1">
+              <iframe
+                src={paymentUrl}
+                className="w-full h-full border-0"
+                title="PayPlus Payment"
+                onLoad={() => console.log('🎯 Checkout: PayPlus iframe loaded successfully')}
+                onError={(e) => console.error('🎯 Checkout: PayPlus iframe error:', e)}
+              />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
