@@ -60,6 +60,11 @@ export default function Checkout() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentUrl, setPaymentUrl] = useState('');
 
+  // PaymentIntent state
+  const [currentTransactionId, setCurrentTransactionId] = useState(null);
+  const [isPollingPaymentStatus, setIsPollingPaymentStatus] = useState(false);
+  const [pollingInterval, setPollingInterval] = useState(null);
+
   // Coupon management
   const [appliedCoupons, setAppliedCoupons] = useState([]);
 
@@ -157,6 +162,15 @@ export default function Checkout() {
     loadCheckoutData();
   }, [loadCheckoutData]);
 
+  // Cleanup polling interval on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
+    };
+  }, [pollingInterval]);
+
   // Handle iframe messages from PayPlus
   useEffect(() => {
     const handleMessage = async (event) => {
@@ -176,13 +190,18 @@ export default function Checkout() {
           console.log('🎯 Checkout: Parsed message data:', data);
 
           if (data.type === 'payplus_payment_complete') {
-            console.log('🎯 Checkout: Payment completed with status:', data.status);
+            console.log('🎯 Checkout: Payment completed via PostMessage with status:', data.status);
+
+            // Stop polling since we got immediate notification
+            stopPaymentStatusPolling();
 
             if (data.status === 'success') {
               // Payment was successful - trigger success handler
+              console.log('✅ PaymentIntent completed via PostMessage');
               await handlePaymentSuccess();
             } else {
               // Payment failed/cancelled - just close modal
+              console.log('❌ PaymentIntent failed via PostMessage:', data.status);
               handlePaymentModalClose();
 
               toast({
@@ -271,7 +290,61 @@ export default function Checkout() {
     }
   };
 
-  // Proceed to payment
+  // Start polling PaymentIntent status
+  const startPaymentStatusPolling = (transactionId) => {
+    console.log('🔄 Starting PaymentIntent status polling for transaction:', transactionId);
+    setIsPollingPaymentStatus(true);
+
+    // Poll every 3 seconds
+    const interval = setInterval(async () => {
+      try {
+        const statusResponse = await paymentClient.checkPaymentIntentStatus(transactionId);
+
+        if (statusResponse.success && statusResponse.data) {
+          const status = statusResponse.data.status;
+          console.log('🔍 PaymentIntent status:', status);
+
+          // Check for terminal states
+          if (status === 'completed') {
+            console.log('✅ PaymentIntent completed via polling');
+            clearInterval(interval);
+            setPollingInterval(null);
+            setIsPollingPaymentStatus(false);
+            await handlePaymentSuccess();
+          } else if (['failed', 'cancelled', 'expired'].includes(status)) {
+            console.log('❌ PaymentIntent failed via polling:', status);
+            clearInterval(interval);
+            setPollingInterval(null);
+            setIsPollingPaymentStatus(false);
+            handlePaymentModalClose();
+
+            toast({
+              title: "תשלום לא הושלם",
+              description: `התשלום ${status === 'expired' ? 'פג תוקף' : status === 'cancelled' ? 'בוטל' : 'נכשל'}. הפריטים נשמרו בעגלה.`,
+              variant: "destructive",
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error polling PaymentIntent status:', error);
+        // Continue polling on error - don't stop unless user closes modal
+      }
+    }, 3000);
+
+    setPollingInterval(interval);
+  };
+
+  // Stop polling PaymentIntent status
+  const stopPaymentStatusPolling = () => {
+    if (pollingInterval) {
+      console.log('🛑 Stopping PaymentIntent status polling');
+      clearInterval(pollingInterval);
+      setPollingInterval(null);
+      setIsPollingPaymentStatus(false);
+    }
+  };
+
+  // Proceed to payment using new PaymentIntent flow
   const handleProceedToPayment = async () => {
     if (cartItems.length === 0) {
       showPurchaseErrorToast('עגלת הקניות ריקה', 'בתשלום');
@@ -286,41 +359,47 @@ export default function Checkout() {
         throw new Error('לא ניתן לזהות את המשתמש');
       }
 
-      // Extract purchase IDs from cart items
-      const purchaseIds = cartItems.map(item => item.id);
-      const totalAmount = pricingBreakdown.total;
+      // Prepare cart items with id and payment_amount
+      const cartItemsForPayment = cartItems.map(item => ({
+        id: item.id,
+        payment_amount: parseFloat(item.payment_amount)
+      }));
 
-      // Use admin-selected environment or default to production
-      const environment = paymentEnvironment;
-
-      // Create PayPlus payment page with coupon information
-      const paymentResponse = await paymentClient.createCheckoutPaymentPage({
-        purchaseIds,
-        totalAmount,
+      // Create PaymentIntent using new Transaction-centric flow
+      const paymentResponse = await paymentClient.createPaymentIntent({
+        cartItems: cartItemsForPayment,
         userId,
-        returnUrl: `${window.location.origin}/payment-result`,
-        environment,
-        // Include coupon information for transaction tracking
         appliedCoupons: appliedCoupons.map(coupon => ({
           code: coupon.code,
           id: coupon.id,
           discountAmount: coupon.discountAmount,
           discountType: coupon.discountType
         })),
-        originalAmount: pricingBreakdown.subtotal, // Store original amount before discounts
-        totalDiscount: pricingBreakdown.discounts
+        environment: paymentEnvironment,
+        frontendOrigin: window.location.origin
       });
 
-      if (paymentResponse.success && paymentResponse.data?.payment_url) {
+      if (paymentResponse.success && paymentResponse.data) {
+        const { transactionId, paymentUrl, totalAmount, status } = paymentResponse.data;
+
+        console.log('🎯 PaymentIntent created:', { transactionId, totalAmount, status });
+
+        // Store transaction ID for polling
+        setCurrentTransactionId(transactionId);
+
         // Set payment URL and show modal with PayPlus iframe
-        setPaymentUrl(paymentResponse.data.payment_url);
+        setPaymentUrl(paymentUrl);
         setShowPaymentModal(true);
+
+        // Start polling for payment status (backend-driven completion detection)
+        startPaymentStatusPolling(transactionId);
+
       } else {
-        throw new Error('לא ניתן ליצור דף תשלום');
+        throw new Error('לא ניתן ליצור PaymentIntent');
       }
 
     } catch (error) {
-      console.error('Payment error:', error);
+      console.error('PaymentIntent error:', error);
 
       // Show user-friendly error message
       toast({
@@ -338,11 +417,20 @@ export default function Checkout() {
     setShowPaymentModal(false);
     setIsProcessingPayment(false);
     setPaymentUrl('');
+
+    // Stop polling when modal is closed
+    stopPaymentStatusPolling();
+
+    // Clear transaction ID
+    setCurrentTransactionId(null);
   };
 
   // Handle successful payment (clear cart and reload data)
   const handlePaymentSuccess = async () => {
     try {
+      // Stop polling if still active
+      stopPaymentStatusPolling();
+
       // Clear local cart state
       setCartItems([]);
 
@@ -359,9 +447,10 @@ export default function Checkout() {
         variant: "default",
       });
 
-      // Close modal
+      // Close modal and clear state
       setShowPaymentModal(false);
       setIsProcessingPayment(false);
+      setCurrentTransactionId(null);
 
       // Optionally reload checkout data to ensure sync
       setTimeout(() => {
@@ -669,7 +758,20 @@ export default function Checkout() {
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg w-full max-w-4xl h-[90vh] flex flex-col">
             <div className="flex items-center justify-between p-4 border-b">
-              <h2 className="text-xl font-semibold">תשלום מאובטח</h2>
+              <div className="flex items-center gap-3">
+                <h2 className="text-xl font-semibold">תשלום מאובטח</h2>
+                {isPollingPaymentStatus && (
+                  <div className="flex items-center gap-2 text-sm text-blue-600">
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent"></div>
+                    <span>מבדק סטטוס תשלום...</span>
+                  </div>
+                )}
+                {currentTransactionId && (
+                  <div className="text-xs text-gray-500 font-mono">
+                    ID: {currentTransactionId.slice(-8)}
+                  </div>
+                )}
+              </div>
               <Button
                 variant="ghost"
                 size="icon"
