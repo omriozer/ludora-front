@@ -195,7 +195,8 @@ class PaymentClient {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to create PaymentIntent');
+        const errorMessage = data.error || data.message || `Server error: ${response.status} ${response.statusText}`;
+        throw new Error(errorMessage);
       }
 
       clog('PaymentIntent created successfully:', data);
