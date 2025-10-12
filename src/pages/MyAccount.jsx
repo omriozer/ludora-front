@@ -171,7 +171,9 @@ const MyAccount = () => {
     // Filter by search term
     if (searchTerm) {
       filtered = filtered.filter(purchase => {
-        const product = products.find(p => p.id === purchase.product_id);
+        // Use polymorphic structure to find product
+        const entityId = purchase.purchasable_id || purchase.product_id;
+        const product = products.find(p => p.id === entityId);
         return (
           purchase.order_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           product?.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -186,16 +188,16 @@ const MyAccount = () => {
 
       switch (sortField) {
         case 'created_date':
-          aValue = new Date(a.created_date);
-          bValue = new Date(b.created_date);
+          aValue = new Date(a.created_at || a.created_date);
+          bValue = new Date(b.created_at || b.created_date);
           break;
         case 'payment_amount':
           aValue = a.payment_amount || 0;
           bValue = b.payment_amount || 0;
           break;
         case 'product_name':
-          const entityIdA = purchaseUtils.getEntityId(a);
-          const entityIdB = purchaseUtils.getEntityId(b);
+          const entityIdA = a.purchasable_id || a.product_id;
+          const entityIdB = b.purchasable_id || b.product_id;
           const productA = products.find(p => p.id === entityIdA);
           const productB = products.find(p => p.id === entityIdB);
           aValue = productA?.title || '';
@@ -486,10 +488,11 @@ const MyAccount = () => {
   };
 
   const handleProductAccess = (purchase) => {
-    const product = products.find(p => p.id === purchase.product_id);
+    const entityId = purchase.purchasable_id || purchase.product_id;
+    const product = products.find(p => p.id === entityId);
     if (!product) return;
 
-    switch (product.product_type) {
+    switch (product.entity_type || product.product_type) {
       case 'course':
         navigate(`/course?course=${product.id}`);
         break;
@@ -511,24 +514,36 @@ const MyAccount = () => {
   const getStatusColor = (status) => {
     switch (status) {
       case 'paid':
-        return 'text-green-600 bg-green-50';
+      case 'completed':
+        return 'text-green-600 bg-green-50 border-green-200';
       case 'pending':
-        return 'text-yellow-600 bg-yellow-50';
+      case 'cart':
+        return 'text-yellow-600 bg-yellow-50 border-yellow-200';
       case 'refunded':
-        return 'text-red-600 bg-red-50';
+      case 'failed':
+        return 'text-red-600 bg-red-50 border-red-200';
+      case 'cancelled':
+        return 'text-gray-600 bg-gray-50 border-gray-200';
       default:
-        return 'text-gray-600 bg-gray-50';
+        return 'text-blue-600 bg-blue-50 border-blue-200';
     }
   };
 
   const getStatusText = (status) => {
     switch (status) {
       case 'paid':
-        return 'שולם';
+      case 'completed':
+        return 'הושלם';
       case 'pending':
         return 'ממתין';
+      case 'cart':
+        return 'בעגלה';
       case 'refunded':
         return 'הוחזר';
+      case 'failed':
+        return 'נכשל';
+      case 'cancelled':
+        return 'בוטל';
       default:
         return status;
     }
@@ -883,8 +898,11 @@ const MyAccount = () => {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">הכל</SelectItem>
+                          <SelectItem value="completed">הושלם</SelectItem>
                           <SelectItem value="paid">שולם</SelectItem>
                           <SelectItem value="pending">ממתין</SelectItem>
+                          <SelectItem value="cart">בעגלה</SelectItem>
+                          <SelectItem value="failed">נכשל</SelectItem>
                           <SelectItem value="refunded">הוחזר</SelectItem>
                         </SelectContent>
                       </Select>
@@ -898,8 +916,9 @@ const MyAccount = () => {
                     {/* Mobile View - Cards */}
                     <div className="block lg:hidden">
                       {filteredPurchases.map((purchase) => {
-                        const product = products.find(p => p.id === purchase.product_id);
-                        const isSubscription = !purchase.product_id;
+                        const entityId = purchase.purchasable_id || purchase.product_id;
+                        const product = products.find(p => p.id === entityId);
+                        const isSubscription = !entityId;
 
                         return (
                           <div key={purchase.id} className="border-b last:border-b-0 p-4">
@@ -913,9 +932,9 @@ const MyAccount = () => {
                                 </div>
                                 {product && (
                                   <div className="text-xs text-gray-400 mt-1">
-                                    {product.product_type === 'course' && getProductTypeName('course', 'singular')}
-                                    {product.product_type === 'workshop' && getProductTypeName('workshop', 'singular')}
-                                    {product.product_type === 'file' && getProductTypeName('file', 'singular')}
+                                    {(product.entity_type === 'course' || product.product_type === 'course') && getProductTypeName('course', 'singular')}
+                                    {(product.entity_type === 'workshop' || product.product_type === 'workshop') && getProductTypeName('workshop', 'singular')}
+                                    {(product.entity_type === 'file' || product.product_type === 'file') && getProductTypeName('file', 'singular')}
                                   </div>
                                 )}
                               </div>
@@ -923,7 +942,7 @@ const MyAccount = () => {
                                 <div className="text-lg font-semibold text-gray-900">
                                   ₪{purchase.payment_amount}
                                 </div>
-                                <Badge className={`text-xs ${getStatusColor(purchase.payment_status)}`}>
+                                <Badge className={`text-xs border ${getStatusColor(purchase.payment_status)}`}>
                                   {getStatusText(purchase.payment_status)}
                                 </Badge>
                               </div>
@@ -932,32 +951,32 @@ const MyAccount = () => {
                             <div className="flex items-center justify-between text-sm text-gray-500 mb-3">
                               <span>
                                 {(() => {
-                                  const date = new Date(purchase.created_date);
+                                  const date = new Date(purchase.created_at || purchase.created_date);
                                   return isNaN(date) ? '-' : format(date, 'dd/MM/yyyy HH:mm', { locale: he });
                                 })()}
                               </span>
                             </div>
 
-                            {product && purchase.payment_status === 'paid' && !isSubscription && (
+                            {product && (purchase.payment_status === 'paid' || purchase.payment_status === 'completed') && !isSubscription && (
                               <Button
                                 size="sm"
                                 variant="outline"
                                 onClick={() => handleProductAccess(purchase)}
                                 className="w-full text-xs"
                               >
-                                {product.product_type === 'course' && (
+                                {(product.entity_type === 'course' || product.product_type === 'course') && (
                                   <>
                                     <BookOpen className="w-3 h-3 ml-1" />
                                     פתח {getProductTypeName('course', 'singular')}
                                   </>
                                 )}
-                                {product.product_type === 'workshop' && (
+                                {(product.entity_type === 'workshop' || product.product_type === 'workshop') && (
                                   <>
                                     <Play className="w-3 h-3 ml-1" />
                                     צפה בהקלטה
                                   </>
                                 )}
-                                {product.product_type === 'file' && (
+                                {(product.entity_type === 'file' || product.product_type === 'file') && (
                                   <>
                                     <Download className="w-3 h-3 ml-1" />
                                     הורד קובץ
@@ -1025,14 +1044,15 @@ const MyAccount = () => {
                         </thead>
                         <tbody>
                           {filteredPurchases.map((purchase) => {
-                            const product = products.find(p => p.id === purchase.product_id);
-                            const isSubscription = !purchase.product_id;
+                            const entityId = purchase.purchasable_id || purchase.product_id;
+                            const product = products.find(p => p.id === entityId);
+                            const isSubscription = !entityId;
 
                             return (
                               <tr key={purchase.id} className="border-b hover:bg-gray-50">
                                 <td className="p-4">
                                   {(() => {
-                                    const date = new Date(purchase.created_date);
+                                    const date = new Date(purchase.created_at || purchase.created_date);
                                     return isNaN(date) ? '-' : format(date, 'dd/MM/yyyy HH:mm', { locale: he });
                                   })()}
                                 </td>
@@ -1046,9 +1066,9 @@ const MyAccount = () => {
                                     </div>
                                     {product && (
                                       <div className="text-sm text-gray-500">
-                                        {product.product_type === 'course' && getProductTypeName('course', 'singular')}
-                                        {product.product_type === 'workshop' && getProductTypeName('workshop', 'singular')}
-                                        {product.product_type === 'file' && getProductTypeName('file', 'singular')}
+                                        {(product.entity_type === 'course' || product.product_type === 'course') && getProductTypeName('course', 'singular')}
+                                        {(product.entity_type === 'workshop' || product.product_type === 'workshop') && getProductTypeName('workshop', 'singular')}
+                                        {(product.entity_type === 'file' || product.product_type === 'file') && getProductTypeName('file', 'singular')}
                                       </div>
                                     )}
                                   </div>
@@ -1057,31 +1077,31 @@ const MyAccount = () => {
                                   ₪{purchase.payment_amount}
                                 </td>
                                 <td className="p-4">
-                                  <Badge className={getStatusColor(purchase.payment_status)}>
+                                  <Badge className={`border ${getStatusColor(purchase.payment_status)}`}>
                                     {getStatusText(purchase.payment_status)}
                                   </Badge>
                                 </td>
                                 <td className="p-4">
-                                  {product && purchase.payment_status === 'paid' && !isSubscription && (
+                                  {product && (purchase.payment_status === 'paid' || purchase.payment_status === 'completed') && !isSubscription && (
                                     <Button
                                       size="sm"
                                       variant="outline"
                                       onClick={() => handleProductAccess(purchase)}
                                       className="text-xs"
                                     >
-                                      {product.product_type === 'course' && (
+                                      {(product.entity_type === 'course' || product.product_type === 'course') && (
                                         <>
                                           <BookOpen className="w-3 h-3 ml-1" />
                                           פתח {getProductTypeName('course', 'singular')}
                                         </>
                                       )}
-                                      {product.product_type === 'workshop' && (
+                                      {(product.entity_type === 'workshop' || product.product_type === 'workshop') && (
                                         <>
                                           <Play className="w-3 h-3 ml-1" />
                                           צפה בהקלטה
                                         </>
                                       )}
-                                      {product.product_type === 'file' && (
+                                      {(product.entity_type === 'file' || product.product_type === 'file') && (
                                         <>
                                           <Download className="w-3 h-3 ml-1" />
                                           הורד קובץ
