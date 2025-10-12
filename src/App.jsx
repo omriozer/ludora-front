@@ -94,6 +94,10 @@ function App() {
 					}
 				/>
 				<Route
+					path='/payment-result-iframe'
+					element={<Pages.PaymentResultIframe />}
+				/>
+				<Route
 					path='/video'
 					element={
 						<ProtectedRoute>

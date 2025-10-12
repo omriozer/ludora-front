@@ -13,6 +13,7 @@ import Contact from './Contact';
 import SupportMessages from './SupportMessages';
 import PaymentSuccess from './PaymentSuccess';
 import PaymentResult from './PaymentResult';
+import PaymentResultIframe from './PaymentResultIframe';
 import VideoViewer from './VideoViewer';
 import Tools from './Tools';
 import Checkout from './Checkout';
@@ -73,6 +74,7 @@ export {
   SupportMessages,
   PaymentSuccess,
   PaymentResult,
+  PaymentResultIframe,
   VideoViewer,
   Tools,
   Checkout,
