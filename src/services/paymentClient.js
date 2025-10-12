@@ -29,7 +29,7 @@ class PaymentClient {
     try {
       clog('Creating PaymentIntent:', { cartItems, userId, appliedCoupons, environment });
 
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('authToken');
       if (!token) {
         throw new Error('Authentication token not found');
       }
@@ -74,7 +74,7 @@ class PaymentClient {
     try {
       clog('Checking PaymentIntent status:', transactionId);
 
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('authToken');
       if (!token) {
         throw new Error('Authentication token not found');
       }
@@ -111,7 +111,7 @@ class PaymentClient {
     try {
       clog('Retrying PaymentIntent:', transactionId);
 
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('authToken');
       if (!token) {
         throw new Error('Authentication token not found');
       }
@@ -147,7 +147,7 @@ class PaymentClient {
     try {
       clog('Testing PayPlus connection');
 
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('authToken');
       if (!token) {
         throw new Error('Authentication token not found');
       }
