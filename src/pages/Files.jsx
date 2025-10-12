@@ -555,7 +555,7 @@ export default function Files() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.6 }}
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 auto-rows-fr"
           >
             {filteredFileProducts.map((fileProduct, index) => {
               return (
@@ -689,158 +689,189 @@ function FileCard({ file, onCartUpdate, onEdit, fileTexts, currentUser, onFileAc
       exit={{ opacity: 0, y: -20 }}
       className="h-full"
     >
-      <Card className="bg-white/80 backdrop-blur-sm hover:shadow-xl hover:scale-[1.02] transition-all duration-300 h-full flex flex-col border-0 shadow-md overflow-hidden">
-        {/* Fixed height image section */}
-        <div className="h-40 sm:h-48 overflow-hidden relative flex-shrink-0">
+      <Card className="group bg-white hover:shadow-2xl hover:shadow-purple-500/20 hover:scale-[1.03] transition-all duration-500 h-full flex flex-col border border-gray-200/60 shadow-lg overflow-hidden rounded-2xl min-h-[600px]">
+        {/* Enhanced image section with better overlay */}
+        <div className="h-44 sm:h-52 overflow-hidden relative flex-shrink-0">
           <img
             src={(file.image_url && file.image_url !== '') ? getProductImageUrl(file) : getPlaceholderImage()}
             alt={file.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent"></div>
-          <div className="absolute top-2 sm:top-3 right-2 sm:right-3">
-            <Badge className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg text-xs sm:text-sm">
+          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent"></div>
+
+          {/* Enhanced top badges with better positioning */}
+          <div className="absolute top-3 right-3">
+            <Badge className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white shadow-xl text-xs font-semibold px-3 py-1.5 rounded-full border-0">
               {file.category}
             </Badge>
           </div>
+
+          {/* File type badge - more prominent */}
+          <div className="absolute top-3 left-3">
+            <Badge className="bg-white/95 backdrop-blur-sm text-gray-800 shadow-lg text-sm font-bold px-3 py-2 rounded-xl border-0 flex items-center gap-1.5">
+              <span className="text-lg">{fileTypeIcons[file.file_type] || fileTypeIcons.other}</span>
+              <span className="uppercase tracking-wide">{file.file_type || 'FILE'}</span>
+            </Badge>
+          </div>
+
+          {/* Free price indicator */}
           {file.price === 0 && (
-            <div className="absolute top-2 sm:top-3 left-2 sm:left-3">
+            <div className="absolute bottom-3 left-3">
               <PriceDisplayTag
                 originalPrice={file.price}
                 discount={file.discount}
                 variant="badge"
                 size="sm"
-                className="animate-pulse"
+                className="animate-pulse shadow-lg"
               />
             </div>
           )}
         </div>
 
-        {/* Flexible content section */}
-        <CardContent className="p-4 sm:p-6 flex-grow flex flex-col">
-          <div className="flex items-center gap-2 mb-3">
-            <Badge variant="outline" className="text-xs bg-gray-50 border-gray-200 text-gray-700 font-medium">
-              {fileTypeIcons[file.file_type] || fileTypeIcons.other} {file.file_type?.toUpperCase() || fileTexts.fileType.toUpperCase()}
-            </Badge>
+        {/* Enhanced content section with better spacing */}
+        <CardContent className="p-5 sm:p-6 flex-grow flex flex-col space-y-3">
+          {/* Title section with better typography */}
+          <div className="space-y-2">
+            <h3 className="text-xl sm:text-2xl font-bold text-gray-900 leading-tight line-clamp-2 min-h-[3rem] hover:text-purple-700 transition-colors duration-300 cursor-pointer group-hover:text-purple-600">
+              {file.title}
+            </h3>
+
+            {/* Enhanced access status */}
+            <FileAccessStatus
+              file={{ ...file, id: file.entity_id }}
+              userPurchases={[]}
+              variant="files"
+            />
           </div>
 
-          <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2 sm:mb-3 line-clamp-2 min-h-[2.5rem] sm:min-h-[3.5rem] hover:text-purple-700 transition-colors duration-200">
-            {file.title}
-          </h3>
-
-          {/* Access status */}
-          <FileAccessStatus
-            file={{ ...file, id: file.entity_id }}
-            userPurchases={[]}
-            variant="files"
-          />
-
-          {/* Flexible description area */}
-          <p className="text-gray-600 text-xs sm:text-sm mb-3 sm:mb-4 line-clamp-3 flex-grow">
-            {file.short_description ||
-             (file.description && file.description.length > 120
-               ? file.description.substring(0, 120) + "..."
-               : file.description)}
-          </p>
-
-          {/* File details - fixed height section */}
-          <div className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm mb-3 sm:mb-4 min-h-[2rem]">
-            {file.target_audience && (
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <Users className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400 flex-shrink-0" />
-                <span className="text-gray-700 truncate">{file.target_audience}</span>
-              </div>
-            )}
-            {file.type_attributes && formatGradeRange(file.type_attributes.grade_min, file.type_attributes.grade_max) && (
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <GraduationCap className="w-3 h-3 sm:w-4 sm:h-4 text-blue-400 flex-shrink-0" />
-                <span className="text-blue-700 truncate">
-                  {formatGradeRange(file.type_attributes.grade_min, file.type_attributes.grade_max)}
-                </span>
-              </div>
-            )}
-            {file.type_attributes && file.type_attributes.subject && (
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <BookOpen className="w-3 h-3 sm:w-4 sm:h-4 text-cyan-500 flex-shrink-0" />
-                <span className="text-cyan-700 truncate">
-                  {file.type_attributes.subject}
-                </span>
-              </div>
-            )}
-            {file.marketing_video_type && file.marketing_video_id && (
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <Play className="w-3 h-3 sm:w-4 sm:h-4 text-red-500 flex-shrink-0" />
-                <span className="text-red-600 text-xs truncate">
-                  {file.marketing_video_title || 'סרטון הסבר זמין'}
-                </span>
-              </div>
-            )}
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <Eye className={`w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0 ${file.allow_preview ? 'text-green-600' : 'text-gray-400'}`} />
-              <span className={`text-xs ${file.allow_preview ? 'text-green-700' : 'text-gray-500'}`}>
-                {file.allow_preview ? 'תצוגה מקדימה זמינה' : 'אין תצוגה מקדימה'}
-              </span>
+          {/* Flexible content area that expands to fill available space */}
+          <div className="flex-grow space-y-3">
+            {/* Description */}
+            <div>
+              <p className="text-gray-600 text-sm leading-relaxed line-clamp-3">
+                {file.short_description ||
+                 (file.description && file.description.length > 120
+                   ? file.description.substring(0, 120) + "..."
+                   : file.description)}
+              </p>
             </div>
+
+            {/* Condensed metadata section */}
+            <div className="space-y-2">
+              {/* Primary metadata in a clean grid */}
+              <div className="grid grid-cols-1 gap-2 text-sm">
+                {file.target_audience && (
+                  <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                    <Users className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                    <span className="text-gray-800 font-medium truncate">{file.target_audience}</span>
+                  </div>
+                )}
+
+                {/* Combined grade and subject display */}
+                {(file.type_attributes && (formatGradeRange(file.type_attributes.grade_min, file.type_attributes.grade_max) || file.type_attributes.subject)) && (
+                  <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg">
+                    <GraduationCap className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                    <div className="flex flex-wrap gap-2 text-sm">
+                      {formatGradeRange(file.type_attributes.grade_min, file.type_attributes.grade_max) && (
+                        <span className="text-blue-800 font-medium">
+                          {formatGradeRange(file.type_attributes.grade_min, file.type_attributes.grade_max)}
+                        </span>
+                      )}
+                      {file.type_attributes.subject && (
+                        <span className="text-blue-700">• {file.type_attributes.subject}</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Secondary metadata - compact display */}
+              <div className="flex items-center justify-between text-xs text-gray-500">
+                {file.allow_preview && (
+                  <div className="flex items-center gap-1">
+                    <Eye className="w-3 h-3 text-green-500" />
+                    <span className="text-green-600 font-medium">תצוגה מקדימה</span>
+                  </div>
+                )}
+                {file.marketing_video_type && file.marketing_video_id && (
+                  <div className="flex items-center gap-1">
+                    <Play className="w-3 h-3 text-red-500" />
+                    <span className="text-red-600 font-medium">סרטון</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Compact tags display */}
+            {file.tags && file.tags.length > 0 && file.tags.some(tag => tag && tag.trim()) && (
+              <div className="flex flex-wrap gap-1">
+                {file.tags.filter(tag => tag && tag.trim()).slice(0, 3).map((tag, index) => (
+                  <Badge key={index} variant="outline" className="text-xs bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100 transition-colors duration-200 px-2 py-1">
+                    {tag}
+                  </Badge>
+                ))}
+                {file.tags.filter(tag => tag && tag.trim()).length > 3 && (
+                  <Badge variant="outline" className="text-xs bg-gray-50 border-gray-200 text-gray-600 px-2 py-1">
+                    +{file.tags.filter(tag => tag && tag.trim()).length - 3}
+                  </Badge>
+                )}
+              </div>
+            )}
           </div>
 
-          {/* Tags - only show if tags exist and are not empty */}
-          {file.tags && file.tags.length > 0 && file.tags.some(tag => tag && tag.trim()) && (
-            <div className="flex flex-wrap gap-1 mb-3 sm:mb-4">
-              {file.tags.filter(tag => tag && tag.trim()).map((tag, index) => (
-                <Badge key={index} variant="outline" className="text-xs bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100 transition-colors duration-200">
-                  {tag}
-                </Badge>
-              ))}
-            </div>
-          )}
-
-          {/* Enhanced footer section with centered price and buttons */}
-          <div className="pt-3 sm:pt-4 border-t mt-auto space-y-3 sm:space-y-4">
-            {/* Centered price section */}
+          {/* Enhanced footer with better layout */}
+          <div className="pt-4 border-t border-gray-100 mt-auto space-y-4">
+            {/* Price section - more prominent */}
             <div className="flex justify-center">
-              <PriceDisplayTag
-                originalPrice={file.price}
-                discount={file.discount}
-                variant="gradient"
-                size="lg"
-                showDiscount={true}
-              />
+              <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl p-3 border border-purple-100">
+                <PriceDisplayTag
+                  originalPrice={file.price}
+                  discount={file.discount}
+                  variant="gradient"
+                  size="lg"
+                  showDiscount={true}
+                />
+              </div>
             </div>
 
-            {/* Centered buttons section */}
-            <div className="flex justify-center gap-1.5 sm:gap-2 flex-wrap">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleDetailsClick}
-                className="rounded-full hover:bg-gray-50 hover:border-purple-300 transition-colors duration-200 text-xs sm:text-sm px-2 sm:px-3 border-2"
-                title={fileTexts.viewDetails}
-              >
-                <Eye className="w-3 h-3 sm:w-4 sm:h-4 ml-1" />
-                פרטים נוספים
-              </Button>
-
-              {currentUser && currentUser.role === 'admin' && onEdit && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onEdit(file)}
-                  className="rounded-full hover:bg-orange-50 border-orange-200 text-orange-600 hover:border-orange-300 transition-colors duration-200 px-2 sm:px-3 border-2"
-                  title="עריכת קובץ"
-                >
-                  <Edit className="w-3 h-3 sm:w-4 sm:h-4" />
-                </Button>
-              )}
-
+            {/* Enhanced action buttons */}
+            <div className="flex flex-col gap-2">
+              {/* Primary action button */}
               <ProductActionBar
                 product={file}
-                size="sm"
-                className="text-xs sm:text-sm"
+                size="default"
+                className="w-full text-sm font-semibold"
                 showCartButton={true}
                 onPurchaseSuccess={handleCartSuccess}
                 onFileAccess={onFileAccess}
                 onPdfPreview={onPdfPreview}
               />
+
+              {/* Secondary actions */}
+              <div className="space-y-2">
+                <Button
+                  variant="outline"
+                  size="default"
+                  onClick={handleDetailsClick}
+                  className="w-full rounded-full hover:bg-purple-50 hover:border-purple-300 transition-all duration-300 text-sm px-4 py-2 border flex items-center justify-center gap-2 hover:shadow-md font-medium"
+                  title={fileTexts.viewDetails}
+                >
+                  <Eye className="w-4 h-4" />
+                  פרטים נוספים
+                </Button>
+
+                {currentUser && currentUser.role === 'admin' && onEdit && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onEdit(file)}
+                    className="rounded-full hover:bg-orange-50 border-orange-200 text-orange-600 hover:border-orange-300 transition-all duration-300 px-3 py-2 border hover:shadow-md"
+                    title="עריכת קובץ"
+                  >
+                    <Edit className="w-3 h-3" />
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </CardContent>
