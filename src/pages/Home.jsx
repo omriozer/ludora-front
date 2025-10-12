@@ -20,7 +20,7 @@ import {
 import { loadSettingsWithRetry } from "@/lib/appUser";
 import { Settings, User } from "@/services/entities";
 import logo from "../assets/images/logo.png";
-import { getProductTypeName, NAV_ITEMS } from '@/config/productTypes';
+import { getProductTypeName, NAV_ITEMS, PRODUCT_TYPES } from '@/config/productTypes';
 
 export default function Home() {
 
@@ -172,7 +172,7 @@ export default function Home() {
       gradient: "from-emerald-500 to-green-600",
       bgGradient: "from-emerald-50 to-green-50",
       isAdminOnly: settings?.nav_files_visibility === 'admin_only',
-      link: "/files"
+      link: PRODUCT_TYPES.file.url
     },
     shouldShowGamesUpdated() && {
       icon: Play,
@@ -181,7 +181,7 @@ export default function Home() {
       gradient: "from-purple-500 to-indigo-600",
       bgGradient: "from-purple-50 to-indigo-50",
       isAdminOnly: settings?.nav_games_visibility === 'admin_only',
-      link: "/catalog"
+      link: PRODUCT_TYPES.game.url
     },
     shouldShowWorkshopsUpdated() && {
       icon: Calendar,
@@ -190,7 +190,7 @@ export default function Home() {
       gradient: "from-cyan-500 to-teal-600",
       bgGradient: "from-cyan-50 to-teal-50",
       isAdminOnly: settings?.nav_workshops_visibility === 'admin_only',
-      link: "/workshops"
+      link: PRODUCT_TYPES.workshop.url
     },
     shouldShowCoursesUpdated() && {
       icon: BookOpen,
@@ -199,7 +199,7 @@ export default function Home() {
       gradient: "from-indigo-500 to-blue-600",
       bgGradient: "from-indigo-50 to-blue-50",
       isAdminOnly: settings?.nav_courses_visibility === 'admin_only',
-      link: "/courses"
+      link: PRODUCT_TYPES.course.url
     }
   ].filter(Boolean);
 
@@ -264,7 +264,7 @@ export default function Home() {
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start pt-4">
                 {shouldShowWorkshopsUpdated() &&
-                  <Link to="/workshops">
+                  <Link to={PRODUCT_TYPES.workshop.url}>
                     <Button size="lg" className="bg-gradient-to-r from-yellow-400 to-orange-500 text-gray-900 hover:from-yellow-300 hover:to-orange-400 px-8 py-4 text-lg font-semibold rounded-2xl shadow-xl hover-lift border-0">
                       <Play className="w-5 h-5 ml-2" />
                       {homeTexts.viewWorkshops}
@@ -275,7 +275,7 @@ export default function Home() {
                   </Link>
                 }
                 {shouldShowGamesUpdated() &&
-                  <Link to="/catalog">
+                  <Link to={PRODUCT_TYPES.game.url}>
                     <Button
                       variant="outline"
                       size="lg"
@@ -289,7 +289,7 @@ export default function Home() {
                   </Link>
                 }
                 {shouldShowFilesUpdated() &&
-                  <Link to="/files">
+                  <Link to={PRODUCT_TYPES.file.url}>
                     <Button
                       variant="outline"
                       size="lg"
@@ -303,7 +303,7 @@ export default function Home() {
                   </Link>
                 }
                 {shouldShowCoursesUpdated() &&
-                  <Link to="/courses">
+                  <Link to={PRODUCT_TYPES.course.url}>
                     <Button
                       variant="outline"
                       size="lg"
@@ -531,7 +531,7 @@ export default function Home() {
           </p>
 
           {shouldShowFilesUpdated() ?
-            <Link to="/files">
+            <Link to={PRODUCT_TYPES.file.url}>
               <Button size="lg" className="bg-gradient-to-r from-yellow-400 to-orange-500 text-gray-900 hover:from-yellow-300 hover:to-orange-400 px-12 py-6 text-xl font-semibold rounded-2xl shadow-2xl hover-lift border-0">
                 <FileText className="w-6 h-6 ml-3" />
                 {homeTexts.ctaFinalButton}
@@ -541,7 +541,7 @@ export default function Home() {
               </Button>
             </Link> :
             shouldShowGamesUpdated() ?
-              <Link to="/catalog">
+              <Link to={PRODUCT_TYPES.game.url}>
                 <Button size="lg" className="bg-gradient-to-r from-yellow-400 to-orange-500 text-gray-900 hover:from-yellow-300 hover:to-orange-400 px-12 py-6 text-xl font-semibold rounded-2xl shadow-2xl hover-lift border-0">
                   <Play className="w-6 h-6 ml-3" />
                   {homeTexts.ctaFinalButton}
@@ -551,7 +551,7 @@ export default function Home() {
                 </Button>
               </Link> :
               shouldShowCoursesUpdated() ?
-                <Link to="/courses">
+                <Link to={PRODUCT_TYPES.course.url}>
                   <Button size="lg" className="bg-gradient-to-r from-yellow-400 to-orange-500 text-gray-900 hover:from-yellow-300 hover:to-orange-400 px-12 py-6 text-xl font-semibold rounded-2xl shadow-2xl hover-lift border-0">
                     <BookOpen className="w-6 h-6 ml-3" />
                     {homeTexts.ctaFinalButton}
@@ -561,7 +561,7 @@ export default function Home() {
                   </Button>
                 </Link> :
                 shouldShowWorkshopsUpdated() ?
-                  <Link to="/workshops">
+                  <Link to={PRODUCT_TYPES.workshop.url}>
                     <Button size="lg" className="bg-gradient-to-r from-yellow-400 to-orange-500 text-gray-900 hover:from-yellow-300 hover:to-orange-400 px-12 py-6 text-xl font-semibold rounded-2xl shadow-2xl hover-lift border-0">
                       <ArrowLeft className="w-6 h-6 ml-3" />
                       {homeTexts.ctaFinalButton}

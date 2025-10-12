@@ -330,7 +330,7 @@ export default function Registration() {
             <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
             <h2 className="text-xl font-bold text-gray-900 mb-2">שגיאה</h2>
             <p className="text-gray-600 mb-4">לא ניתן למצוא את ה{getProductTypeName('workshop', 'singular')}</p>
-            <Button onClick={() => navigate("/catalog")} variant="outline">
+            <Button onClick={() => navigate("/games")} variant="outline">
               <ArrowRight className="w-4 h-4 ml-2" />
               חזור לקטלוג {getProductTypeName('workshop', 'plural')}
             </Button>

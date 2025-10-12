@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { iconMap } from "@/lib/layoutUtils";
-import { NAV_ITEMS, getNavItemConfig } from "@/config/productTypes";
+import { NAV_ITEMS, getNavItemConfig, PRODUCT_TYPES } from "@/config/productTypes";
 import logoSm from "../../assets/images/logo_sm.png";
 import { useCart } from "@/contexts/CartContext";
 
@@ -45,7 +45,7 @@ function getNavigationItems({ currentUser, settings, isActualAdmin, isContentCre
           const IconComponent = iconMap[iconName] || FileText;
           navItems.push({
             title: navItemConfig.text,
-            url: "/files",
+            url: PRODUCT_TYPES.file.url,
             icon: IconComponent,
             isAdminOnly: filesVisibility === 'admin_only',
             gradient: navItemConfig.gradient
@@ -60,7 +60,7 @@ function getNavigationItems({ currentUser, settings, isActualAdmin, isContentCre
           const IconComponent = iconMap[iconName] || Play;
           navItems.push({
             title: navItemConfig.text,
-            url: "/catalog",
+            url: PRODUCT_TYPES.game.url,
             icon: IconComponent,
             isAdminOnly: gamesVisibility === 'admin_only',
             gradient: navItemConfig.gradient
@@ -75,7 +75,7 @@ function getNavigationItems({ currentUser, settings, isActualAdmin, isContentCre
           const IconComponent = iconMap[iconName] || Calendar;
           navItems.push({
             title: navItemConfig.text,
-            url: "/workshops",
+            url: PRODUCT_TYPES.workshop.url,
             icon: IconComponent,
             isAdminOnly: workshopsVisibility === 'admin_only',
             gradient: navItemConfig.gradient
@@ -90,7 +90,7 @@ function getNavigationItems({ currentUser, settings, isActualAdmin, isContentCre
           const IconComponent = iconMap[iconName] || BookOpen;
           navItems.push({
             title: navItemConfig.text,
-            url: "/courses",
+            url: PRODUCT_TYPES.course.url,
             icon: IconComponent,
             isAdminOnly: coursesVisibility === 'admin_only',
             gradient: navItemConfig.gradient

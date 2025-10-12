@@ -526,7 +526,7 @@ export default function GameLauncher() {
       });
 
       if (!forceReload) {
-        navigate('/catalog');
+        navigate('/games');
       }
     } finally {
       if (!forceReload) {
@@ -541,15 +541,15 @@ export default function GameLauncher() {
   }, [loadGameData]);
 
   const handleGameComplete = useCallback(() => {
-    // For now, navigate back to games catalog
-    navigate('/catalog');
+    // For now, navigate back to games games
+    navigate('/games');
   }, [navigate]);
 
   useEffect(() => {
     if (gameId) {
       loadGameData();
     } else {
-      navigate('/catalog');
+      navigate('/games');
     }
   }, [gameId, navigate, loadGameData]);
 
@@ -711,11 +711,11 @@ export default function GameLauncher() {
 
   const goBackToGames = () => {
     pauseAudioSafely();
-    navigate('/catalog');
+    navigate('/games');
   };
 
   const handleExit = () => {
-    navigate('/catalog');
+    navigate('/games');
   };
 
   useEffect(() => {
@@ -801,7 +801,7 @@ export default function GameLauncher() {
           <p className="text-2xl font-bold mb-4">שגיאה בטעינת המשחק</p>
           <p className="text-lg mb-6">{error || "המשחק לא נמצא או אירעה שגיאה בלתי צפויה."}</p>
           <Button
-            onClick={() => navigate('/catalog')}
+            onClick={() => navigate('/games')}
             variant="outline"
             className="bg-white/20 backdrop-blur-lg border-white/30 text-white hover:bg-white/30 transition-colors shadow-lg"
           >

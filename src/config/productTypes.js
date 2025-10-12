@@ -7,12 +7,13 @@
  * All other components should import and use names from this file.
  */
 
-import { Calendar, BookOpen, FileText, Play, GraduationCap } from "lucide-react";
+import { Calendar, BookOpen, FileText, Play } from "lucide-react";
 
 // Product Types Configuration
 export const PRODUCT_TYPES = {
   workshop: {
     key: 'workshop',
+    url: '/workshops',
     singular: 'הדרכה',
     plural: 'הדרכות',
     navText: 'הדרכות',
@@ -25,6 +26,7 @@ export const PRODUCT_TYPES = {
   },
   course: {
     key: 'course',
+    url: '/courses',
     singular: 'קורס',
     plural: 'קורסים',
     navText: 'קורסים',
@@ -37,6 +39,7 @@ export const PRODUCT_TYPES = {
   },
   file: {
     key: 'file',
+    url: '/files',
     singular: 'קובץ',
     plural: 'קבצים',
     navText: 'קבצים',
@@ -49,6 +52,7 @@ export const PRODUCT_TYPES = {
   },
   tool: {
     key: 'tool',
+    url: '/tools',
     singular: 'כלי',
     plural: 'כלים',
     navText: 'כלים',
@@ -61,6 +65,7 @@ export const PRODUCT_TYPES = {
   },
   game: {
     key: 'game',
+    url: '/games',
     singular: 'משחק',
     plural: 'משחקים',
     navText: 'משחקים',
@@ -112,6 +117,7 @@ export const NAV_ITEMS = {
   },
   classrooms: {
     key: 'classrooms',
+    url: '/classrooms',
     text: 'הכיתות שלי',
     defaultIcon: 'GraduationCap',
     description: 'ניהול כיתות ותלמידים',
@@ -120,6 +126,7 @@ export const NAV_ITEMS = {
   },
   account: {
     key: 'account',
+    url: '/account',
     text: 'החשבון שלי',
     defaultIcon: 'UserIcon',
     description: 'ניהול חשבון משתמש',
@@ -127,6 +134,7 @@ export const NAV_ITEMS = {
   },
   content_creators: {
     key: 'content_creators',
+    url: '/content-creators',
     text: 'יוצרי תוכן',
     defaultIcon: 'Users',
     description: 'פורטל יוצרי תוכן',
@@ -154,6 +162,13 @@ export const getProductTypeConfig = (key) => {
 
 export const getNavItemConfig = (key) => {
   return NAV_ITEMS[key] || null;
+};
+
+// Helper function to get URL for a product type
+// Usage: getProductTypeUrl('game') or directly PRODUCT_TYPES.game.url
+export const getProductTypeUrl = (key) => {
+  const productType = PRODUCT_TYPES[key];
+  return productType ? productType.url : null;
 };
 
 // Type-specific attribute schemas

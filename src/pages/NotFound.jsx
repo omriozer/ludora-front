@@ -48,7 +48,7 @@ export default function NotFound() {
   if (shouldShowNavItem('files')) {
     availablePages.push({
       title: settings?.nav_files_text || getProductTypeName('file', 'plural'),
-      url: "/files",
+      url: PRODUCT_TYPES.file.url,
       icon: FileText,
       description: `${getProductTypeName('file', 'plural')} דיגיטליים`
     });
@@ -57,7 +57,7 @@ export default function NotFound() {
   if (shouldShowNavItem('games')) {
     availablePages.push({
       title: settings?.nav_games_text || getProductTypeName('game', 'plural'),
-      url: "/catalog",
+      url: PRODUCT_TYPES.game.url,
       icon: Play,
       description: `${getProductTypeName('game', 'plural')} חינוכיים אינטראקטיביים`
     });
@@ -66,7 +66,7 @@ export default function NotFound() {
   if (shouldShowNavItem('workshops')) {
     availablePages.push({
       title: settings?.nav_workshops_text || getProductTypeName('workshop', 'plural'),
-      url: "/workshops",
+      url: PRODUCT_TYPES.workshop.url,
       icon: Calendar,
       description: `${getProductTypeName('workshop', 'plural')} מקצועיות`
     });
@@ -75,7 +75,7 @@ export default function NotFound() {
   if (shouldShowNavItem('courses')) {
     availablePages.push({
       title: settings?.nav_courses_text || getProductTypeName('course', 'plural'),
-      url: "/courses",
+      url: PRODUCT_TYPES.course.url,
       icon: BookOpen,
       description: `${getProductTypeName('course', 'plural')} מקוונים`
     });

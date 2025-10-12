@@ -5,7 +5,7 @@ import SecureVideoPlayer from "../components/SecureVideoPlayer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { getProductTypeName } from "@/config/productTypes";
+import { getProductTypeName, PRODUCT_TYPES } from "@/config/productTypes";
 import { getApiBase, purchaseUtils } from "@/utils/api.js";
 import {
   Calendar,
@@ -305,8 +305,8 @@ export default function VideoViewer() {
                 >
                   חזור
                 </Button>
-                <Button 
-                  onClick={() => navigate('/catalog')}
+                <Button
+                  onClick={() => navigate(PRODUCT_TYPES.game.url)}
                   className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700"
                 >
                   <Home className="w-4 h-4 ml-2" />
@@ -752,8 +752,8 @@ export default function VideoViewer() {
               </Card>
 
               <div className="flex justify-center mt-8">
-                <Button 
-                  onClick={() => navigate('/catalog')}
+                <Button
+                  onClick={() => navigate(PRODUCT_TYPES.game.url)}
                   variant="outline"
                   className="border-blue-300 text-blue-600 hover:bg-blue-50"
                 >

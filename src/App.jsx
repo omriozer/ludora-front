@@ -174,7 +174,7 @@ function App() {
 					}
 				/>
 				<Route
-					path='/catalog'
+					path='/games'
 					element={
 						<ConditionalRoute visibilityField="nav_games_visibility">
 							<Pages.GamesCatalog />

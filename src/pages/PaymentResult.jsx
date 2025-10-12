@@ -422,7 +422,7 @@ export default function PaymentResult() {
       buttons.push(
         <Button
           key="catalog"
-          onClick={() => navigate("/catalog")}
+          onClick={() => navigate("/games")}
           className="w-full"
           variant="outline"
         >
