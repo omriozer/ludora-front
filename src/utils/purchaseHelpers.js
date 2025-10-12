@@ -12,8 +12,8 @@ import { Product } from '@/services/entities';
  */
 export function getUserIdFromToken() {
   try {
-    // Use standardized 'token' key (legacy 'authToken' support removed)
-    const authToken = localStorage.getItem('token');
+    // Use correct localStorage key that matches apiClient.js
+    const authToken = localStorage.getItem('authToken');
     if (!authToken) return null;
 
     const payload = JSON.parse(atob(authToken.split('.')[1]));
@@ -29,8 +29,8 @@ export function getUserIdFromToken() {
  * @returns {boolean} Authentication status
  */
 export function isAuthenticated() {
-  // Use standardized 'token' key (legacy 'authToken' support removed)
-  const authToken = localStorage.getItem('token');
+  // Use correct localStorage key that matches apiClient.js
+  const authToken = localStorage.getItem('authToken');
   return !!authToken && !!getUserIdFromToken();
 }
 
