@@ -796,7 +796,11 @@ function FileCard({ file, onCartUpdate, onEdit, fileTexts, currentUser, onFileAc
                 {file.marketing_video_type && file.marketing_video_id && (
                   <div className="flex items-center gap-1">
                     <Play className="w-3 h-3 text-red-500" />
-                    <span className="text-red-600 font-medium">סרטון</span>
+                    <span className="text-red-600 font-medium">
+                      {file.marketing_video_title && file.marketing_video_title.length > 0
+                        ? file.marketing_video_title
+                        : 'סרטון'}
+                    </span>
                   </div>
                 )}
               </div>
