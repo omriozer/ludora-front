@@ -32,12 +32,16 @@ import {
   Eye,
   ArrowUpDown,
   Filter,
-  Gift // New icon imported for free plans
+  Gift, // New icon imported for free plans
+  ExternalLink
 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import SubscriptionModal from "../components/SubscriptionModal";
 import { processSubscriptionCallbacks } from "@/services/functions";
+import ProductActionBar from "@/components/ui/ProductActionBar";
+import { useProductActions } from "@/hooks/useProductActions";
+import PdfViewer from "@/components/pdf/PdfViewer";
 
 const MyAccount = () => {
   const navigate = useNavigate();
@@ -68,6 +72,19 @@ const MyAccount = () => {
 
   const [accountTexts, setAccountTexts] = useState({});
   const [settings, setSettings] = useState(null); // New state for global settings
+
+  // PDF viewer state
+  const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+
+  // Product actions hook
+  const {
+    handleFileAccess,
+    handlePdfPreview,
+    handleCourseAccess,
+    handleWorkshopAccess,
+    handleViewDetails
+  } = useProductActions();
 
   // Modified getSettings function to fetch from Settings entity and handle defaults
   const getSettings = useCallback(async () => {
@@ -487,28 +504,31 @@ const MyAccount = () => {
     setIsEditingProfile(false);
   };
 
-  const handleProductAccess = (purchase) => {
+  // Enhanced product access handlers that work with PDF viewer
+  const handleFileAccessWithModal = async (file) => {
+    setSelectedFile(file);
+    await handleFileAccess(file, { setPdfViewerOpen });
+  };
+
+  const handlePdfPreviewWithModal = (file) => {
+    setSelectedFile(file);
+    handlePdfPreview({ setPdfViewerOpen });
+  };
+
+  // Helper function to build product object with purchase info for ProductActionBar
+  const buildProductForActionBar = (purchase) => {
     const entityId = purchase.purchasable_id || purchase.product_id;
     const product = products.find(p => p.id === entityId);
-    if (!product) return;
+    if (!product) return null;
 
-    switch (product.entity_type || product.product_type) {
-      case 'course':
-        navigate(`/course?course=${product.id}`);
-        break;
-      case 'file':
-        if (product.file_url) {
-          window.open(product.file_url, '_blank');
-        }
-        break;
-      case 'workshop':
-        if (product.recording_url || product.video_file_url) {
-          navigate(`/video?workshop=${product.id}`);
-        }
-        break;
-      default:
-        break;
-    }
+    return {
+      ...product,
+      purchase: {
+        ...purchase,
+        payment_status: purchase.payment_status,
+        access_expires_at: purchase.access_expires_at
+      }
+    };
   };
 
   const getStatusColor = (status) => {
@@ -957,32 +977,34 @@ const MyAccount = () => {
                               </span>
                             </div>
 
-                            {product && (purchase.payment_status === 'paid' || purchase.payment_status === 'completed') && !isSubscription && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleProductAccess(purchase)}
-                                className="w-full text-xs"
-                              >
-                                {(product.entity_type === 'course' || product.product_type === 'course') && (
-                                  <>
-                                    <BookOpen className="w-3 h-3 ml-1" />
-                                    פתח {getProductTypeName('course', 'singular')}
-                                  </>
+                            {product && !isSubscription && (
+                              <div className="space-y-2">
+                                {/* Professional Action Buttons using ProductActionBar */}
+                                {(purchase.payment_status === 'paid' || purchase.payment_status === 'completed') && (
+                                  <ProductActionBar
+                                    product={buildProductForActionBar(purchase)}
+                                    className="w-full text-xs"
+                                    size="sm"
+                                    fullWidth={true}
+                                    showCartButton={false}
+                                    onFileAccess={handleFileAccessWithModal}
+                                    onPdfPreview={handlePdfPreviewWithModal}
+                                    onCourseAccess={handleCourseAccess}
+                                    onWorkshopAccess={handleWorkshopAccess}
+                                  />
                                 )}
-                                {(product.entity_type === 'workshop' || product.product_type === 'workshop') && (
-                                  <>
-                                    <Play className="w-3 h-3 ml-1" />
-                                    צפה בהקלטה
-                                  </>
-                                )}
-                                {(product.entity_type === 'file' || product.product_type === 'file') && (
-                                  <>
-                                    <Download className="w-3 h-3 ml-1" />
-                                    הורד קובץ
-                                  </>
-                                )}
-                              </Button>
+
+                                {/* View Details Button */}
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleViewDetails(product)}
+                                  className="w-full text-xs border-blue-200 text-blue-600 hover:bg-blue-50"
+                                >
+                                  <ExternalLink className="w-3 h-3 ml-1" />
+                                  פרטי המוצר
+                                </Button>
+                              </div>
                             )}
                           </div>
                         );
