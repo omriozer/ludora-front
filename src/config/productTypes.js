@@ -216,11 +216,12 @@ export const TYPE_ATTRIBUTE_SCHEMAS = {
       }
     },
     subject: {
-      type: 'text',
+      type: 'select',
       label: 'מקצוע',
       description: 'המקצוע הרלוונטי לקובץ',
-      placeholder: 'הזן שם מקצוע (אופציונלי)',
-      nullable: true
+      placeholder: 'בחר מקצוע (אופציונלי)',
+      nullable: true,
+      options: [] // This will be populated dynamically from settings
     }
   },
   workshop: {

@@ -1561,13 +1561,13 @@ export default function ProductModal({
                         )}
                         {schema.type === 'select' && (
                           <Select
-                            value={formData.type_attributes[key] ? String(formData.type_attributes[key]) : ""}
+                            value={formData.type_attributes[key] ? String(formData.type_attributes[key]) : (schema.nullable ? "__none__" : "")}
                             onValueChange={(value) => {
                               setFormData(prev => ({
                                 ...prev,
                                 type_attributes: {
                                   ...prev.type_attributes,
-                                  [key]: value
+                                  [key]: value === "__none__" ? undefined : value
                                 }
                               }));
                             }}
@@ -1576,11 +1576,24 @@ export default function ProductModal({
                               <SelectValue placeholder={schema.placeholder || `בחר ${schema.label}`} />
                             </SelectTrigger>
                             <SelectContent>
-                              {schema.options?.map((option) => (
-                                <SelectItem key={option.value} value={String(option.value)}>
-                                  {option.label}
-                                </SelectItem>
-                              ))}
+                              {/* Add none option for nullable fields */}
+                              {schema.nullable && (
+                                <SelectItem value="__none__">ללא {schema.label.toLowerCase()}</SelectItem>
+                              )}
+                              {/* For subject field, use study_subjects from settings */}
+                              {key === 'subject' && globalSettings?.study_subjects ?
+                                Object.entries(globalSettings.study_subjects).map(([key, label]) => (
+                                  <SelectItem key={key} value={label}>
+                                    {label}
+                                  </SelectItem>
+                                )) :
+                                /* For other select fields, use schema options */
+                                schema.options?.map((option) => (
+                                  <SelectItem key={option.value} value={String(option.value)}>
+                                    {option.label}
+                                  </SelectItem>
+                                ))
+                              }
                             </SelectContent>
                           </Select>
                         )}
@@ -1618,12 +1631,22 @@ export default function ProductModal({
 
                   <div>
                     <Label className="text-sm font-medium">קהל יעד</Label>
-                    <Input
-                      value={formData.target_audience || ""}
-                      onChange={(e) => setFormData(prev => ({ ...prev, target_audience: e.target.value }))}
-                      placeholder="מי הקהל המיועד למוצר זה?"
-                      className="mt-1"
-                    />
+                    <Select
+                      value={formData.target_audience || "__none__"}
+                      onValueChange={(value) => setFormData(prev => ({ ...prev, target_audience: value === "__none__" ? "" : value }))}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="בחר קהל יעד..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">ללא קהל יעד מוגדר</SelectItem>
+                        {globalSettings?.audiance_targets?.[formData.product_type]?.map((target) => (
+                          <SelectItem key={target} value={target}>
+                            {target}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   {/* Tags Input */}

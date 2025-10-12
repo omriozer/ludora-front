@@ -39,6 +39,7 @@ export default function Files() {
   const [categories, setCategories] = useState([]);
   const [filteredFileProducts, setFilteredFileProducts] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
+  const [globalSettings, setGlobalSettings] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState(null);
 
@@ -53,6 +54,7 @@ export default function Files() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedGrade, setSelectedGrade] = useState("all");
   const [selectedSubject, setSelectedSubject] = useState("all");
+  const [selectedAudience, setSelectedAudience] = useState("all");
   const [sortBy, setSortBy] = useState("created_at");
   const [sortOrder, setSortOrder] = useState("DESC");
 
@@ -87,7 +89,7 @@ export default function Files() {
 
   useEffect(() => {
     filterFiles();
-  }, [fileProducts, searchTerm, selectedCategory, selectedGrade, selectedSubject]);
+  }, [fileProducts, searchTerm, selectedCategory, selectedGrade, selectedSubject, selectedAudience]);
 
   // Handle edit parameter from URL
   useEffect(() => {
@@ -201,11 +203,17 @@ export default function Files() {
         return;
       }
 
-      // Load file products and categories - then enrich with purchase data
-      const [fileProductsData, categoriesData] = await Promise.all([
+      // Load file products, categories, and settings - then enrich with purchase data
+      const [fileProductsData, categoriesData, settingsData] = await Promise.all([
         apiRequest(`/entities/products/list?product_type=file&sort_by=${sortBy}&sort_order=${sortOrder}`),
-        Category.find({})
+        Category.find({}),
+        Settings.find()
       ]);
+
+      // Set global settings
+      if (settingsData.length > 0) {
+        setGlobalSettings(settingsData[0]);
+      }
 
       // If user is logged in, enrich products with purchase data
       let enrichedProducts = fileProductsData;
@@ -289,6 +297,13 @@ export default function Files() {
       filtered = filtered.filter(product => {
         if (!product.type_attributes) return false;
         return product.type_attributes.subject === selectedSubject;
+      });
+    }
+
+    // Audience filter
+    if (selectedAudience !== "all") {
+      filtered = filtered.filter(product => {
+        return product.target_audience === selectedAudience;
       });
     }
 
@@ -379,6 +394,7 @@ export default function Files() {
     setSelectedCategory("all");
     setSelectedGrade("all");
     setSelectedSubject("all");
+    setSelectedAudience("all");
   };
 
   if (isLoading) {
@@ -437,7 +453,7 @@ export default function Files() {
             </div>
 
             {/* Reset button first (rightmost in RTL) */}
-            {(searchTerm || selectedCategory !== "all" || selectedGrade !== "all" || selectedSubject !== "all") && (
+            {(searchTerm || selectedCategory !== "all" || selectedGrade !== "all" || selectedSubject !== "all" || selectedAudience !== "all") && (
               <Button
                 variant="outline"
                 size="sm"
@@ -522,12 +538,22 @@ export default function Files() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">{fileTexts.allSubjects}</SelectItem>
-                  {Array.from(new Set(
-                    fileProducts
-                      .filter(file => file.type_attributes && file.type_attributes.subject)
-                      .map(file => file.type_attributes.subject)
-                  )).sort().map((subject) => (
-                    <SelectItem key={subject} value={subject}>{subject}</SelectItem>
+                  {globalSettings?.study_subjects && Object.entries(globalSettings.study_subjects).map(([key, label]) => (
+                    <SelectItem key={key} value={label}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={selectedAudience} onValueChange={setSelectedAudience}>
+                <SelectTrigger className="h-7 text-xs w-24 border-gray-300 text-right" dir="rtl">
+                  <SelectValue placeholder="קהל יעד">
+                    {selectedAudience === "all" ? "כל הקהלים" : selectedAudience}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">כל הקהלים</SelectItem>
+                  {globalSettings?.audiance_targets?.file?.map((audience) => (
+                    <SelectItem key={audience} value={audience}>{audience}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -761,26 +787,38 @@ function FileCard({ file, onCartUpdate, onEdit, fileTexts, currentUser, onFileAc
               {/* Primary metadata in a clean grid */}
               <div className="grid grid-cols-1 gap-2 text-sm">
                 {file.target_audience && (
-                  <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
-                    <Users className="w-4 h-4 text-blue-500 flex-shrink-0" />
-                    <span className="text-gray-800 font-medium truncate">{file.target_audience}</span>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                      <Users className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                      <span className="text-gray-800 font-medium truncate">{file.target_audience}</span>
+                    </div>
+                    {/* Subject display - under audience when both exist */}
+                    {file.type_attributes && file.type_attributes.subject && (
+                      <div className="flex items-center justify-center">
+                        <Badge className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-semibold px-3 py-1.5 shadow-md">
+                          📚 {file.type_attributes.subject}
+                        </Badge>
+                      </div>
+                    )}
                   </div>
                 )}
 
-                {/* Combined grade and subject display */}
-                {(file.type_attributes && (formatGradeRange(file.type_attributes.grade_min, file.type_attributes.grade_max) || file.type_attributes.subject)) && (
+                {/* Subject display - standalone when no audience */}
+                {!file.target_audience && file.type_attributes && file.type_attributes.subject && (
+                  <div className="flex items-center justify-center">
+                    <Badge className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-semibold px-3 py-1.5 shadow-md">
+                      📚 {file.type_attributes.subject}
+                    </Badge>
+                  </div>
+                )}
+
+                {/* Grade range display */}
+                {file.type_attributes && formatGradeRange(file.type_attributes.grade_min, file.type_attributes.grade_max) && (
                   <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg">
                     <GraduationCap className="w-4 h-4 text-blue-600 flex-shrink-0" />
-                    <div className="flex flex-wrap gap-2 text-sm">
-                      {formatGradeRange(file.type_attributes.grade_min, file.type_attributes.grade_max) && (
-                        <span className="text-blue-800 font-medium">
-                          {formatGradeRange(file.type_attributes.grade_min, file.type_attributes.grade_max)}
-                        </span>
-                      )}
-                      {file.type_attributes.subject && (
-                        <span className="text-blue-700">• {file.type_attributes.subject}</span>
-                      )}
-                    </div>
+                    <span className="text-blue-800 font-medium text-sm">
+                      {formatGradeRange(file.type_attributes.grade_min, file.type_attributes.grade_max)}
+                    </span>
                   </div>
                 )}
               </div>
