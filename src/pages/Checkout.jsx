@@ -44,6 +44,7 @@ import { toast } from "@/components/ui/use-toast";
 import { useCart } from "@/contexts/CartContext";
 import CouponInput from "@/components/CouponInput";
 import couponClient from "@/services/couponClient";
+import { getApiBase } from "@/utils/api";
 
 
 export default function Checkout() {
@@ -62,8 +63,6 @@ export default function Checkout() {
 
   // PaymentIntent state
   const [currentTransactionId, setCurrentTransactionId] = useState(null);
-  const [isPollingPaymentStatus, setIsPollingPaymentStatus] = useState(false);
-  const [pollingInterval, setPollingInterval] = useState(null);
 
   // Coupon management
   const [appliedCoupons, setAppliedCoupons] = useState([]);
@@ -162,14 +161,7 @@ export default function Checkout() {
     loadCheckoutData();
   }, [loadCheckoutData]);
 
-  // Cleanup polling interval on unmount
-  useEffect(() => {
-    return () => {
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
-      }
-    };
-  }, [pollingInterval]);
+  // REMOVED: Polling cleanup - no longer needed with immediate confirmation
 
   // Handle iframe messages from PayPlus
   useEffect(() => {
@@ -192,8 +184,32 @@ export default function Checkout() {
           if (data.type === 'payplus_payment_complete') {
             console.log('🎯 Checkout: Payment completed via PostMessage with status:', data.status);
 
-            // Stop polling since we got immediate notification
-            stopPaymentStatusPolling();
+            // Payment detected via immediate notification (no polling needed)
+
+            // NEW: Notify API that payment was submitted (regardless of success/failure)
+            if (currentTransactionId) {
+              try {
+                console.log('📤 Checkout: Confirming payment submission to API for transaction:', currentTransactionId);
+
+                const confirmResponse = await fetch(`${getApiBase()}/payments/confirm/${currentTransactionId}`, {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                    'Content-Type': 'application/json'
+                  }
+                });
+
+                if (confirmResponse.ok) {
+                  console.log('✅ Checkout: Payment confirmation sent to API successfully');
+                } else {
+                  console.warn('⚠️ Checkout: Payment confirmation failed but continuing with flow');
+                }
+
+              } catch (confirmError) {
+                console.error('❌ Checkout: Error sending payment confirmation to API:', confirmError);
+                // Continue with normal flow even if confirmation fails
+              }
+            }
 
             if (data.status === 'success') {
               // Payment was successful - trigger success handler
@@ -290,59 +306,7 @@ export default function Checkout() {
     }
   };
 
-  // Start polling PaymentIntent status
-  const startPaymentStatusPolling = (transactionId) => {
-    console.log('🔄 Starting PaymentIntent status polling for transaction:', transactionId);
-    setIsPollingPaymentStatus(true);
-
-    // Poll every 3 seconds
-    const interval = setInterval(async () => {
-      try {
-        const statusResponse = await paymentClient.checkPaymentIntentStatus(transactionId);
-
-        if (statusResponse.success && statusResponse.data) {
-          const status = statusResponse.data.status;
-          console.log('🔍 PaymentIntent status:', status);
-
-          // Check for terminal states
-          if (status === 'completed') {
-            console.log('✅ PaymentIntent completed via polling');
-            clearInterval(interval);
-            setPollingInterval(null);
-            setIsPollingPaymentStatus(false);
-            await handlePaymentSuccess();
-          } else if (['failed', 'cancelled', 'expired'].includes(status)) {
-            console.log('❌ PaymentIntent failed via polling:', status);
-            clearInterval(interval);
-            setPollingInterval(null);
-            setIsPollingPaymentStatus(false);
-            handlePaymentModalClose();
-
-            toast({
-              title: "תשלום לא הושלם",
-              description: `התשלום ${status === 'expired' ? 'פג תוקף' : status === 'cancelled' ? 'בוטל' : 'נכשל'}. הפריטים נשמרו בעגלה.`,
-              variant: "destructive",
-            });
-          }
-        }
-      } catch (error) {
-        console.error('Error polling PaymentIntent status:', error);
-        // Continue polling on error - don't stop unless user closes modal
-      }
-    }, 3000);
-
-    setPollingInterval(interval);
-  };
-
-  // Stop polling PaymentIntent status
-  const stopPaymentStatusPolling = () => {
-    if (pollingInterval) {
-      console.log('🛑 Stopping PaymentIntent status polling');
-      clearInterval(pollingInterval);
-      setPollingInterval(null);
-      setIsPollingPaymentStatus(false);
-    }
-  };
+  // REMOVED: Polling functions - replaced by immediate PayPlus message handler
 
   // Proceed to payment using new PaymentIntent flow
   const handleProceedToPayment = async () => {
@@ -384,15 +348,14 @@ export default function Checkout() {
 
         console.log('🎯 PaymentIntent created:', { transactionId, totalAmount, status });
 
-        // Store transaction ID for polling
+        // Store transaction ID for confirmation
         setCurrentTransactionId(transactionId);
 
         // Set payment URL and show modal with PayPlus iframe
         setPaymentUrl(paymentUrl);
         setShowPaymentModal(true);
 
-        // Start polling for payment status (backend-driven completion detection)
-        startPaymentStatusPolling(transactionId);
+        // Payment completion will be handled by PayPlus message handler
 
       } else {
         throw new Error('לא ניתן ליצור PaymentIntent');
@@ -418,9 +381,6 @@ export default function Checkout() {
     setIsProcessingPayment(false);
     setPaymentUrl('');
 
-    // Stop polling when modal is closed
-    stopPaymentStatusPolling();
-
     // Clear transaction ID
     setCurrentTransactionId(null);
   };
@@ -428,9 +388,6 @@ export default function Checkout() {
   // Handle successful payment (clear cart and reload data)
   const handlePaymentSuccess = async () => {
     try {
-      // Stop polling if still active
-      stopPaymentStatusPolling();
-
       // Clear local cart state
       setCartItems([]);
 
@@ -760,12 +717,6 @@ export default function Checkout() {
             <div className="flex items-center justify-between p-4 border-b">
               <div className="flex items-center gap-3">
                 <h2 className="text-xl font-semibold">תשלום מאובטח</h2>
-                {isPollingPaymentStatus && (
-                  <div className="flex items-center gap-2 text-sm text-blue-600">
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent"></div>
-                    <span>מבדק סטטוס תשלום...</span>
-                  </div>
-                )}
                 {currentTransactionId && (
                   <div className="text-xs text-gray-500 font-mono">
                     ID: {currentTransactionId.slice(-8)}
