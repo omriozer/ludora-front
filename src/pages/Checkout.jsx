@@ -194,7 +194,7 @@ export default function Checkout() {
                 const confirmResponse = await fetch(`${getApiBase()}/payments/confirm/${currentTransactionId}`, {
                   method: 'POST',
                   headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                    'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
                     'Content-Type': 'application/json'
                   }
                 });
