@@ -715,126 +715,137 @@ function FileCard({ file, onCartUpdate, onEdit, fileTexts, currentUser, onFileAc
       exit={{ opacity: 0, y: -20 }}
       className="h-full"
     >
-      <Card className="group bg-white hover:shadow-2xl hover:shadow-purple-500/20 hover:scale-[1.03] transition-all duration-500 h-full flex flex-col border border-gray-200/60 shadow-lg overflow-hidden rounded-2xl min-h-[600px]">
-        {/* Enhanced image section with better overlay */}
-        <div className="h-44 sm:h-52 overflow-hidden relative flex-shrink-0">
+      <Card className="group bg-white/95 backdrop-blur-sm hover:shadow-2xl hover:shadow-purple-500/25 hover:scale-[1.02] hover:-translate-y-1 transition-all duration-500 h-full flex flex-col border-0 shadow-xl overflow-hidden rounded-3xl min-h-[380px] relative before:absolute before:inset-0 before:bg-gradient-to-br before:from-white/50 before:to-transparent before:pointer-events-none">
+        {/* Enhanced image section with premium overlay */}
+        <div className="h-36 sm:h-40 overflow-hidden relative flex-shrink-0 bg-gradient-to-br from-slate-50 to-slate-100">
           <img
             src={(file.image_url && file.image_url !== '') ? getProductImageUrl(file) : getPlaceholderImage()}
             alt={file.title}
-            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 mix-blend-multiply"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-slate-900/20 to-transparent"></div>
 
-          {/* Enhanced top badges with better positioning */}
-          <div className="absolute top-3 right-3">
-            <Badge className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white shadow-xl text-xs font-semibold px-3 py-1.5 rounded-full border-0">
+          {/* Floating badges with glassmorphism */}
+          <div className="absolute top-4 right-4 flex flex-col gap-2">
+            <Badge className="bg-white/20 backdrop-blur-md text-white shadow-2xl text-xs font-bold px-3 py-2 rounded-2xl border border-white/20 hover:bg-white/30 transition-all duration-300">
               {file.category}
             </Badge>
           </div>
 
-          {/* File type badge - more prominent */}
-          <div className="absolute top-3 left-3">
-            <Badge className="bg-white/95 backdrop-blur-sm text-gray-800 shadow-lg text-sm font-bold px-3 py-2 rounded-xl border-0 flex items-center gap-1.5">
-              <span className="text-lg">{fileTypeIcons[file.file_type] || fileTypeIcons.other}</span>
-              <span className="uppercase tracking-wide">{file.file_type || 'FILE'}</span>
-            </Badge>
+          {/* Enhanced file type indicator */}
+          <div className="absolute top-4 left-4">
+            <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-2xl text-sm font-bold px-4 py-2.5 rounded-2xl border-0 flex items-center gap-2 hover:from-emerald-600 hover:to-teal-700 transition-all duration-300">
+              <span className="text-xl">{fileTypeIcons[file.file_type] || fileTypeIcons.other}</span>
+              <span className="uppercase tracking-wider">{file.file_type || 'FILE'}</span>
+            </div>
           </div>
 
-          {/* Free price indicator */}
+          {/* Premium free indicator */}
           {file.price === 0 && (
-            <div className="absolute bottom-3 left-3">
-              <PriceDisplayTag
-                originalPrice={file.price}
-                discount={file.discount}
-                variant="badge"
-                size="sm"
-                className="animate-pulse shadow-lg"
-              />
+            <div className="absolute bottom-4 left-4">
+              <div className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white font-bold px-4 py-2 rounded-2xl shadow-2xl animate-pulse">
+                <span className="text-sm">🎁 חינם</span>
+              </div>
             </div>
           )}
+
+          {/* Subtle corner accent */}
+          <div className="absolute bottom-0 right-0 w-16 h-16 bg-gradient-to-tl from-purple-500/20 to-transparent"></div>
         </div>
 
-        {/* Enhanced content section with better spacing */}
-        <CardContent className="p-5 sm:p-6 flex-grow flex flex-col space-y-3">
-          {/* Title section with better typography */}
+        {/* Premium content section with optimized spacing */}
+        <CardContent className="p-3 sm:p-4 flex-grow flex flex-col space-y-2 relative z-10">
+          {/* Enhanced title section */}
           <div className="space-y-2">
-            <h3 className="text-xl sm:text-2xl font-bold text-gray-900 leading-tight line-clamp-2 min-h-[3rem] hover:text-purple-700 transition-colors duration-300 cursor-pointer group-hover:text-purple-600">
+            <h3 className="text-lg sm:text-xl font-bold text-slate-800 leading-[1.2] line-clamp-2 min-h-[2.5rem] hover:text-purple-700 transition-colors duration-300 cursor-pointer group-hover:text-purple-600 tracking-tight">
               {file.title}
             </h3>
 
-            {/* Enhanced access status */}
-            <FileAccessStatus
-              file={{ ...file, id: file.entity_id }}
-              userPurchases={[]}
-              variant="files"
-            />
+            {/* Refined access status */}
+            <div className="transform group-hover:scale-105 transition-transform duration-300">
+              <FileAccessStatus
+                file={{ ...file, id: file.entity_id }}
+                userPurchases={[]}
+                variant="files"
+              />
+            </div>
           </div>
 
           {/* Flexible content area that expands to fill available space */}
-          <div className="flex-grow space-y-3">
+          <div className="flex-grow space-y-2">
             {/* Description */}
             <div>
-              <p className="text-gray-600 text-sm leading-relaxed line-clamp-3">
+              <p className="text-gray-600 text-sm leading-relaxed line-clamp-2">
                 {file.short_description ||
-                 (file.description && file.description.length > 120
-                   ? file.description.substring(0, 120) + "..."
+                 (file.description && file.description.length > 100
+                   ? file.description.substring(0, 100) + "..."
                    : file.description)}
               </p>
             </div>
 
-            {/* Condensed metadata section */}
+            {/* Enhanced metadata section with premium design */}
             <div className="space-y-2">
-              {/* Primary metadata in a clean grid */}
+              {/* Primary metadata with improved styling */}
               <div className="grid grid-cols-1 gap-2 text-sm">
                 {file.target_audience && (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
-                      <Users className="w-4 h-4 text-blue-500 flex-shrink-0" />
-                      <span className="text-gray-800 font-medium truncate">{file.target_audience}</span>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2 p-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100 hover:from-blue-100 hover:to-indigo-100 transition-all duration-300">
+                      <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                        <Users className="w-3 h-3 text-white" />
+                      </div>
+                      <span className="text-slate-800 font-semibold truncate text-sm">{file.target_audience}</span>
                     </div>
-                    {/* Subject display - under audience when both exist */}
+                    {/* Enhanced subject display - under audience when both exist */}
                     {file.type_attributes && file.type_attributes.subject && (
                       <div className="flex items-center justify-center">
-                        <Badge className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-semibold px-3 py-1.5 shadow-md">
-                          📚 {file.type_attributes.subject}
+                        <Badge className="bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-600 text-white font-bold px-3 py-1.5 shadow-lg rounded-xl border-0 hover:shadow-xl hover:scale-105 transition-all duration-300 text-sm">
+                          <span className="text-sm mr-1">📚</span>
+                          {file.type_attributes.subject}
                         </Badge>
                       </div>
                     )}
                   </div>
                 )}
 
-                {/* Subject display - standalone when no audience */}
+                {/* Enhanced subject display - standalone when no audience */}
                 {!file.target_audience && file.type_attributes && file.type_attributes.subject && (
                   <div className="flex items-center justify-center">
-                    <Badge className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-semibold px-3 py-1.5 shadow-md">
-                      📚 {file.type_attributes.subject}
+                    <Badge className="bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-600 text-white font-bold px-3 py-1.5 shadow-lg rounded-xl border-0 hover:shadow-xl hover:scale-105 transition-all duration-300 text-sm">
+                      <span className="text-sm mr-1">📚</span>
+                      {file.type_attributes.subject}
                     </Badge>
                   </div>
                 )}
 
-                {/* Grade range display */}
+                {/* Enhanced grade range display */}
                 {file.type_attributes && formatGradeRange(file.type_attributes.grade_min, file.type_attributes.grade_max) && (
-                  <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg">
-                    <GraduationCap className="w-4 h-4 text-blue-600 flex-shrink-0" />
-                    <span className="text-blue-800 font-medium text-sm">
+                  <div className="flex items-center gap-2 p-2 bg-gradient-to-r from-purple-50 to-violet-50 rounded-xl border border-purple-100 hover:from-purple-100 hover:to-violet-100 transition-all duration-300">
+                    <div className="w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
+                      <GraduationCap className="w-3 h-3 text-white" />
+                    </div>
+                    <span className="text-slate-800 font-semibold text-sm">
                       {formatGradeRange(file.type_attributes.grade_min, file.type_attributes.grade_max)}
                     </span>
                   </div>
                 )}
               </div>
 
-              {/* Secondary metadata - compact display */}
-              <div className="flex items-center justify-between text-xs text-gray-500">
+              {/* Enhanced secondary metadata */}
+              <div className="flex items-center justify-between">
                 {file.allow_preview && (
-                  <div className="flex items-center gap-1">
-                    <Eye className="w-3 h-3 text-green-500" />
-                    <span className="text-green-600 font-medium">תצוגה מקדימה</span>
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 rounded-full border border-green-200 hover:bg-green-100 transition-all duration-300">
+                    <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+                      <Eye className="w-3 h-3 text-white" />
+                    </div>
+                    <span className="text-green-700 font-semibold text-xs">תצוגה מקדימה</span>
                   </div>
                 )}
                 {file.marketing_video_type && file.marketing_video_id && (
-                  <div className="flex items-center gap-1">
-                    <Play className="w-3 h-3 text-red-500" />
-                    <span className="text-red-600 font-medium">
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 rounded-full border border-red-200 hover:bg-red-100 transition-all duration-300">
+                    <div className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+                      <Play className="w-3 h-3 text-white" />
+                    </div>
+                    <span className="text-red-700 font-semibold text-xs">
                       {file.marketing_video_title && file.marketing_video_title.length > 0
                         ? file.marketing_video_title
                         : 'סרטון'}
@@ -844,16 +855,23 @@ function FileCard({ file, onCartUpdate, onEdit, fileTexts, currentUser, onFileAc
               </div>
             </div>
 
-            {/* Compact tags display */}
+            {/* Enhanced tags display */}
             {file.tags && file.tags.length > 0 && file.tags.some(tag => tag && tag.trim()) && (
-              <div className="flex flex-wrap gap-1">
+              <div className="flex flex-wrap gap-2">
                 {file.tags.filter(tag => tag && tag.trim()).slice(0, 3).map((tag, index) => (
-                  <Badge key={index} variant="outline" className="text-xs bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100 transition-colors duration-200 px-2 py-1">
+                  <Badge
+                    key={index}
+                    variant="outline"
+                    className="text-xs bg-gradient-to-r from-violet-50 to-purple-50 border-violet-200 text-violet-700 hover:from-violet-100 hover:to-purple-100 hover:border-violet-300 transition-all duration-300 px-3 py-1.5 rounded-full font-medium shadow-sm hover:shadow-md"
+                  >
                     {tag}
                   </Badge>
                 ))}
                 {file.tags.filter(tag => tag && tag.trim()).length > 3 && (
-                  <Badge variant="outline" className="text-xs bg-gray-50 border-gray-200 text-gray-600 px-2 py-1">
+                  <Badge
+                    variant="outline"
+                    className="text-xs bg-gradient-to-r from-slate-50 to-gray-50 border-slate-200 text-slate-600 px-3 py-1.5 rounded-full font-medium shadow-sm"
+                  >
                     +{file.tags.filter(tag => tag && tag.trim()).length - 3}
                   </Badge>
                 )}
@@ -861,45 +879,51 @@ function FileCard({ file, onCartUpdate, onEdit, fileTexts, currentUser, onFileAc
             )}
           </div>
 
-          {/* Enhanced footer with better layout */}
-          <div className="pt-4 border-t border-gray-100 mt-auto space-y-4">
-            {/* Price section - more prominent */}
+          {/* Premium footer with optimized design */}
+          <div className="pt-4 border-t border-slate-200/70 mt-auto space-y-3">
+            {/* Enhanced price section */}
             <div className="flex justify-center">
-              <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl p-3 border border-purple-100">
-                <PriceDisplayTag
-                  originalPrice={file.price}
-                  discount={file.discount}
-                  variant="gradient"
-                  size="lg"
-                  showDiscount={true}
-                />
+              <div className="relative bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 rounded-xl p-3 border border-purple-100/70 shadow-lg hover:shadow-xl transition-all duration-300 backdrop-blur-sm">
+                <div className="absolute inset-0 bg-gradient-to-br from-white/60 to-transparent rounded-xl"></div>
+                <div className="relative">
+                  <PriceDisplayTag
+                    originalPrice={file.price}
+                    discount={file.discount}
+                    variant="gradient"
+                    size="md"
+                    showDiscount={true}
+                  />
+                </div>
               </div>
             </div>
 
-            {/* Enhanced action buttons */}
+            {/* Premium action buttons */}
             <div className="flex flex-col gap-2">
-              {/* Primary action button */}
-              <ProductActionBar
-                product={file}
-                size="default"
-                className="w-full text-sm font-semibold"
-                showCartButton={true}
-                onPurchaseSuccess={handleCartSuccess}
-                onFileAccess={onFileAccess}
-                onPdfPreview={onPdfPreview}
-              />
+              {/* Primary action with enhanced styling */}
+              <div className="transform hover:scale-[1.02] transition-transform duration-300">
+                <ProductActionBar
+                  product={file}
+                  size="default"
+                  className="w-full text-sm font-bold shadow-lg hover:shadow-xl transition-all duration-300"
+                  showCartButton={true}
+                  onPurchaseSuccess={handleCartSuccess}
+                  onFileAccess={onFileAccess}
+                  onPdfPreview={onPdfPreview}
+                />
+              </div>
 
-              {/* Secondary actions */}
-              <div className="space-y-2">
+              {/* Enhanced secondary actions */}
+              <div className="flex gap-2">
                 <Button
                   variant="outline"
-                  size="default"
+                  size="sm"
                   onClick={handleDetailsClick}
-                  className="w-full rounded-full hover:bg-purple-50 hover:border-purple-300 transition-all duration-300 text-sm px-4 py-2 border flex items-center justify-center gap-2 hover:shadow-md font-medium"
+                  className="flex-1 rounded-xl bg-white/70 backdrop-blur-sm hover:bg-white border-slate-200 hover:border-purple-300 hover:shadow-lg transition-all duration-300 text-sm px-3 py-2 flex items-center justify-center gap-2 font-semibold text-slate-700 hover:text-purple-700"
                   title={fileTexts.viewDetails}
                 >
-                  <Eye className="w-4 h-4" />
-                  פרטים נוספים
+                  <Eye className="w-3 h-3" />
+                  <span className="hidden sm:inline">פרטים נוספים</span>
+                  <span className="sm:hidden">פרטים</span>
                 </Button>
 
                 {currentUser && currentUser.role === 'admin' && onEdit && (
@@ -907,7 +931,7 @@ function FileCard({ file, onCartUpdate, onEdit, fileTexts, currentUser, onFileAc
                     variant="outline"
                     size="sm"
                     onClick={() => onEdit(file)}
-                    className="rounded-full hover:bg-orange-50 border-orange-200 text-orange-600 hover:border-orange-300 transition-all duration-300 px-3 py-2 border hover:shadow-md"
+                    className="rounded-xl bg-white/70 backdrop-blur-sm hover:bg-orange-50 border-orange-200 text-orange-600 hover:border-orange-300 hover:shadow-lg transition-all duration-300 px-3 py-2 font-semibold"
                     title="עריכת קובץ"
                   >
                     <Edit className="w-3 h-3" />
