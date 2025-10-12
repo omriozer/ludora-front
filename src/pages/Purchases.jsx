@@ -101,7 +101,7 @@ export default function Purchases() {
       filtered = filtered.filter(purchase =>
         purchase.buyer?.full_name?.toLowerCase().includes(searchLower) ||
         purchase.buyer?.email?.toLowerCase().includes(searchLower) ||
-        purchase.order_number?.toLowerCase().includes(searchLower) ||
+        purchase.metadata?.transaction_uid?.toLowerCase().includes(searchLower) ||
         products.find(p => p.id === purchase.purchasable_id)?.title?.toLowerCase().includes(searchLower)
       );
     }
@@ -206,7 +206,7 @@ export default function Purchases() {
             <div className="relative flex-1">
               <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <Input
-                placeholder="חיפוש לפי שם, מייל, מספר הזמנה או מוצר..."
+                placeholder="חיפוש לפי שם, מייל, מספר עסקה או מוצר..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pr-10"
@@ -329,7 +329,7 @@ export default function Purchases() {
                           {getProductTitle(purchase.purchasable_id)}
                         </h4>
                         <div className="text-sm text-gray-600">
-                          מספר הזמנה: {purchase.order_number}
+                          מספר עסקה: {purchase.metadata?.transaction_uid || purchase.id}
                         </div>
                       </div>
 

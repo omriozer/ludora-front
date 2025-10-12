@@ -89,7 +89,7 @@ export default function PaymentResultIframe() {
                   transactionUid,
                   pageRequestUid,
                   purchaseId: purchaseData.id,
-                  orderNumber: purchaseData.order_number
+                  orderNumber: purchaseData.metadata?.transaction_uid || purchaseData.id
                 }, '*');
                 clog('Sent payment result to parent window');
               }

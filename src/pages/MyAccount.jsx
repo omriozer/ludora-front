@@ -192,7 +192,7 @@ const MyAccount = () => {
         const entityId = purchase.purchasable_id || purchase.product_id;
         const product = products.find(p => p.id === entityId);
         return (
-          purchase.order_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          purchase.metadata?.transaction_uid?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           product?.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           purchase.buyer_name?.toLowerCase().includes(searchTerm.toLowerCase())
         );
@@ -223,6 +223,10 @@ const MyAccount = () => {
         case 'payment_status':
           aValue = a.payment_status || '';
           bValue = b.payment_status || '';
+          break;
+        case 'transaction_uid':
+          aValue = a.metadata?.transaction_uid || a.id || '';
+          bValue = b.metadata?.transaction_uid || b.id || '';
           break;
         default:
           aValue = a[sortField] || '';
@@ -905,7 +909,7 @@ const MyAccount = () => {
                   <div className="flex flex-col gap-3 sm:gap-4">
                     <div className="w-full">
                       <Input
-                        placeholder="חיפוש לפי מספר רכישה או שם מוצר..."
+                        placeholder="חיפוש לפי מספר עסקה או שם מוצר..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full text-xs sm:text-sm h-9 sm:h-10"
@@ -956,7 +960,7 @@ const MyAccount = () => {
                                   </div>
                                 )}
                                 <div className="text-xs sm:text-sm text-gray-500 font-mono break-all">
-                                  #{purchase.order_number}
+                                  {purchase.metadata?.transaction_uid ? `#${purchase.metadata.transaction_uid}` : `#${purchase.id}`}
                                 </div>
                               </div>
                               <div className="text-left flex-shrink-0">
@@ -1031,10 +1035,10 @@ const MyAccount = () => {
                             </th>
                             <th className="text-right p-4 font-semibold">
                               <button
-                                onClick={() => handleSort('order_number')}
+                                onClick={() => handleSort('transaction_uid')}
                                 className="flex items-center gap-1 hover:text-blue-600"
                               >
-                                מספר רכישה
+                                מספר עסקה
                                 <ArrowUpDown className="w-3 h-3" />
                               </button>
                             </th>
@@ -1083,7 +1087,7 @@ const MyAccount = () => {
                                   })()}
                                 </td>
                                 <td className="p-4 font-mono text-sm">
-                                  {purchase.order_number}
+                                  {purchase.metadata?.transaction_uid || purchase.id}
                                 </td>
                                 <td className="p-4">
                                   <div>

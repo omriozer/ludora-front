@@ -66,7 +66,7 @@ export default function Participants() {
             workshop_id: purchase.purchasable_id || purchase.product_id, // Backward compatibility
             payment_amount: purchase.total_amount,
             payment_status: 'paid',
-            order_number: purchase.purchase_id,
+            transaction_uid: purchase.metadata?.transaction_uid || purchase.id,
             created_date: purchase.created_date,
           }));
 
@@ -109,7 +109,7 @@ export default function Participants() {
     return (
       (reg.participant_name && reg.participant_name.toLowerCase().includes(searchLower)) ||
       (reg.participant_email && reg.participant_email.toLowerCase().includes(searchLower)) ||
-      (reg.order_number && reg.order_number.toLowerCase().includes(searchLower)) ||
+      (reg.transaction_uid && reg.transaction_uid.toLowerCase().includes(searchLower)) ||
       (product && product.title.toLowerCase().includes(searchLower))
     );
   });
@@ -204,9 +204,9 @@ export default function Participants() {
                           <Calendar className="w-4 h-4" />
                           <span>נרשם ב-{format(new Date(registration.created_date), 'dd/MM/yyyy HH:mm', { locale: he })}</span>
                         </div>
-                        {registration.order_number && (
+                        {registration.transaction_uid && (
                           <div className="text-xs text-gray-400">
-                            מספר הזמנה: {registration.order_number}
+                            מספר עסקה: #{registration.transaction_uid}
                           </div>
                         )}
                       </div>

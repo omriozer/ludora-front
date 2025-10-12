@@ -228,11 +228,8 @@ export default function VideoViewer() {
           console.log('🆓 Auto-granting access to free item...');
 
           try {
-            const orderNumber = `FREE-AUTO-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
             // Create purchase with new schema
             const purchaseData = {
-              order_number: orderNumber,
               buyer_user_id: user.id, // New schema uses user ID
               purchasable_type: entityType.toLowerCase(),
               purchasable_id: entityId,

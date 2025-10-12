@@ -67,12 +67,6 @@ export default function PaymentModal({ product, user, settings, isTestMode = (im
     setCouponError('');
   };
 
-  const generateOrderNumber = () => {
-    const timestamp = Date.now().toString();
-    const random = Math.random().toString(36).substring(2, 8).toUpperCase();
-    return `EDU-${timestamp.slice(-6)}${random}`;
-  };
-
   const handlePayment = async () => {
     setIsCreatingPayment(true);
     setError(null);
@@ -144,9 +138,7 @@ export default function PaymentModal({ product, user, settings, isTestMode = (im
         // Create new purchase record in cart status
         console.log('No cart purchase found, creating new purchase in cart status');
 
-        const orderNumber = generateOrderNumber();
         const purchaseData = {
-          order_number: orderNumber,
           buyer_user_id: user.id,
           purchasable_type: product.product_type,
           purchasable_id: product.entity_id || product.id,

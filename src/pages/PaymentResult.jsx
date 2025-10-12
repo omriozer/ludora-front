@@ -117,7 +117,7 @@ export default function PaymentResult() {
             const purchaseData = purchases[0];
             console.log('✅ Found purchase via PayPlus UID:', purchaseData.id);
 
-            finalOrderNumber = purchaseData.order_number;
+            finalOrderNumber = purchaseData.metadata?.transaction_uid || purchaseData.id;
 
             // Determine status from purchase and transaction presence
             if (transactionUid && purchaseData.payment_status === 'pending') {
@@ -175,10 +175,18 @@ export default function PaymentResult() {
       }
 
       if (finalOrderNumber) {
-        // Find purchase by order number
-        console.log('🔍 Looking for purchase with order:', finalOrderNumber);
+        // Find purchase by transaction_uid or purchase ID
+        console.log('🔍 Looking for purchase with identifier:', finalOrderNumber);
         try {
-          const purchases = await Purchase.filter({ order_number: finalOrderNumber });
+          // First try to find by transaction_uid in metadata
+          let purchases = await Purchase.filter({
+            metadata: { transaction_uid: finalOrderNumber }
+          });
+
+          // If not found and finalOrderNumber looks like a purchase ID, try direct ID lookup
+          if (purchases.length === 0 && finalOrderNumber.startsWith('pur_')) {
+            purchases = await Purchase.filter({ id: finalOrderNumber });
+          }
           
           if (purchases.length > 0) {
             const purchaseData = purchases[0];
@@ -584,7 +592,7 @@ export default function PaymentResult() {
 
             {purchase && (
               <div className="text-center text-sm text-gray-500">
-                מספר הזמנה: {purchase.order_number}
+                מספר עסקה: #{purchase.metadata?.transaction_uid || purchase.id}
               </div>
             )}
 
