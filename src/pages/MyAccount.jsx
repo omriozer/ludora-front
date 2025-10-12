@@ -591,27 +591,27 @@ const MyAccount = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-indigo-50/50 py-4 sm:py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header - Responsive */}
-        <div className="text-center mb-6 sm:mb-10">
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 mb-4">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-              <UserIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-indigo-50/50 py-2 sm:py-4 lg:py-8">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
+        {/* Header - Mobile Optimized */}
+        <div className="text-center mb-4 sm:mb-6 lg:mb-10">
+          <div className="flex flex-col items-center justify-center gap-2 mb-3 sm:mb-4">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg">
+              <UserIcon className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-white" />
             </div>
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900">{accountTexts.title}</h1>
+            <h1 className="text-xl sm:text-2xl lg:text-4xl font-bold text-gray-900 px-2">{accountTexts.title}</h1>
           </div>
-          <p className="text-lg sm:text-xl text-gray-600 px-4 sm:px-0">{accountTexts.subtitle}</p>
+          <p className="text-base sm:text-lg lg:text-xl text-gray-600 px-3 sm:px-4 lg:px-0">{accountTexts.subtitle}</p>
         </div>
 
-        {/* Pending Subscription Alert - Responsive (only if system enabled) */}
+        {/* Pending Subscription Alert - Mobile Optimized */}
         {settings?.subscription_system_enabled && currentUser?.subscription_status === 'pending' && (
-          <div className="mb-6 sm:mb-8 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-lg">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
-              <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-2 border-blue-600 border-t-transparent flex-shrink-0"></div>
+          <div className="mb-4 sm:mb-6 lg:mb-8 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg sm:rounded-xl lg:rounded-2xl p-3 sm:p-4 lg:p-6 shadow-lg mx-1 sm:mx-0">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 lg:gap-4">
+              <div className="animate-spin rounded-full h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 border-2 border-blue-600 border-t-transparent flex-shrink-0"></div>
               <div className="flex-1 min-w-0">
-                <h3 className="text-blue-900 font-semibold text-base sm:text-lg mb-1">התשלום שלך נמצא בתהליך עיבוד</h3>
-                <p className="text-blue-700 text-sm sm:text-base">
+                <h3 className="text-blue-900 font-semibold text-sm sm:text-base lg:text-lg mb-1">התשלום שלך נמצא בתהליך עיבוד</h3>
+                <p className="text-blue-700 text-xs sm:text-sm lg:text-base leading-relaxed">
                   המנוי שלך בתהליך אישור. אנא המתן לסיום התהליך לפני ביצוע פעולות נוספות.
                 </p>
               </div>
@@ -620,22 +620,22 @@ const MyAccount = () => {
         )}
 
         {message && (
-          <div className={`mb-6 sm:mb-8 rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-lg ${
+          <div className={`mb-4 sm:mb-6 lg:mb-8 rounded-lg sm:rounded-xl lg:rounded-2xl p-3 sm:p-4 lg:p-6 shadow-lg mx-1 sm:mx-0 ${
             message.type === 'error'
               ? 'bg-gradient-to-r from-red-50 to-pink-50 border border-red-200'
               : message.type === 'warning' || message.type === 'info'
                 ? 'bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200'
                 : 'bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200'
           }`}>
-            <div className="flex items-start gap-3">
+            <div className="flex items-start gap-2 sm:gap-3">
               {message.type === 'error' ? (
-                <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 text-red-500 flex-shrink-0 mt-0.5" />
+                <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-red-500 flex-shrink-0 mt-0.5" />
               ) : message.type === 'warning' || message.type === 'info' ? (
-                <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 text-orange-500 flex-shrink-0 mt-0.5" />
+                <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-orange-500 flex-shrink-0 mt-0.5" />
               ) : (
-                <CheckCircle className="h-5 w-5 sm:h-6 sm:w-6 text-green-500 flex-shrink-0 mt-0.5" />
+                <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-green-500 flex-shrink-0 mt-0.5" />
               )}
-              <p className={`text-sm sm:text-base ${
+              <p className={`text-xs sm:text-sm lg:text-base leading-relaxed ${
                 message.type === 'error' ? 'text-red-800' :
                 message.type === 'warning' || message.type === 'info' ? 'text-orange-800' :
                 'text-green-800'
@@ -646,85 +646,85 @@ const MyAccount = () => {
           </div>
         )}
 
-        <div className="grid lg:grid-cols-3 gap-6 lg:gap-8">
-          {/* Left Column - Personal Info & Subscription - Stacked on Mobile */}
-          <div className="lg:col-span-1 space-y-6 lg:space-y-8">
+        <div className="grid gap-3 sm:gap-4 lg:gap-6 xl:gap-8 md:grid-cols-3">
+          {/* Left Column - Personal Info & Subscription - Full width on mobile, stacked */}
+          <div className="md:col-span-1 space-y-3 sm:space-y-4 lg:space-y-6 xl:space-y-8">
 
-            {/* Personal Information Card - Mobile Optimized */}
-            <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm rounded-xl sm:rounded-2xl overflow-hidden">
-              <CardHeader className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-4 sm:p-6">
-                <CardTitle className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white/20 rounded-lg flex items-center justify-center">
-                      <UserIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+            {/* Personal Information Card - Mobile First */}
+            <Card className="shadow-lg sm:shadow-xl border-0 bg-white/80 backdrop-blur-sm rounded-lg sm:rounded-xl lg:rounded-2xl overflow-hidden mx-1 sm:mx-0">
+              <CardHeader className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-3 sm:p-4 lg:p-6">
+                <CardTitle className="flex flex-col xs:flex-row items-start xs:items-center justify-between gap-2 sm:gap-3">
+                  <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 lg:w-10 lg:h-10 bg-white/20 rounded-md sm:rounded-lg flex items-center justify-center flex-shrink-0">
+                      <UserIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 lg:w-5 lg:h-5" />
                     </div>
-                    <span className="text-lg sm:text-xl">{accountTexts.personalInfo}</span>
+                    <span className="text-base sm:text-lg lg:text-xl font-medium truncate">{accountTexts.personalInfo}</span>
                   </div>
                   {!isEditingProfile ? (
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => setIsEditingProfile(true)}
-                      className="text-white hover:bg-white/20 rounded-lg px-3 py-2 text-sm"
+                      className="text-white hover:bg-white/20 rounded-md sm:rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm flex-shrink-0 min-h-[32px] sm:min-h-[36px]"
                     >
-                      <Edit className="w-4 h-4 sm:mr-2" />
-                      <span className="hidden sm:inline">{accountTexts.edit}</span>
+                      <Edit className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                      <span className="hidden xs:inline">{accountTexts.edit}</span>
                     </Button>
                   ) : (
-                    <div className="flex gap-2">
+                    <div className="flex gap-1 sm:gap-2 flex-shrink-0">
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={handleSaveProfile}
-                        className="text-white hover:bg-white/20 rounded-lg px-3 py-2 text-sm"
+                        className="text-white hover:bg-white/20 rounded-md sm:rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm min-h-[32px] sm:min-h-[36px]"
                       >
-                        <Save className="w-4 h-4" />
+                        <Save className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={handleCancelEdit}
-                        className="text-white hover:bg-white/20 rounded-lg px-3 py-2 text-sm"
+                        className="text-white hover:bg-white/20 rounded-md sm:rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm min-h-[32px] sm:min-h-[36px]"
                       >
-                        <X className="w-4 h-4" />
+                        <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                       </Button>
                     </div>
                   )}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+              <CardContent className="p-3 sm:p-4 lg:p-6 space-y-3 sm:space-y-4 lg:space-y-6">
                 <div>
-                  <Label className="text-sm font-medium text-gray-700">{accountTexts.fullName}</Label>
+                  <Label className="text-xs sm:text-sm font-medium text-gray-700 block mb-1">{accountTexts.fullName}</Label>
                   {isEditingProfile ? (
                     <Input
                       value={editedProfile.display_name}
                       onChange={(e) => setEditedProfile(prev => ({ ...prev, display_name: e.target.value }))}
-                      className="mt-1"
+                      className="text-sm sm:text-base h-9 sm:h-10"
                       placeholder="הכנס שם מלא"
                     />
                   ) : (
-                    <p className="mt-1 text-base sm:text-lg font-medium text-gray-900 break-words">
+                    <p className="text-sm sm:text-base lg:text-lg font-medium text-gray-900 break-words leading-relaxed">
                       {currentUser?.display_name || currentUser?.full_name || 'לא הוגדר'}
                     </p>
                   )}
                 </div>
 
                 <div>
-                  <Label className="text-sm font-medium text-gray-700">{accountTexts.email}</Label>
-                  <p className="mt-1 text-base sm:text-lg text-gray-600 break-all">{currentUser?.email}</p>
+                  <Label className="text-xs sm:text-sm font-medium text-gray-700 block mb-1">{accountTexts.email}</Label>
+                  <p className="text-sm sm:text-base lg:text-lg text-gray-600 break-all leading-relaxed">{currentUser?.email}</p>
                 </div>
 
                 <div>
-                  <Label className="text-sm font-medium text-gray-700">{accountTexts.phone}</Label>
+                  <Label className="text-xs sm:text-sm font-medium text-gray-700 block mb-1">{accountTexts.phone}</Label>
                   {isEditingProfile ? (
                     <Input
                       value={editedProfile.phone}
                       onChange={(e) => setEditedProfile(prev => ({ ...prev, phone: e.target.value }))}
-                      className="mt-1"
+                      className="text-sm sm:text-base h-9 sm:h-10"
                       placeholder="הכנס מספר טלפון"
                     />
                   ) : (
-                    <p className="mt-1 text-base sm:text-lg text-gray-900 break-words">
+                    <p className="text-sm sm:text-base lg:text-lg text-gray-900 break-words leading-relaxed">
                       {currentUser?.phone || 'לא הוגדר'}
                     </p>
                   )}
@@ -734,46 +734,46 @@ const MyAccount = () => {
 
             {/* Subscription Section - COMPLETELY HIDDEN when subscription system is disabled */}
             {settings?.subscription_system_enabled && currentUser && (
-              <Card className="bg-white border-none shadow-lg">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <CreditCard className="w-5 h-5 text-purple-600" />
-                    <span className="text-lg sm:text-xl">{accountTexts.mySubscription}</span>
+              <Card className="bg-white border-none shadow-lg sm:shadow-xl rounded-lg sm:rounded-xl lg:rounded-2xl mx-1 sm:mx-0">
+                <CardHeader className="p-3 sm:p-4 lg:p-6">
+                  <CardTitle className="flex items-center gap-2 sm:gap-3">
+                    <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600 flex-shrink-0" />
+                    <span className="text-base sm:text-lg lg:text-xl font-medium">{accountTexts.mySubscription}</span>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-6">
+                <CardContent className="space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6 pt-0">
                   {currentUser?.subscription_status === 'pending' ? (
-                    <div className="text-center p-4 sm:p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
-                      <div className="flex items-center justify-center gap-2 mb-3">
-                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-600 border-t-transparent"></div>
-                        <span className="text-blue-800 font-semibold text-base sm:text-lg">מנוי בתהליך עיבוד</span>
+                    <div className="text-center p-3 sm:p-4 lg:p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg sm:rounded-xl border border-blue-200">
+                      <div className="flex items-center justify-center gap-2 mb-2 sm:mb-3">
+                        <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-2 border-blue-600 border-t-transparent"></div>
+                        <span className="text-blue-800 font-semibold text-sm sm:text-base lg:text-lg">מנוי בתהליך עיבוד</span>
                       </div>
-                      <p className="text-blue-700 text-sm sm:text-base">
+                      <p className="text-blue-700 text-xs sm:text-sm lg:text-base leading-relaxed">
                         המנוי החדש שלך נמצא בתהליך אישור. זה יכול לקחת מספר דקות.
                       </p>
                     </div>
                   ) : currentSubscriptionPlan ? (
-                    <div className="space-y-4 sm:space-y-6">
+                    <div className="space-y-3 sm:space-y-4 lg:space-y-6">
                       {/* Current Plan Details */}
-                      <div className="p-4 sm:p-6 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl border border-purple-200">
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-4">
-                          <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center ${
+                      <div className="p-3 sm:p-4 lg:p-6 bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg sm:rounded-xl border border-purple-200">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 mb-3 sm:mb-4">
+                          <div className={`w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0 ${
                             currentSubscriptionPlan.price === 0
                               ? 'bg-blue-500'
                               : 'bg-gradient-to-br from-purple-500 to-pink-500'
                           }`}>
                             {currentSubscriptionPlan.price === 0 ? (
-                              <Gift className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                              <Gift className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-white" />
                             ) : (
-                              <Crown className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                              <Crown className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-white" />
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <h3 className="text-lg sm:text-xl font-bold text-gray-900 break-words">{currentSubscriptionPlan.name}</h3>
-                            <p className="text-gray-600 text-sm break-words">{currentSubscriptionPlan.description}</p>
+                            <h3 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900 break-words leading-tight">{currentSubscriptionPlan.name}</h3>
+                            <p className="text-gray-600 text-xs sm:text-sm break-words mt-1">{currentSubscriptionPlan.description}</p>
                           </div>
-                          <div className="text-left sm:text-right">
-                            <div className="text-xl sm:text-2xl font-bold text-purple-600">
+                          <div className="text-left sm:text-right flex-shrink-0">
+                            <div className="text-lg sm:text-xl lg:text-2xl font-bold text-purple-600">
                               {currentSubscriptionPlan.price === 0 ? 'חינם' : `₪${currentSubscriptionPlan.price}`}
                             </div>
                             {currentSubscriptionPlan.price > 0 && (
@@ -785,10 +785,10 @@ const MyAccount = () => {
                         </div>
 
                         {/* Subscription Status & Dates - Mobile Grid */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-sm">
-                          <div className="bg-white/60 p-3 rounded-lg">
-                            <div className="text-gray-500 mb-1">סטטוס</div>
-                            <div className={`font-semibold text-sm ${
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:gap-4 text-xs sm:text-sm">
+                          <div className="bg-white/60 p-2 sm:p-3 rounded-md sm:rounded-lg">
+                            <div className="text-gray-500 mb-1 text-xs sm:text-sm">סטטוס</div>
+                            <div className={`font-semibold text-xs sm:text-sm ${
                               currentUser.subscription_status === 'active'
                                 ? 'text-green-600'
                                 : 'text-gray-600'
@@ -800,17 +800,17 @@ const MyAccount = () => {
                           </div>
 
                           {currentUser.subscription_end_date && currentUser.subscription_status === 'active' && (
-                            <div className="bg-white/60 p-3 rounded-lg sm:col-span-2">
-                              <div className="text-gray-500 mb-1">
+                            <div className="bg-white/60 p-2 sm:p-3 rounded-md sm:rounded-lg sm:col-span-2">
+                              <div className="text-gray-500 mb-1 text-xs sm:text-sm">
                                 {currentUser.payplus_subscription_uid ? 'מתחדש ב' : 'פג ב'}
                               </div>
-                              <div className="font-semibold text-gray-900 flex flex-wrap items-center gap-2">
-                                <Calendar className="w-4 h-4" />
-                                <span className="text-sm">
+                              <div className="font-semibold text-gray-900 flex flex-wrap items-center gap-1 sm:gap-2">
+                                <Calendar className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                                <span className="text-xs sm:text-sm">
                                   {new Date(currentUser.subscription_end_date).toLocaleDateString('he-IL')}
                                 </span>
                                 {currentUser.payplus_subscription_uid && (
-                                  <Badge className="bg-blue-100 text-blue-800 text-xs">
+                                  <Badge className="bg-blue-100 text-blue-800 text-xs px-1.5 py-0.5">
                                     חיוב אוטומטי
                                   </Badge>
                                 )}
@@ -889,31 +889,31 @@ const MyAccount = () => {
           </div>
 
           {/* Right Column - Purchase History - Full Width on Mobile */}
-          <div className="lg:col-span-2">
-            <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm rounded-xl sm:rounded-2xl overflow-hidden">
-              <CardHeader className="bg-gradient-to-r from-green-500 to-teal-600 text-white p-4 sm:p-6">
-                <CardTitle className="flex items-center gap-3">
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white/20 rounded-lg flex items-center justify-center">
-                    <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5" />
+          <div className="md:col-span-2">
+            <Card className="shadow-lg sm:shadow-xl border-0 bg-white/80 backdrop-blur-sm rounded-lg sm:rounded-xl lg:rounded-2xl overflow-hidden mx-1 sm:mx-0">
+              <CardHeader className="bg-gradient-to-r from-green-500 to-teal-600 text-white p-3 sm:p-4 lg:p-6">
+                <CardTitle className="flex items-center gap-2 sm:gap-3">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 lg:w-10 lg:h-10 bg-white/20 rounded-md sm:rounded-lg flex items-center justify-center flex-shrink-0">
+                    <ShoppingBag className="w-3.5 h-3.5 sm:w-4 sm:h-4 lg:w-5 lg:h-5" />
                   </div>
-                  <span className="text-lg sm:text-xl">{accountTexts.purchaseHistory}</span>
+                  <span className="text-base sm:text-lg lg:text-xl font-medium">{accountTexts.purchaseHistory}</span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
-                {/* Filters and Search - Mobile Optimized */}
-                <div className="p-4 sm:p-6 border-b bg-white/60">
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <div className="flex-1">
+                {/* Filters and Search - Mobile First */}
+                <div className="p-3 sm:p-4 lg:p-6 border-b bg-white/60">
+                  <div className="flex flex-col gap-3 sm:gap-4">
+                    <div className="w-full">
                       <Input
-                        placeholder="חיפוש לפי מספר הזמנה או שם מוצר..."
+                        placeholder="חיפוש לפי מספר רכישה או שם מוצר..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full text-sm"
+                        className="w-full text-xs sm:text-sm h-9 sm:h-10"
                       />
                     </div>
-                    <div className="flex gap-2">
+                    <div className="w-full sm:w-auto">
                       <Select value={statusFilter} onValueChange={setStatusFilter}>
-                        <SelectTrigger className="w-full sm:w-32 text-sm">
+                        <SelectTrigger className="w-full sm:w-40 text-xs sm:text-sm h-9 sm:h-10">
                           <SelectValue placeholder="סטטוס" />
                         </SelectTrigger>
                         <SelectContent>
@@ -930,46 +930,49 @@ const MyAccount = () => {
                   </div>
                 </div>
 
-                {/* Purchase History - Mobile Cards + Desktop Table */}
+                {/* Purchase History - Mobile First Cards + Desktop Table */}
                 {filteredPurchases.length > 0 ? (
                   <>
-                    {/* Mobile View - Cards */}
-                    <div className="block lg:hidden">
+                    {/* Mobile View - Enhanced Cards */}
+                    <div className="block md:hidden">
                       {filteredPurchases.map((purchase) => {
                         const entityId = purchase.purchasable_id || purchase.product_id;
                         const product = products.find(p => p.id === entityId);
                         const isSubscription = !entityId;
 
                         return (
-                          <div key={purchase.id} className="border-b last:border-b-0 p-4">
-                            <div className="flex items-start justify-between mb-3">
+                          <div key={purchase.id} className="border-b last:border-b-0 p-4 sm:p-5 bg-white hover:bg-gray-50/50 transition-colors">
+                            {/* Header Section with Product and Price */}
+                            <div className="flex items-start justify-between mb-3 gap-4">
                               <div className="flex-1 min-w-0">
-                                <div className="font-medium text-gray-900 mb-1 break-words">
+                                <div className="font-semibold text-gray-900 mb-2 break-words text-base sm:text-lg leading-tight">
                                   {product?.title || 'מנוי פרימיום'}
                                 </div>
-                                <div className="text-sm text-gray-500 font-mono break-all">
-                                  {purchase.order_number}
-                                </div>
                                 {product && (
-                                  <div className="text-xs text-gray-400 mt-1">
+                                  <div className="text-xs sm:text-sm text-blue-600 font-medium mb-1">
                                     {(product.entity_type === 'course' || product.product_type === 'course') && getProductTypeName('course', 'singular')}
                                     {(product.entity_type === 'workshop' || product.product_type === 'workshop') && getProductTypeName('workshop', 'singular')}
                                     {(product.entity_type === 'file' || product.product_type === 'file') && getProductTypeName('file', 'singular')}
                                   </div>
                                 )}
+                                <div className="text-xs sm:text-sm text-gray-500 font-mono break-all">
+                                  #{purchase.order_number}
+                                </div>
                               </div>
                               <div className="text-left flex-shrink-0">
-                                <div className="text-lg font-semibold text-gray-900">
+                                <div className="text-lg sm:text-xl font-bold text-gray-900 mb-2">
                                   ₪{purchase.payment_amount}
                                 </div>
-                                <Badge className={`text-xs border ${getStatusColor(purchase.payment_status)}`}>
+                                <Badge className={`text-xs border px-3 py-1.5 font-medium ${getStatusColor(purchase.payment_status)}`}>
                                   {getStatusText(purchase.payment_status)}
                                 </Badge>
                               </div>
                             </div>
-                            
-                            <div className="flex items-center justify-between text-sm text-gray-500 mb-3">
-                              <span>
+
+                            {/* Date and Meta Info */}
+                            <div className="flex items-center text-xs sm:text-sm text-gray-500 mb-4 sm:mb-5 pb-3 border-b border-gray-100">
+                              <span className="flex items-center gap-1.5">
+                                <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                 {(() => {
                                   const date = new Date(purchase.created_at || purchase.created_date);
                                   return isNaN(date) ? '-' : format(date, 'dd/MM/yyyy HH:mm', { locale: he });
@@ -977,14 +980,15 @@ const MyAccount = () => {
                               </span>
                             </div>
 
+                            {/* Action Buttons Section */}
                             {product && !isSubscription && (
-                              <div className="space-y-2">
+                              <div className="space-y-3">
                                 {/* Professional Action Buttons using ProductActionBar */}
                                 {(purchase.payment_status === 'paid' || purchase.payment_status === 'completed') && (
                                   <ProductActionBar
                                     product={buildProductForActionBar(purchase)}
-                                    className="w-full text-xs"
-                                    size="sm"
+                                    className="w-full text-sm sm:text-base"
+                                    size="default"
                                     fullWidth={true}
                                     showCartButton={false}
                                     onFileAccess={handleFileAccessWithModal}
@@ -996,12 +1000,12 @@ const MyAccount = () => {
 
                                 {/* View Details Button */}
                                 <Button
-                                  size="sm"
+                                  size="default"
                                   variant="outline"
                                   onClick={() => handleViewDetails(product)}
-                                  className="w-full text-xs border-blue-200 text-blue-600 hover:bg-blue-50"
+                                  className="w-full text-sm sm:text-base border-blue-200 text-blue-600 hover:bg-blue-50 h-10 sm:h-11 font-medium"
                                 >
-                                  <ExternalLink className="w-3 h-3 ml-1" />
+                                  <ExternalLink className="w-4 h-4 sm:w-5 sm:h-5 ml-2" />
                                   פרטי המוצר
                                 </Button>
                               </div>
@@ -1012,7 +1016,7 @@ const MyAccount = () => {
                     </div>
 
                     {/* Desktop View - Table */}
-                    <div className="hidden lg:block overflow-x-auto">
+                    <div className="hidden md:block overflow-x-auto">
                       <table className="w-full">
                         <thead className="bg-gray-100 border-b">
                           <tr>
@@ -1030,7 +1034,7 @@ const MyAccount = () => {
                                 onClick={() => handleSort('order_number')}
                                 className="flex items-center gap-1 hover:text-blue-600"
                               >
-                                מספר הזמנה
+                                מספר רכישה
                                 <ArrowUpDown className="w-3 h-3" />
                               </button>
                             </th>
@@ -1104,32 +1108,34 @@ const MyAccount = () => {
                                   </Badge>
                                 </td>
                                 <td className="p-4">
-                                  {product && (purchase.payment_status === 'paid' || purchase.payment_status === 'completed') && !isSubscription && (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => handleProductAccess(purchase)}
-                                      className="text-xs"
-                                    >
-                                      {(product.entity_type === 'course' || product.product_type === 'course') && (
-                                        <>
-                                          <BookOpen className="w-3 h-3 ml-1" />
-                                          פתח {getProductTypeName('course', 'singular')}
-                                        </>
+                                  {product && !isSubscription && (
+                                    <div className="flex items-center gap-2">
+                                      {/* Professional Action Button using ProductActionBar */}
+                                      {(purchase.payment_status === 'paid' || purchase.payment_status === 'completed') && (
+                                        <ProductActionBar
+                                          product={buildProductForActionBar(purchase)}
+                                          className="text-xs"
+                                          size="sm"
+                                          fullWidth={false}
+                                          showCartButton={false}
+                                          onFileAccess={handleFileAccessWithModal}
+                                          onPdfPreview={handlePdfPreviewWithModal}
+                                          onCourseAccess={handleCourseAccess}
+                                          onWorkshopAccess={handleWorkshopAccess}
+                                        />
                                       )}
-                                      {(product.entity_type === 'workshop' || product.product_type === 'workshop') && (
-                                        <>
-                                          <Play className="w-3 h-3 ml-1" />
-                                          צפה בהקלטה
-                                        </>
-                                      )}
-                                      {(product.entity_type === 'file' || product.product_type === 'file') && (
-                                        <>
-                                          <Download className="w-3 h-3 ml-1" />
-                                          הורד קובץ
-                                        </>
-                                      )}
-                                    </Button>
+
+                                      {/* View Details Button */}
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleViewDetails(product)}
+                                        className="text-xs border-blue-200 text-blue-600 hover:bg-blue-50"
+                                      >
+                                        <ExternalLink className="w-3 h-3 ml-1" />
+                                        פרטים
+                                      </Button>
+                                    </div>
                                   )}
                                 </td>
                               </tr>
@@ -1140,9 +1146,9 @@ const MyAccount = () => {
                     </div>
                   </>
                 ) : (
-                  <div className="text-center py-8 sm:py-12 px-4">
-                    <CreditCard className="w-12 h-12 sm:w-16 sm:h-16 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-600 text-base sm:text-lg">{accountTexts.noHistory}</p>
+                  <div className="text-center py-6 sm:py-8 lg:py-12 px-3 sm:px-4">
+                    <CreditCard className="w-10 h-10 sm:w-12 sm:h-12 lg:w-16 lg:h-16 text-gray-300 mx-auto mb-3 sm:mb-4" />
+                    <p className="text-gray-600 text-sm sm:text-base lg:text-lg">{accountTexts.noHistory}</p>
                   </div>
                 )}
               </CardContent>
@@ -1158,6 +1164,18 @@ const MyAccount = () => {
             currentUser={currentUser}
             onSubscriptionChange={handleSubscriptionChange}
             isAutoOpened={false}
+          />
+        )}
+
+        {/* PDF Viewer Modal */}
+        {pdfViewerOpen && selectedFile && (
+          <PdfViewer
+            file={selectedFile}
+            isOpen={pdfViewerOpen}
+            onClose={() => {
+              setPdfViewerOpen(false);
+              setSelectedFile(null);
+            }}
           />
         )}
       </div>
