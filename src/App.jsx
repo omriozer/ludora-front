@@ -10,6 +10,7 @@ import AdminRoute from '@/components/auth/AdminRoute';
 import ConditionalRoute from '@/components/auth/ConditionalRoute';
 import TutorialOverlay from '@/components/TutorialOverlay';
 import { ConfirmationProvider } from '@/components/ui/ConfirmationProvider';
+import { PRODUCT_TYPES } from './config/productTypes';
 
 function App() {
 	const { currentUser, isLoading } = useUser();
@@ -149,8 +150,9 @@ function App() {
 						</ProtectedRoute>
 					}
 				/>
+				{/* Admin Games Management Routes */}
 				<Route
-					path='/games'
+					path='/admin/games'
 					element={
 						<AdminRoute>
 							<Pages.Games />
@@ -158,7 +160,7 @@ function App() {
 					}
 				/>
 				<Route
-					path='/games/create'
+					path='/admin/games/create'
 					element={
 						<AdminRoute>
 							<Pages.GameBuilder />
@@ -166,18 +168,20 @@ function App() {
 					}
 				/>
 				<Route
-					path='/games/edit/:id'
+					path='/admin/games/edit/:id'
 					element={
 						<AdminRoute>
 							<Pages.GameBuilder />
 						</AdminRoute>
 					}
 				/>
+
+				{/* Public Games Catalog */}
 				<Route
 					path='/games'
 					element={
 						<ConditionalRoute visibilityField="nav_games_visibility">
-							<Pages.GamesCatalog />
+							<Pages.ProductCatalog productType="game" />
 						</ConditionalRoute>
 					}
 				/>
@@ -205,7 +209,7 @@ function App() {
 					path='/workshops'
 					element={
 						<ConditionalRoute visibilityField="nav_workshops_visibility">
-							<Pages.Workshops />
+							<Pages.ProductCatalog productType="workshop" />
 						</ConditionalRoute>
 					}
 				/>
@@ -213,7 +217,7 @@ function App() {
 					path='/courses'
 					element={
 						<ConditionalRoute visibilityField="nav_courses_visibility">
-							<Pages.Courses />
+							<Pages.ProductCatalog productType="course" />
 						</ConditionalRoute>
 					}
 				/>
@@ -271,7 +275,7 @@ function App() {
 					path='/tools'
 					element={
 						<ConditionalRoute visibilityField="nav_tools_visibility">
-							<Pages.Tools />
+							<Pages.ProductCatalog productType="tool" />
 						</ConditionalRoute>
 					}
 				/>
@@ -284,10 +288,10 @@ function App() {
 					}
 				/>
 				<Route
-					path='/files'
+					path={PRODUCT_TYPES.file.url}
 					element={
 						<ConditionalRoute visibilityField="nav_files_visibility">
-							<Pages.Files />
+							<Pages.ProductCatalog productType="file" />
 						</ConditionalRoute>
 					}
 				/>

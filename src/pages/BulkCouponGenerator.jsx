@@ -105,7 +105,7 @@ export default function BulkCouponGenerator() {
     }
 
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('authToken');
       const response = await fetch(`${getApiBase()}/functions/validateCouponPattern`, {
         method: 'POST',
         headers: {
@@ -130,7 +130,7 @@ export default function BulkCouponGenerator() {
     if (!patternValidation?.isValid) return;
 
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('authToken');
       const response = await fetch(`${getApiBase()}/functions/getCouponPresetPatterns`, {
         method: 'GET',
         headers: {
@@ -185,7 +185,7 @@ export default function BulkCouponGenerator() {
     setGeneratedCoupons([]);
 
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('authToken');
 
       // Prepare coupon data
       const couponData = {

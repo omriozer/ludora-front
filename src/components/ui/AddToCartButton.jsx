@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus, CheckCircle } from 'lucide-react';
+import { Plus, CheckCircle, ShoppingCart } from 'lucide-react';
 import { cerror } from '@/lib/utils';
 import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
 import { useLoginModal } from '@/hooks/useLoginModal';
@@ -43,7 +43,9 @@ export default function AddToCartButton({
     return null;
   }
 
-  const handleAddToCart = async () => {
+  const handleAddToCart = async (e) => {
+    e.stopPropagation(); // Prevent event bubbling to parent card
+
     if (!product) {
       cerror('No product provided to AddToCartButton');
       return;
@@ -115,7 +117,7 @@ export default function AddToCartButton({
       size={size}
       title="הוסף לעגלה"
     >
-      <span className="relative z-10 flex items-center justify-center">
+      <span className="relative z-10 flex items-center justify-center gap-1">
         {isAddingToCart ? (
           <LudoraLoadingSpinner
             message=""
@@ -125,7 +127,10 @@ export default function AddToCartButton({
             showParticles={false}
           />
         ) : (
-          <Plus className="w-5 h-5 sm:w-6 sm:h-6 group-hover:rotate-180 transition-transform duration-300" />
+          <>
+            <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 group-hover:scale-110 transition-transform duration-300" />
+            <Plus className="w-3 h-3 sm:w-4 sm:h-4 group-hover:rotate-180 transition-transform duration-300" />
+          </>
         )}
       </span>
       <div className="absolute inset-0 bg-gradient-to-r from-red-600 via-pink-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>

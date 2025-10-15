@@ -80,31 +80,31 @@ export default function CouponForm() {
       const [workshopsResponse, coursesResponse, filesResponse, toolsResponse, gamesResponse] = await Promise.all([
         fetch(`${getApiBase()}/entities/workshop`, {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
             'Content-Type': 'application/json'
           }
         }),
         fetch(`${getApiBase()}/entities/course`, {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
             'Content-Type': 'application/json'
           }
         }),
         fetch(`${getApiBase()}/entities/file`, {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
             'Content-Type': 'application/json'
           }
         }),
         fetch(`${getApiBase()}/entities/tool`, {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
             'Content-Type': 'application/json'
           }
         }),
         fetch(`${getApiBase()}/entities/game`, {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
             'Content-Type': 'application/json'
           }
         })
@@ -131,7 +131,7 @@ export default function CouponForm() {
       if (isEditing) {
         const couponResponse = await fetch(`${getApiBase()}/entities/coupon/${id}`, {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
             'Content-Type': 'application/json'
           }
         });
@@ -259,7 +259,7 @@ export default function CouponForm() {
         await fetch(`${getApiBase()}/entities/coupon/${id}`, {
           method: 'PUT',
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify(couponData)
@@ -273,7 +273,7 @@ export default function CouponForm() {
         await fetch(`${getApiBase()}/entities/coupon`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify(couponData)

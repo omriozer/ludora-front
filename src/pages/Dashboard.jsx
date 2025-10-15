@@ -1,65 +1,419 @@
-
 import React, { useState, useEffect, useCallback } from "react";
-import { User, SubscriptionPlan } from "@/services/entities";
-import { Card, CardContent } from "@/components/ui/card";
-import { Crown, Gift, Wrench } from "lucide-react";
+import { User } from "@/services/entities";
+import { getApiBase } from "@/utils/api.js";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import {
+  Crown,
+  Gift,
+  Plus,
+  Edit3,
+  Save,
+  X,
+  Trash2,
+  GripVertical,
+  Settings
+} from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import LudoraLoadingSpinner from "@/components/ui/LudoraLoadingSpinner";
+import PurchaseHistory from "@/components/PurchaseHistory";
+import ConfirmationDialog from "@/components/ui/confirmation-dialog";
+import { clog, cerror } from "@/lib/utils";
+import { toast } from "@/components/ui/use-toast";
+
+// Widget picker modal component
+const WidgetPickerModal = ({ isOpen, onClose, availableWidgets, onAddWidget }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+        <div className="p-6 border-b">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold text-gray-900">הוסף ווידג'ט</h2>
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+          <p className="text-gray-600 mt-2">בחר ווידג'ט להוספה ללוח המחוונים שלך</p>
+        </div>
+
+        <div className="p-6">
+          <div className="grid gap-4">
+            {Object.values(availableWidgets).map((widget) => (
+              <div
+                key={widget.id}
+                className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-gray-900 mb-1">{widget.name}</h3>
+                    <p className="text-sm text-gray-600 mb-3">{widget.description}</p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                        {widget.category === 'purchases' ? 'רכישות' : widget.category}
+                      </span>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => onAddWidget(widget.id)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    <Plus className="w-4 h-4 ml-2" />
+                    הוסף
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Widget component renderer
+const WidgetRenderer = ({ widget, isEditMode, onRemove, onMoveUp, onMoveDown, canMoveUp, canMoveDown, user }) => {
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const handleDelete = () => {
+    onRemove(widget.id);
+    setShowDeleteConfirm(false);
+  };
+
+  const renderWidgetContent = () => {
+    switch (widget.type) {
+      case 'purchase-history':
+        return (
+          <PurchaseHistory
+            user={user}
+            title={widget.settings?.title || "היסטוריית רכישות"}
+            showHeader={true}
+            className=""
+          />
+        );
+      default:
+        return (
+          <Card className="border border-red-200 bg-red-50">
+            <CardContent className="p-6 text-center">
+              <p className="text-red-600">ווידג'ט לא זמין: {widget.type}</p>
+            </CardContent>
+          </Card>
+        );
+    }
+  };
+
+  return (
+    <div className="relative">
+      {isEditMode && (
+        <div className="absolute top-2 left-2 z-10 flex items-center gap-1 bg-white rounded-lg shadow-lg border p-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowDeleteConfirm(true)}
+            className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+            title="הסר ווידג'ט"
+          >
+            <Trash2 className="w-3 h-3" />
+          </Button>
+
+          <div className="flex flex-col gap-0.5">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onMoveUp}
+              disabled={!canMoveUp}
+              className="h-4 w-6 p-0 text-gray-600 hover:text-gray-800 disabled:opacity-30"
+              title="הזז למעלה"
+            >
+              <GripVertical className="w-3 h-3 rotate-90" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onMoveDown}
+              disabled={!canMoveDown}
+              className="h-4 w-6 p-0 text-gray-600 hover:text-gray-800 disabled:opacity-30"
+              title="הזז למטה"
+            >
+              <GripVertical className="w-3 h-3 -rotate-90" />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <div className={`transition-all ${isEditMode ? 'ring-2 ring-blue-200 ring-opacity-50 rounded-lg' : ''}`}>
+        {renderWidgetContent()}
+      </div>
+
+      <ConfirmationDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDelete}
+        title="הסר ווידג'ט"
+        message={`האם אתה בטוח שברצונך להסיר את הווידג'ט "${widget.settings?.title || widget.type}"?`}
+        confirmText="הסר"
+        cancelText="ביטול"
+        variant="destructive"
+      />
+    </div>
+  );
+};
 
 export default function Dashboard() {
   const [currentUser, setCurrentUser] = useState(null);
-  const [currentSubscriptionPlan, setCurrentSubscriptionPlan] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [availableWidgets, setAvailableWidgets] = useState({});
+  const [userWidgets, setUserWidgets] = useState([]);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [showWidgetPicker, setShowWidgetPicker] = useState(false);
 
-  // Add retry logic for subscription plan loading
-  const loadSubscriptionPlanWithRetry = useCallback(async (planId, retries = 2, delay = 1000) => {
-    for (let i = 0; i < retries; i++) {
-      try {
-        return await SubscriptionPlan.filter({ id: planId });
-      } catch (error) {
-        if (error.response?.status === 429 && i < retries - 1) {
-          console.log(`[DASHBOARD] Rate limit hit, retrying in ${delay}ms... (${i + 1}/${retries})`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-          delay *= 2;
-        } else {
-          throw error;
+  // Load available widgets from API
+  const loadAvailableWidgets = useCallback(async () => {
+    try {
+      clog('[Dashboard] Loading available widgets...');
+      const response = await fetch(`${getApiBase()}/dashboard/widgets`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
         }
-      }
-    }
-    // This line should technically be unreachable if an error is always thrown on the last retry
-    // but added for completeness/typescript type safety in some setups
-    throw new Error("Failed to load subscription plan after multiple retries.");
-  }, []); // No external dependencies for this function itself
+      });
 
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      clog('[Dashboard] Available widgets loaded:', data);
+
+      if (data.success) {
+        setAvailableWidgets(data.data || {});
+      }
+    } catch (error) {
+      cerror('[Dashboard] Error loading available widgets:', error);
+      toast({
+        title: "שגיאה",
+        description: "לא הצלחנו לטעון את הווידג'טים הזמינים",
+        variant: "destructive"
+      });
+    }
+  }, []);
+
+  // Load user's dashboard configuration
+  const loadDashboardConfig = useCallback(async () => {
+    try {
+      clog('[Dashboard] Loading user dashboard config...');
+      const response = await fetch(`${getApiBase()}/dashboard/config`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      clog('[Dashboard] Dashboard config loaded:', data);
+
+      if (data.success) {
+        const config = data.data || { widgets: [] };
+        // Sort widgets by order
+        const sortedWidgets = config.widgets.sort((a, b) => a.order - b.order);
+        setUserWidgets(sortedWidgets);
+      }
+    } catch (error) {
+      cerror('[Dashboard] Error loading dashboard config:', error);
+      toast({
+        title: "שגיאה",
+        description: "לא הצלחנו לטעון את תצורת הדאשבורד",
+        variant: "destructive"
+      });
+    }
+  }, []);
+
+  // Save dashboard configuration
+  const saveDashboardConfig = useCallback(async (widgets) => {
+    try {
+      clog('[Dashboard] Saving dashboard config:', widgets);
+      const response = await fetch(`${getApiBase()}/dashboard/config`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ widgets })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      clog('[Dashboard] Dashboard config saved:', data);
+
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to save dashboard config');
+      }
+
+      toast({
+        title: "נשמר",
+        description: "תצורת הדאשבורד נשמרה בהצלחה",
+        variant: "default"
+      });
+    } catch (error) {
+      cerror('[Dashboard] Error saving dashboard config:', error);
+      toast({
+        title: "שגיאה",
+        description: "לא הצלחנו לשמור את תצורת הדאשבורד",
+        variant: "destructive"
+      });
+      throw error;
+    }
+  }, []);
+
+  // Load initial data
   const loadDashboardData = useCallback(async () => {
     try {
       // Load current user
       const user = await User.me();
       setCurrentUser(user);
 
-      // Load current subscription plan if user has one
-      if (user.current_subscription_plan_id) {
-        try {
-          const plans = await loadSubscriptionPlanWithRetry(user.current_subscription_plan_id);
-          if (plans.length > 0) {
-            setCurrentSubscriptionPlan(plans[0]);
-          }
-        } catch (error) {
-          console.error("Error loading subscription plan:", error);
-          // Continue without subscription plan data if it fails
-        }
-      }
+      // Load available widgets and user config in parallel
+      await Promise.all([
+        loadAvailableWidgets(),
+        loadDashboardConfig()
+      ]);
     } catch (error) {
-      console.error("Error loading dashboard data:", error);
+      cerror("Error loading dashboard data:", error);
+      toast({
+        title: "שגיאה",
+        description: "לא הצלחנו לטעון את נתוני הדאשבורד",
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }
-  }, [loadSubscriptionPlanWithRetry]); // Dependency on loadSubscriptionPlanWithRetry
+  }, [loadAvailableWidgets, loadDashboardConfig]);
 
   useEffect(() => {
     loadDashboardData();
-  }, [loadDashboardData]); // Dependency on loadDashboardData
+  }, [loadDashboardData]);
+
+  // Add widget handler
+  const handleAddWidget = async (widgetType) => {
+    try {
+      clog('[Dashboard] Adding widget:', widgetType);
+      const response = await fetch(`${getApiBase()}/dashboard/widgets`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ type: widgetType })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      clog('[Dashboard] Widget added:', data);
+
+      if (data.success) {
+        // Reload dashboard config to get updated widgets
+        await loadDashboardConfig();
+        setShowWidgetPicker(false);
+
+        toast({
+          title: "ווידג'ט נוסף",
+          description: "הווידג'ט נוסף בהצלחה לדאשבורד",
+          variant: "default"
+        });
+      }
+    } catch (error) {
+      cerror('[Dashboard] Error adding widget:', error);
+      toast({
+        title: "שגיאה",
+        description: "לא הצלחנו להוסיף את הווידג'ט",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Remove widget handler
+  const handleRemoveWidget = async (widgetId) => {
+    try {
+      clog('[Dashboard] Removing widget:', widgetId);
+      const response = await fetch(`${getApiBase()}/dashboard/widgets/${widgetId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      clog('[Dashboard] Widget removed:', data);
+
+      if (data.success) {
+        // Reload dashboard config to get updated widgets
+        await loadDashboardConfig();
+
+        toast({
+          title: "ווידג'ט הוסר",
+          description: "הווידג'ט הוסר בהצלחה מהדאשבורד",
+          variant: "default"
+        });
+      }
+    } catch (error) {
+      cerror('[Dashboard] Error removing widget:', error);
+      toast({
+        title: "שגיאה",
+        description: "לא הצלחנו להסיר את הווידג'ט",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Move widget up/down
+  const handleMoveWidget = async (widgetId, direction) => {
+    const currentIndex = userWidgets.findIndex(w => w.id === widgetId);
+    if (currentIndex === -1) return;
+
+    const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (newIndex < 0 || newIndex >= userWidgets.length) return;
+
+    // Create new array with swapped positions
+    const newWidgets = [...userWidgets];
+    [newWidgets[currentIndex], newWidgets[newIndex]] = [newWidgets[newIndex], newWidgets[currentIndex]];
+
+    // Update order values
+    newWidgets.forEach((widget, index) => {
+      widget.order = index;
+    });
+
+    try {
+      // Save the new order
+      await saveDashboardConfig(newWidgets);
+      setUserWidgets(newWidgets);
+    } catch (error) {
+      // Error handling is in saveDashboardConfig
+    }
+  };
+
+  // Save edit mode changes
+  const handleSaveChanges = () => {
+    setIsEditMode(false);
+    toast({
+      title: "שינויים נשמרו",
+      description: "השינויים בדאשבורד נשמרו בהצלחה",
+      variant: "default"
+    });
+  };
 
   if (isLoading) {
     return (
@@ -76,72 +430,108 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-indigo-50/50 py-6">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        
-        {/* Welcome Section */}
-        <div className="flex justify-between items-center mb-8">
-          {/* Welcome message on the right */}
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+
+        {/* Header Section */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+          {/* Welcome message */}
           <div className="text-right">
-            <h1 className="text-xl font-semibold text-gray-900">
+            <h1 className="text-2xl font-bold text-gray-900">
               שלום, {currentUser?.display_name || currentUser?.full_name} 👋
             </h1>
+            <p className="text-gray-600 mt-1">הדאשבורד האישי שלך</p>
           </div>
 
-          {/* Subscription Status on the left */}
-          <div>
-            {currentSubscriptionPlan && (
-              <div className="flex items-center gap-2">
-                <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${
-                  currentSubscriptionPlan.price === 0 ? 'bg-blue-500' : 'bg-gradient-to-br from-purple-500 to-pink-500'
-                }`}>
-                  {currentSubscriptionPlan.price === 0 ? (
-                    <Gift className="w-3 h-3 text-white" />
-                  ) : (
-                    <Crown className="w-3 h-3 text-white" />
-                  )}
-                </div>
-                <div className="text-left">
-                  <div className="font-medium text-gray-900 text-sm">{currentSubscriptionPlan.name}</div>
-                  <div className="text-xs text-gray-500">
-                    {currentUser.subscription_status === 'active' ? 'מנוי פעיל' : currentUser.subscription_status}
-                    {currentUser.subscription_end_date && (
-                      <span className="mr-2">
-                        • {currentUser.payplus_subscription_uid ? 'מתחדש' : 'פג'} {format(new Date(currentUser.subscription_end_date), 'dd/MM/yyyy', { locale: he })}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
+          {/* Actions */}
+          <div className="flex items-center gap-2">
+            {userWidgets.length > 0 && (
+              <>
+                {!isEditMode ? (
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsEditMode(true)}
+                    className="flex items-center gap-2"
+                  >
+                    <Edit3 className="w-4 h-4" />
+                    עריכה
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={handleSaveChanges}
+                    className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    <Save className="w-4 h-4" />
+                    שמור
+                  </Button>
+                )}
+              </>
             )}
+
+            <Button
+              onClick={() => setShowWidgetPicker(true)}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              <Plus className="w-4 h-4" />
+              הוסף ווידג'ט
+            </Button>
           </div>
         </div>
 
-        {/* Under Development Message */}
-        <div className="text-center">
-          <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-12 shadow-2xl border border-gray-200/50">
-            <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
-              <Wrench className="w-12 h-12 text-white" />
-            </div>
-            
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              דאשבורד בפיתוח
-            </h2>
-            
-            <p className="text-gray-600 text-lg leading-relaxed max-w-2xl mx-auto">
-              אנחנו עובדים קשה כדי להביא לך חוויית דאשבורד מותאמת אישית עם כל המידע והכלים שאתה צריך.
-              <br />
-              בקרוב תוכל לראות כאן את כל הפעילויות, ההתקדמות והתכנים שלך במקום אחד!
-            </p>
-            
-            <div className="mt-8 flex justify-center">
-              <div className="bg-gradient-to-r from-blue-100 to-indigo-100 rounded-2xl p-4">
-                <div className="text-sm font-medium text-blue-800">
-                  💡 בינתיים, אתה יכול להשתמש בתפריט העליון כדי לגלוש בין הדפים השונים
-                </div>
+        {/* Dashboard Content */}
+        {userWidgets.length === 0 ? (
+          /* Empty State */
+          <div className="text-center py-12">
+            <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-12 shadow-xl border border-gray-200/50">
+              <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
+                <Settings className="w-12 h-12 text-white" />
               </div>
+
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                התאם את הדאשבורד שלך
+              </h2>
+
+              <p className="text-gray-600 text-lg leading-relaxed max-w-2xl mx-auto mb-8">
+                הוסף ווידג'טים כדי ליצור דאשבורד מותאם אישית עם כל המידע והכלים שאתה צריך.
+                <br />
+                התחל על ידי לחיצה על כפתור "הוסף ווידג'ט" למעלה.
+              </p>
+
+              <Button
+                onClick={() => setShowWidgetPicker(true)}
+                size="lg"
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                <Plus className="w-5 h-5 ml-2" />
+                הוסף ווידג'ט ראשון
+              </Button>
             </div>
           </div>
-        </div>
+        ) : (
+          /* Widgets Grid */
+          <div className="space-y-6">
+            {userWidgets.map((widget, index) => (
+              <WidgetRenderer
+                key={widget.id}
+                widget={widget}
+                isEditMode={isEditMode}
+                onRemove={handleRemoveWidget}
+                onMoveUp={() => handleMoveWidget(widget.id, 'up')}
+                onMoveDown={() => handleMoveWidget(widget.id, 'down')}
+                canMoveUp={index > 0}
+                canMoveDown={index < userWidgets.length - 1}
+                user={currentUser}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Widget Picker Modal */}
+        <WidgetPickerModal
+          isOpen={showWidgetPicker}
+          onClose={() => setShowWidgetPicker(false)}
+          availableWidgets={availableWidgets}
+          onAddWidget={handleAddWidget}
+        />
       </div>
     </div>
   );

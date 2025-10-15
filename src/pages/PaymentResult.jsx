@@ -456,11 +456,11 @@ export default function PaymentResult() {
           </Button>
         );
       }
-    } else if (item.product_type === 'file') {
+    } else if (item.product_type === PRODUCT_TYPES.file.key) {
       buttons.push(
         <Button
-          key="files"
-          onClick={() => navigate("/files")}
+          key={PRODUCT_TYPES.file.key}
+          onClick={() => navigate(PRODUCT_TYPES.file.url)}
           className="w-full"
           variant="outline"
         >

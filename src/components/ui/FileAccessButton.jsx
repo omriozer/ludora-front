@@ -30,7 +30,9 @@ export default function FileAccessButton({
     return null;
   }
 
-  const handleFileAccess = async () => {
+  const handleFileAccess = async (e) => {
+    e.stopPropagation(); // Prevent event bubbling to parent card
+
     if (!product.id) return;
 
     setIsAccessing(true);
@@ -61,7 +63,7 @@ export default function FileAccessButton({
       // Use fetch with auth headers to get blob
       const response = await fetch(`${getApiBase()}/assets/download/file/${product.entity_id || product.id}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
         }
       });
 

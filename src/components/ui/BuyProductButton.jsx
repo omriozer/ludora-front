@@ -50,7 +50,9 @@ export default function BuyProductButton({
     return null;
   }
 
-  const handlePurchase = async () => {
+  const handlePurchase = async (e) => {
+    e.stopPropagation(); // Prevent event bubbling to parent card
+
     if (!product) {
       cerror('No product provided to BuyProductButton');
       return;

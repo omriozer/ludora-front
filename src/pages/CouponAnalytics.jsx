@@ -71,7 +71,7 @@ export default function CouponAnalytics() {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('authToken');
       if (!token) {
         setMessage({ type: 'error', text: 'נדרש להתחבר מחדש' });
         return;

@@ -44,7 +44,7 @@ export default function CouponDashboard() {
       // Get coupon statistics
       const couponsResponse = await fetch(`${getApiBase()}/entities/coupon`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
           'Content-Type': 'application/json'
         }
       });

@@ -26,14 +26,15 @@ export const useProductAccess = (product) => {
     const productType = product.product_type || 'file';
     const isFree = !product.price || product.price === 0;
 
-    // Determine access state
-    const hasAccess = purchase && purchase.payment_status === 'completed' &&
+    // Determine access state (handle both 'paid' and 'completed' like PurchaseHistory)
+    const isSuccessfullyPaid = purchase && (purchase.payment_status === 'paid' || purchase.payment_status === 'completed');
+    const hasAccess = isSuccessfullyPaid &&
                      (!purchase.access_expires_at || // null = lifetime access
                       (purchase.access_expires_at && new Date(purchase.access_expires_at) > new Date()));
 
     // Determine cart/purchase state
     const isInCart = purchase && purchase.payment_status === 'cart';
-    const isPurchased = purchase && purchase.payment_status === 'completed';
+    const isPurchased = isSuccessfullyPaid;
 
     // Determine what actions are available
     const hasPurchaseRecord = !!purchase; // ANY purchase record exists

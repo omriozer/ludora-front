@@ -9,7 +9,7 @@
 
 import { Calendar, BookOpen, FileText, Play } from "lucide-react";
 
-// Product Types Configuration
+// Product Types Configuration with Catalog Settings
 export const PRODUCT_TYPES = {
   workshop: {
     key: 'workshop',
@@ -22,7 +22,27 @@ export const PRODUCT_TYPES = {
     color: 'from-blue-500 to-blue-600',
     bgColor: 'bg-blue-50',
     borderColor: 'border-blue-200',
-    gradient: "from-blue-500 via-indigo-500 to-purple-600"
+    gradient: "from-blue-500 via-indigo-500 to-purple-600",
+    catalog: {
+      title: 'קטלוג הדרכות',
+      subtitle: 'הדרכות אונליין ומוקלטות לבחירתך במגוון תחומים',
+      searchPlaceholder: 'חפשי הדרכה...',
+      emptyStateTitle: 'אין הדרכות קרובות',
+      emptyStateSubtitle: 'הדרכות חדשות יפורסמו בקרוב',
+      loadingMessage: 'טוען הדרכות...',
+      filters: ['search', 'category', 'publishStatus'],
+      cardLayout: 'detailed',
+      showTabs: true,
+      tabs: [
+        { key: 'upcoming', label: 'הדרכות אונליין', icon: 'Calendar' },
+        { key: 'past', label: 'הדרכות מוקלטות', icon: 'Video' }
+      ],
+      actions: {
+        primary: 'הירשמו עכשיו',
+        secondary: 'צפייה בפרטים',
+        owned: 'צפייה בהקלטה'
+      }
+    }
   },
   course: {
     key: 'course',
@@ -35,7 +55,23 @@ export const PRODUCT_TYPES = {
     color: 'from-green-500 to-green-600',
     bgColor: 'bg-green-50',
     borderColor: 'border-green-200',
-    gradient: "from-orange-400 via-red-500 to-pink-600"
+    gradient: "from-orange-400 via-red-500 to-pink-600",
+    catalog: {
+      title: 'קטלוג קורסים',
+      subtitle: 'קורסים מקוונים עם מודולים מרובים ולמידה מתקדמת',
+      searchPlaceholder: 'חפש קורסים...',
+      emptyStateTitle: 'לא נמצאו קורסים',
+      emptyStateSubtitle: 'נסה לשנות את הפילטרים או החיפוש',
+      loadingMessage: 'טוען קורסים...',
+      filters: ['search', 'category', 'skillLevel'],
+      cardLayout: 'detailed',
+      showTabs: false,
+      actions: {
+        primary: 'התחל קורס',
+        secondary: 'פרטים נוספים',
+        owned: 'המשך קורס'
+      }
+    }
   },
   file: {
     key: 'file',
@@ -48,7 +84,23 @@ export const PRODUCT_TYPES = {
     color: 'from-purple-500 to-purple-600',
     bgColor: 'bg-purple-50',
     borderColor: 'border-purple-200',
-    gradient: "from-emerald-400 via-teal-500 to-cyan-600"
+    gradient: "from-emerald-400 via-teal-500 to-cyan-600",
+    catalog: {
+      title: 'קבצים',
+      subtitle: 'כלים דיגיטליים, תבניות ומשאבים מוכנים להורדה שיעזרו לכם ליצור חוויות למידה מהנות',
+      searchPlaceholder: 'חפש קבצים...',
+      emptyStateTitle: 'לא נמצאו קבצים',
+      emptyStateSubtitle: 'נסה לשנות את הסינון או החיפוש',
+      loadingMessage: 'טוען קבצים...',
+      filters: ['search', 'category', 'grade', 'subject', 'audience', 'sort'],
+      cardLayout: 'detailed',
+      showTabs: false,
+      actions: {
+        primary: 'הורדה',
+        secondary: 'פרטים נוספים',
+        owned: 'גישה לקובץ'
+      }
+    }
   },
   tool: {
     key: 'tool',
@@ -61,7 +113,23 @@ export const PRODUCT_TYPES = {
     color: 'from-purple-500 to-purple-600',
     bgColor: 'bg-purple-50',
     borderColor: 'border-purple-200',
-    gradient: "from-emerald-400 via-teal-500 to-cyan-600"
+    gradient: "from-emerald-400 via-teal-500 to-cyan-600",
+    catalog: {
+      title: 'כלים דיגיטליים',
+      subtitle: 'כלים ויישומונים דיגיטליים לשיפור חוויית הלמידה',
+      searchPlaceholder: 'חפש כלים...',
+      emptyStateTitle: 'לא נמצאו כלים',
+      emptyStateSubtitle: 'נסה לשנות את הפילטרים או החיפוש',
+      loadingMessage: 'טוען כלים...',
+      filters: ['search', 'category', 'complexity', 'platform'],
+      cardLayout: 'compact',
+      showTabs: false,
+      actions: {
+        primary: 'השתמש בכלי',
+        secondary: 'פרטים נוספים',
+        owned: 'פתח כלי'
+      }
+    }
   },
   game: {
     key: 'game',
@@ -74,7 +142,24 @@ export const PRODUCT_TYPES = {
     color: 'from-pink-500 to-red-600',
     bgColor: 'bg-pink-50',
     borderColor: 'border-pink-200',
-    gradient: "from-purple-500 via-pink-500 to-red-500"
+    gradient: "from-purple-500 via-pink-500 to-red-500",
+    catalog: {
+      title: 'קטלוג המשחקים',
+      subtitle: 'משחקים חינוכיים אינטראקטיביים לכל הגילאים',
+      searchPlaceholder: 'חפש משחקים...',
+      emptyStateTitle: 'לא נמצאו משחקים',
+      emptyStateSubtitle: 'נסה לשנות את הפילטרים או חפש משחקים אחרים',
+      loadingMessage: 'טוען משחקים...',
+      filters: ['search', 'subject', 'gameType', 'price'],
+      cardLayout: 'compact',
+      showTabs: false,
+      showAnalytics: true,
+      actions: {
+        primary: 'שחק עכשיו',
+        secondary: 'פרטים נוספים',
+        owned: 'שחק שוב'
+      }
+    }
   }
 };
 
@@ -169,6 +254,27 @@ export const getNavItemConfig = (key) => {
 export const getProductTypeUrl = (key) => {
   const productType = PRODUCT_TYPES[key];
   return productType ? productType.url : null;
+};
+
+// Helper function to get catalog configuration for a product type
+export const getCatalogConfig = (key) => {
+  const productType = PRODUCT_TYPES[key];
+  return productType ? productType.catalog : null;
+};
+
+// Helper function to detect product type from URL path
+export const getProductTypeFromPath = (pathname) => {
+  // Remove leading slash and get the first segment
+  const path = pathname.replace(/^\//, '').split('/')[0];
+
+  // Find product type by URL
+  for (const [key, config] of Object.entries(PRODUCT_TYPES)) {
+    if (config.url === `/${path}`) {
+      return key;
+    }
+  }
+
+  return null;
 };
 
 // Type-specific attribute schemas

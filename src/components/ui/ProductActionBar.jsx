@@ -83,7 +83,10 @@ export default function ProductActionBar({
         // Generic access button for other product types
         return (
           <Button
-            onClick={() => navigate(`/product-details?type=${productType}&id=${product.entity_id || product.id}`)}
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/product-details?type=${productType}&id=${product.entity_id || product.id}`);
+            }}
             className={`group relative overflow-hidden bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold rounded-full shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 border-2 border-green-400/20 ${fullWidth ? 'w-full' : ''} ${className}`}
             size={size}
           >
@@ -102,7 +105,10 @@ export default function ProductActionBar({
   if (isInCart) {
     return (
       <Button
-        onClick={() => navigate('/checkout')}
+        onClick={(e) => {
+          e.stopPropagation();
+          navigate('/checkout');
+        }}
         className={`group relative overflow-hidden bg-gradient-to-r from-yellow-500 via-yellow-600 to-orange-600 hover:from-yellow-600 hover:via-orange-600 hover:to-red-600 text-white font-bold rounded-full shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 border-2 border-yellow-400/20 ${fullWidth ? 'w-full' : ''} ${className}`}
         size={size}
       >

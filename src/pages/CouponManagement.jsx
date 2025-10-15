@@ -71,7 +71,7 @@ export default function CouponManagement() {
       // Get all coupons
       const couponsResponse = await fetch(`${getApiBase()}/entities/coupon`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
           'Content-Type': 'application/json'
         }
       });
@@ -153,7 +153,7 @@ export default function CouponManagement() {
       await fetch(`${getApiBase()}/entities/coupon/${couponId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
           'Content-Type': 'application/json'
         }
       });
@@ -182,7 +182,7 @@ export default function CouponManagement() {
       await fetch(`${getApiBase()}/entities/coupon/${coupon.id}`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ is_active: newStatus })
@@ -219,7 +219,7 @@ export default function CouponManagement() {
       await fetch(`${getApiBase()}/entities/coupon`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(duplicatedCoupon)

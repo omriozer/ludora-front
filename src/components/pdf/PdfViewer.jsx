@@ -153,86 +153,97 @@ const PdfViewer = ({
   // No client-side watermark rendering needed
 
   const PdfContent = () => (
-    <div className="flex flex-col h-full bg-gray-100 min-h-0">
+    <div className="flex flex-col h-full bg-gray-100 min-h-0 w-full max-w-full overflow-hidden">
       {/* Toolbar */}
-      <div className="bg-white border-b border-gray-200 p-3 flex items-center justify-between gap-4 flex-wrap flex-shrink-0">
-        <div className="flex items-center gap-2">
-          {onClose && (
-            <Button variant="ghost" size="sm" onClick={onClose} className="p-2">
-              <X className="w-4 h-4" />
-            </Button>
-          )}
-          <div className="text-sm font-medium text-gray-700">
-            {fileName || 'קובץ PDF'}
-            {isPreviewMode && !hasAccess && (
-              <span className="text-orange-600 mr-2">(תצוגה מקדימה)</span>
+      <div className="bg-white border-b border-gray-200 p-2 sm:p-3 flex flex-col sm:flex-row gap-2 sm:gap-4 flex-shrink-0 w-full">
+        {/* Top Row - File name and close button */}
+        <div className="flex items-center justify-between w-full">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            {onClose && (
+              <Button variant="ghost" size="sm" onClick={onClose} className="p-1.5 sm:p-2 flex-shrink-0">
+                <X className="w-4 h-4" />
+              </Button>
             )}
+            <div className="text-xs sm:text-sm font-medium text-gray-700 truncate">
+              {fileName || 'קובץ PDF'}
+              {isPreviewMode && !hasAccess && (
+                <span className="text-orange-600 mr-1 sm:mr-2 text-xs">(תצוגה מקדימה)</span>
+              )}
+            </div>
           </div>
-        </div>
 
-        <div className="flex items-center gap-2">
-          {/* Page Navigation */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handlePageChange(currentPage - 1)}
-            disabled={currentPage <= 1}
-          >
-            <ChevronRight className="w-4 h-4" />
-          </Button>
-
-          <span className="text-sm text-gray-600 px-2">
-            {numPages ? `עמוד ${currentPage} מתוך ${numPages}` : 'טוען...'}
-          </span>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handlePageChange(currentPage + 1)}
-            disabled={currentPage >= numPages}
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </Button>
-
-          {/* Zoom Controls */}
-          <div className="border-r border-gray-300 pr-2 mr-2"></div>
-          <Button variant="ghost" size="sm" onClick={handleZoomOut}>
-            <ZoomOut className="w-4 h-4" />
-          </Button>
-          <span className="text-sm text-gray-600 px-2">{Math.round(scale * 100)}%</span>
-          <Button variant="ghost" size="sm" onClick={handleZoomIn}>
-            <ZoomIn className="w-4 h-4" />
-          </Button>
-
-          {/* Rotate */}
-          <Button variant="ghost" size="sm" onClick={handleRotate}>
-            <RotateCw className="w-4 h-4" />
-          </Button>
-
-          {/* Action Buttons */}
-          <div className="border-r border-gray-300 pr-2 mr-2"></div>
-
-          {hasAccess && (
-            <>
-              <Button variant="ghost" size="sm" onClick={handlePrint}>
-                <Printer className="w-4 h-4" />
-              </Button>
-              <Button variant="ghost" size="sm" onClick={handleDownload}>
-                <Download className="w-4 h-4" />
-              </Button>
-            </>
-          )}
-
-          {/* Fullscreen Toggle */}
+          {/* Fullscreen Toggle - Mobile priority */}
           {onClose && (
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setIsFullscreen(!isFullscreen)}
+              className="p-1.5 sm:p-2 flex-shrink-0"
             >
               {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
             </Button>
           )}
+        </div>
+
+        {/* Bottom Row - Controls */}
+        <div className="flex items-center justify-between w-full gap-1 sm:gap-2">
+          {/* Page Navigation - Always visible */}
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage <= 1}
+              className="p-1.5 sm:p-2"
+            >
+              <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4" />
+            </Button>
+
+            <span className="text-xs sm:text-sm text-gray-600 px-1 whitespace-nowrap">
+              {numPages ? `${currentPage}/${numPages}` : 'טוען...'}
+            </span>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage >= numPages}
+              className="p-1.5 sm:p-2"
+            >
+              <ChevronLeft className="w-3 h-3 sm:w-4 sm:h-4" />
+            </Button>
+          </div>
+
+          {/* Zoom Controls - Compact on mobile */}
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" onClick={handleZoomOut} className="p-1.5 sm:p-2">
+              <ZoomOut className="w-3 h-3 sm:w-4 sm:h-4" />
+            </Button>
+            <span className="text-xs sm:text-sm text-gray-600 px-1 hidden sm:inline">
+              {Math.round(scale * 100)}%
+            </span>
+            <Button variant="ghost" size="sm" onClick={handleZoomIn} className="p-1.5 sm:p-2">
+              <ZoomIn className="w-3 h-3 sm:w-4 sm:h-4" />
+            </Button>
+          </div>
+
+          {/* Action Buttons - Hide some on mobile */}
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" onClick={handleRotate} className="p-1.5 sm:p-2">
+              <RotateCw className="w-3 h-3 sm:w-4 sm:h-4" />
+            </Button>
+
+            {hasAccess && (
+              <>
+                <Button variant="ghost" size="sm" onClick={handlePrint} className="p-1.5 sm:p-2 hidden sm:inline-flex">
+                  <Printer className="w-3 h-3 sm:w-4 sm:h-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={handleDownload} className="p-1.5 sm:p-2">
+                  <Download className="w-3 h-3 sm:w-4 sm:h-4" />
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </div>
 

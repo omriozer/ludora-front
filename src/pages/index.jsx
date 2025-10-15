@@ -15,7 +15,6 @@ import PaymentSuccess from './PaymentSuccess';
 import PaymentResult from './PaymentResult';
 import PaymentResultIframe from './PaymentResultIframe';
 import VideoViewer from './VideoViewer';
-import Tools from './Tools';
 import Checkout from './Checkout';
 import CourseViewer from './CourseViewer';
 import Products from './Products';
@@ -23,12 +22,9 @@ import ProductDetails from './ProductDetails';
 import EmailAutomations from './EmailAutomations';
 import Purchases from './Purchases';
 import AiChat from './AiChat';
-import Files from './Files';
 import AdminSystemUsers from './AdminSystemUsers';
-import Games from './Games';
 import Users from './Users';
 import ApiTest from './ApiTest';
-import GamesCatalog from './GamesCatalog';
 import GameLauncher from './GameLauncher';
 import ContentCreatorSignup from './ContentCreatorSignup';
 import ContentCreatorPortal from './ContentCreatorPortal';
@@ -41,8 +37,6 @@ import DevelopmentTools from './DevelopmentTools';
 import CategoryManagement from './CategoryManagement';
 import AudioManagement from './AudioManagement';
 import SubscriptionSettings from './SubscriptionSettings';
-import Workshops from './Workshops';
-import Courses from './Courses';
 import NotFound from './NotFound';
 import MyClassrooms from './MyClassrooms';
 import SchoolManagement from './SchoolManagement';
@@ -57,6 +51,7 @@ import BulkCouponGenerator from './BulkCouponGenerator';
 import AdminHelp from './AdminHelp';
 import GameCreationTutorial from './GameCreationTutorial';
 import Documentation from './Documentation';
+import ProductCatalog from '../components/catalog/ProductCatalog';
 
 // Export all pages
 export {
@@ -76,7 +71,6 @@ export {
   PaymentResult,
   PaymentResultIframe,
   VideoViewer,
-  Tools,
   Checkout,
   CourseViewer,
   Products,
@@ -84,12 +78,9 @@ export {
   EmailAutomations,
   Purchases,
   AiChat,
-  Files,
   AdminSystemUsers,
-  Games,
   Users,
   ApiTest,
-  GamesCatalog,
   GameLauncher,
   ContentCreatorSignup,
   ContentCreatorPortal,
@@ -102,8 +93,6 @@ export {
   CategoryManagement,
   AudioManagement,
   SubscriptionSettings,
-  Workshops,
-  Courses,
   NotFound,
   MyClassrooms,
   SchoolManagement,
@@ -117,5 +106,6 @@ export {
   CouponManagement,
   CouponForm,
   CouponAnalytics,
-  BulkCouponGenerator
+  BulkCouponGenerator,
+  ProductCatalog
 };

@@ -501,10 +501,12 @@ const SecureVideoPlayer = ({
   // Render based on video type
   if (videoType === 'none') {
     return (
-      <div className={`bg-gray-900 rounded-lg flex items-center justify-center h-64 ${className}`}>
-        <div className="text-center text-white">
-          <AlertCircle className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-          <p>לא צוין קישור לווידאו</p>
+      <div className={`relative w-full ${className}`}>
+        <div className="relative w-full aspect-video bg-gray-900 rounded-lg flex items-center justify-center">
+          <div className="text-center text-white p-4">
+            <AlertCircle className="w-8 h-8 sm:w-12 sm:h-12 mx-auto mb-4 text-gray-400" />
+            <p className="text-sm sm:text-base">לא צוין קישור לווידאו</p>
+          </div>
         </div>
       </div>
     );
@@ -512,11 +514,13 @@ const SecureVideoPlayer = ({
 
   if (videoType === 'unsupported') {
     return (
-      <div className={`bg-gray-900 rounded-lg flex items-center justify-center h-64 ${className}`}>
-        <div className="text-center text-white">
-          <AlertCircle className="w-12 h-12 mx-auto mb-4 text-red-400" />
-          <p>פורמט הווידאו לא נתמך</p>
-          <p className="text-sm text-gray-400 mt-2">נתמכים: MP4, WebM, YouTube</p>
+      <div className={`relative w-full ${className}`}>
+        <div className="relative w-full aspect-video bg-gray-900 rounded-lg flex items-center justify-center">
+          <div className="text-center text-white p-4">
+            <AlertCircle className="w-8 h-8 sm:w-12 sm:h-12 mx-auto mb-4 text-red-400" />
+            <p className="text-sm sm:text-base">פורמט הווידאו לא נתמך</p>
+            <p className="text-xs sm:text-sm text-gray-400 mt-2">נתמכים: MP4, WebM, YouTube</p>
+          </div>
         </div>
       </div>
     );
@@ -524,244 +528,247 @@ const SecureVideoPlayer = ({
 
   if (videoType === 'youtube') {
     return (
-      <div className={`relative ${className}`}>
-        <iframe
-          width="100%"
-          height="400"
-          src={`https://www.youtube.com/embed/${youtubeId}?rel=0&showinfo=0&modestbranding=1`}
-          title={title}
-          frameBorder="0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-          className="rounded-lg"
-          style={{ minHeight: '300px' }}
-        />
+      <div className={`relative w-full ${className}`}>
+        {/* Responsive YouTube iframe with 16:9 aspect ratio */}
+        <div className="relative w-full aspect-video">
+          <iframe
+            src={`https://www.youtube.com/embed/${youtubeId}?rel=0&showinfo=0&modestbranding=1`}
+            title={title}
+            frameBorder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            className="absolute inset-0 w-full h-full rounded-lg"
+          />
+        </div>
       </div>
     );
   }
 
   // Custom secure video player
   return (
-    <div className={`relative bg-black rounded-lg overflow-hidden ${className}`}>
-      {error && !isRetrying && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-900 text-white z-10">
-          <div className="text-center">
-            <AlertCircle className="w-12 h-12 mx-auto mb-4 text-red-400" />
-            <p className="mb-4">{error}</p>
-            {retryCount < 2 && (
-              <button
-                onClick={retryVideo}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white text-sm transition-colors"
-              >
-                נסה שוב
-              </button>
-            )}
-            {retryCount >= 2 && (
-              <p className="text-sm text-gray-400">
-                לא הצלחנו להשמיע את הווידאו לאחר מספר ניסיונות
+    <div className={`relative w-full ${className}`}>
+      {/* Responsive video container with 16:9 aspect ratio */}
+      <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden">
+        {error && !isRetrying && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-900 text-white z-10">
+            <div className="text-center p-4">
+              <AlertCircle className="w-8 h-8 sm:w-12 sm:h-12 mx-auto mb-4 text-red-400" />
+              <p className="mb-4 text-sm sm:text-base">{error}</p>
+              {retryCount < 2 && (
+                <button
+                  onClick={retryVideo}
+                  className="px-3 py-2 sm:px-4 sm:py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white text-sm transition-colors"
+                >
+                  נסה שוב
+                </button>
+              )}
+              {retryCount >= 2 && (
+                <p className="text-xs sm:text-sm text-gray-400">
+                  לא הצלחנו להשמיע את הווידאו לאחר מספר ניסיונות
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {(isLoading || isRetrying || isBuffering) && !error && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80 text-white z-10">
+            <div className="text-center p-4">
+              <div className="animate-spin rounded-full h-8 w-8 sm:h-12 sm:w-12 border-b-2 border-white mx-auto mb-4"></div>
+              <p className="mb-4 text-sm sm:text-base">
+                {isRetrying ? `מנסה שוב... (${retryCount + 1}/3)` :
+                 isBuffering ? 'ממתין לנתונים...' :
+                 'טוען ווידאו...'}
               </p>
-            )}
+              {isBuffering && (
+                <button
+                  onClick={() => {
+                    setIsBuffering(false);
+                    if (bufferingTimeout) {
+                      clearTimeout(bufferingTimeout);
+                      setBufferingTimeout(null);
+                    }
+                    if (videoRef.current) {
+                      videoRef.current.load();
+                    }
+                  }}
+                  className="px-3 py-2 sm:px-4 sm:py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white text-sm transition-colors"
+                >
+                  אלץ המשכה
+                </button>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {(isLoading || isRetrying || isBuffering) && !error && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80 text-white z-10">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-            <p className="mb-4">
-              {isRetrying ? `מנסה שוב... (${retryCount + 1}/3)` :
-               isBuffering ? 'ממתין לנתונים...' :
-               'טוען ווידאו...'}
-            </p>
-            {isBuffering && (
-              <button
-                onClick={() => {
-                  setIsBuffering(false);
-                  if (bufferingTimeout) {
-                    clearTimeout(bufferingTimeout);
-                    setBufferingTimeout(null);
-                  }
-                  if (videoRef.current) {
-                    videoRef.current.load();
-                  }
-                }}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white text-sm transition-colors"
-              >
-                אלץ המשכה
-              </button>
-            )}
-          </div>
-        </div>
-      )}
+        <video
+          ref={videoRef}
+          src={authenticatedVideoUrl || ''}
+          className="absolute inset-0 w-full h-full object-contain"
+          onPlay={() => setIsPlaying(true)}
+          onPause={() => setIsPlaying(false)}
+          onTimeUpdate={handleTimeUpdate}
+          onLoadedMetadata={handleLoadedMetadata}
+          onError={handleError}
+          onLoadStart={() => {
+            setIsLoading(true);
+            setError(null); // Clear any previous errors when starting to load
 
-      <video
-        ref={videoRef}
-        src={authenticatedVideoUrl || ''}
-        className="w-full h-full"
-        onPlay={() => setIsPlaying(true)}
-        onPause={() => setIsPlaying(false)}
-        onTimeUpdate={handleTimeUpdate}
-        onLoadedMetadata={handleLoadedMetadata}
-        onError={handleError}
-        onLoadStart={() => {
-          setIsLoading(true);
-          setError(null); // Clear any previous errors when starting to load
-
-          // Set a timeout to prevent infinite loading
-          if (loadingTimeout) {
-            clearTimeout(loadingTimeout);
-          }
-          const timeout = setTimeout(() => {
+            // Set a timeout to prevent infinite loading
+            if (loadingTimeout) {
+              clearTimeout(loadingTimeout);
+            }
+            const timeout = setTimeout(() => {
+              setIsLoading(false);
+              setError('הטעינה ארכה יותר מהצפוי - נסה שוב');
+            }, 15000); // 15 second timeout
+            setLoadingTimeout(timeout);
+          }}
+          onCanPlay={() => {
             setIsLoading(false);
-            setError('הטעינה ארכה יותר מהצפוי - נסה שוב');
-          }, 15000); // 15 second timeout
-          setLoadingTimeout(timeout);
-        }}
-        onCanPlay={() => {
-          setIsLoading(false);
-          setIsBuffering(false);
-          setError(null); // Clear errors when video can play
-          if (bufferingTimeout) {
-            clearTimeout(bufferingTimeout);
-            setBufferingTimeout(null);
-          }
-          if (loadingTimeout) {
-            clearTimeout(loadingTimeout);
-            setLoadingTimeout(null);
-          }
-        }}
-        onLoadedData={() => {
-          cerror('✅ Video data loaded successfully');
-        }}
-        onSuspend={() => {
-          // Handle network suspension - normal for streaming
-          clog('Video suspended - buffering or network pause (normal for streaming)');
-        }}
-        onStalled={() => {
-          // Handle stalled playback - normal for streaming
-          clog('Video stalled - waiting for more data (normal for streaming)');
-        }}
-        onWaiting={() => {
-          // Video is waiting for more data - show buffering spinner
-          setIsBuffering(true);
-
-          // Clear any existing timeout
-          if (bufferingTimeout) {
-            clearTimeout(bufferingTimeout);
-          }
-
-          // Set timeout to hide buffering spinner if it takes too long (30 seconds)
-          const timeout = setTimeout(() => {
             setIsBuffering(false);
-          }, 30000);
-          setBufferingTimeout(timeout);
-        }}
-        onCanPlayThrough={() => {
-          // Video can play through without stopping
-          setIsLoading(false);
-          setIsBuffering(false);
-          if (bufferingTimeout) {
-            clearTimeout(bufferingTimeout);
-            setBufferingTimeout(null);
-          }
-          if (loadingTimeout) {
-            clearTimeout(loadingTimeout);
-            setLoadingTimeout(null);
-          }
-        }}
-        preload="metadata" // Load metadata but not full video
-        autoPlay={false} // Let user control playback
-        playsInline
-        muted={false} // Start unmuted, will be muted on retry if needed
-        // Security attributes
-        controlsList="nodownload noremoteplayback"
-        disablePictureInPicture
-        style={{
-          pointerEvents: isLoading ? 'none' : 'auto',
-          userSelect: 'none',
-          WebkitUserSelect: 'none'
-        }}
-      >
-        דפדפן זה אינו תומך בהשמעת וידאו
-      </video>
+            setError(null); // Clear errors when video can play
+            if (bufferingTimeout) {
+              clearTimeout(bufferingTimeout);
+              setBufferingTimeout(null);
+            }
+            if (loadingTimeout) {
+              clearTimeout(loadingTimeout);
+              setLoadingTimeout(null);
+            }
+          }}
+          onLoadedData={() => {
+            cerror('✅ Video data loaded successfully');
+          }}
+          onSuspend={() => {
+            // Handle network suspension - normal for streaming
+            clog('Video suspended - buffering or network pause (normal for streaming)');
+          }}
+          onStalled={() => {
+            // Handle stalled playback - normal for streaming
+            clog('Video stalled - waiting for more data (normal for streaming)');
+          }}
+          onWaiting={() => {
+            // Video is waiting for more data - show buffering spinner
+            setIsBuffering(true);
 
-      {/* Custom Controls */}
-      {!isLoading && !error && (
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
-          {/* Progress Bar */}
-          <div
-            className="w-full h-2 bg-gray-600 rounded mb-4 cursor-pointer relative overflow-hidden"
-            onClick={handleSeek}
-            style={{ direction: 'ltr' }}
-          >
-            {/* Buffered ranges */}
-            {bufferedRanges.map((range, index) => (
+            // Clear any existing timeout
+            if (bufferingTimeout) {
+              clearTimeout(bufferingTimeout);
+            }
+
+            // Set timeout to hide buffering spinner if it takes too long (30 seconds)
+            const timeout = setTimeout(() => {
+              setIsBuffering(false);
+            }, 30000);
+            setBufferingTimeout(timeout);
+          }}
+          onCanPlayThrough={() => {
+            // Video can play through without stopping
+            setIsLoading(false);
+            setIsBuffering(false);
+            if (bufferingTimeout) {
+              clearTimeout(bufferingTimeout);
+              setBufferingTimeout(null);
+            }
+            if (loadingTimeout) {
+              clearTimeout(loadingTimeout);
+              setLoadingTimeout(null);
+            }
+          }}
+          preload="metadata" // Load metadata but not full video
+          autoPlay={false} // Let user control playback
+          playsInline
+          muted={false} // Start unmuted, will be muted on retry if needed
+          // Security attributes
+          controlsList="nodownload noremoteplayback"
+          disablePictureInPicture
+          style={{
+            pointerEvents: isLoading ? 'none' : 'auto',
+            userSelect: 'none',
+            WebkitUserSelect: 'none'
+          }}
+        >
+          דפדפן זה אינו תומך בהשמעת וידאו
+        </video>
+
+        {/* Custom Controls */}
+        {!isLoading && !error && (
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2 sm:p-4">
+            {/* Progress Bar */}
+            <div
+              className="w-full h-2 sm:h-3 bg-gray-600 rounded mb-2 sm:mb-4 cursor-pointer relative overflow-hidden touch-manipulation"
+              onClick={handleSeek}
+              style={{ direction: 'ltr' }}
+            >
+              {/* Buffered ranges */}
+              {bufferedRanges.map((range, index) => (
+                <div
+                  key={index}
+                  className="absolute h-full bg-gray-300 opacity-70"
+                  style={{
+                    left: duration ? `${(range.start / duration) * 100}%` : '0%',
+                    width: duration ? `${((range.end - range.start) / duration) * 100}%` : '0%',
+                    direction: 'ltr'
+                  }}
+                />
+              ))}
+
+              {/* Current progress */}
               <div
-                key={index}
-                className="absolute h-full bg-gray-300 opacity-70"
+                className="absolute h-full bg-blue-500 rounded transition-all duration-150 z-10"
                 style={{
-                  left: duration ? `${(range.start / duration) * 100}%` : '0%',
-                  width: duration ? `${((range.end - range.start) / duration) * 100}%` : '0%',
+                  width: duration ? `${(currentTime / duration) * 100}%` : '0%',
                   direction: 'ltr'
                 }}
               />
-            ))}
-
-            {/* Current progress */}
-            <div
-              className="absolute h-full bg-blue-500 rounded transition-all duration-150 z-10"
-              style={{
-                width: duration ? `${(currentTime / duration) * 100}%` : '0%',
-                direction: 'ltr'
-              }}
-            />
-          </div>
-
-          {/* Control Buttons */}
-          <div className="flex items-center justify-between text-white">
-            <div className="flex items-center space-x-4 space-x-reverse">
-              <button
-                onClick={isPlaying ? handlePause : handlePlay}
-                className="p-2 hover:bg-white/20 rounded transition-colors"
-              >
-                {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
-              </button>
-
-              <button
-                onClick={toggleMute}
-                className="p-2 hover:bg-white/20 rounded transition-colors"
-              >
-                {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-              </button>
-
-              <div className="text-sm">
-                {formatTime(currentTime)} / {formatTime(duration)}
-              </div>
             </div>
 
-            <button
-              onClick={toggleFullscreen}
-              className="p-2 hover:bg-white/20 rounded transition-colors"
-            >
-              <Maximize className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-      )}
+            {/* Control Buttons */}
+            <div className="flex items-center justify-between text-white">
+              <div className="flex items-center gap-2 sm:gap-4">
+                <button
+                  onClick={isPlaying ? handlePause : handlePlay}
+                  className="p-1.5 sm:p-2 hover:bg-white/20 rounded transition-colors touch-manipulation"
+                >
+                  {isPlaying ? <Pause className="w-5 h-5 sm:w-6 sm:h-6" /> : <Play className="w-5 h-5 sm:w-6 sm:h-6" />}
+                </button>
 
-      {/* Logo Watermark */}
-      <div
-        className="absolute top-4 right-4 pointer-events-none select-none"
-        style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
-      >
-        <img
-          src={logoSm}
-          alt="Ludora"
-          className="h-8 w-auto opacity-80"
-          draggable="false"
+                <button
+                  onClick={toggleMute}
+                  className="p-1.5 sm:p-2 hover:bg-white/20 rounded transition-colors touch-manipulation"
+                >
+                  {isMuted ? <VolumeX className="w-4 h-4 sm:w-5 sm:h-5" /> : <Volume2 className="w-4 h-4 sm:w-5 sm:h-5" />}
+                </button>
+
+                <div className="text-xs sm:text-sm whitespace-nowrap">
+                  {formatTime(currentTime)} / {formatTime(duration)}
+                </div>
+              </div>
+
+              <button
+                onClick={toggleFullscreen}
+                className="p-1.5 sm:p-2 hover:bg-white/20 rounded transition-colors touch-manipulation"
+              >
+                <Maximize className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Logo Watermark */}
+        <div
+          className="absolute top-2 right-2 sm:top-4 sm:right-4 pointer-events-none select-none"
           style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
-        />
+        >
+          <img
+            src={logoSm}
+            alt="Ludora"
+            className="h-6 sm:h-8 w-auto opacity-80"
+            draggable="false"
+            style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
+          />
+        </div>
       </div>
     </div>
   );
