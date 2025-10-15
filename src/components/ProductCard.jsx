@@ -9,12 +9,15 @@ import {
   Eye,
   CheckCircle,
   ShoppingCart,
-  Plus
+  Plus,
+  Edit
 } from "lucide-react";
 import PriceDisplayTag from "@/components/ui/PriceDisplayTag";
 import ProductActionBar from "@/components/ui/ProductActionBar";
 import FileAccessStatus from "@/components/files/FileAccessStatus";
 import { getSubjectColors } from "@/config/subjectColors";
+import { isAdmin } from "@/lib/userUtils";
+import { useUser } from "@/contexts/UserContext";
 
 // Hebrew grade names constant
 export const HEBREW_GRADES = {
@@ -35,17 +38,14 @@ export const HEBREW_GRADES = {
 export default function ProductCard({
   product,
   userPurchase,
-  onAccess,
-  onPurchase,
-  texts,
-  showYouTubeIndicator = false,
   onFileAccess,
   onPdfPreview,
-  userPurchases = [],
   isExpanded = false,
-  onToggleExpanded
+  onToggleExpanded,
+  onEdit
 }) {
   const navigate = useNavigate();
+  const { currentUser } = useUser();
   const [isHovered, setIsHovered] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   // Create enhanced product object with purchase data for useProductAccess hook
@@ -78,6 +78,13 @@ export default function ProductCard({
 
   const handleDetailsClick = () => {
     navigate(`/product-details?product=${product.id}`);
+  };
+
+  const handleEdit = (e) => {
+    e.stopPropagation();
+    if (onEdit) {
+      onEdit(product);
+    }
   };
 
   const handleCardClick = (e) => {
@@ -242,8 +249,8 @@ export default function ProductCard({
         {/* Base overlay for better text readability */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/10"></div>
 
-        {/* Always Visible - Top Left: Details Button */}
-        <div className="absolute top-4 left-4 z-50">
+        {/* Always Visible - Top Left: Details Button and Edit Button (for admins) */}
+        <div className="absolute top-4 left-4 z-50 flex gap-2">
           <Button
             variant="ghost"
             size="sm"
@@ -255,6 +262,28 @@ export default function ProductCard({
           >
             <Eye className="w-4 h-4" />
           </Button>
+
+          {/* Edit Button - Only visible to admin users */}
+          {(() => {
+            // Debug logging
+            console.log('ProductCard Debug:', {
+              currentUser,
+              userRole: currentUser?.role,
+              isAdminResult: isAdmin(currentUser),
+              productId: product.id,
+              productTitle: product.title
+            });
+            return isAdmin(currentUser);
+          })() && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleEdit}
+              className="bg-blue-500/95 backdrop-blur-sm text-white hover:bg-blue-600 rounded-full p-2 shadow-lg transition-all duration-300"
+            >
+              <Edit className="w-4 h-4" />
+            </Button>
+          )}
         </div>
 
         {/* Always Visible - Top Right: Price or Owned Indicator */}

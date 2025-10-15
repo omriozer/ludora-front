@@ -278,13 +278,9 @@ function CatalogContent({
     >
       <ProductGrid
         products={products}
-        productType={typeConfig.key}
         config={config}
-        typeConfig={typeConfig}
         currentUser={currentUser}
         userPurchases={userPurchases}
-        settings={settings}
-        activeTab={activeTab}
       />
     </motion.div>
   );

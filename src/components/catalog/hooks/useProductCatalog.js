@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { User, Settings } from '@/services/entities';
+import { Settings } from '@/services/entities';
 import { getCurrentMonthAnalytics, getAllTimeAnalytics } from '@/components/utils/getUserGameAnalytics';
 import { getProductTypeName } from '@/config/productTypes';
 import { clog, cerror } from '@/lib/utils';
+import { useUser } from '@/contexts/UserContext';
 
 /**
  * Unified Product Catalog Hook
@@ -10,14 +11,15 @@ import { clog, cerror } from '@/lib/utils';
  * (games, files, workshops, courses, tools)
  */
 export default function useProductCatalog(productType, filters, activeTab) {
+  // Get user from UserContext instead of loading independently
+  const { currentUser, isLoading } = useUser();
+
   // State management
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [currentUser, setCurrentUser] = useState(null);
   const [userPurchases, setUserPurchases] = useState([]);
   const [settings, setSettings] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [userAnalytics, setUserAnalytics] = useState({
     allTime: { uniqueGames: 0, totalSessions: 0 },
@@ -75,40 +77,38 @@ export default function useProductCatalog(productType, filters, activeTab) {
 
   // Main data loading function
   const loadData = useCallback(async () => {
-    setIsLoading(true);
     setError(null);
 
-    let user = null;
     let productsData = [];
     let usersData = [];
     let appSettings = null;
     let purchasesData = [];
 
     try {
-      // 1. Load current user and admin status
-      try {
-        user = await User.me();
-        setCurrentUser(user);
+      // 1. Use currentUser from UserContext - no need to load separately
+      console.log('✅ useProductCatalog - Using user from UserContext:', {
+        id: currentUser?.id,
+        email: currentUser?.email,
+        role: currentUser?.role,
+        full_name: currentUser?.full_name,
+        isAuthenticated: !!currentUser
+      });
 
-        // Load user analytics if user is logged in (games only)
-        if (user?.id && productType === 'game') {
-          loadUserAnalytics(user.id);
-        }
-      } catch (error) {
-        // User not logged in or error getting user, proceed as guest
-        setCurrentUser(null);
-        cerror("Could not load current user:", error);
+      // Load user analytics if user is logged in (games only)
+      if (currentUser?.id && productType === 'game') {
+        loadUserAnalytics(currentUser.id);
       }
 
       // 2. Load all users for display names (needed for creator attribution)
       try {
+        const { User } = await import('@/services/entities');
         usersData = await User.find();
       } catch (error) {
         cerror("Error loading users for display names:", error);
         usersData = [];
       }
 
-      // 3. Load settings (for logo, subjects, etc.)
+      // 3. Load settings
       try {
         const settingsArray = await Settings.find();
         appSettings = settingsArray.length > 0 ? settingsArray[0] : null;
@@ -119,17 +119,17 @@ export default function useProductCatalog(productType, filters, activeTab) {
       }
 
       // 4. Load user purchases if logged in
-      if (user) {
+      if (currentUser) {
         try {
           const { Purchase } = await import('@/services/entities');
           // Load purchases with both 'paid' and 'completed' statuses
           const [paidPurchases, completedPurchases] = await Promise.all([
             Purchase.filter({
-              buyer_user_id: user.id,
+              buyer_user_id: currentUser.id,
               payment_status: 'paid'
             }),
             Purchase.filter({
-              buyer_user_id: user.id,
+              buyer_user_id: currentUser.id,
               payment_status: 'completed'
             })
           ]);
@@ -164,7 +164,7 @@ export default function useProductCatalog(productType, filters, activeTab) {
       // Use polymorphic structure for product IDs like other components
       const purchasedProductIds = purchasesData.map(p => p.purchasable_id || p.product_id);
 
-      if (user) {
+      if (currentUser) {
         // User is logged in, check for purchases and admin status
         try {
           // Load all products of this type
@@ -174,12 +174,12 @@ export default function useProductCatalog(productType, filters, activeTab) {
           productsData = allProducts.filter(product =>
             product.is_published ||
             purchasedProductIds.includes(product.id) ||
-            (user.role === 'admin' || user.role === 'sysadmin')
+            (currentUser.role === 'admin' || currentUser.role === 'sysadmin')
           );
         } catch (productError) {
           cerror(`Error loading ${productType} products for logged-in user:`, productError);
           // Fallback: show only published products for non-admins, all for admins
-          if (user.role === 'admin' || user.role === 'sysadmin') {
+          if (currentUser.role === 'admin' || currentUser.role === 'sysadmin') {
             productsData = await ProductService.filter({ product_type: productType });
           } else {
             productsData = await ProductService.filter({
@@ -260,9 +260,7 @@ export default function useProductCatalog(productType, filters, activeTab) {
       setProducts([]);
       setCategories([]);
     }
-
-    setIsLoading(false);
-  }, [productType, loadUserAnalytics, getProductService, getEntityService]);
+  }, [productType, loadUserAnalytics, getProductService, getEntityService, currentUser]);
 
   // Filter products based on current filters and active tab
   useEffect(() => {
@@ -393,10 +391,12 @@ export default function useProductCatalog(productType, filters, activeTab) {
     setFilteredProducts(filtered);
   }, [products, filters, activeTab, currentUser, userPurchases, productType]);
 
-  // Load data on mount and when dependencies change
+  // Load data on mount and when dependencies change (but only after UserContext is loaded)
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (!isLoading) {
+      loadData();
+    }
+  }, [loadData, isLoading]);
 
   return {
     products,

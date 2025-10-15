@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import Masonry from 'react-masonry-css';
 import ProductCard from '@/components/ProductCard';
-import { getProductTypeName } from '@/config/productTypes';
 import { apiDownload } from '@/services/apiClient';
 import PdfViewer from '@/components/pdf/PdfViewer';
+import ProductModal from '@/components/modals/ProductModal';
 
 /**
  * Unified Product Grid Component
@@ -13,13 +13,9 @@ import PdfViewer from '@/components/pdf/PdfViewer';
  */
 export default function ProductGrid({
   products,
-  productType,
   config,
-  typeConfig,
   currentUser,
-  userPurchases = [],
-  settings,
-  activeTab
+  userPurchases = []
 }) {
   // Helper function to get user purchase for a product (using polymorphic structure like PurchaseHistory)
   const getUserPurchase = (productId) => {
@@ -39,33 +35,6 @@ export default function ProductGrid({
 
     console.log(`🔍 Found purchase for product ${productId}:`, foundPurchase);
     return foundPurchase;
-  };
-
-  // Helper function to handle product access
-  const handleProductAccess = (product) => {
-    const purchase = getUserPurchase(product.id);
-    if (!purchase) return;
-
-    // Navigate based on product type
-    switch (productType) {
-      case 'game':
-        window.location.href = `/launcher?id=${product.id}`;
-        break;
-      case 'file':
-        window.location.href = `${PRODUCT_TYPES.file.url}/${product.id}`;
-        break;
-      case 'workshop':
-        window.location.href = `/workshops/${product.id}`;
-        break;
-      case 'course':
-        window.location.href = `/courses/${product.id}`;
-        break;
-      case 'tool':
-        window.location.href = `/tools/${product.id}`;
-        break;
-      default:
-        console.warn('Unknown product type:', productType);
-    }
   };
 
   // Enhanced file access logic with PDF viewer support (same as ProductDetails)
@@ -104,53 +73,6 @@ export default function ProductGrid({
     setPdfViewerOpen(true);
   };
 
-  // Helper function to handle product purchase
-  const handleProductPurchase = (product) => {
-    // Navigate to purchase flow
-    window.location.href = `/product-details?product=${product.id}`;
-  };
-
-  // Get texts based on product type and config
-  const getProductTexts = () => {
-    const baseTexts = {
-      buyNow: 'רכישה',
-      owned: 'ברשותך',
-      access: 'גישה'
-    };
-
-    // Add product-specific texts
-    switch (productType) {
-      case 'game':
-        return {
-          ...baseTexts,
-          access: 'שחק עכשיו'
-        };
-      case 'course':
-        return {
-          ...baseTexts,
-          startCourse: `התחל ${getProductTypeName('course', 'singular')}`,
-          continueCourse: `המשך ${getProductTypeName('course', 'singular')}`
-        };
-      case 'tool':
-        return {
-          ...baseTexts,
-          download: 'הורדה'
-        };
-      case 'workshop':
-        return {
-          ...baseTexts,
-          watchRecording: 'צפה בהקלטה'
-        };
-      case 'file':
-        return {
-          ...baseTexts,
-          download: 'הורדה'
-        };
-      default:
-        return baseTexts;
-    }
-  };
-
   // Pinterest-style masonry breakpoints
   const getMasonryBreakpoints = () => {
     if (config.cardLayout === 'compact') {
@@ -179,7 +101,6 @@ export default function ProductGrid({
     }
   };
 
-  const texts = getProductTexts();
   const masonryBreakpoints = getMasonryBreakpoints();
 
   // State for managing single card expansion
@@ -189,9 +110,27 @@ export default function ProductGrid({
   const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
 
+  // Product edit modal state
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
+
   // Handle card expansion toggle - only one card can be expanded at a time
   const handleToggleExpanded = (productId) => {
     setExpandedCardId(expandedCardId === productId ? null : productId);
+  };
+
+  // Handle product edit
+  const handleProductEdit = (product) => {
+    setEditingProduct(product);
+    setShowEditModal(true);
+  };
+
+  // Handle modal save
+  const handleModalSave = () => {
+    setShowEditModal(false);
+    setEditingProduct(null);
+    // Optionally reload data or trigger refresh
+    console.log('Product updated successfully');
   };
 
   return (
@@ -218,15 +157,11 @@ export default function ProductGrid({
             <ProductCard
               product={product}
               userPurchase={userPurchase}
-              onAccess={() => handleProductAccess(product)}
-              onPurchase={() => handleProductPurchase(product)}
-              texts={texts}
-              showYouTubeIndicator={productType === 'workshop' || productType === 'course'}
               onFileAccess={handleFileAccess}
               onPdfPreview={handlePdfPreview}
-              userPurchases={userPurchases}
               isExpanded={expandedCardId === product.id}
               onToggleExpanded={handleToggleExpanded}
+              onEdit={handleProductEdit}
             />
           </motion.div>
         );
@@ -243,6 +178,15 @@ export default function ProductGrid({
           onClose={() => setPdfViewerOpen(false)}
         />
       )}
+
+      {/* Product Edit Modal */}
+      <ProductModal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        editingProduct={editingProduct}
+        onSave={handleModalSave}
+        currentUser={currentUser}
+      />
     </motion.div>
   );
 }

@@ -1809,14 +1809,16 @@ export default function ProductModal({
                                 </Button>
                               </div>
                               {hasUploadedVideo() && editingProduct && (
-                                <div className="mt-2">
-                                  <div className="bg-white p-2 rounded border">
-                                    <SecureVideoPlayer
-                                      videoUrl={getMarketingVideoUrl(editingProduct)}
-                                      title={formData.marketing_video_title || "Marketing Video"}
-                                      className="h-48"
-                                      contentType="marketing"
-                                    />
+                                <div className="mt-2 mb-6">
+                                  <div className="bg-white p-2 rounded border overflow-hidden">
+                                    <div className="max-w-full">
+                                      <SecureVideoPlayer
+                                        videoUrl={getMarketingVideoUrl(editingProduct)}
+                                        title={formData.marketing_video_title || "Marketing Video"}
+                                        className="max-w-full"
+                                        contentType="marketing"
+                                      />
+                                    </div>
                                     <div className="mt-2 text-xs text-gray-500">
                                       Marketing video: {editingProduct.product_type}/{editingProduct.id}
                                     </div>
@@ -1903,19 +1905,21 @@ export default function ProductModal({
 
                             {/* YouTube Video Preview */}
                             {hasYouTubeVideo() && (
-                              <div className="mt-4">
+                              <div className="mt-4 mb-6">
                                 <Label className="text-sm font-medium text-blue-700 mb-2 block">תצוגה מקדימה:</Label>
-                                <div className="bg-white p-2 rounded border">
-                                  <iframe
-                                    width="100%"
-                                    height="200"
-                                    src={`https://www.youtube.com/embed/${formData.marketing_video_id.trim()}?controls=1&showinfo=0&rel=0`}
-                                    title={formData.marketing_video_title || "YouTube Video Preview"}
-                                    frameBorder="0"
-                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                    allowFullScreen
-                                    className="rounded"
-                                  />
+                                <div className="bg-white p-2 rounded border overflow-hidden">
+                                  <div className="relative w-full aspect-video max-w-full">
+                                    <iframe
+                                      width="100%"
+                                      height="100%"
+                                      src={`https://www.youtube.com/embed/${formData.marketing_video_id.trim()}?controls=1&showinfo=0&rel=0`}
+                                      title={formData.marketing_video_title || "YouTube Video Preview"}
+                                      frameBorder="0"
+                                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                      allowFullScreen
+                                      className="absolute inset-0 rounded"
+                                    />
+                                  </div>
                                 </div>
                               </div>
                             )}
@@ -1924,7 +1928,7 @@ export default function ProductModal({
                       )}
 
                       {/* Video title field - Always visible outside the tabs */}
-                      <div className="mt-4 pt-4 border-t border-gray-200">
+                      <div className="mt-8 pt-6 border-t-2 border-gray-300">
                         <Label className="text-sm font-medium">כותרת הסרטון</Label>
                         <Input
                           value={formData.marketing_video_title || ""}
