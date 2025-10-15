@@ -53,6 +53,9 @@ import GameCreationTutorial from './GameCreationTutorial';
 import Documentation from './Documentation';
 import ProductCatalog from '../components/catalog/ProductCatalog';
 
+// Create Games component using ProductCatalog
+const Games = () => <ProductCatalog productType="game" />;
+
 // Export all pages
 export {
   Home,
@@ -107,5 +110,6 @@ export {
   CouponForm,
   CouponAnalytics,
   BulkCouponGenerator,
-  ProductCatalog
+  ProductCatalog,
+  Games
 };
