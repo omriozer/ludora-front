@@ -219,10 +219,10 @@ export default function FeatureControl() {
 
   if (!currentUser || currentUser.role !== 'admin') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 to-pink-50 flex items-center justify-center p-4">
-        <Alert className="max-w-md border-red-200">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
+      <div className="min-h-screen bg-gradient-to-br from-red-50 to-pink-50 flex items-center justify-center p-4" dir="rtl">
+        <Alert className="max-w-md w-full border-red-200 mx-auto">
+          <AlertCircle className="h-4 w-4 text-red-600" />
+          <AlertDescription className="text-sm sm:text-base leading-relaxed">
             אין לך הרשאות גישה לדף זה. רק מנהלי מערכת יכולים לגשת לבקרת פיצ'רים.
           </AlertDescription>
         </Alert>
@@ -232,10 +232,11 @@ export default function FeatureControl() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center">
-        <div className="text-center">
-          <RefreshCw className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600 text-lg">טוען הגדרות פיצ'רים...</p>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center p-4" dir="rtl">
+        <div className="text-center max-w-sm mx-auto">
+          <RefreshCw className="h-10 w-10 sm:h-12 sm:w-12 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600 text-base sm:text-lg font-medium">טוען הגדרות פיצ'רים...</p>
+          <p className="text-gray-500 text-sm mt-2">אנא המתן בזמן שאנו טוענים את הנתונים</p>
         </div>
       </div>
     );
@@ -245,16 +246,18 @@ export default function FeatureControl() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-4 sm:p-6 lg:p-8" dir="rtl">
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-              <SettingsIcon className="w-6 h-6 text-white" />
+        <div className="text-center mb-6 sm:mb-8">
+          <div className="flex items-center justify-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg">
+              <SettingsIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
             </div>
-            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">בקרת פיצ'רים</h1>
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900">בקרת פיצ'רים</h1>
           </div>
-          <p className="text-gray-600 text-lg max-w-2xl mx-auto">
-            נהל את הגישה והתצוגה של פיצ'רים שונים באתר. שנה את סדר התפריט, הגדר הרשאות וקבע מה יהיה גלוי למשתמשים שונים.
-          </p>
+          <div className="px-4 sm:px-6">
+            <p className="text-gray-600 text-sm sm:text-base lg:text-lg max-w-2xl mx-auto leading-relaxed">
+              נהל את הגישה והתצוגה של פיצ'רים שונים באתר. שנה את סדר התפריט, הגדר הרשאות וקבע מה יהיה גלוי למשתמשים שונים.
+            </p>
+          </div>
         </div>
 
         {/* Message */}
@@ -272,45 +275,60 @@ export default function FeatureControl() {
 
         {/* Legend */}
         <Card className="border-none shadow-lg bg-white/80 backdrop-blur-sm">
-          <CardHeader className="pb-4">
-            <CardTitle className="flex items-center gap-2 text-xl">
-              <Eye className="w-5 h-5 text-indigo-600" />
+          <CardHeader className="pb-3 sm:pb-4">
+            <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+              <Eye className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600" />
               מקרא רמות גישה
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <CardContent className="pt-0">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
               {[
-                { key: 'public', label: 'גלוי לכולם', icon: Globe, color: 'bg-green-100 text-green-800', description: 'כל המשתמשים יכולים לראות' },
-                { key: 'logged_in_users', label: 'משתמשים מחוברים', icon: UserIcon, color: 'bg-blue-100 text-blue-800', description: 'רק משתמשים מאומתים יכולים לראות' },
-                { key: 'admin_only', label: 'מנהלים בלבד', icon: Crown, color: 'bg-yellow-100 text-yellow-800', description: 'רק מנהלי מערכת יכולים לראות' },
-                { key: 'admins_and_creators', label: 'מנהלים ויוצרי תוכן', icon: Shield, color: 'bg-purple-100 text-purple-800', description: 'מנהלים ויוצרי תוכן בלבד' },
-                { key: 'hidden', label: 'מוסתר', icon: EyeOff, color: 'bg-red-100 text-red-800', description: 'לא גלוי לאף אחד' }
+                { key: 'public', label: 'גלוי לכולם', icon: Globe, color: 'bg-green-100 text-green-800 border-green-200', description: 'כל המשתמשים יכולים לראות' },
+                { key: 'logged_in_users', label: 'משתמשים מחוברים', icon: UserIcon, color: 'bg-blue-100 text-blue-800 border-blue-200', description: 'רק משתמשים מאומתים יכולים לראות' },
+                { key: 'admin_only', label: 'מנהלים בלבד', icon: Crown, color: 'bg-yellow-100 text-yellow-800 border-yellow-200', description: 'רק מנהלי מערכת יכולים לראות' },
+                { key: 'admins_and_creators', label: 'מנהלים ויוצרי תוכן', icon: Shield, color: 'bg-purple-100 text-purple-800 border-purple-200', description: 'מנהלים ויוצרי תוכן בלבד' },
+                { key: 'hidden', label: 'מוסתר', icon: EyeOff, color: 'bg-red-100 text-red-800 border-red-200', description: 'לא גלוי לאף אחד' }
               ].map(item => (
-                <div key={item.key} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50/50 border border-gray-200">
-                  <Badge className={`${item.color} border flex items-center gap-1 px-3 py-1`}>
+                <div key={item.key} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl bg-gray-50/50 border border-gray-200 hover:bg-gray-100/50 transition-colors">
+                  <Badge className={`${item.color} border flex items-center gap-1 px-2 sm:px-3 py-1 text-xs font-medium w-fit`}>
                     <item.icon className="w-3 h-3" />
-                    {item.label}
+                    <span className="whitespace-nowrap">{item.label}</span>
                   </Badge>
-                  <div className="hidden sm:block">
-                    <p className="text-xs text-gray-600">{item.description}</p>
+                  <div className="flex-1">
+                    <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">{item.description}</p>
                   </div>
                 </div>
               ))}
+            </div>
+
+            {/* Mobile helper text */}
+            <div className="mt-4 sm:hidden">
+              <div className="flex items-center gap-2 p-3 bg-blue-50/50 rounded-lg border border-blue-200">
+                <AlertCircle className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                <p className="text-xs text-blue-800 leading-relaxed">
+                  השתמש ברמות הגישה השונות כדי לקבוע מי יכול לראות כל פיצ'ר באתר
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>
 
         {/* Navigation Items */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <GripVertical className="w-5 h-5 text-gray-400" />
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
+              <GripVertical className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
               פריטי תפריט ניווט
             </h2>
-            <Badge variant="outline" className="hidden sm:flex">
-              {navItems.length} פריטים
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-xs sm:text-sm px-2 py-1">
+                {navItems.length} פריטים
+              </Badge>
+              <div className="sm:hidden text-xs text-gray-500">
+                גרור למעלה/למטה לשינוי סדר
+              </div>
+            </div>
           </div>
 
           <div className="grid gap-4">
@@ -320,42 +338,67 @@ export default function FeatureControl() {
               
               return (
                 <Card key={item.key} className={`border-2 ${visibilityInfo.cardBorder} ${visibilityInfo.cardBg} shadow-lg transition-all duration-200 hover:shadow-xl`}>
-                  <CardContent className="p-4 sm:p-6">
-                    <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-                      {/* Left side - Icon and info */}
-                      <div className="flex items-center gap-4 min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center shadow-md">
-                            <IconComponent className="w-5 h-5 text-white" />
+                  <CardContent className="p-3 sm:p-4 lg:p-6">
+                    <div className="space-y-4">
+                      {/* Top section - Icon, info, and badges */}
+                      <div className="flex items-start gap-3">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center shadow-md flex-shrink-0">
+                            <IconComponent className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                           </div>
-                          <div className="min-w-0">
-                            <h3 className="font-semibold text-gray-900 truncate">{item.text}</h3>
-                            <p className="text-sm text-gray-500 truncate">{item.description}</p>
+                          <div className="min-w-0 flex-1">
+                            <h3 className="font-semibold text-gray-900 text-sm sm:text-base">{item.text}</h3>
+                            <p className="text-xs sm:text-sm text-gray-500 mt-1 leading-relaxed">{item.description}</p>
                           </div>
                         </div>
 
-                        {/* Status badges - mobile responsive */}
-                        <div className="flex flex-wrap gap-2 sm:ml-auto lg:ml-0">
-                          <Badge className={`${visibilityInfo.color} border flex items-center gap-1 text-xs`}>
-                            <visibilityInfo.icon className="w-3 h-3" />
-                            <span className="hidden sm:inline">{visibilityInfo.label}</span>
-                          </Badge>
-                          
-                          <Badge variant={item.enabled ? "default" : "secondary"} className="text-xs">
-                            {item.enabled ? 'פעיל' : 'מבוטל'}
-                          </Badge>
+                        {/* Move buttons - repositioned for better mobile access */}
+                        <div className="flex flex-col gap-1 flex-shrink-0">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => moveNavItem(index, 'up')}
+                            disabled={index === 0}
+                            className="h-8 w-8 p-0 touch-manipulation"
+                            title="העבר למעלה"
+                          >
+                            <ChevronUp className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => moveNavItem(index, 'down')}
+                            disabled={index === navItems.length - 1}
+                            className="h-8 w-8 p-0 touch-manipulation"
+                            title="העבר למטה"
+                          >
+                            <ChevronDown className="w-4 h-4" />
+                          </Button>
                         </div>
                       </div>
 
-                      {/* Right side - Controls */}
-                      <div className="flex flex-col sm:flex-row gap-3 lg:min-w-fit">
+                      {/* Status badges row */}
+                      <div className="flex flex-wrap gap-2">
+                        <Badge className={`${visibilityInfo.color} border flex items-center gap-1 text-xs px-2 py-1`}>
+                          <visibilityInfo.icon className="w-3 h-3" />
+                          <span>{visibilityInfo.label}</span>
+                        </Badge>
+
+                        <Badge variant={item.enabled ? "default" : "secondary"} className="text-xs px-2 py-1">
+                          {item.enabled ? 'פעיל' : 'מבוטל'}
+                        </Badge>
+                      </div>
+
+                      {/* Controls section */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                         {/* Icon selector */}
-                        <div className="sm:min-w-[120px]">
+                        <div className="space-y-1">
+                          <label className="text-xs font-medium text-gray-600 block">אייקון</label>
                           <Select
                             value={item.icon}
                             onValueChange={(value) => updateNavItem(index, { icon: value })}
                           >
-                            <SelectTrigger className="text-sm">
+                            <SelectTrigger className="text-sm h-10">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -365,7 +408,7 @@ export default function FeatureControl() {
                                   <SelectItem key={iconName} value={iconName}>
                                     <div className="flex items-center gap-2">
                                       <IconComp className="w-4 h-4" />
-                                      {iconName}
+                                      <span className="text-sm">{iconName}</span>
                                     </div>
                                   </SelectItem>
                                 );
@@ -375,12 +418,13 @@ export default function FeatureControl() {
                         </div>
 
                         {/* Visibility selector */}
-                        <div className="sm:min-w-[160px]">
+                        <div className="space-y-1">
+                          <label className="text-xs font-medium text-gray-600 block">הרשאות גישה</label>
                           <Select
                             value={item.visibility}
                             onValueChange={(value) => updateNavItem(index, { visibility: value })}
                           >
-                            <SelectTrigger className="text-sm">
+                            <SelectTrigger className="text-sm h-10">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -389,25 +433,25 @@ export default function FeatureControl() {
                                   <SelectItem value="admins_and_creators">
                                     <div className="flex items-center gap-2">
                                       <Shield className="w-4 h-4" />
-                                      מנהלים ויוצרי תוכן
+                                      <span className="text-sm">מנהלים ויוצרי תוכן</span>
                                     </div>
                                   </SelectItem>
                                   <SelectItem value="logged_in_users">
                                     <div className="flex items-center gap-2">
                                       <UserIcon className="w-4 h-4" />
-                                      משתמשים מחוברים
+                                      <span className="text-sm">משתמשים מחוברים</span>
                                     </div>
                                   </SelectItem>
                                   <SelectItem value="admins_only">
                                     <div className="flex items-center gap-2">
                                       <Crown className="w-4 h-4" />
-                                      מנהלים בלבד
+                                      <span className="text-sm">מנהלים בלבד</span>
                                     </div>
                                   </SelectItem>
                                   <SelectItem value="hidden">
                                     <div className="flex items-center gap-2">
                                       <EyeOff className="w-4 h-4" />
-                                      מוסתר
+                                      <span className="text-sm">מוסתר</span>
                                     </div>
                                   </SelectItem>
                                 </>
@@ -416,25 +460,25 @@ export default function FeatureControl() {
                                   <SelectItem value="public">
                                     <div className="flex items-center gap-2">
                                       <Globe className="w-4 h-4" />
-                                      גלוי לכולם
+                                      <span className="text-sm">גלוי לכולם</span>
                                     </div>
                                   </SelectItem>
                                   <SelectItem value="logged_in_users">
                                     <div className="flex items-center gap-2">
                                       <UserIcon className="w-4 h-4" />
-                                      משתמשים מחוברים
+                                      <span className="text-sm">משתמשים מחוברים</span>
                                     </div>
                                   </SelectItem>
                                   <SelectItem value="admin_only">
                                     <div className="flex items-center gap-2">
                                       <Crown className="w-4 h-4" />
-                                      מנהלים בלבד
+                                      <span className="text-sm">מנהלים בלבד</span>
                                     </div>
                                   </SelectItem>
                                   <SelectItem value="hidden">
                                     <div className="flex items-center gap-2">
                                       <EyeOff className="w-4 h-4" />
-                                      מוסתר
+                                      <span className="text-sm">מוסתר</span>
                                     </div>
                                   </SelectItem>
                                 </>
@@ -443,39 +487,18 @@ export default function FeatureControl() {
                           </Select>
                         </div>
 
-                        {/* Controls row */}
-                        <div className="flex items-center gap-2">
-                          {/* Enable/disable switch */}
-                          <div className="flex items-center gap-2 bg-white/60 rounded-lg px-3 py-2">
+                        {/* Enable/disable switch */}
+                        <div className="space-y-1 sm:col-span-2 lg:col-span-1">
+                          <label className="text-xs font-medium text-gray-600 block">מצב</label>
+                          <div className="flex items-center gap-3 bg-white/60 rounded-lg px-3 py-2 h-10">
                             <Switch
                               checked={item.enabled}
                               onCheckedChange={(checked) => updateNavItem(index, { enabled: checked })}
+                              className="data-[state=checked]:bg-indigo-600"
                             />
                             <span className="text-sm font-medium text-gray-700">
                               {item.enabled ? 'פעיל' : 'מבוטל'}
                             </span>
-                          </div>
-
-                          {/* Move buttons */}
-                          <div className="flex flex-col gap-1">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => moveNavItem(index, 'up')}
-                              disabled={index === 0}
-                              className="h-6 w-8 p-0"
-                            >
-                              <ChevronUp className="w-3 h-3" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => moveNavItem(index, 'down')}
-                              disabled={index === navItems.length - 1}
-                              className="h-6 w-8 p-0"
-                            >
-                              <ChevronDown className="w-3 h-3" />
-                            </Button>
                           </div>
                         </div>
                       </div>
@@ -488,29 +511,35 @@ export default function FeatureControl() {
         </div>
 
         {/* Save button - sticky on mobile */}
-        <div className="sticky bottom-4 pt-6">
-          <Card className="border-none shadow-xl bg-white/90 backdrop-blur-sm">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="hidden sm:block">
+        <div className="sticky bottom-2 sm:bottom-4 pt-4 sm:pt-6 z-10">
+          <Card className="border-none shadow-xl bg-white/95 backdrop-blur-sm">
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+                <div className="hidden sm:block sm:flex-1">
                   <h3 className="font-semibold text-gray-900">שמירת הגדרות</h3>
                   <p className="text-sm text-gray-500">שמור את כל השינויים שביצעת בהגדרות התפריט</p>
                 </div>
-                
-                <Button 
+
+                {/* Mobile summary */}
+                <div className="sm:hidden flex items-center justify-center gap-2 text-center">
+                  <Save className="w-4 h-4 text-indigo-600" />
+                  <span className="text-sm font-medium text-gray-700">מוכן לשמור את השינויים?</span>
+                </div>
+
+                <Button
                   onClick={saveSettings}
                   disabled={isSaving}
-                  className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 w-full sm:w-auto"
+                  className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold px-6 sm:px-8 py-3 sm:py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 w-full sm:w-auto touch-manipulation"
                 >
                   {isSaving ? (
                     <>
-                      <RefreshCw className="w-5 h-5 mr-2 animate-spin" />
-                      שומר...
+                      <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5 mr-2 animate-spin" />
+                      <span className="text-sm sm:text-base">שומר...</span>
                     </>
                   ) : (
                     <>
-                      <Save className="w-5 h-5 mr-2" />
-                      שמור הגדרות
+                      <Save className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                      <span className="text-sm sm:text-base">שמור הגדרות</span>
                     </>
                   )}
                 </Button>
