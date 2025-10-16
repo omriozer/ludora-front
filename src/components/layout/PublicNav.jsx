@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
-  FileText, Play, Calendar, BookOpen, UserIcon, Users, GraduationCap, Menu, X, Crown, LogIn, LogOut, ShieldAlert, ChevronLeft, ChevronRight, ShoppingCart
+  FileText, Play, Calendar, BookOpen, UserIcon, Users, GraduationCap, Menu, X, Crown, LogIn, LogOut, ShieldAlert, ChevronLeft, ChevronRight, ShoppingCart, Settings
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { iconMap } from "@/lib/layoutUtils";
@@ -130,6 +130,21 @@ function getNavigationItems({ currentUser, settings, isActualAdmin, isContentCre
         }
         break;
       }
+      case 'tools': {
+        const toolsVisibility = settings?.nav_tools_visibility || 'public';
+        if (canUserSeeItem(toolsVisibility, currentUser, isActualAdmin, isContentCreator)) {
+          const iconName = settings?.nav_tools_icon || navItemConfig.defaultIcon;
+          const IconComponent = iconMap[iconName] || Settings;
+          navItems.push({
+            title: settings?.nav_tools_text || navItemConfig.text,
+            url: PRODUCT_TYPES.tool.url,
+            icon: IconComponent,
+            isAdminOnly: toolsVisibility === 'admin_only',
+            gradient: navItemConfig.gradient
+          });
+        }
+        break;
+      }
       case 'content_creators': {
         const contentCreatorsVisibility = settings?.nav_content_creators_visibility || 'admins_and_creators';
 
@@ -165,7 +180,6 @@ function getNavigationItems({ currentUser, settings, isActualAdmin, isContentCre
 
 const PublicNav = ({ currentUser, handleLogout, handleLogin, settings }) => {
   const location = useLocation();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isImpersonating, setIsImpersonating] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(() => {
     // Load saved state from localStorage, but default to collapsed on mobile

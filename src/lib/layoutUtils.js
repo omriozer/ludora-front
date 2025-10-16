@@ -1,27 +1,60 @@
 // Utility functions and constants for layout/navigation
-import { FileText, Play, Calendar, BookOpen, UserIcon, Users, GraduationCap, Settings as SettingsIcon, Mail, BarChart3, Menu, X, Home, Crown, LogIn, LogOut, UserCheck, ShieldAlert, MessageSquare, Shield, Code, Edit, Monitor, Award, Globe, ArrowLeft } from "lucide-react";
+import {
+  // Essential Navigation & UI
+  FileText, Play, Calendar, BookOpen, Users, GraduationCap,
+  Settings as SettingsIcon, Mail, Home, Crown, Globe, ArrowLeft, Search, Star,
+
+  // Core Categories (1-2 icons per category)
+  File, Folder, Hammer, Wrench, Gamepad, Trophy, Building, School,
+  Book, Brain, User, UserCircle, Camera, Video,
+
+  // Common Actions
+  Edit, Plus, Check, X, Shield, Code, Heart, Bookmark
+} from "lucide-react";
 
 export const iconMap = {
+  // Essential Navigation & UI (15 icons)
   'FileText': FileText,
-  'Gamepad2': Play,
+  'Play': Play,
   'Calendar': Calendar,
   'BookOpen': BookOpen,
-  'UserIcon': UserIcon,
   'Users': Users,
-  'Play': Play,
-  'Globe': Globe,
-  'SettingsIcon': SettingsIcon,
-  'Settings': SettingsIcon,
-  'Award': Award,
-  'Edit': Edit,
-  'Monitor': Monitor,
-  'Home': Home,
-  'Mail': Mail,
-  'MessageSquare': MessageSquare,
   'GraduationCap': GraduationCap,
+  'Settings': SettingsIcon,
+  'SettingsIcon': SettingsIcon,
+  'Mail': Mail,
+  'Home': Home,
+  'Crown': Crown,
+  'Globe': Globe,
+  'ArrowLeft': ArrowLeft,
+  'Search': Search,
+  'Star': Star,
+
+  // Core Categories (14 icons - 1-2 per navigation category)
+  'File': File,
+  'Folder': Folder,
+  'Hammer': Hammer,
+  'Wrench': Wrench,
+  'Gamepad': Gamepad,
+  'Trophy': Trophy,
+  'Building': Building,
+  'School': School,
+  'Book': Book,
+  'Brain': Brain,
+  'User': User,
+  'UserCircle': UserCircle,
+  'Camera': Camera,
+  'Video': Video,
+
+  // Common Actions (8 icons)
+  'Edit': Edit,
+  'Plus': Plus,
+  'Check': Check,
+  'X': X,
   'Shield': Shield,
   'Code': Code,
-  'Crown': Crown
+  'Heart': Heart,
+  'Bookmark': Bookmark
 };
 
 // Note: Navigation items are now managed centrally in /src/config/productTypes.js

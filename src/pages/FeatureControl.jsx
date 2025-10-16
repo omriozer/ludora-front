@@ -32,10 +32,19 @@ import {
 } from "lucide-react";
 
 import { NAV_ITEMS, NAV_ITEM_KEYS, getNavItemConfig } from "@/config/productTypes";
+import { iconMap } from "@/lib/layoutUtils";
 
 const ICON_OPTIONS = [
-  'FileText', 'Play', 'Calendar', 'BookOpen', 'UserIcon', 'Users', 'Globe', 'SettingsIcon',
-  'Award', 'GraduationCap', 'Shield', 'Mail', 'Phone', 'Home', 'Search', 'Star'
+  // Essential Navigation & UI
+  'FileText', 'Play', 'Calendar', 'BookOpen', 'Users', 'GraduationCap',
+  'Settings', 'SettingsIcon', 'Mail', 'Home', 'Crown', 'Globe', 'ArrowLeft', 'Search', 'Star',
+
+  // Core Categories (1-2 per navigation type)
+  'File', 'Folder', 'Hammer', 'Wrench', 'Gamepad', 'Trophy', 'Building', 'School',
+  'Book', 'Brain', 'User', 'UserCircle', 'Camera', 'Video',
+
+  // Common Actions
+  'Edit', 'Plus', 'Check', 'X', 'Shield', 'Code', 'Heart', 'Bookmark'
 ];
 
 export default function FeatureControl() {
@@ -205,10 +214,6 @@ export default function FeatureControl() {
   };
 
   const getIconComponent = (iconName) => {
-    const iconMap = {
-      FileText, Play, Calendar, BookOpen, UserIcon, Users, Globe2: Globe, SettingsIcon,
-      GraduationCap, Shield
-    };
     return iconMap[iconName] || FileText;
   };
 
