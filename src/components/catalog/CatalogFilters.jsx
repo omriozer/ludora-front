@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, Filter, X, TrendingUp } from 'lucide-react';
 import { getProductTypeName } from '@/config/productTypes';
+import { getToolCategoryLabel } from '@/config/toolCategories';
 
 /**
  * Unified Catalog Filters Component
@@ -46,14 +47,15 @@ export default function CatalogFilters({
           <Select value={filters.category} onValueChange={(value) => onFiltersChange({ category: value })}>
             <SelectTrigger className="h-9 text-sm w-24 border-gray-300 text-right" dir="rtl">
               <SelectValue>
-                {filters.category === 'all' ? 'קטגוריה' : filters.category}
+                {filters.category === 'all' ? 'קטגוריה' :
+                 typeConfig.key === 'tool' ? getToolCategoryLabel(filters.category) : filters.category}
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">כל הקטגוריות</SelectItem>
               {categories.map((category) => (
                 <SelectItem key={category.id || category.name} value={category.name}>
-                  {category.name}
+                  {typeConfig.key === 'tool' ? getToolCategoryLabel(category.name) : category.name}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -198,43 +200,6 @@ export default function CatalogFilters({
           </Select>
         );
 
-      case 'complexity':
-        return (
-          <Select value={filters.complexity} onValueChange={(value) => onFiltersChange({ complexity: value })}>
-            <SelectTrigger className="h-9 text-sm w-24 border-gray-300 text-right" dir="rtl">
-              <SelectValue>
-                {filters.complexity === 'all' ? 'מורכבות' :
-                 filters.complexity === 'simple' ? 'פשוט' :
-                 filters.complexity === 'medium' ? 'בינוני' : 'מורכב'}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">כל הרמות</SelectItem>
-              <SelectItem value="simple">פשוט</SelectItem>
-              <SelectItem value="medium">בינוני</SelectItem>
-              <SelectItem value="complex">מורכב</SelectItem>
-            </SelectContent>
-          </Select>
-        );
-
-      case 'platform':
-        return (
-          <Select value={filters.platform} onValueChange={(value) => onFiltersChange({ platform: value })}>
-            <SelectTrigger className="h-9 text-sm w-24 border-gray-300 text-right" dir="rtl">
-              <SelectValue>
-                {filters.platform === 'all' ? 'פלטפורמה' : filters.platform}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">כל הפלטפורמות</SelectItem>
-              <SelectItem value="web">דפדפן</SelectItem>
-              <SelectItem value="windows">Windows</SelectItem>
-              <SelectItem value="mac">Mac</SelectItem>
-              <SelectItem value="mobile">נייד</SelectItem>
-              <SelectItem value="cross-platform">חוצה פלטפורמות</SelectItem>
-            </SelectContent>
-          </Select>
-        );
 
       case 'sort':
         return (

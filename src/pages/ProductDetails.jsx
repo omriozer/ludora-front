@@ -95,15 +95,6 @@ export default function ProductDetails() {
     setDetailsTexts(texts);
   };
 
-  const getUserPurchaseForItem = (itemId, itemType) => {
-    return userPurchases.find(purchase => {
-      const purchaseEntityType = purchaseUtils.getEntityType(purchase);
-      const purchaseEntityId = purchaseUtils.getEntityId(purchase);
-      return purchaseEntityType === itemType &&
-             purchaseEntityId === itemId &&
-             purchaseUtils.isPaymentCompleted(purchase);
-    });
-  };
 
   // Enhanced file access logic with PDF viewer support
   const handleFileAccess = async (file) => {

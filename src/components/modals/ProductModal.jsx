@@ -41,11 +41,18 @@ import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
 import PdfFooterPreview from '../pdf/PdfFooterPreview';
 
 // Utility function to check if feature is enabled based on settings and content creator permissions
-const getEnabledProductTypes = (settings, isContentCreatorMode = false, isAdmin = false) => {
-  // IMPORTANT: Admins in admin mode (not content creator mode) get access to ALL product types
+const getEnabledProductTypes = (settings, isContentCreatorMode = false, isAdmin = false, editingProduct = null) => {
+  // NOTE: Tools are excluded from creation - they are defined as constants in the Tool service class
+  // However, editing existing tools should be allowed for admins
+  // IMPORTANT: Admins in admin mode (not content creator mode) get access to workshop, course, file types
   // regardless of any visibility or permission settings
   if (isAdmin && !isContentCreatorMode) {
-    return ['workshop', 'course', 'file', 'tool'];
+    const types = ['workshop', 'course', 'file'];
+    // Allow tool editing if we're editing an existing tool
+    if (editingProduct && editingProduct.product_type === 'tool') {
+      types.push('tool');
+    }
+    return types;
   }
 
   // For content creators or admin in content creator mode, check content creator permissions
@@ -63,13 +70,25 @@ const getEnabledProductTypes = (settings, isContentCreatorMode = false, isAdmin 
     enabledTypes.push('file');
   }
 
-  if (settings?.allow_content_creator_tools === true) {
+  // Tools cannot be created via UI - they are managed as code constants
+  // However, editing existing tools should be allowed
+  // if (settings?.allow_content_creator_tools === true) {
+  //   enabledTypes.push('tool');
+  // }
+
+  // Allow tool editing if we're editing an existing tool
+  if (editingProduct && editingProduct.product_type === 'tool') {
     enabledTypes.push('tool');
   }
 
-  // If no settings found or all are enabled, return all types
+  // If no settings found or all are enabled, return all available types (excluding tools unless editing)
   if (enabledTypes.length === 0) {
-    return ['workshop', 'course', 'file', 'tool'];
+    const defaultTypes = ['workshop', 'course', 'file'];
+    // Add tool if editing an existing tool
+    if (editingProduct && editingProduct.product_type === 'tool') {
+      defaultTypes.push('tool');
+    }
+    return defaultTypes;
   }
 
   return enabledTypes;
@@ -323,7 +342,7 @@ export default function ProductModal({
         const settings = settingsData[0];
         setGlobalSettings(settings);
         const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'sysadmin';
-        setEnabledProductTypes(getEnabledProductTypes(settings, isContentCreatorMode, isAdmin));
+        setEnabledProductTypes(getEnabledProductTypes(settings, isContentCreatorMode, isAdmin, editingProduct));
         
         if (!editingProduct) {
           const defaultLifetime = getDefaultLifetimeAccess('workshop', settings);

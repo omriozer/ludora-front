@@ -13,14 +13,7 @@ export const hasActiveAccess = (purchase) => {
   return false;
 };
 
-// Get user purchase for a file - same logic as Files.jsx
-export const getUserPurchaseForFile = (fileId, userPurchases) => {
-  return userPurchases.find(purchase =>
-    ((purchase.purchasable_type === 'file' && purchase.purchasable_id === fileId) ||
-     (purchase.product_id === fileId)) && // Backwards compatibility
-    (purchase.payment_status === 'completed' || purchase.payment_status === 'paid') // Support both statuses
-  );
-};
+// Note: getUserPurchaseForFile function removed - now using centralized useProductAccess hook
 
 // Get file access status information
 export const getFileAccessStatus = (userPurchase) => {

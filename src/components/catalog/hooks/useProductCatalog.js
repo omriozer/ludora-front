@@ -122,8 +122,8 @@ export default function useProductCatalog(productType, filters, activeTab) {
       if (currentUser) {
         try {
           const { Purchase } = await import('@/services/entities');
-          // Load purchases with both 'paid' and 'completed' statuses
-          const [paidPurchases, completedPurchases] = await Promise.all([
+          // Load purchases with 'paid', 'completed', and 'cart' statuses
+          const [paidPurchases, completedPurchases, cartPurchases] = await Promise.all([
             Purchase.filter({
               buyer_user_id: currentUser.id,
               payment_status: 'paid'
@@ -131,10 +131,14 @@ export default function useProductCatalog(productType, filters, activeTab) {
             Purchase.filter({
               buyer_user_id: currentUser.id,
               payment_status: 'completed'
+            }),
+            Purchase.filter({
+              buyer_user_id: currentUser.id,
+              payment_status: 'cart'
             })
           ]);
           // Combine and deduplicate purchases
-          const allPurchases = [...paidPurchases, ...completedPurchases];
+          const allPurchases = [...paidPurchases, ...completedPurchases, ...cartPurchases];
           const uniquePurchases = allPurchases.filter((purchase, index, self) =>
             index === self.findIndex(p => p.id === purchase.id)
           );
@@ -346,19 +350,6 @@ export default function useProductCatalog(productType, filters, activeTab) {
     // Apply skill level filter
     if (filters.skillLevel && filters.skillLevel !== 'all') {
       filtered = filtered.filter(product => product.skill_level === filters.skillLevel);
-    }
-
-    // Apply complexity filter
-    if (filters.complexity && filters.complexity !== 'all') {
-      filtered = filtered.filter(product => product.complexity === filters.complexity);
-    }
-
-    // Apply platform filter
-    if (filters.platform && filters.platform !== 'all') {
-      filtered = filtered.filter(product =>
-        product.platform === filters.platform ||
-        product.device_compatibility === filters.platform
-      );
     }
 
     // Apply sorting

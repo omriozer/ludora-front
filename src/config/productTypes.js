@@ -121,8 +121,8 @@ export const PRODUCT_TYPES = {
       emptyStateTitle: 'לא נמצאו כלים',
       emptyStateSubtitle: 'נסה לשנות את הפילטרים או החיפוש',
       loadingMessage: 'טוען כלים...',
-      filters: ['search', 'category', 'complexity', 'platform'],
-      cardLayout: 'compact',
+      filters: ['search', 'category', 'sort'],
+      cardLayout: 'detailed',
       showTabs: false,
       actions: {
         primary: 'השתמש בכלי',
@@ -444,35 +444,7 @@ export const TYPE_ATTRIBUTE_SCHEMAS = {
     }
   },
   tool: {
-    complexity: {
-      type: 'select',
-      label: 'רמת מורכבות',
-      description: 'רמת המורכבות של הכלי',
-      placeholder: 'בחר רמת מורכבות',
-      options: [
-        { value: 'simple', label: 'פשוט' },
-        { value: 'medium', label: 'בינוני' },
-        { value: 'complex', label: 'מורכב' }
-      ]
-    },
-    requires_setup: {
-      type: 'boolean',
-      label: 'דורש הגדרה',
-      description: 'האם הכלי דורש הגדרה מוקדמת'
-    },
-    platform: {
-      type: 'select',
-      label: 'פלטפורמה',
-      description: 'הפלטפורמה הנדרשת להפעלת הכלי',
-      placeholder: 'בחר פלטפורמה',
-      options: [
-        { value: 'web', label: 'דפדפן' },
-        { value: 'windows', label: 'Windows' },
-        { value: 'mac', label: 'Mac' },
-        { value: 'mobile', label: 'נייד' },
-        { value: 'cross-platform', label: 'חוצה פלטפורמות' }
-      ]
-    }
+    // Tools use the same basic fields as files - no special attributes needed
   }
 };
 

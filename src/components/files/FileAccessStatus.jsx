@@ -2,7 +2,8 @@
 import React from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CheckCircle } from "lucide-react";
-import { getUserPurchaseForFile, getFileAccessStatus } from "./fileAccessUtils";
+import { useProductAccess } from "@/hooks/useProductAccess";
+import { getFileAccessStatus } from "./fileAccessUtils";
 
 export default function FileAccessStatus({
   file,
@@ -10,8 +11,12 @@ export default function FileAccessStatus({
   variant = "files", // "files" or "productDetails"
   className = ""
 }) {
-  const userPurchase = getUserPurchaseForFile(file.id, userPurchases);
-  const accessStatus = getFileAccessStatus(userPurchase);
+  const { hasAccess, purchase } = useProductAccess({
+    id: file.id,
+    entity_id: file.id,
+    product_type: 'file'
+  }, userPurchases);
+  const accessStatus = getFileAccessStatus(purchase);
 
   if (!accessStatus.hasAccess) {
     return null;

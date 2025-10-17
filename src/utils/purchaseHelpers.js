@@ -74,6 +74,16 @@ export async function createPendingPurchase({
   try {
     clog('Creating pending purchase:', { entityType, entityId, price, userId });
 
+    // Find the Product record for this entity to get the price
+    const productRecord = await findProductForEntity(entityType, entityId);
+    if (!productRecord) {
+      throw new Error('לא נמצא מוצר מתאים להוספה לעגלה');
+    }
+
+    // Use entity-based approach for purchases (maintains existing validation)
+    const purchasableType = entityType;
+    const purchasableId = entityId;
+
     // Check if payment is currently in progress for this product
     const paymentInProgress = await isPaymentInProgress(userId, entityType, entityId);
     if (paymentInProgress) {
@@ -83,7 +93,7 @@ export async function createPendingPurchase({
     // Check if user already has any non-refunded purchase for this product
     const existingPurchases = await getAllNonRefundedPurchases(userId);
     const existingPurchase = existingPurchases.find(p =>
-      p.purchasable_type === entityType && p.purchasable_id === entityId
+      p.purchasable_type === purchasableType && p.purchasable_id === purchasableId
     );
 
     if (existingPurchase) {
@@ -93,14 +103,15 @@ export async function createPendingPurchase({
 
     const purchaseData = {
       buyer_user_id: userId,
-      purchasable_type: entityType,
-      purchasable_id: entityId,
+      purchasable_type: purchasableType,
+      purchasable_id: purchasableId,
       payment_amount: price,
       original_price: price,
       discount_amount: 0,
       payment_status: 'cart',
       metadata: {
         created_via: 'add_to_cart',
+        product_id: productRecord.id, // Reference to Product record for context
         ...metadata
       }
     };
@@ -128,10 +139,20 @@ export async function createFreePurchase(params) {
   try {
     clog('Creating free purchase:', params);
 
+    // Find the Product record for this entity to get the price
+    const productRecord = await findProductForEntity(params.entityType, params.entityId);
+    if (!productRecord) {
+      throw new Error('לא נמצא מוצר מתאים לרכישה חינמית');
+    }
+
+    // Use entity-based approach for purchases (maintains existing validation)
+    const purchasableType = params.entityType;
+    const purchasableId = params.entityId;
+
     const purchaseData = {
       buyer_user_id: params.userId,
-      purchasable_type: params.entityType,
-      purchasable_id: params.entityId,
+      purchasable_type: purchasableType,
+      purchasable_id: purchasableId,
       payment_amount: 0,
       original_price: params.price || 0,
       discount_amount: 0,
@@ -139,6 +160,7 @@ export async function createFreePurchase(params) {
       payment_method: 'free',
       metadata: {
         created_via: 'free_access',
+        product_id: productRecord.id, // Reference to Product record for context
         ...params.metadata
       }
     };

@@ -3,11 +3,59 @@ import { useMemo } from 'react';
 import { hasActiveAccess } from '@/components/files/fileAccessUtils';
 
 /**
+ * Centralized function to find user purchase for a product
+ * Handles both embedded purchase data and purchase arrays with polymorphic ID matching
+ * @param {Object} product - Product object
+ * @param {Array} userPurchases - Array of user purchases (optional)
+ * @returns {Object|null} Found purchase or null
+ */
+const findUserPurchaseForProduct = (product, userPurchases = []) => {
+  if (!product) return null;
+
+  // 1. Check embedded purchase first (ProductDetails style)
+  if (product.purchase) {
+    console.log(`🔍 Found embedded purchase for product ${product.id}:`, product.purchase);
+    return product.purchase;
+  }
+
+  // 2. Search in userPurchases array (ProductGrid style)
+  if (!userPurchases || userPurchases.length === 0) {
+    console.log(`🔍 No userPurchases array provided for product ${product.id}`);
+    return null;
+  }
+
+  const productId = product.id;
+  const entityId = product.entity_id;
+
+  console.log(`🔍 Searching for purchase - Product ID: ${productId}, Entity ID: ${entityId}`);
+  console.log(`🔍 Available purchases:`, userPurchases.length);
+
+  const foundPurchase = userPurchases.find(purchase => {
+    // Use polymorphic structure: purchasable_id (new) or product_id (legacy)
+    const purchaseEntityId = purchase.purchasable_id || purchase.product_id;
+    // Handle 'paid', 'completed', and 'cart' statuses
+    const isRelevant = ['paid', 'completed', 'cart', 'pending'].includes(purchase.payment_status);
+
+    // For polymorphic associations (tools, games, etc.), match against entity_id
+    // For legacy products, match against product ID
+    const matches = (purchaseEntityId === productId || purchaseEntityId === entityId) && isRelevant;
+
+    console.log(`  - Purchase ${purchase.id}: purchaseEntityId=${purchaseEntityId}, status=${purchase.payment_status}, matches=${matches}`);
+
+    return matches;
+  });
+
+  console.log(`🔍 Found purchase for product ${productId}:`, foundPurchase);
+  return foundPurchase;
+};
+
+/**
  * Hook to determine product access state and available actions
- * @param {Object} product - Product object with purchase data
+ * @param {Object} product - Product object with embedded purchase data OR product object
+ * @param {Array} userPurchases - Array of user purchases (optional, for ProductGrid style)
  * @returns {Object} Product access state and available actions
  */
-export const useProductAccess = (product) => {
+export const useProductAccess = (product, userPurchases = []) => {
   return useMemo(() => {
     if (!product) {
       return {
@@ -18,11 +66,13 @@ export const useProductAccess = (product) => {
         canPurchase: false,
         accessAction: null,
         purchaseAction: null,
-        productType: null
+        productType: null,
+        purchase: null
       };
     }
 
-    const purchase = product.purchase;
+    // Use centralized purchase finding logic
+    const purchase = findUserPurchaseForProduct(product, userPurchases);
     const productType = product.product_type || 'file';
     const isFree = !product.price || product.price === 0;
 
@@ -89,7 +139,7 @@ export const useProductAccess = (product) => {
       productType,
       purchase
     };
-  }, [product]);
+  }, [product, userPurchases]);
 };
 
 /**

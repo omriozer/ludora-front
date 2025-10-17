@@ -88,8 +88,6 @@ export default function ProductCatalog({ productType: propProductType }) {
     price: 'all',
     publishStatus: 'all',
     skillLevel: 'all',
-    complexity: 'all',
-    platform: 'all',
     sortBy: 'created_at',
     sortOrder: 'DESC'
   });
@@ -125,8 +123,6 @@ export default function ProductCatalog({ productType: propProductType }) {
       price: 'all',
       publishStatus: 'all',
       skillLevel: 'all',
-      complexity: 'all',
-      platform: 'all',
       sortBy: 'created_at',
       sortOrder: 'DESC'
     });

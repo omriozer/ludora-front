@@ -16,8 +16,10 @@ import PriceDisplayTag from "@/components/ui/PriceDisplayTag";
 import ProductActionBar from "@/components/ui/ProductActionBar";
 import FileAccessStatus from "@/components/files/FileAccessStatus";
 import { getSubjectColors } from "@/config/subjectColors";
+import { getToolCategoryLabel } from "@/config/toolCategories";
 import { isAdmin } from "@/lib/userUtils";
 import { useUser } from "@/contexts/UserContext";
+import { useProductAccess } from "@/hooks/useProductAccess";
 
 // Hebrew grade names constant
 export const HEBREW_GRADES = {
@@ -37,7 +39,7 @@ export const HEBREW_GRADES = {
 
 export default function ProductCard({
   product,
-  userPurchase,
+  userPurchases = [],
   onFileAccess,
   onPdfPreview,
   isExpanded = false,
@@ -48,17 +50,9 @@ export default function ProductCard({
   const { currentUser } = useUser();
   const [isHovered, setIsHovered] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  // Create enhanced product object with purchase data for useProductAccess hook
-  const enhancedProduct = useMemo(() => {
-    return {
-      ...product,
-      purchase: userPurchase || null
-    };
-  }, [product, userPurchase]);
 
-  const hasAccess = userPurchase && (userPurchase.payment_status === 'paid' || userPurchase.payment_status === 'completed') &&
-                   (!userPurchase.access_expires_at ||
-                    (userPurchase.access_expires_at && new Date(userPurchase.access_expires_at) > new Date()));
+  // Use centralized product access logic
+  const { hasAccess, isInCart, purchase } = useProductAccess(product, userPurchases);
 
   // Detect if device is mobile/touch
   useEffect(() => {
@@ -157,20 +151,7 @@ export default function ProductCard({
         return workshopParts.join(' • ') || 'הדרכה מקצועית';
 
       case 'tool':
-        const platform = product.type_attributes?.platform;
-        const complexity = product.type_attributes?.complexity;
-
-        const toolParts = [];
-        if (platform) {
-          const platformName = platform === 'web' ? 'דפדפן' : platform === 'windows' ? 'Windows' : platform === 'mac' ? 'Mac' : platform;
-          toolParts.push(platformName);
-        }
-        if (complexity) {
-          const complexityName = complexity === 'simple' ? 'פשוט' : complexity === 'medium' ? 'בינוני' : 'מורכב';
-          toolParts.push(complexityName);
-        }
-
-        return toolParts.join(' • ') || 'כלי דיגיטלי';
+        return 'כלי דיגיטלי';
 
       default:
         return '';
@@ -179,6 +160,11 @@ export default function ProductCard({
 
   // Get subject from type_attributes for study class display
   const getStudyClass = () => {
+    // For tools, use Hebrew category translation
+    if (product.product_type === 'tool' && product.category) {
+      return getToolCategoryLabel(product.category);
+    }
+    // For other types, use subject or fallback to category
     return product.type_attributes?.subject || product.category || '';
   };
 
@@ -372,7 +358,7 @@ export default function ProductCard({
             {/* Bottom: Action Buttons */}
             <div className="flex justify-center">
               <ProductActionBar
-                product={enhancedProduct}
+                product={{...product, purchase: purchase}}
                 size="default"
                 className="text-base font-semibold"
                 showCartButton={true}

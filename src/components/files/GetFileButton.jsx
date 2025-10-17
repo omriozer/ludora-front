@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { ShoppingCart } from "lucide-react";
 import { getApiBase } from "@/utils/api";
 import { apiDownload } from "@/services/apiClient";
-import { hasActiveAccess, getUserPurchaseForFile, getFileButtonText } from "./fileAccessUtils";
+import { useProductAccess } from "@/hooks/useProductAccess";
+import { getFileButtonText } from "./fileAccessUtils";
 
 export default function GetFileButton({
   file,
@@ -16,8 +17,11 @@ export default function GetFileButton({
   className = ""
 }) {
   // Get user purchase and access status using centralized logic
-  const userPurchase = getUserPurchaseForFile(file.id, userPurchases);
-  const hasAccess = hasActiveAccess(userPurchase);
+  const { hasAccess, purchase } = useProductAccess({
+    id: file.id,
+    entity_id: file.id,
+    product_type: 'file'
+  }, userPurchases);
   const buttonText = getFileButtonText(hasAccess);
 
   // Handle file access - using apiDownload for secure authenticated downloads

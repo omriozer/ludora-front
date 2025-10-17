@@ -17,25 +17,6 @@ export default function ProductGrid({
   currentUser,
   userPurchases = []
 }) {
-  // Helper function to get user purchase for a product (using polymorphic structure like PurchaseHistory)
-  const getUserPurchase = (productId) => {
-    console.log(`🔍 Looking for purchase for product ID: ${productId}`);
-    console.log(`🔍 Available purchases:`, userPurchases.length);
-
-    const foundPurchase = userPurchases.find(purchase => {
-      // Use polymorphic structure: purchasable_id (new) or product_id (legacy)
-      const entityId = purchase.purchasable_id || purchase.product_id;
-      // Handle both 'paid' and 'completed' statuses like PurchaseHistory does
-      const isSuccessful = purchase.payment_status === 'paid' || purchase.payment_status === 'completed';
-
-      console.log(`  - Purchase ${purchase.id}: entityId=${entityId}, status=${purchase.payment_status}, matches=${entityId === productId && isSuccessful}`);
-
-      return entityId === productId && isSuccessful;
-    });
-
-    console.log(`🔍 Found purchase for product ${productId}:`, foundPurchase);
-    return foundPurchase;
-  };
 
   // Enhanced file access logic with PDF viewer support (same as ProductDetails)
   const handleFileAccess = async (file) => {
@@ -145,8 +126,6 @@ export default function ProductGrid({
         columnClassName="pl-4 bg-clip-padding"
       >
       {products.map((product, index) => {
-        const userPurchase = getUserPurchase(product.id);
-
         return (
           <motion.div
             key={product.id}
@@ -156,7 +135,7 @@ export default function ProductGrid({
           >
             <ProductCard
               product={product}
-              userPurchase={userPurchase}
+              userPurchases={userPurchases}
               onFileAccess={handleFileAccess}
               onPdfPreview={handlePdfPreview}
               isExpanded={expandedCardId === product.id}
@@ -173,7 +152,11 @@ export default function ProductGrid({
         <PdfViewer
           fileId={selectedFile.entity_id || selectedFile.id}
           fileName={selectedFile.file_name || `${selectedFile.title}.pdf`}
-          hasAccess={getUserPurchase(selectedFile.id) ? true : false}
+          hasAccess={userPurchases.some(purchase => {
+            const purchaseEntityId = purchase.purchasable_id || purchase.product_id;
+            const isRelevant = ['paid', 'completed'].includes(purchase.payment_status);
+            return (purchaseEntityId === selectedFile.id || purchaseEntityId === selectedFile.entity_id) && isRelevant;
+          })}
           allowPreview={selectedFile.allow_preview}
           onClose={() => setPdfViewerOpen(false)}
         />

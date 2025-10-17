@@ -123,7 +123,12 @@ export default function Products() {
 
   // Helper function to check if a product type can be created
   const canCreateProductType = useCallback((productType) => {
-    // If not in content creator mode (admin access), all product types are allowed
+    // Tools cannot be created via UI - they are defined as constants in the Tool service class
+    if (productType === 'tool') {
+      return false;
+    }
+
+    // If not in content creator mode (admin access), all other product types are allowed
     if (!isContentCreatorMode) {
       return true;
     }
@@ -136,8 +141,6 @@ export default function Products() {
         return contentCreatorPermissions.courses;
       case 'file':
         return contentCreatorPermissions.files;
-      case 'tool':
-        return contentCreatorPermissions.tools;
       default:
         return false;
     }
