@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Settings } from '@/services/entities';
-import { getCurrentMonthAnalytics, getAllTimeAnalytics } from '@/components/utils/getUserGameAnalytics';
 import { getProductTypeName } from '@/config/productTypes';
 import { clog, cerror } from '@/lib/utils';
 import { useUser } from '@/contexts/UserContext';
@@ -21,34 +20,7 @@ export default function useProductCatalog(productType, filters, activeTab) {
   const [userPurchases, setUserPurchases] = useState([]);
   const [settings, setSettings] = useState(null);
   const [error, setError] = useState(null);
-  const [userAnalytics, setUserAnalytics] = useState({
-    allTime: { uniqueGames: 0, totalSessions: 0 },
-    currentMonth: { uniqueGames: 0, totalSessions: 0 }
-  });
 
-  // Load user analytics (for games only)
-  const loadUserAnalytics = useCallback(async (userId) => {
-    if (productType !== 'game') return;
-
-    clog('🔍 Loading user analytics for userId:', userId);
-
-    try {
-      const [allTimeData, currentMonthData] = await Promise.all([
-        getAllTimeAnalytics(userId),
-        getCurrentMonthAnalytics(userId)
-      ]);
-
-      clog('🔍 All time data:', allTimeData);
-      clog('🔍 Current month data:', currentMonthData);
-
-      setUserAnalytics({
-        allTime: allTimeData,
-        currentMonth: currentMonthData
-      });
-    } catch (error) {
-      cerror("Error loading user analytics:", error);
-    }
-  }, [productType]);
 
   // Get the Product service (unified for all product types)
   const getProductService = useCallback(async () => {
@@ -94,10 +66,6 @@ export default function useProductCatalog(productType, filters, activeTab) {
         isAuthenticated: !!currentUser
       });
 
-      // Load user analytics if user is logged in (games only)
-      if (currentUser?.id && productType === 'game') {
-        loadUserAnalytics(currentUser.id);
-      }
 
       // 2. Load all users for display names (needed for creator attribution)
       try {
@@ -264,7 +232,7 @@ export default function useProductCatalog(productType, filters, activeTab) {
       setProducts([]);
       setCategories([]);
     }
-  }, [productType, loadUserAnalytics, getProductService, getEntityService, currentUser]);
+  }, [productType, getProductService, getEntityService, currentUser]);
 
   // Filter products based on current filters and active tab
   useEffect(() => {
@@ -398,7 +366,6 @@ export default function useProductCatalog(productType, filters, activeTab) {
     settings,
     isLoading,
     error,
-    userAnalytics,
     loadData
   };
 }

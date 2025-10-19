@@ -174,31 +174,6 @@ function App() {
 							</ProtectedRoute>
 						}
 					/>
-					{/* Admin Games Management Routes */}
-					<Route
-						path='/admin/games'
-						element={
-							<AdminRoute>
-								<Pages.Games />
-							</AdminRoute>
-						}
-					/>
-					<Route
-						path='/admin/games/create'
-						element={
-							<AdminRoute>
-								<Pages.GameBuilder />
-							</AdminRoute>
-						}
-					/>
-					<Route
-						path='/admin/games/edit/:id'
-						element={
-							<AdminRoute>
-								<Pages.GameBuilder />
-							</AdminRoute>
-						}
-					/>
 
 					{/* Public Games Catalog */}
 					<Route
@@ -208,10 +183,6 @@ function App() {
 								<Pages.ProductCatalog productType='game' />
 							</ConditionalRoute>
 						}
-					/>
-					<Route
-						path='/launcher'
-						element={<Pages.GameLauncher />}
 					/>
 					<Route
 						path='/creator-signup'
@@ -354,30 +325,6 @@ function App() {
 						}
 					/>
 					<Route
-						path='/game-content'
-						element={
-							<AdminRoute>
-								<Pages.GameContentManagement />
-							</AdminRoute>
-						}
-					/>
-					<Route
-						path='/content-system'
-						element={
-							<AdminRoute>
-								<Pages.GameContentSystem />
-							</AdminRoute>
-						}
-					/>
-					<Route
-						path='/content-system/:gameId'
-						element={
-							<AdminRoute>
-								<Pages.GameContentSystem />
-							</AdminRoute>
-						}
-					/>
-					<Route
 						path='/features'
 						element={
 							<AdminRoute>
@@ -454,14 +401,6 @@ function App() {
 						element={
 							<AdminRoute>
 								<Pages.Documentation />
-							</AdminRoute>
-						}
-					/>
-					<Route
-						path='/admin/help/game-creation-tutorial'
-						element={
-							<AdminRoute>
-								<Pages.GameCreationTutorial />
 							</AdminRoute>
 						}
 					/>

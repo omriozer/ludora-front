@@ -25,11 +25,8 @@ import AiChat from './AiChat';
 import AdminSystemUsers from './AdminSystemUsers';
 import Users from './Users';
 import ApiTest from './ApiTest';
-import GameLauncher from './GameLauncher';
 import ContentCreatorSignup from './ContentCreatorSignup';
 import ContentCreatorPortal from './ContentCreatorPortal';
-import GameContentManagement from './GameContentManagement';
-import GameContentSystem from './GameContentSystem';
 import FeatureControl from './FeatureControl';
 import BrandSettings from './BrandSettings';
 import ProductSettings from './ProductSettings';
@@ -42,14 +39,12 @@ import MyClassrooms from './MyClassrooms';
 import SchoolManagement from './SchoolManagement';
 import ParentConsent from './ParentConsent';
 import StudentInvitations from './StudentInvitations';
-import GameBuilder from '../components/gameBuilder/GameBuilderV2';
 import CouponDashboard from './CouponDashboard';
 import CouponManagement from './CouponManagement';
 import CouponForm from './CouponForm';
 import CouponAnalytics from './CouponAnalytics';
 import BulkCouponGenerator from './BulkCouponGenerator';
 import AdminHelp from './AdminHelp';
-import GameCreationTutorial from './GameCreationTutorial';
 import Documentation from './Documentation';
 import ProductCatalog from '../components/catalog/ProductCatalog';
 
@@ -84,11 +79,8 @@ export {
   AdminSystemUsers,
   Users,
   ApiTest,
-  GameLauncher,
   ContentCreatorSignup,
   ContentCreatorPortal,
-  GameContentManagement,
-  GameContentSystem,
   FeatureControl,
   BrandSettings,
   ProductSettings,
@@ -101,9 +93,7 @@ export {
   SchoolManagement,
   ParentConsent,
   StudentInvitations,
-  GameBuilder,
   AdminHelp,
-  GameCreationTutorial,
   Documentation,
   CouponDashboard,
   CouponManagement,
