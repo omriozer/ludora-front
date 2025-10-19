@@ -1,6 +1,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { ShieldAlert, ArrowLeft } from "lucide-react";
+import Footer from "./Footer";
 
 export default function MaintenancePage({
   showReturnButton,
@@ -15,7 +16,7 @@ export default function MaintenancePage({
   isTemporaryIssue = false
 }) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex flex-col items-center justify-center p-4" dir="rtl">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex flex-col" dir="rtl">
       {/* Draggable Return Button - show when impersonating even in maintenance mode */}
       {showReturnButton && (
         <div
@@ -51,8 +52,10 @@ export default function MaintenancePage({
         <div className="absolute top-1/2 left-1/3 w-24 h-24 bg-yellow-500 rounded-full blur-2xl"></div>
       </div>
 
-      {/* Icon - CLICKABLE FOR ADMIN LOGIN */}
-      <div className="relative z-10 text-center max-w-md mx-auto">
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col items-center justify-center p-4">
+        {/* Icon - CLICKABLE FOR ADMIN LOGIN */}
+        <div className="relative z-10 text-center max-w-md mx-auto">
         <div className="mb-8">
           <div
             className="mx-auto w-24 h-24 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl flex items-center justify-center shadow-2xl transform rotate-3 cursor-pointer hover:scale-105 transition-transform duration-200"
@@ -92,14 +95,11 @@ export default function MaintenancePage({
             {isTemporaryIssue ? "מתקנים את הבעיה..." : "משדרגים את המערכת..."}
           </p>
         </div>
-
-        {/* Footer */}
-        <div className="mt-8 text-center">
-          <p className="text-gray-500 text-sm">
-            שאלות? צרו איתנו קשר במייל
-          </p>
         </div>
       </div>
+
+      {/* Footer */}
+      <Footer isMaintenanceMode={true} />
 
       {/* Floating Elements */}
       <div className="absolute top-16 right-16 opacity-20">
