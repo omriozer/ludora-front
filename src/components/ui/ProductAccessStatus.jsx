@@ -1,22 +1,18 @@
-// FileAccessStatus component - centralized access status display
+// ProductAccessStatus component - centralized access status display for all product types
 import React from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CheckCircle } from "lucide-react";
 import { useProductAccess } from "@/hooks/useProductAccess";
-import { getFileAccessStatus } from "./fileAccessUtils";
+import { getProductAccessStatus } from "@/utils/productAccessUtils";
 
-export default function FileAccessStatus({
-  file,
+export default function ProductAccessStatus({
+  product,
   userPurchases = [],
-  variant = "files", // "files" or "productDetails"
+  variant = "catalogCard", // "catalogCard" or "productDetails"
   className = ""
 }) {
-  const { hasAccess, purchase } = useProductAccess({
-    id: file.id,
-    entity_id: file.id,
-    product_type: 'file'
-  }, userPurchases);
-  const accessStatus = getFileAccessStatus(purchase);
+  const { hasAccess, purchase } = useProductAccess(product, userPurchases);
+  const accessStatus = getProductAccessStatus(purchase);
 
   if (!accessStatus.hasAccess) {
     return null;
@@ -43,7 +39,7 @@ export default function FileAccessStatus({
     );
   }
 
-  // Files page styling
+  // Catalog card styling
   return (
     <div className={`${getStatusStyles()} ${className}`}>
       <div className="font-medium">{accessStatus.statusText}</div>

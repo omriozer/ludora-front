@@ -95,6 +95,72 @@ export function UserProvider({ children }) {
     }
   }, []);
 
+  // Check if user needs onboarding
+  const needsOnboarding = useCallback((user) => {
+    if (!user) return false;
+
+    // Users with user_type set don't need onboarding
+    if (user.user_type && user.user_type !== null) return false;
+
+    // Check if user has pending invitations (they should go through invitation flow instead)
+    // This will be handled by checking for invitations in the onboarding component
+
+    return true; // User needs onboarding if user_type is null
+  }, []);
+
+  const checkUserSubscription = useCallback(async (user) => {
+    try {
+      // Don't auto-assign subscription if user needs onboarding
+      // Let the onboarding flow handle subscription selection
+      if (needsOnboarding(user)) {
+        clog('[UserContext] User needs onboarding, skipping auto-subscription assignment');
+        return user;
+      }
+
+      if (!user.current_subscription_plan_id || user.subscription_status !== 'active') {
+        clog('[UserContext] User has no active subscription, checking for free plans');
+
+        const allPlans = await SubscriptionPlan.find({ is_active: true });
+        const freePlans = allPlans.filter(plan =>
+          plan.plan_type === 'free' ||
+          plan.price === 0 ||
+          plan.price === '0' ||
+          plan.price === null
+        );
+
+        if (freePlans && freePlans.length > 0) {
+          const freePlan = freePlans[0];
+          const updatedUser = await User.update(user.uid || user.id, {
+            current_subscription_plan_id: freePlan.id,
+            subscription_status: 'active',
+            subscription_start_date: new Date().toISOString(),
+            subscription_end_date: null,
+            subscription_status_updated_at: new Date().toISOString()
+          });
+
+          // Record in subscription history
+          try {
+            await SubscriptionHistory.create({
+              user_id: user.id,
+              subscription_plan_id: freePlan.id,
+              action_type: 'started',
+              start_date: new Date().toISOString(),
+              metadata: JSON.stringify({ auto_assigned: true, plan_name: freePlan.name })
+            });
+          } catch (historyError) {
+            cerror('[UserContext] Error recording subscription history:', historyError);
+          }
+
+          return updatedUser;
+        }
+      }
+      return user;
+    } catch (error) {
+      cerror('[UserContext] Error checking subscription:', error);
+      return user;
+    }
+  }, [needsOnboarding]);
+
   const loadUserData = useCallback(async (user) => {
     try {
       clog('[UserContext] Loading user data for:', user.email);
@@ -121,53 +187,7 @@ export function UserProvider({ children }) {
       cerror('[UserContext] Error loading user data:', error);
       throw error;
     }
-  }, [settings]);
-
-  const checkUserSubscription = useCallback(async (user) => {
-    try {
-      if (!user.current_subscription_plan_id || user.subscription_status !== 'active') {
-        clog('[UserContext] User has no active subscription, checking for free plans');
-        
-        const allPlans = await SubscriptionPlan.find({ is_active: true });
-        const freePlans = allPlans.filter(plan => 
-          plan.plan_type === 'free' || 
-          plan.price === 0 || 
-          plan.price === '0' ||
-          plan.price === null
-        );
-        
-        if (freePlans && freePlans.length > 0) {
-          const freePlan = freePlans[0];
-          const updatedUser = await User.update(user.uid || user.id, {
-            current_subscription_plan_id: freePlan.id,
-            subscription_status: 'active',
-            subscription_start_date: new Date().toISOString(),
-            subscription_end_date: null,
-            subscription_status_updated_at: new Date().toISOString()
-          });
-          
-          // Record in subscription history
-          try {
-            await SubscriptionHistory.create({
-              user_id: user.id,
-              subscription_plan_id: freePlan.id,
-              action_type: 'started',
-              start_date: new Date().toISOString(),
-              metadata: JSON.stringify({ auto_assigned: true, plan_name: freePlan.name })
-            });
-          } catch (historyError) {
-            cerror('[UserContext] Error recording subscription history:', historyError);
-          }
-          
-          return updatedUser;
-        }
-      }
-      return user;
-    } catch (error) {
-      cerror('[UserContext] Error checking subscription:', error);
-      return user;
-    }
-  }, []);
+  }, [settings, checkUserSubscription]);
 
   const login = useCallback(async (userData, rememberMe = false) => {
     try {
@@ -232,10 +252,10 @@ export function UserProvider({ children }) {
   useEffect(() => {
     if (isAuthenticated) {
       const handleActivity = () => updateLastActivity();
-      
+
       document.addEventListener('click', handleActivity);
       document.addEventListener('keypress', handleActivity);
-      
+
       return () => {
         document.removeEventListener('click', handleActivity);
         document.removeEventListener('keypress', handleActivity);
@@ -252,7 +272,8 @@ export function UserProvider({ children }) {
     login,
     logout,
     updateUser,
-    clearAuth
+    clearAuth,
+    needsOnboarding
   };
 
   return (

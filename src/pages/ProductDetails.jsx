@@ -33,8 +33,8 @@ import VideoPlayer from "../components/VideoPlayer"; // Added import for VideoPl
 import SecureVideoPlayer from "../components/SecureVideoPlayer";
 import { getMarketingVideoUrl, getProductImageUrl } from '@/utils/videoUtils.js';
 import { getProductTypeName, formatGradeRange } from "@/config/productTypes";
-import FileAccessStatus from "@/components/files/FileAccessStatus";
-import { hasActiveAccess } from "@/components/files/fileAccessUtils";
+import ProductAccessStatus from "@/components/ui/ProductAccessStatus";
+import { hasActiveAccess } from "@/utils/productAccessUtils";
 import { purchaseUtils } from "@/utils/api.js";
 import PriceDisplayTag from "@/components/ui/PriceDisplayTag";
 import ProductActionBar from "@/components/ui/ProductActionBar";
@@ -461,8 +461,8 @@ export default function ProductDetails() {
                 {/* Access Status */}
                 {(itemType === 'file' || item.product_type === 'file') ? (
                   <div className="mb-4 sm:mb-6">
-                    <FileAccessStatus
-                      file={item}
+                    <ProductAccessStatus
+                      product={item}
                       userPurchases={userPurchases}
                       variant="productDetails"
                     />
@@ -543,8 +543,8 @@ export default function ProductDetails() {
                 {/* Access Status */}
                 {(itemType === 'file' || item.product_type === 'file') ? (
                   <div className="mb-4 sm:mb-6">
-                    <FileAccessStatus
-                      file={item}
+                    <ProductAccessStatus
+                      product={item}
                       userPurchases={userPurchases}
                       variant="productDetails"
                     />

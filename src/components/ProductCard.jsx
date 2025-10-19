@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import PriceDisplayTag from "@/components/ui/PriceDisplayTag";
 import ProductActionBar from "@/components/ui/ProductActionBar";
-import FileAccessStatus from "@/components/files/FileAccessStatus";
 import { getSubjectColors } from "@/config/subjectColors";
 import { getToolCategoryLabel } from "@/config/toolCategories";
 import { isAdmin } from "@/lib/userUtils";

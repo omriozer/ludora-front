@@ -1,6 +1,5 @@
 // Central business logic hook for product access and purchase states
 import { useMemo } from 'react';
-import { hasActiveAccess } from '@/components/files/fileAccessUtils';
 
 /**
  * Centralized function to find user purchase for a product
