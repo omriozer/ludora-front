@@ -1642,8 +1642,8 @@ export default function ProductModal({
                     <Label className="text-sm font-medium">מחיר (₪)</Label>
                     <Input
                       type="number"
-                      value={formData.price || ""}
-                      onChange={(e) => setFormData(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))}
+                      value={formData.price ?? ""}
+                      onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value === "" ? 0 : parseFloat(e.target.value) || 0 }))}
                       className="mt-1"
                     />
                   </div>
