@@ -436,6 +436,10 @@ export const StudentInvitation = new EntityAPI('studentinvitation');
 export const ParentConsent = new EntityAPI('parentconsent');
 export const ClassroomMembership = new EntityAPI('classroommembership');
 
+// Curriculum entities
+export const Curriculum = new EntityAPI('curriculum');
+export const CurriculumItem = new EntityAPI('curriculumitem');
+
 // User entity API with auth methods
 const UserEntityAPI = new EntityAPI('user');
 

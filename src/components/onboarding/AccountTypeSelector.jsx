@@ -10,6 +10,7 @@ import {
   CheckCircle,
   Info,
   ArrowRight,
+  ArrowLeft,
   AlertTriangle,
   Sparkles,
   Star,
@@ -17,7 +18,7 @@ import {
 } from 'lucide-react';
 import { clog } from '@/lib/utils';
 
-export default function AccountTypeSelector({ onComplete, onboardingData, currentUser }) {
+export default function AccountTypeSelector({ onComplete, onBack, onboardingData, currentUser }) {
   const [selectedType, setSelectedType] = useState(onboardingData?.accountType || '');
   const [error, setError] = useState('');
 
@@ -317,8 +318,23 @@ export default function AccountTypeSelector({ onComplete, onboardingData, curren
         </div>
       )}
 
-      {/* Modern Continue Button */}
-      <div className="text-center pt-6 md:pt-8">
+      {/* Enhanced Navigation Buttons */}
+      <div className="flex flex-col sm:flex-row gap-4 justify-between items-center pt-6 md:pt-8">
+        {/* Back Button */}
+        {onBack && (
+          <Button
+            onClick={onBack}
+            variant="outline"
+            size="lg"
+            className="px-6 md:px-8 py-3 md:py-4 text-base md:text-lg font-bold rounded-xl md:rounded-2xl border-2 border-gray-300 bg-white hover:bg-gray-50 text-gray-700 hover:text-gray-900 transition-all duration-300 transform hover:scale-105 shadow-lg"
+          >
+            <ArrowLeft className="w-5 h-5 md:w-6 md:h-6 ml-2" />
+            <span className="hidden sm:inline">חזור לשלב הקודם</span>
+            <span className="sm:hidden">חזור</span>
+          </Button>
+        )}
+
+        {/* Continue Button */}
         <Button
           onClick={handleContinue}
           disabled={!selectedType}
@@ -335,14 +351,15 @@ export default function AccountTypeSelector({ onComplete, onboardingData, curren
           <span className="hidden sm:inline">{selectedType ? 'בואו נמשיך למסע! 🚀' : 'בחר סוג חשבון כדי להמשיך'}</span>
           <span className="sm:hidden">{selectedType ? 'המשך! 🚀' : 'בחר חשבון'}</span>
         </Button>
-
-        {selectedType && (
-          <div className="mt-4 md:mt-6 bg-gradient-to-r from-green-100 to-emerald-100 border border-green-200 rounded-xl md:rounded-2xl p-3 md:p-4 animate-pulse">
-            <p className="text-green-800 font-bold text-base md:text-lg">מעולה! המשך להגדרת הפרטים שלך 🎉</p>
-            <p className="text-green-700 text-xs md:text-sm mt-1">בשלב הבא נגדיר את הפרופיל שלך כמורה ונתחיל ליצור את הכיתה הראשונה!</p>
-          </div>
-        )}
       </div>
+
+      {/* Success Message */}
+      {selectedType && (
+        <div className="mt-4 md:mt-6 bg-gradient-to-r from-green-100 to-emerald-100 border border-green-200 rounded-xl md:rounded-2xl p-3 md:p-4 animate-pulse">
+          <p className="text-green-800 font-bold text-base md:text-lg">מעולה! המשך להגדרת הפרטים שלך 🎉</p>
+          <p className="text-green-700 text-xs md:text-sm mt-1">בשלב הבא נגדיר את הפרופיל שלך כמורה ונתחיל ליצור את הכיתה הראשונה!</p>
+        </div>
+      )}
     </div>
   );
 }

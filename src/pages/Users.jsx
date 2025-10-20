@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { apiRequest } from '@/services/apiClient';
 import {
 	Users,
 	Search,
@@ -24,6 +25,8 @@ import {
 	RefreshCw,
 	Trash2, // Added for deleting pending subscriptions
 	PlusCircle, // Added for adding new pending subscriptions
+	Settings, // Added for AdminUserActionsModal
+	MoreHorizontal, // Added for Actions button
 } from 'lucide-react';
 import {
 	AlertDialog,
@@ -49,6 +52,7 @@ import { format } from 'date-fns'; // parseISO is not strictly needed if dates a
 import { he } from 'date-fns/locale';
 import { cn } from '@/lib/utils'; // Assuming cn utility is available for styling conditional classes
 import LudoraLoadingSpinner from "@/components/ui/LudoraLoadingSpinner";
+import AdminUserActionsModal from '@/components/AdminUserActionsModal';
 
 // Helper component for confirmation dialog
 function ConfirmationDialog({
@@ -444,6 +448,10 @@ export default function UsersPage() {
 	const [showManageSubscription, setShowManageSubscription] = useState(false);
 	const [userToManage, setUserToManage] = useState(null);
 
+	// New states for admin user actions modal
+	const [showUserActionsModal, setShowUserActionsModal] = useState(false);
+	const [selectedUser, setSelectedUser] = useState(null);
+
 	const fetchAdminDashboardData = useCallback(async () => {
 		setLoading(true);
 		try {
@@ -674,6 +682,55 @@ export default function UsersPage() {
 		}
 	};
 
+	// Handler for opening the admin user actions modal
+	const handleUserActionsClick = (user) => {
+		setSelectedUser(user);
+		setShowUserActionsModal(true);
+	};
+
+	// Handler for managing user subscription from modal
+	const handleManageSubscriptionFromModal = (user) => {
+		setUserToManage(user);
+		setShowManageSubscription(true);
+	};
+
+	// Handler for resetting user onboarding
+	const handleResetOnboarding = async (user) => {
+		try {
+			// Show confirmation dialog
+			const confirmed = window.confirm(
+				`האם אתה בטוח שברצונך לאפס את סטטוס ההכנה עבור ${user.display_name || user.full_name}?\n\n` +
+				`המשתמש יידרש להשלים את תהליך ההכנה שוב בכניסה הבאה למערכת.`
+			);
+
+			if (!confirmed) return;
+
+			setLoading(true);
+
+			// Call the API to reset onboarding using proper apiRequest function
+			const result = await apiRequest(`/entities/user/${user.id}/reset-onboarding`, {
+				method: 'PUT'
+			});
+
+			// Update the user in local state
+			setUsers(prevUsers =>
+				prevUsers.map(u =>
+					u.id === user.id
+						? { ...u, onboarding_completed: false }
+						: u
+				)
+			);
+
+			showMessage('success', `סטטוס ההכנה עבור ${user.display_name || user.full_name} אופס בהצלחה`);
+
+		} catch (error) {
+			console.error('Error resetting onboarding:', error);
+			showMessage('error', `שגיאה באיפוס ההכנה: ${error.message}`);
+		} finally {
+			setLoading(false);
+		}
+	};
+
 	const getSubscriptionPlanName = (planId) => {
 		if (!planId) return 'אין מנוי';
 		const plan = subscriptionPlans.find((p) => p.id === planId);
@@ -879,77 +936,15 @@ export default function UsersPage() {
 														</div>
 													</div>
 
-													<div className='flex flex-col sm:flex-row gap-2 min-w-fit'>
-														<Select
-															value={user.role}
-															onValueChange={(newRole) => handleRoleChange(user.id, newRole)}
-														>
-															<SelectTrigger className='w-32 z-[10000]'>
-																<SelectValue />
-															</SelectTrigger>
-															<SelectContent className='z-[10001] max-h-[200px] overflow-y-auto'>
-																{user.id !== currentUser?.id && <SelectItem value='user'>משתמש</SelectItem>}
-																<SelectItem value='admin'>מנהל</SelectItem>
-																<SelectItem value='sysadmin'>נאמן מערכת</SelectItem>
-															</SelectContent>
-														</Select>
-
-														{/* User Type Selector */}
-														<Select
-															value={user.user_type || 'none'}
-															onValueChange={(newUserType) => handleUserTypeChange(user.id, newUserType)}
-														>
-															<SelectTrigger className='w-32 z-[10000]'>
-																<SelectValue />
-															</SelectTrigger>
-															<SelectContent className='z-[10001] max-h-[200px] overflow-y-auto'>
-																<SelectItem value='none'>ללא סיווג</SelectItem>
-																<SelectItem value='teacher'>מורה</SelectItem>
-																<SelectItem value='student'>תלמיד</SelectItem>
-																<SelectItem value='parent'>הורה</SelectItem>
-																<SelectItem value='headmaster'>מנהל בית ספר</SelectItem>
-															</SelectContent>
-														</Select>
-
-														{/* Subscription Management button - available for ALL users */}
+													<div className='flex items-center justify-end'>
 														<Button
 															variant='outline'
 															size='sm'
-															onClick={() => {
-																setUserToManage(user);
-																setShowManageSubscription(true);
-															}}
-															className='flex items-center gap-2 whitespace-nowrap text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200'
-															title='ניהול מנוי משתמש'
+															onClick={() => handleUserActionsClick(user)}
+															className='flex items-center gap-2 text-gray-600 hover:text-gray-700 hover:bg-gray-50'
 														>
-															<Crown className='w-4 h-4 mr-2' />
-															ניהול מנוי
-														</Button>
-
-														<Button
-															variant='outline'
-															onClick={() => handleImpersonate(user)}
-															disabled={impersonationLoading === user.id}
-															className='flex items-center gap-2 whitespace-nowrap text-blue-600 hover:bg-blue-50'
-														>
-															{impersonationLoading === user.id ? (
-																<>
-																	<Loader2 className='w-4 h-4 mr-2 animate-spin' />
-																	מתחבר...
-																</>
-															) : (
-																<>
-																	<UserCheck className='w-4 h-4 mr-2' />
-																	התחבר בתור
-																</>
-															)}
-														</Button>
-
-														<Button
-															variant='ghost'
-															size='sm'
-														>
-															<Eye className='w-4 h-4' />
+															<MoreHorizontal className='w-4 h-4' />
+															פעולות
 														</Button>
 													</div>
 												</div>
@@ -1001,6 +996,32 @@ export default function UsersPage() {
 				isLoading={resetLoading === userToReset?.id}
 				variant='danger'
 			/>
+
+			{/* Admin User Actions Modal */}
+			{showUserActionsModal && selectedUser && (
+				<AdminUserActionsModal
+					user={selectedUser}
+					currentUser={currentUser}
+					isOpen={showUserActionsModal}
+					onClose={() => {
+						setShowUserActionsModal(false);
+						setSelectedUser(null);
+					}}
+					onRoleChange={handleRoleChange}
+					onUserTypeChange={handleUserTypeChange}
+					onManageSubscription={handleManageSubscriptionFromModal}
+					onImpersonate={handleImpersonate}
+					onResetOnboarding={handleResetOnboarding}
+					impersonationLoading={impersonationLoading}
+					getRoleText={getRoleText}
+					getUserTypeText={getUserTypeText}
+					getRoleBadgeColor={getRoleBadgeColor}
+					getUserTypeBadgeColor={getUserTypeBadgeColor}
+					getSubscriptionPlanName={getSubscriptionPlanName}
+					getSubscriptionStatusText={getSubscriptionStatusText}
+					getSubscriptionStatusColor={getSubscriptionStatusColor}
+				/>
+			)}
 		</div>
 	);
 }

@@ -99,13 +99,13 @@ export function UserProvider({ children }) {
   const needsOnboarding = useCallback((user) => {
     if (!user) return false;
 
-    // Users with user_type set don't need onboarding
-    if (user.user_type && user.user_type !== null) return false;
+    // Users with onboarding_completed true don't need onboarding
+    if (user.onboarding_completed === true) return false;
 
     // Check if user has pending invitations (they should go through invitation flow instead)
     // This will be handled by checking for invitations in the onboarding component
 
-    return true; // User needs onboarding if user_type is null
+    return true; // User needs onboarding if onboarding_completed is false
   }, []);
 
   const checkUserSubscription = useCallback(async (user) => {

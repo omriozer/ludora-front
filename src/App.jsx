@@ -174,7 +174,16 @@ function App() {
 							</ProtectedRoute>
 						}
 					/>
-
+					<Route
+						path='/curriculum'
+						element={
+							<ConditionalRoute visibilityField='nav_curriculum_visibility'>
+								<OnboardingRedirect>
+									<Pages.Curriculum />
+								</OnboardingRedirect>
+							</ConditionalRoute>
+						}
+					/>
 					{/* Public Games Catalog */}
 					<Route
 						path='/games'
@@ -246,6 +255,16 @@ function App() {
 							<ConditionalRoute visibilityField='nav_classrooms_visibility'>
 								<OnboardingRedirect>
 									<Pages.MyClassrooms />
+								</OnboardingRedirect>
+							</ConditionalRoute>
+						}
+					/>
+					<Route
+						path='/classroom/:classId/curriculum'
+						element={
+							<ConditionalRoute visibilityField='nav_classrooms_visibility'>
+								<OnboardingRedirect>
+									<Pages.ClassCurriculum />
 								</OnboardingRedirect>
 							</ConditionalRoute>
 						}

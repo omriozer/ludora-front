@@ -225,6 +225,14 @@ export const NAV_ITEMS = {
     description: 'פורטל יוצרי תוכן',
     specialVisibility: true,
     gradient: "from-indigo-500 via-purple-500 to-pink-600"
+  },
+  curriculum: {
+    key: 'curriculum',
+    url: '/curriculum',
+    text: 'תכניות לימודים',
+    defaultIcon: 'BookOpen',
+    description: 'ניהול תכניות לימודים לפי מקצועות וכיתות',
+    gradient: "from-blue-500 via-indigo-500 to-purple-600"
   }
 };
 

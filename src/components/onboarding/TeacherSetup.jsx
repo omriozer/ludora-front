@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,6 +14,7 @@ import {
   Users,
   CheckCircle,
   ArrowRight,
+  ArrowLeft,
   AlertCircle,
   Plus,
   Sparkles,
@@ -23,19 +24,85 @@ import {
   Zap,
   Phone,
   MessageSquare,
-  Briefcase,
   School,
   Trophy
 } from 'lucide-react';
 import { clog } from '@/lib/utils';
+import { getApiBase } from '@/utils/api.js';
 
-export default function TeacherSetup({ onComplete, onboardingData, currentUser }) {
+// Helper function to get appropriate emoji for each subject
+function getSubjectEmoji(key) {
+  const emojiMap = {
+    civics: '🏛️',
+    art: '🎨',
+    english: '🇺🇸',
+    biology: '🧬',
+    chemistry: '⚗️',
+    physics: '⚛️',
+    mathematics: '🔢',
+    history: '📚',
+    geography: '🌍',
+    literature: '📖',
+    hebrew: '🇮🇱',
+    arabic: '🇸🇦',
+    french: '🇫🇷',
+    physical_education: '⚽',
+    music: '🎵',
+    technology: '💻',
+    life_skills: '🛠️',
+    social_studies: '👥',
+    economics: '💰',
+    philosophy: '🤔',
+    bible_studies: '📜'
+  };
+  return emojiMap[key] || '📚';
+}
+
+// Static fallback arrays - defined outside component to prevent re-creation
+const FALLBACK_GRADE_LEVELS = [
+  { value: 'kindergarten', label: '🧸 גן חובה' },
+  { value: 'grade_1', label: '1️⃣ כיתה א' },
+  { value: 'grade_2', label: '2️⃣ כיתה ב' },
+  { value: 'grade_3', label: '3️⃣ כיתה ג' },
+  { value: 'grade_4', label: '4️⃣ כיתה ד' },
+  { value: 'grade_5', label: '5️⃣ כיתה ה' },
+  { value: 'grade_6', label: '6️⃣ כיתה ו' },
+  { value: 'grade_7', label: '7️⃣ כיתה ז' },
+  { value: 'grade_8', label: '8️⃣ כיתה ח' },
+  { value: 'grade_9', label: '9️⃣ כיתה ט' },
+  { value: 'grade_10', label: '🔟 כיתה י' },
+  { value: 'grade_11', label: '🎯 כיתה יא' },
+  { value: 'grade_12', label: '🎓 כיתה יב' }
+];
+
+const FALLBACK_SPECIALIZATIONS = [
+  { name: 'מתמטיקה', emoji: '🔢' },
+  { name: 'עברית', emoji: '📚' },
+  { name: 'אנגלית', emoji: '🇺🇸' },
+  { name: 'מדעים', emoji: '🔬' },
+  { name: 'היסטוריה', emoji: '🏛️' },
+  { name: 'גיאוגרפיה', emoji: '🌍' },
+  { name: 'ספורט', emoji: '⚽' },
+  { name: 'אמנות', emoji: '🎨' },
+  { name: 'מוזיקה', emoji: '🎵' },
+  { name: 'מחשבים', emoji: '💻' },
+  { name: 'פיזיקה', emoji: '⚛️' },
+  { name: 'כימיה', emoji: '🧪' },
+  { name: 'ביולוגיה', emoji: '🧬' },
+  { name: 'ספרות', emoji: '📖' },
+  { name: 'אזרחות', emoji: '🏛️' },
+  { name: 'פסיכולוגיה', emoji: '🧠' },
+  { name: 'חינוך מיוחד', emoji: '💙' },
+  { name: 'גן ילדים', emoji: '🧸' },
+  { name: 'חינוך מוקדם', emoji: '👶' },
+  { name: 'חינוך גופני', emoji: '🏃' }
+];
+
+export default function TeacherSetup({ onComplete, onBack, onboardingData, currentUser, settings }) {
   const [formData, setFormData] = useState({
     educationLevel: onboardingData?.teacherInfo?.education_level || '',
     phone: onboardingData?.teacherInfo?.phone || currentUser?.phone || '',
-    bio: onboardingData?.teacherInfo?.bio || '',
     specializations: onboardingData?.teacherInfo?.specializations || [],
-    experience: onboardingData?.teacherInfo?.experience || '',
     createFirstClassroom: onboardingData?.teacherInfo?.createFirstClassroom || false,
     firstClassroomName: onboardingData?.teacherInfo?.firstClassroomName || '',
     firstClassroomGrade: onboardingData?.teacherInfo?.firstClassroomGrade || '',
@@ -43,74 +110,87 @@ export default function TeacherSetup({ onComplete, onboardingData, currentUser }
   });
 
   const [error, setError] = useState('');
+  const [settingsData, setSettingsData] = useState(null);
+  const [isLoadingSettings, setIsLoadingSettings] = useState(true);
 
-  // Education level options based on User model
+  // Education level options based on User model validation constraints
   const educationLevels = [
-    { value: 'certificate', label: '📜 תעודה', icon: '📜' },
-    { value: 'diploma', label: '🎓 דיפלומה', icon: '🎓' },
-    { value: 'bachelor', label: '🎯 תואר ראשון (B.A/B.Sc)', icon: '🎯' },
-    { value: 'master', label: '⭐ תואר שני (M.A/M.Sc)', icon: '⭐' },
-    { value: 'doctorate', label: '👑 תואר שלישי (Ph.D)', icon: '👑' },
-    { value: 'other', label: '✨ אחר', icon: '✨' }
+    { value: 'no_education_degree', label: '📜 ללא תואר אקדמי', icon: '📜' },
+    { value: 'bachelor_education', label: '🎯 תואר ראשון (B.A/B.Sc/B.Ed)', icon: '🎯' },
+    { value: 'master_education', label: '⭐ תואר שני (M.A/M.Sc/M.Ed)', icon: '⭐' },
+    { value: 'phd_education', label: '👑 תואר שלישי (Ph.D)', icon: '👑' }
   ];
 
-  // Grade level options for classroom
-  const gradeLevels = [
-    { value: 'kindergarten', label: '🧸 גן חובה' },
-    { value: 'grade_1', label: '1️⃣ כיתה א' },
-    { value: 'grade_2', label: '2️⃣ כיתה ב' },
-    { value: 'grade_3', label: '3️⃣ כיתה ג' },
-    { value: 'grade_4', label: '4️⃣ כיתה ד' },
-    { value: 'grade_5', label: '5️⃣ כיתה ה' },
-    { value: 'grade_6', label: '6️⃣ כיתה ו' },
-    { value: 'grade_7', label: '7️⃣ כיתה ז' },
-    { value: 'grade_8', label: '8️⃣ כיתה ח' },
-    { value: 'grade_9', label: '9️⃣ כיתה ט' },
-    { value: 'grade_10', label: '🔟 כיתה י' },
-    { value: 'grade_11', label: '🎯 כיתה יא' },
-    { value: 'grade_12', label: '🎓 כיתה יב' }
-  ];
+  // Fetch settings data on component mount
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const response = await fetch(`${getApiBase()}/entities/settings`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          }
+        });
 
-  // Common specializations for teachers with emojis
-  const availableSpecializations = [
-    { name: 'מתמטיקה', emoji: '🔢' },
-    { name: 'עברית', emoji: '📚' },
-    { name: 'אנגלית', emoji: '🇺🇸' },
-    { name: 'מדעים', emoji: '🔬' },
-    { name: 'היסטוריה', emoji: '🏛️' },
-    { name: 'גיאוגרפיה', emoji: '🌍' },
-    { name: 'ספורט', emoji: '⚽' },
-    { name: 'אמנות', emoji: '🎨' },
-    { name: 'מוזיקה', emoji: '🎵' },
-    { name: 'מחשבים', emoji: '💻' },
-    { name: 'פיזיקה', emoji: '⚛️' },
-    { name: 'כימיה', emoji: '🧪' },
-    { name: 'ביולוגיה', emoji: '🧬' },
-    { name: 'ספרות', emoji: '📖' },
-    { name: 'אזרחות', emoji: '🏛️' },
-    { name: 'פסיכולוגיה', emoji: '🧠' },
-    { name: 'חינוך מיוחד', emoji: '💙' },
-    { name: 'גן ילדים', emoji: '🧸' },
-    { name: 'חינוך מוקדם', emoji: '👶' },
-    { name: 'חינוך גופני', emoji: '🏃' }
-  ];
+        if (response.ok) {
+          const data = await response.json();
+          const settingsRecord = data[0]; // Get the first settings record
+          clog('[TeacherSetup] Settings loaded:', settingsRecord);
+          setSettingsData(settingsRecord);
+        } else {
+          clog('[TeacherSetup] Failed to fetch settings, using fallback data');
+        }
+      } catch (error) {
+        clog('[TeacherSetup] Error fetching settings:', error);
+      } finally {
+        setIsLoadingSettings(false);
+      }
+    };
 
-  const handleInputChange = (field, value) => {
+    fetchSettings();
+  }, []);
+
+  // Use settings-driven data or fallback arrays
+  const gradeLevels = useMemo(() => {
+    if (settingsData?.available_grade_levels) {
+      return settingsData.available_grade_levels.filter(grade => grade.enabled);
+    }
+    return FALLBACK_GRADE_LEVELS;
+  }, [settingsData]);
+
+  const availableSpecializations = useMemo(() => {
+    if (settingsData?.available_specializations) {
+      return settingsData.available_specializations
+        .filter(spec => spec.enabled)
+        .map(spec => ({ name: spec.name, emoji: spec.emoji }));
+    }
+    return FALLBACK_SPECIALIZATIONS;
+  }, [settingsData]);
+
+  const handleInputChange = useCallback((field, value) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
     setError('');
-  };
+  }, []);
 
-  const handleSpecializationToggle = (specializationName) => {
-    setFormData(prev => ({
-      ...prev,
-      specializations: prev.specializations.includes(specializationName)
+  const handleSpecializationToggle = useCallback((specializationName) => {
+    console.log('[TeacherSetup] handleSpecializationToggle called for:', specializationName);
+
+    setFormData(prev => {
+      const newSpecializations = prev.specializations.includes(specializationName)
         ? prev.specializations.filter(s => s !== specializationName)
-        : [...prev.specializations, specializationName]
-    }));
-  };
+        : [...prev.specializations, specializationName];
+
+      console.log('[TeacherSetup] Current:', prev.specializations, '→ New:', newSpecializations);
+
+      return {
+        ...prev,
+        specializations: newSpecializations
+      };
+    });
+  }, []);
 
   const validateForm = () => {
     if (!formData.educationLevel) {
@@ -129,7 +209,7 @@ export default function TeacherSetup({ onComplete, onboardingData, currentUser }
     return null;
   };
 
-  const handleContinue = () => {
+  const handleContinue = useCallback(() => {
     const validationError = validateForm();
     if (validationError) {
       setError(validationError);
@@ -140,9 +220,7 @@ export default function TeacherSetup({ onComplete, onboardingData, currentUser }
     const teacherInfo = {
       education_level: formData.educationLevel,
       phone: formData.phone,
-      bio: formData.bio,
       specializations: formData.specializations,
-      experience: formData.experience,
       createFirstClassroom: formData.createFirstClassroom,
       firstClassroomName: formData.firstClassroomName,
       firstClassroomGrade: formData.firstClassroomGrade
@@ -153,7 +231,7 @@ export default function TeacherSetup({ onComplete, onboardingData, currentUser }
     onComplete({
       teacherInfo
     });
-  };
+  }, [formData, onComplete]);
 
   return (
     <div className="space-y-6 md:space-y-8">
@@ -243,20 +321,6 @@ export default function TeacherSetup({ onComplete, onboardingData, currentUser }
               />
             </div>
 
-            {/* Experience */}
-            <div className="space-y-2 md:space-y-3">
-              <Label htmlFor="experience" className="text-base md:text-lg font-bold text-blue-900 flex items-center gap-2">
-                <Briefcase className="w-4 h-4 md:w-5 md:h-5" />
-                ותק בהוראה (אופציונלי) 💼
-              </Label>
-              <Input
-                id="experience"
-                value={formData.experience}
-                onChange={(e) => handleInputChange('experience', e.target.value)}
-                placeholder="למשל: 5 שנים, מורה חדש, 15+ שנים"
-                className="h-12 md:h-14 text-base md:text-lg border-2 border-blue-200 focus:border-blue-500 rounded-xl md:rounded-2xl bg-white/80 shadow-md hover:shadow-lg transition-all duration-300"
-              />
-            </div>
 
           </CardContent>
         </Card>
@@ -297,22 +361,28 @@ export default function TeacherSetup({ onComplete, onboardingData, currentUser }
                         : 'bg-white/80 border-green-200 hover:border-green-300 hover:bg-green-50'
                       }
                     `}
-                    onClick={() => handleSpecializationToggle(specialization.name)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleSpecializationToggle(specialization.name);
+                    }}
                   >
-                    <Checkbox
+                    <input
+                      type="checkbox"
                       id={`spec-${specialization.name}`}
                       checked={formData.specializations.includes(specialization.name)}
-                      onCheckedChange={() => handleSpecializationToggle(specialization.name)}
-                      className="pointer-events-none"
+                      onChange={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleSpecializationToggle(specialization.name);
+                      }}
+                      className="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 focus:ring-2"
                     />
-                    <div className="flex items-center gap-1 md:gap-2 flex-1">
+                    <div className="flex items-center gap-1 md:gap-2 flex-1 pointer-events-none">
                       <span className="text-lg md:text-xl">{specialization.emoji}</span>
-                      <Label
-                        htmlFor={`spec-${specialization.name}`}
-                        className="text-xs md:text-sm font-medium cursor-pointer flex-1"
-                      >
+                      <span className="text-xs md:text-sm font-medium flex-1">
                         {specialization.name}
-                      </Label>
+                      </span>
                     </div>
                   </div>
                 ))}
@@ -326,31 +396,6 @@ export default function TeacherSetup({ onComplete, onboardingData, currentUser }
               )}
             </div>
 
-            {/* Enhanced Bio */}
-            <div className="space-y-2 md:space-y-3">
-              <Label htmlFor="bio" className="text-base md:text-lg font-bold text-green-900 flex items-center gap-2">
-                <MessageSquare className="w-4 h-4 md:w-5 md:h-5" />
-                על עצמך (אופציונלי) 💬
-              </Label>
-              <Textarea
-                id="bio"
-                value={formData.bio}
-                onChange={(e) => handleInputChange('bio', e.target.value)}
-                placeholder="ספר קצת על עצמך, הגישה שלך להוראה, תחומי עניין... 😊"
-                className="min-h-[100px] md:min-h-[120px] border-2 border-green-200 focus:border-green-500 rounded-xl md:rounded-2xl bg-white/80 shadow-md hover:shadow-lg transition-all duration-300 text-base md:text-lg"
-                maxLength={500}
-              />
-              <div className="flex justify-between items-center">
-                <p className="text-xs text-green-600 font-medium">
-                  {formData.bio?.length || 0}/500 תווים
-                </p>
-                <div className="flex items-center gap-1 text-xs text-green-600">
-                  <Heart className="w-3 h-3" />
-                  <span className="hidden sm:inline">שתף את הסיפור שלך</span>
-                  <span className="sm:hidden">סיפורך</span>
-                </div>
-              </div>
-            </div>
 
           </CardContent>
         </Card>
@@ -493,18 +538,35 @@ export default function TeacherSetup({ onComplete, onboardingData, currentUser }
           </div>
         )}
 
-        {/* Enhanced Continue Button */}
+        {/* Enhanced Navigation Buttons */}
         <div className="text-center pt-6 md:pt-8">
-          <Button
-            type="button"
-            onClick={handleContinue}
-            size="lg"
-            className="bg-gradient-to-r from-emerald-500 via-blue-500 to-purple-600 hover:from-emerald-600 hover:via-blue-600 hover:to-purple-700 text-white px-8 md:px-16 py-3 md:py-4 text-lg md:text-xl font-bold rounded-2xl md:rounded-3xl shadow-2xl transition-all duration-300 transform hover:scale-105 hover:shadow-emerald-500/25"
-          >
-            <CheckCircle className="w-5 h-5 md:w-7 md:h-7 ml-2" />
-            <span className="hidden sm:inline">בואו נמשיך! השלב הבא מחכה! 🚀</span>
-            <span className="sm:hidden">בואו נמשיך! 🚀</span>
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-4 justify-between items-center">
+            {/* Back Button */}
+            {onBack && (
+              <Button
+                onClick={onBack}
+                variant="outline"
+                size="lg"
+                className="px-6 md:px-8 py-3 md:py-4 text-base md:text-lg font-bold rounded-xl md:rounded-2xl border-2 border-gray-300 bg-white hover:bg-gray-50 text-gray-700 hover:text-gray-900 transition-all duration-300 transform hover:scale-105 shadow-lg"
+              >
+                <ArrowLeft className="w-5 h-5 md:w-6 md:h-6 ml-2" />
+                <span className="hidden sm:inline">חזור לשלב הקודם</span>
+                <span className="sm:hidden">חזור</span>
+              </Button>
+            )}
+
+            {/* Continue Button */}
+            <Button
+              type="button"
+              onClick={handleContinue}
+              size="lg"
+              className="bg-gradient-to-r from-emerald-500 via-blue-500 to-purple-600 hover:from-emerald-600 hover:via-blue-600 hover:to-purple-700 text-white px-8 md:px-16 py-3 md:py-4 text-lg md:text-xl font-bold rounded-2xl md:rounded-3xl shadow-2xl transition-all duration-300 transform hover:scale-105 hover:shadow-emerald-500/25"
+            >
+              <CheckCircle className="w-5 h-5 md:w-7 md:h-7 ml-2" />
+              <span className="hidden sm:inline">בואו נמשיך! השלב הבא מחכה! 🚀</span>
+              <span className="sm:hidden">בואו נמשיך! 🚀</span>
+            </Button>
+          </div>
 
           <div className="mt-4 md:mt-6 bg-gradient-to-r from-emerald-100 to-blue-100 border border-emerald-200 rounded-xl md:rounded-2xl p-3 md:p-4">
             <p className="text-emerald-800 font-bold text-base md:text-lg flex items-center justify-center gap-2">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Gamepad2,
@@ -25,6 +25,127 @@ import {
   Brain
 } from "lucide-react";
 
+// Move static data outside component to prevent recreating on every render
+const sizeConfig = {
+  sm: {
+    spinner: "w-16 h-16",
+    text: "text-sm",
+    particles: 8,
+    icons: 4,
+    containerSize: "w-32 h-32"
+  },
+  md: {
+    spinner: "w-20 h-20",
+    text: "text-base",
+    particles: 12,
+    icons: 6,
+    containerSize: "w-40 h-40"
+  },
+  lg: {
+    spinner: "w-24 h-24",
+    text: "text-lg",
+    particles: 16,
+    icons: 8,
+    containerSize: "w-48 h-48"
+  },
+  xl: {
+    spinner: "w-32 h-32",
+    text: "text-xl",
+    particles: 20,
+    icons: 10,
+    containerSize: "w-56 h-56"
+  }
+};
+
+const themes = {
+  educational: {
+    colors: {
+      primary: "from-blue-500 via-indigo-500 to-purple-600",
+      secondary: "from-emerald-400 via-teal-500 to-cyan-600",
+      accent: "from-amber-400 via-orange-500 to-red-500",
+      background: "from-blue-50 via-indigo-50 to-purple-50"
+    },
+    icon: GraduationCap,
+    floatingIcons: [BookOpen, Lightbulb, Brain, Calculator, Globe, Puzzle],
+    name: "educational"
+  },
+  science: {
+    colors: {
+      primary: "from-green-400 via-emerald-500 to-teal-600",
+      secondary: "from-blue-400 via-cyan-500 to-teal-600",
+      accent: "from-yellow-400 via-amber-500 to-orange-500",
+      background: "from-emerald-50 via-teal-50 to-cyan-50"
+    },
+    icon: Microscope,
+    floatingIcons: [Atom, Microscope, Globe, Lightbulb, Target, Rocket],
+    name: "science"
+  },
+  creative: {
+    colors: {
+      primary: "from-pink-400 via-rose-500 to-red-500",
+      secondary: "from-purple-400 via-violet-500 to-indigo-500",
+      accent: "from-yellow-400 via-amber-500 to-orange-500",
+      background: "from-pink-50 via-rose-50 to-orange-50"
+    },
+    icon: Palette,
+    floatingIcons: [Palette, Music, PenTool, Heart, Star, Sparkles],
+    name: "creative"
+  },
+  gaming: {
+    colors: {
+      primary: "from-violet-500 via-purple-600 to-indigo-700",
+      secondary: "from-cyan-400 via-blue-500 to-indigo-600",
+      accent: "from-lime-400 via-green-500 to-emerald-600",
+      background: "from-violet-50 via-purple-50 to-indigo-50"
+    },
+    icon: Gamepad2,
+    floatingIcons: [Gamepad2, Trophy, Target, Zap, Star, Puzzle],
+    name: "gaming"
+  },
+  arcade: {
+    colors: {
+      primary: "from-yellow-400 via-orange-500 to-red-500",
+      secondary: "from-blue-400 via-purple-500 to-pink-500",
+      accent: "from-green-400 to-emerald-500",
+      background: "from-yellow-50 via-orange-50 to-red-50"
+    },
+    icon: Gamepad2,
+    floatingIcons: [Gamepad2, Trophy, Star, Zap, Target, Sparkles],
+    name: "arcade"
+  },
+  neon: {
+    colors: {
+      primary: "from-cyan-400 via-blue-500 to-purple-600",
+      secondary: "from-pink-400 via-purple-500 to-indigo-600",
+      accent: "from-emerald-400 to-teal-500",
+      background: "from-slate-800 via-gray-900 to-black"
+    },
+    icon: Zap,
+    floatingIcons: [Zap, Star, Sparkles, Target, Trophy, Rocket],
+    name: "neon"
+  },
+  space: {
+    colors: {
+      primary: "from-indigo-400 via-purple-500 to-pink-500",
+      secondary: "from-blue-400 via-indigo-500 to-purple-600",
+      accent: "from-yellow-400 to-orange-500",
+      background: "from-slate-900 via-purple-900 to-indigo-900"
+    },
+    icon: Rocket,
+    floatingIcons: [Rocket, Star, Globe, Atom, Zap, Target],
+    name: "space"
+  }
+};
+
+const ludoraLetters = [
+  { letter: 'L', color: 'from-teal-400 via-teal-500 to-cyan-600', delay: 0 },
+  { letter: 'U', color: 'from-cyan-400 via-blue-400 to-teal-500', delay: 0.1 },
+  { letter: 'D', color: 'from-yellow-400 via-amber-500 to-yellow-600', delay: 0.2 },
+  { letter: 'O', color: 'from-orange-400 via-orange-500 to-amber-600', delay: 0.3 },
+  { letter: 'R', color: 'from-orange-500 via-red-500 to-pink-600', delay: 0.4 },
+  { letter: 'A', color: 'from-pink-500 via-rose-500 to-red-600', delay: 0.5 }
+];
+
 const LudoraLoadingSpinner = ({
   message = "טוען...",
   status = "loading", // 'loading', 'success', 'error'
@@ -39,132 +160,9 @@ const LudoraLoadingSpinner = ({
   const [floatingIcons, setFloatingIcons] = useState([]);
   const [activeLetter, setActiveLetter] = useState(0);
 
-  // Enhanced size configurations
-  const sizeConfig = {
-    sm: {
-      spinner: "w-16 h-16",
-      text: "text-sm",
-      particles: 8,
-      icons: 4,
-      containerSize: "w-32 h-32"
-    },
-    md: {
-      spinner: "w-20 h-20",
-      text: "text-base",
-      particles: 12,
-      icons: 6,
-      containerSize: "w-40 h-40"
-    },
-    lg: {
-      spinner: "w-24 h-24",
-      text: "text-lg",
-      particles: 16,
-      icons: 8,
-      containerSize: "w-48 h-48"
-    },
-    xl: {
-      spinner: "w-32 h-32",
-      text: "text-xl",
-      particles: 20,
-      icons: 10,
-      containerSize: "w-56 h-56"
-    }
-  };
-
-  const config = sizeConfig[size] || sizeConfig.md;
-
-  // Enhanced educational themes
-  const themes = {
-    educational: {
-      colors: {
-        primary: "from-blue-500 via-indigo-500 to-purple-600",
-        secondary: "from-emerald-400 via-teal-500 to-cyan-600",
-        accent: "from-amber-400 via-orange-500 to-red-500",
-        background: "from-blue-50 via-indigo-50 to-purple-50"
-      },
-      icon: GraduationCap,
-      floatingIcons: [BookOpen, Lightbulb, Brain, Calculator, Globe, Puzzle],
-      name: "educational"
-    },
-    science: {
-      colors: {
-        primary: "from-green-400 via-emerald-500 to-teal-600",
-        secondary: "from-blue-400 via-cyan-500 to-teal-600",
-        accent: "from-yellow-400 via-amber-500 to-orange-500",
-        background: "from-emerald-50 via-teal-50 to-cyan-50"
-      },
-      icon: Microscope,
-      floatingIcons: [Atom, Microscope, Globe, Lightbulb, Target, Rocket],
-      name: "science"
-    },
-    creative: {
-      colors: {
-        primary: "from-pink-400 via-rose-500 to-red-500",
-        secondary: "from-purple-400 via-violet-500 to-indigo-500",
-        accent: "from-yellow-400 via-amber-500 to-orange-500",
-        background: "from-pink-50 via-rose-50 to-orange-50"
-      },
-      icon: Palette,
-      floatingIcons: [Palette, Music, PenTool, Heart, Star, Sparkles],
-      name: "creative"
-    },
-    gaming: {
-      colors: {
-        primary: "from-violet-500 via-purple-600 to-indigo-700",
-        secondary: "from-cyan-400 via-blue-500 to-indigo-600",
-        accent: "from-lime-400 via-green-500 to-emerald-600",
-        background: "from-violet-50 via-purple-50 to-indigo-50"
-      },
-      icon: Gamepad2,
-      floatingIcons: [Gamepad2, Trophy, Target, Zap, Star, Puzzle],
-      name: "gaming"
-    },
-    arcade: {
-      colors: {
-        primary: "from-yellow-400 via-orange-500 to-red-500",
-        secondary: "from-blue-400 via-purple-500 to-pink-500",
-        accent: "from-green-400 to-emerald-500",
-        background: "from-yellow-50 via-orange-50 to-red-50"
-      },
-      icon: Gamepad2,
-      floatingIcons: [Gamepad2, Trophy, Star, Zap, Target, Sparkles],
-      name: "arcade"
-    },
-    neon: {
-      colors: {
-        primary: "from-cyan-400 via-blue-500 to-purple-600",
-        secondary: "from-pink-400 via-purple-500 to-indigo-600",
-        accent: "from-emerald-400 to-teal-500",
-        background: "from-slate-800 via-gray-900 to-black"
-      },
-      icon: Zap,
-      floatingIcons: [Zap, Star, Sparkles, Target, Trophy, Rocket],
-      name: "neon"
-    },
-    space: {
-      colors: {
-        primary: "from-indigo-400 via-purple-500 to-pink-500",
-        secondary: "from-blue-400 via-indigo-500 to-purple-600",
-        accent: "from-yellow-400 to-orange-500",
-        background: "from-slate-900 via-purple-900 to-indigo-900"
-      },
-      icon: Rocket,
-      floatingIcons: [Rocket, Star, Globe, Atom, Zap, Target],
-      name: "space"
-    }
-  };
-
-  const currentTheme = themes[theme] || themes.educational;
-
-  // Ludora letters configuration
-  const ludoraLetters = [
-    { letter: 'L', color: 'from-teal-400 via-teal-500 to-cyan-600', delay: 0 },
-    { letter: 'U', color: 'from-cyan-400 via-blue-400 to-teal-500', delay: 0.1 },
-    { letter: 'D', color: 'from-yellow-400 via-amber-500 to-yellow-600', delay: 0.2 },
-    { letter: 'O', color: 'from-orange-400 via-orange-500 to-amber-600', delay: 0.3 },
-    { letter: 'R', color: 'from-orange-500 via-red-500 to-pink-600', delay: 0.4 },
-    { letter: 'A', color: 'from-pink-500 via-rose-500 to-red-600', delay: 0.5 }
-  ];
+  // Use useMemo to prevent infinite re-renders
+  const config = useMemo(() => sizeConfig[size] || sizeConfig.md, [size]);
+  const currentTheme = useMemo(() => themes[theme] || themes.educational, [theme]);
 
   // Initialize floating icons
   useEffect(() => {
@@ -178,7 +176,7 @@ const LudoraLoadingSpinner = ({
       }));
       setFloatingIcons(icons);
     }
-  }, [status, showParticles, currentTheme, config.icons]);
+  }, [status, showParticles, currentTheme.floatingIcons, config.icons]);
 
   // Letter cycling animation
   useEffect(() => {
@@ -188,7 +186,7 @@ const LudoraLoadingSpinner = ({
       }, 600); // Change active letter every 600ms
       return () => clearInterval(interval);
     }
-  }, [status, showLogo, ludoraLetters.length]);
+  }, [status, showLogo]); // Remove ludoraLetters.length since it's constant
 
   useEffect(() => {
     if (status === "loading") {

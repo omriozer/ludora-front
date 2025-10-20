@@ -594,7 +594,7 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
 
       {/* Main Modal - Full Screen */}
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-none w-screen h-screen max-h-none m-0 p-0 bg-white" dir="rtl">
+        <DialogContent className="max-w-none w-screen h-screen max-h-none m-0 p-0 bg-white" hideCloseButton={true} dir="rtl">
           {paymentInProgress ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center py-12 px-4">
@@ -631,9 +631,9 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
                           variant="ghost"
                           size="icon"
                           onClick={onClose}
-                          className="text-white hover:bg-white/20 rounded-full w-12 h-12"
+                          className="text-white hover:bg-white/20 rounded-full w-12 h-12 relative"
                         >
-                          <X className="w-6 h-6" />
+                          <X className="w-6 h-6 text-white" />
                         </Button>
                       )}
                     </div>
@@ -679,7 +679,7 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
                           const discountedPrice = calculateDiscountedPrice(plan);
                           const hasDiscount = plan.has_discount && plan.discount_value && plan.price > 0;
                           const isCurrent = isCurrentPlan(plan);
-                          const isFree = plan.price === 0;
+                          const isFree = plan.price == 0;
 
                           return (
                             <Card key={plan.id} className={`relative group hover:shadow-2xl transition-all duration-500 border-2 ${
@@ -756,7 +756,7 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
 
                                     <div className="flex items-baseline justify-center gap-1 mb-2">
                                       {isFree ? (
-                                        <span className="text-5xl font-bold text-blue-600">חינם</span>
+                                        <span className="text-5xl font-bold text-blue-600">חינם!</span>
                                       ) : (
                                         <>
                                           {hasDiscount && (
@@ -794,7 +794,7 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
 
                                     <div className="space-y-3">
                                       {/* Games Access */}
-                                      <div className={`flex items-start gap-3 p-3 rounded-xl transition-all ${
+                                      <div className={`flex items-start gap-5 p-5 rounded-xl transition-all ${
                                         plan.benefits?.games_access?.enabled ?
                                         isFree ? 'bg-blue-50 border border-blue-200' : 'bg-green-50 border border-green-100' :
                                         'bg-gray-50 border border-gray-100 opacity-50'}`}>

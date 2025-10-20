@@ -29,6 +29,7 @@ import {
   ChevronRight,  // Added from outline
   Globe,         // Added from outline
   School,        // Added for school management feature
+  BookOpen,      // Added for curriculum management
   HelpCircle     // Added for help system
 } from "lucide-react";
 import { showSuccess, showError } from '@/utils/messaging';

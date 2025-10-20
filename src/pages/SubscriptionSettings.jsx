@@ -129,10 +129,24 @@ export default function SubscriptionSettings() {
 
   // Format price function
   const formatPrice = (price) => {
-    if (Number.isInteger(price)) {
-      return price.toString();
+    // Handle null, undefined, or non-numeric values
+    if (price === null || price === undefined || isNaN(price)) {
+      return '0';
     }
-    return price.toFixed(2);
+
+    // Convert to number if it's a string
+    const numPrice = typeof price === 'string' ? parseFloat(price) : price;
+
+    // Handle invalid numbers
+    if (isNaN(numPrice)) {
+      return '0';
+    }
+
+    // Format the price
+    if (Number.isInteger(numPrice)) {
+      return numPrice.toString();
+    }
+    return numPrice.toFixed(2);
   };
 
   const resetForm = () => {

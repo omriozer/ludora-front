@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { User, Settings, SubscriptionPlan, Classroom, ClassroomMembership, StudentInvitation } from "@/services/entities";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -25,6 +26,7 @@ import InviteStudentsModal from "../components/classrooms/InviteStudentsModal";
 import StudentsListModal from "../components/classrooms/StudentsListModal";
 
 export default function MyClassrooms() {
+  const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState(null);
   const [settings, setSettings] = useState(null);
   const [subscriptionPlans, setSubscriptionPlans] = useState([]);
@@ -184,6 +186,10 @@ export default function MyClassrooms() {
   const handleViewStudents = (classroom) => {
     setSelectedClassroomForStudents(classroom);
     setShowStudentsModal(true);
+  };
+
+  const handleViewCurriculum = (classroom) => {
+    navigate(`/classroom/${classroom.id}/curriculum`);
   };
 
   const handleClassroomSubmit = async (classroomData) => {
@@ -386,15 +392,26 @@ export default function MyClassrooms() {
                         </Button>
                       </div>
                       
-                      <Button
-                        onClick={() => handleInviteStudents(classroom)}
-                        variant="outline"
-                        size="sm"
-                        className="w-full text-blue-600 border-blue-200 hover:bg-blue-50"
-                      >
-                        <UserPlus className="w-4 h-4 ml-2" />
-                        הזמן תלמידים
-                      </Button>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button
+                          onClick={() => handleViewCurriculum(classroom)}
+                          variant="outline"
+                          size="sm"
+                          className="text-green-600 border-green-200 hover:bg-green-50"
+                        >
+                          <BookOpen className="w-4 h-4 ml-2" />
+                          תכנית לימודים
+                        </Button>
+                        <Button
+                          onClick={() => handleInviteStudents(classroom)}
+                          variant="outline"
+                          size="sm"
+                          className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                        >
+                          <UserPlus className="w-4 h-4 ml-2" />
+                          הזמן תלמידים
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

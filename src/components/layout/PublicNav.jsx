@@ -171,6 +171,21 @@ function getNavigationItems({ currentUser, settings, isActualAdmin, isContentCre
         }
         break;
       }
+      case 'curriculum': {
+        const curriculumVisibility = settings?.nav_curriculum_visibility || 'logged_in_users';
+        if (canUserSeeItem(curriculumVisibility, currentUser, isActualAdmin, isContentCreator)) {
+          const iconName = settings?.nav_curriculum_icon || navItemConfig.defaultIcon;
+          const IconComponent = iconMap[iconName] || BookOpen;
+          navItems.push({
+            title: settings?.nav_curriculum_text || navItemConfig.text,
+            url: navItemConfig.url,
+            icon: IconComponent,
+            isAdminOnly: curriculumVisibility === 'admin_only',
+            gradient: navItemConfig.gradient
+          });
+        }
+        break;
+      }
       default:
         break;
     }

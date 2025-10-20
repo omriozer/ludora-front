@@ -30,7 +30,7 @@ export default function Footer({ isMaintenanceMode = false }) {
   const footerTexts = {
     description: `פלטפורמה מתקדמת ל${getProductTypeName('game', 'plural')} חינוכיים ו${getProductTypeName('tool', 'plural')} דיגיטליים`, // This specific text is no longer used for the main description, but kept for consistency if other parts might reference it.
     importantLinks: "קישורים חשובים",
-    contactUs: "צרי קשר",
+    contactUs: "יצירת קשר",
     contactDescription: "לשאלות, תמיכה או כל דבר אחר.",
     sendMessage: "לשליחת פנייה",
     whatsappMessage: "שליחה בוואצאפ",

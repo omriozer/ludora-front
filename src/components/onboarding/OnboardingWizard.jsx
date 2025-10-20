@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '@/contexts/UserContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { clog, cerror } from '@/lib/utils';
 import { toast } from '@/components/ui/use-toast';
-import { User, Classroom, StudentInvitation } from '@/services/apiClient';
+import { User, Classroom, SubscriptionHistory } from '@/services/apiClient';
 
 // Import step components (to be created)
 import AgeVerification from './AgeVerification';
@@ -92,68 +92,265 @@ export default function OnboardingWizard() {
   // Check if user is admin
   const isAdmin = currentUser?.isAdmin?.() || currentUser?.role === 'admin';
 
+  // Load existing user data to pre-populate onboarding forms
+  const loadExistingUserData = useCallback(async () => {
+    if (!currentUser) return;
+
+    try {
+      clog('[OnboardingWizard] Loading existing user data for pre-population');
+
+      // Debug current user data
+      clog('[OnboardingWizard] 🔍 Current user object:', currentUser);
+      clog('[OnboardingWizard] 🎂 Birth date field:', currentUser.birth_date);
+      clog('[OnboardingWizard] 📋 All user fields:', Object.keys(currentUser));
+
+      // Build onboarding data from existing user fields
+      const existingData = {
+        // Age verification step
+        birthDate: currentUser.birth_date || null,
+        hasCompletedAgeVerification: !!currentUser.birth_date,
+
+        // Account type step
+        accountType: currentUser.user_type || '',
+        hasCompletedAccountSetup: !!currentUser.user_type,
+
+        // Teacher setup step
+        teacherInfo: {
+          education_level: currentUser.education_level || '',
+          phone: currentUser.phone || '',
+          specializations: currentUser.specializations || [],
+          createFirstClassroom: false, // This is a form-only field, not persisted
+          firstClassroomName: '',      // This is a form-only field, not persisted
+          firstClassroomGrade: ''      // This is a form-only field, not persisted
+        },
+        hasCompletedTeacherSetup: !!(currentUser.user_type === 'teacher' &&
+          (currentUser.education_level || currentUser.phone || currentUser.specializations?.length > 0)),
+
+        // Subscription step
+        subscriptionPlan: null, // This will be handled by subscription logic
+        hasCompletedSubscription: false // This is not persisted, let subscription flow handle it
+      };
+
+      setOnboardingData(existingData);
+      clog('[OnboardingWizard] Pre-populated onboarding data:', existingData);
+
+      // Debug step calculation
+      clog('[OnboardingWizard] 🔍 STEP CALCULATION DEBUG:');
+      clog('[OnboardingWizard] - User birth_date:', currentUser.birth_date);
+      clog('[OnboardingWizard] - User user_type:', currentUser.user_type);
+      clog('[OnboardingWizard] - User education_level:', currentUser.education_level);
+      clog('[OnboardingWizard] - hasCompletedAgeVerification:', existingData.hasCompletedAgeVerification);
+      clog('[OnboardingWizard] - hasCompletedAccountSetup:', existingData.hasCompletedAccountSetup);
+      clog('[OnboardingWizard] - hasCompletedTeacherSetup:', existingData.hasCompletedTeacherSetup);
+      clog('[OnboardingWizard] - accountType:', existingData.accountType);
+      clog('[OnboardingWizard] - subscription_system_enabled:', settings?.subscription_system_enabled);
+
+      // Determine what step the user should be on based on completed data
+      let appropriateStep = 0;
+
+      if (!existingData.hasCompletedAgeVerification) {
+        // No birth date - start at age verification
+        appropriateStep = 0;
+        clog('[OnboardingWizard] ❌ CONDITION 1: No birth date found - starting at step 0 (age verification)');
+      } else if (!existingData.hasCompletedAccountSetup) {
+        // Has birth date but no user type - go to account type selection
+        appropriateStep = 1;
+        clog('[OnboardingWizard] ❌ CONDITION 2: Has birth date but no user type - starting at step 1 (account type)');
+      } else if (existingData.accountType === 'teacher' && !existingData.hasCompletedTeacherSetup) {
+        // Is teacher but missing teacher info - go to teacher setup
+        appropriateStep = 2;
+        clog('[OnboardingWizard] ✅ CONDITION 3: Is teacher but missing teacher info - starting at step 2 (teacher setup)');
+      } else if (existingData.accountType === 'teacher' && existingData.hasCompletedTeacherSetup) {
+        // Teacher with all data - go to subscription or complete
+        if (settings?.subscription_system_enabled) {
+          appropriateStep = 3; // Subscription step (for teachers: 0=age, 1=account, 2=teacher, 3=subscription)
+          clog('[OnboardingWizard] ✅ CONDITION 4A: Teacher with complete data - starting at step 3 (subscription)');
+        } else {
+          // No subscription step - onboarding should be completed, but let normal flow handle it
+          // Don't set a step that doesn't exist - the completion logic will handle this
+          appropriateStep = 2; // Stay at teacher step, completion will be triggered
+          clog('[OnboardingWizard] ✅ CONDITION 4B: Teacher with all data, no subscription - staying at teacher step for completion');
+        }
+      } else if (existingData.accountType && existingData.accountType !== 'teacher') {
+        // Non-teacher user (student, parent, headmaster) - skip teacher setup
+        if (settings?.subscription_system_enabled) {
+          appropriateStep = 2; // Subscription step (for non-teachers: 0=age, 1=account, 2=subscription)
+          clog(`[OnboardingWizard] ✅ CONDITION 5A: ${existingData.accountType} user - starting at step 2 (subscription)`);
+        } else {
+          // No subscription step - onboarding should be completed
+          // For non-teachers without subscription: only steps 0=age, 1=account exist
+          appropriateStep = 1; // Stay at account step, completion will be triggered
+          clog(`[OnboardingWizard] ✅ CONDITION 5B: ${existingData.accountType} user, no subscription - staying at account step for completion`);
+        }
+      } else {
+        // Fallback - has all required data
+        if (settings?.subscription_system_enabled) {
+          // Don't know user type yet, assume subscription exists
+          appropriateStep = 2; // Conservative estimate for subscription step
+          clog('[OnboardingWizard] ❌ CONDITION 6A: Has basic data - starting at step 2 (subscription fallback)');
+        } else {
+          // No subscription step - should complete onboarding
+          appropriateStep = 1; // Stay at account step
+          clog('[OnboardingWizard] ❌ CONDITION 6B: Has all required data, no subscription - staying at account step for completion');
+        }
+      }
+
+      setCurrentStep(appropriateStep);
+      clog(`[OnboardingWizard] Set current step to ${appropriateStep} based on user data`);
+
+    } catch (error) {
+      cerror('[OnboardingWizard] Error loading existing user data:', error);
+      // Continue with empty data if loading fails
+    }
+  }, [currentUser]);
+
   useEffect(() => {
     const checkUserStatus = async () => {
       if (!currentUser) return;
 
-      // If user already has user_type set, they don't need onboarding
-      if (currentUser.user_type && currentUser.user_type !== null) {
-        clog('[OnboardingWizard] User already has user_type, redirecting to dashboard');
+      // If user already completed onboarding, they don't need it again
+      if (currentUser.onboarding_completed === true) {
+        clog('[OnboardingWizard] User already completed onboarding, redirecting to dashboard');
         navigate('/dashboard');
         return;
       }
 
-      // Check if user has pending invitations (student or parent)
-      try {
-        const studentInvitations = await StudentInvitation.filter({
-          student_email: currentUser.email,
-          status: ['pending_student_acceptance', 'pending_parent_consent']
-        });
+      // Load existing user data to pre-populate forms
+      await loadExistingUserData();
 
-        const parentInvitations = await StudentInvitation.filter({
-          parent_email: currentUser.email,
-          status: ['pending_parent_consent']
-        });
-
-        const totalInvitations = [...studentInvitations, ...parentInvitations];
-
-        if (totalInvitations.length > 0) {
-          clog('[OnboardingWizard] User has pending invitations, redirecting to invitations page');
-
-          toast({
-            title: 'יש לך הזמנות ממתינות',
-            description: 'נמצאו הזמנות להצטרפות לכיתות. תועבר לעמוד ההזמנות.',
-            variant: 'default'
-          });
-
-          navigate('/student-invitations');
-          return;
-        }
-      } catch (error) {
-        clog('[OnboardingWizard] Error checking invitations:', error);
-        // Continue with onboarding if invitation check fails
-      }
+      // Note: Invitation checking disabled - studentinvitation table not available
+      clog('[OnboardingWizard] Skipping invitation check - feature not available');
 
       clog('[OnboardingWizard] Starting onboarding flow for user:', currentUser.email);
     };
 
     checkUserStatus();
-  }, [currentUser, navigate]);
+  }, [currentUser, navigate, loadExistingUserData]);
 
-  const handleStepComplete = (stepId, stepData) => {
-    clog(`[OnboardingWizard] Step ${stepId} completed with data:`, stepData);
+  const handleStepComplete = async (stepId, stepData) => {
+    clog(`[OnboardingWizard] ✅ Step ${stepId} completed with data:`, stepData);
+    clog(`[OnboardingWizard] 📍 Current step before processing: ${currentStep}`);
 
-    setOnboardingData(prev => ({
-      ...prev,
+    // Update local state
+    const updatedOnboardingData = {
+      ...onboardingData,
       ...stepData,
       [`hasCompleted${stepId.split('-').map(word =>
         word.charAt(0).toUpperCase() + word.slice(1)).join('')}`]: true
-    }));
+    };
+    setOnboardingData(updatedOnboardingData);
+    clog(`[OnboardingWizard] 📝 Updated onboarding data:`, updatedOnboardingData);
+
+    // Immediately save user data for this step
+    try {
+      setIsLoading(true);
+      clog(`[OnboardingWizard] 💾 Starting to save user data for step ${stepId}`);
+
+      // Prepare user updates based on step data
+      const userUpdates = {};
+
+      // Age verification step
+      if (stepId === 'age-verification' && stepData.birthDate) {
+        userUpdates.birth_date = stepData.birthDate;
+        clog(`[OnboardingWizard] 🎂 Adding birth_date to user updates:`, stepData.birthDate);
+      }
+
+      // Account type step
+      if (stepId === 'account-type' && stepData.accountType) {
+        userUpdates.user_type = stepData.accountType;
+      }
+
+      // Teacher setup step
+      if (stepId === 'teacher-setup' && stepData.teacherInfo) {
+        if (stepData.teacherInfo.education_level) userUpdates.education_level = stepData.teacherInfo.education_level;
+        if (stepData.teacherInfo.phone) userUpdates.phone = stepData.teacherInfo.phone;
+        if (stepData.teacherInfo.specializations) userUpdates.specializations = stepData.teacherInfo.specializations;
+      }
+
+      // Subscription step - handled by SubscriptionModal, no processing needed here
+      if (stepId === 'subscription' && stepData.subscriptionSelected) {
+        clog(`[OnboardingWizard] 💳 Subscription completed via SubscriptionModal`);
+
+        toast({
+          title: "תוכנית המנוי נשמרה",
+          description: "תוכנית המנוי שלך נבחרה בהצלחה",
+          variant: "default"
+        });
+      }
+
+      clog(`[OnboardingWizard] 🔄 User updates to be saved:`, userUpdates);
+
+      // Update user if there are changes
+      if (Object.keys(userUpdates).length > 0) {
+        clog(`[OnboardingWizard] 🔍 Updating user with ID: ${currentUser.uid || currentUser.id}`);
+        clog(`[OnboardingWizard] 🔑 Auth token from localStorage:`, localStorage.getItem('authToken') ? 'Present' : 'Missing');
+        clog(`[OnboardingWizard] 🔑 Backup token from localStorage:`, localStorage.getItem('token') ? 'Present' : 'Missing');
+
+        try {
+          const updatedUser = await User.updateMyUserData(userUpdates);
+          clog(`[OnboardingWizard] 📨 API returned updated user:`, updatedUser);
+          clog(`[OnboardingWizard] 🎂 Birth date in API response:`, updatedUser.birth_date);
+          updateUser(updatedUser);
+          clog(`[OnboardingWizard] ✅ User data updated successfully after step ${stepId}:`, userUpdates);
+        } catch (updateError) {
+          cerror(`[OnboardingWizard] 💥 User.update failed:`, updateError);
+          cerror(`[OnboardingWizard] 📋 Update error details:`, {
+            message: updateError.message,
+            stack: updateError.stack,
+            userId: currentUser.uid || currentUser.id,
+            userUpdates,
+            authToken: localStorage.getItem('authToken') ? 'Present' : 'Missing'
+          });
+          throw updateError; // Re-throw to trigger the outer catch
+        }
+      } else {
+        clog(`[OnboardingWizard] ℹ️ No user updates needed for step ${stepId}`);
+      }
+
+    } catch (error) {
+      cerror(`[OnboardingWizard] ❌ Error saving step ${stepId} data:`, error);
+
+      // Show more specific error messages based on error type
+      let errorTitle = 'שגיאה בשמירת הנתונים';
+      let errorDescription = 'לא הצלחנו לשמור את הנתונים. אנא נסה שוב.';
+
+      if (error.message.includes('Failed to fetch') || error.message.includes('network')) {
+        errorTitle = 'בעיית חיבור';
+        errorDescription = 'לא הצלחנו להתחבר לשרת. אנא בדוק את החיבור לאינטרנט ונסה שוב.';
+      } else if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+        errorTitle = 'שגיאת הרשאה';
+        errorDescription = 'יש בעיה עם ההתחברות. אנא התחבר מחדש ונסה שוב.';
+      } else if (error.message.includes('403') || error.message.includes('Forbidden')) {
+        errorTitle = 'חוסר הרשאה';
+        errorDescription = 'אין לך הרשאה לבצע פעולה זו.';
+      } else if (error.message.includes('404')) {
+        errorTitle = 'משתמש לא נמצא';
+        errorDescription = 'לא נמצא משתמש עם המזהה המבוקש.';
+      }
+
+      toast({
+        title: errorTitle,
+        description: errorDescription,
+        variant: 'destructive'
+      });
+      setIsLoading(false);
+      return; // Don't advance to next step if save failed
+    } finally {
+      setIsLoading(false);
+    }
 
     // Move to next step
+    clog(`[OnboardingWizard] 🚀 About to advance step. Current step: ${currentStep}, Total steps: ${steps.length}`);
     if (currentStep < steps.length - 1) {
-      setCurrentStep(prev => prev + 1);
+      const nextStep = currentStep + 1;
+      clog(`[OnboardingWizard] ➡️ Advancing to step ${nextStep}`);
+      setCurrentStep(prev => {
+        const newStep = prev + 1;
+        clog(`[OnboardingWizard] 📍 Step updated from ${prev} to ${newStep}`);
+        return newStep;
+      });
     } else {
+      clog(`[OnboardingWizard] 🏁 Completing onboarding (last step reached)`);
       handleOnboardingComplete();
     }
   };
@@ -163,22 +360,13 @@ export default function OnboardingWizard() {
     setError('');
 
     try {
-      // Prepare user updates (remove classroom-specific fields)
+      // Mark onboarding as completed (user data already saved step by step)
       const userUpdates = {
-        user_type: onboardingData.accountType || 'teacher',
-        education_level: onboardingData.teacherInfo?.education_level,
-        phone: onboardingData.teacherInfo?.phone,
-        bio: onboardingData.teacherInfo?.bio,
-        experience: onboardingData.teacherInfo?.experience
+        onboarding_completed: true
       };
 
-      // If user completed age verification, store birth date
-      if (onboardingData.birthDate) {
-        userUpdates.birth_date = onboardingData.birthDate;
-      }
-
       // Update user profile
-      const updatedUser = await User.update(currentUser.id, userUpdates);
+      const updatedUser = await User.updateMyUserData(userUpdates);
       updateUser(updatedUser);
 
       // Create first classroom if requested
@@ -193,7 +381,7 @@ export default function OnboardingWizard() {
             name: onboardingData.teacherInfo.firstClassroomName,
             grade_level: onboardingData.teacherInfo.firstClassroomGrade,
             year: new Date().getFullYear().toString(),
-            teacher_id: currentUser.id,
+            teacher_id: currentUser.uid || currentUser.id,
             description: 'כיתה ראשונה שנוצרה במהלך ההרשמה'
           });
 
@@ -242,20 +430,19 @@ export default function OnboardingWizard() {
     setError('');
 
     try {
-      // Set default values for admin skip
+      // Simply mark onboarding as completed for admin skip
       const userUpdates = {
-        user_type: 'teacher', // Default for admins who skip
-        // Keep existing role and other admin privileges
+        onboarding_completed: true
       };
 
-      const updatedUser = await User.update(currentUser.id, userUpdates);
+      const updatedUser = await User.updateMyUserData(userUpdates);
       updateUser(updatedUser);
 
       clog('[OnboardingWizard] Admin skipped onboarding');
 
       toast({
         title: 'דילגת על ההרשמה',
-        description: 'החשבון שלך הוגדר עם הגדרות ברירת מחדל.',
+        description: 'תוכל לעדכן את פרטיך בהגדרות הפרופיל בכל עת.',
         variant: 'default'
       });
 
@@ -467,6 +654,7 @@ export default function OnboardingWizard() {
               {currentStepData && (
                 <currentStepData.component
                   onComplete={(stepData) => handleStepComplete(currentStepData.id, stepData)}
+                  onBack={currentStep > 0 ? goToPreviousStep : undefined}
                   onboardingData={onboardingData}
                   settings={settings}
                   currentUser={currentUser}
@@ -474,56 +662,58 @@ export default function OnboardingWizard() {
               )}
             </div>
 
-            {/* Responsive Navigation */}
-            <div className="p-3 md:p-6 bg-gray-50/50 border-t border-gray-200/30">
-              <div className="flex justify-between items-center">
-                {/* Back button - only visible when there's a previous step */}
-                {currentStep > 0 ? (
-                  <Button
-                    onClick={goToPreviousStep}
-                    variant="outline"
-                    size="sm"
-                    disabled={isLoading}
-                    className="px-3 md:px-8 py-2 md:py-3 bg-white/80 border-gray-200 hover:bg-white transition-all duration-300 text-sm md:text-base"
-                  >
-                    <ArrowLeft className="w-4 h-4 md:w-5 md:h-5 ml-1 md:ml-2" />
-                    <span className="hidden sm:inline">חזור</span>
-                    <span className="sm:hidden">←</span>
-                  </Button>
-                ) : (
-                  <div></div> /* Empty placeholder to maintain layout */
-                )}
+            {/* Responsive Navigation - Hidden on all steps since each component has its own buttons */}
+            {false && (
+              <div className="p-3 md:p-6 bg-gray-50/50 border-t border-gray-200/30">
+                <div className="flex justify-between items-center">
+                  {/* Back button - only visible when there's a previous step */}
+                  {currentStep > 0 ? (
+                    <Button
+                      onClick={goToPreviousStep}
+                      variant="outline"
+                      size="sm"
+                      disabled={isLoading}
+                      className="px-3 md:px-8 py-2 md:py-3 bg-white/80 border-gray-200 hover:bg-white transition-all duration-300 text-sm md:text-base"
+                    >
+                      <ArrowLeft className="w-4 h-4 md:w-5 md:h-5 ml-1 md:ml-2" />
+                      <span className="hidden sm:inline">חזור</span>
+                      <span className="sm:hidden">←</span>
+                    </Button>
+                  ) : (
+                    <div></div> /* Empty placeholder to maintain layout */
+                  )}
 
-                <div className="flex items-center gap-1 md:gap-2">
-                  {steps.map((_, index) => (
-                    <div
-                      key={index}
-                      className={`w-1.5 h-1.5 md:w-2 md:h-2 rounded-full transition-all duration-300 ${
-                        index === currentStep ? 'bg-purple-500 w-4 md:w-8' :
-                        index < currentStep ? 'bg-green-500' : 'bg-gray-300'
-                      }`}
-                    ></div>
-                  ))}
+                  <div className="flex items-center gap-1 md:gap-2">
+                    {steps.map((_, index) => (
+                      <div
+                        key={index}
+                        className={`w-1.5 h-1.5 md:w-2 md:h-2 rounded-full transition-all duration-300 ${
+                          index === currentStep ? 'bg-purple-500 w-4 md:w-8' :
+                          index < currentStep ? 'bg-green-500' : 'bg-gray-300'
+                        }`}
+                      ></div>
+                    ))}
+                  </div>
+
+                  {/* Next button - only visible when there's a next step */}
+                  {currentStep < steps.length - 1 ? (
+                    <Button
+                      onClick={goToNextStep}
+                      variant="outline"
+                      size="sm"
+                      disabled={isLoading}
+                      className="px-3 md:px-8 py-2 md:py-3 bg-gradient-to-r from-purple-500 to-pink-500 border-0 text-white hover:from-purple-600 hover:to-pink-600 transition-all duration-300 shadow-lg hover:shadow-xl text-sm md:text-base"
+                    >
+                      <span className="hidden sm:inline">המשך</span>
+                      <span className="sm:hidden">→</span>
+                      <ArrowRight className="w-4 h-4 md:w-5 md:h-5 mr-1 md:mr-2" />
+                    </Button>
+                  ) : (
+                    <div></div> /* Empty placeholder to maintain layout */
+                  )}
                 </div>
-
-                {/* Next button - only visible when there's a next step */}
-                {currentStep < steps.length - 1 ? (
-                  <Button
-                    onClick={goToNextStep}
-                    variant="outline"
-                    size="sm"
-                    disabled={isLoading}
-                    className="px-3 md:px-8 py-2 md:py-3 bg-gradient-to-r from-purple-500 to-pink-500 border-0 text-white hover:from-purple-600 hover:to-pink-600 transition-all duration-300 shadow-lg hover:shadow-xl text-sm md:text-base"
-                  >
-                    <span className="hidden sm:inline">המשך</span>
-                    <span className="sm:hidden">→</span>
-                    <ArrowRight className="w-4 h-4 md:w-5 md:h-5 mr-1 md:mr-2" />
-                  </Button>
-                ) : (
-                  <div></div> /* Empty placeholder to maintain layout */
-                )}
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

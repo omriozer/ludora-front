@@ -46,6 +46,8 @@ import CouponAnalytics from './CouponAnalytics';
 import BulkCouponGenerator from './BulkCouponGenerator';
 import AdminHelp from './AdminHelp';
 import Documentation from './Documentation';
+import Curriculum from './Curriculum';
+import ClassCurriculum from './ClassCurriculum';
 import ProductCatalog from '../components/catalog/ProductCatalog';
 
 // Create Games component using ProductCatalog
@@ -100,6 +102,8 @@ export {
   CouponForm,
   CouponAnalytics,
   BulkCouponGenerator,
+  Curriculum,
+  ClassCurriculum,
   ProductCatalog,
   Games
 };

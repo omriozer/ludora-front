@@ -36,6 +36,8 @@ import {
   StudentInvitation,
   ParentConsent,
   ClassroomMembership,
+  Curriculum,
+  CurriculumItem,
   User as ApiUser
 } from './apiClient.js';
 
@@ -77,6 +79,8 @@ export {
   StudentInvitation,
   ParentConsent,
   ClassroomMembership,
+  Curriculum,
+  CurriculumItem,
   ApiUser as User // Ensure latest User object is re-exported
 };
 
