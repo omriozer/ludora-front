@@ -230,6 +230,8 @@ export default function OnboardingWizard() {
   const handleStepComplete = async (stepId, stepData) => {
     clog(`[OnboardingWizard] ✅ Step ${stepId} completed with data:`, stepData);
     clog(`[OnboardingWizard] 📍 Current step before processing: ${currentStep}`);
+    clog(`[OnboardingWizard] 📊 Total steps available: ${steps.length}`);
+    clog(`[OnboardingWizard] 🔍 Is this the last step?`, currentStep >= steps.length - 1);
 
     // Update local state
     const updatedOnboardingData = {
@@ -351,11 +353,13 @@ export default function OnboardingWizard() {
       });
     } else {
       clog(`[OnboardingWizard] 🏁 Completing onboarding (last step reached)`);
+      clog(`[OnboardingWizard] 🎯 Calling handleOnboardingComplete() now...`);
       handleOnboardingComplete();
     }
   };
 
   const handleOnboardingComplete = async () => {
+    clog('[OnboardingWizard] 🎉 STARTING handleOnboardingComplete function');
     setIsLoading(true);
     setError('');
 
@@ -365,9 +369,17 @@ export default function OnboardingWizard() {
         onboarding_completed: true
       };
 
+      clog('[OnboardingWizard] 💾 About to update user with:', userUpdates);
       // Update user profile
       const updatedUser = await User.updateMyUserData(userUpdates);
+      clog('[OnboardingWizard] ✅ User updated successfully:', updatedUser);
+      clog('[OnboardingWizard] 🔍 Updated user onboarding_completed value:', updatedUser.onboarding_completed);
+
+      // Ensure UserContext is updated synchronously
       updateUser(updatedUser);
+
+      // Double-check that the user context has been updated
+      clog('[OnboardingWizard] 🔄 UserContext should now have updated user data');
 
       // Create first classroom if requested
       if (onboardingData.teacherInfo?.createFirstClassroom &&
@@ -400,6 +412,7 @@ export default function OnboardingWizard() {
         ? 'החשבון שלך הוגדר בהצלחה והכיתה הראשונה נוצרה. כעת תועבר לדף הבית.'
         : 'החשבון שלך הוגדר בהצלחה. כעת תועבר לדף הבית.';
 
+      clog('[OnboardingWizard] 🎯 Showing success toast and preparing redirect');
       toast({
         title: 'ברוך הבא למערכת!',
         description: successMessage,
@@ -407,7 +420,9 @@ export default function OnboardingWizard() {
       });
 
       // Redirect to dashboard
+      clog('[OnboardingWizard] 🚀 Setting redirect timeout to /dashboard in 2 seconds...');
       setTimeout(() => {
+        clog('[OnboardingWizard] 🏠 NOW redirecting to /dashboard');
         navigate('/dashboard');
       }, 2000);
 

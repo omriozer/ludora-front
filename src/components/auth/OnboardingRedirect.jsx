@@ -62,9 +62,18 @@ export default function OnboardingRedirect({ children }) {
     }
 
     // Check if user needs onboarding (only if no invitations)
-    if (needsOnboarding(currentUser)) {
+    clog('[OnboardingRedirect] 🔍 Checking onboarding status for user:', currentUser?.email);
+    clog('[OnboardingRedirect] 🔍 User onboarding_completed:', currentUser?.onboarding_completed);
+    clog('[OnboardingRedirect] 🔍 User onboarding_completed type:', typeof currentUser?.onboarding_completed);
+
+    const userNeedsOnboarding = needsOnboarding(currentUser);
+    clog('[OnboardingRedirect] 🔍 needsOnboarding() result:', userNeedsOnboarding);
+
+    if (userNeedsOnboarding) {
       clog('[OnboardingRedirect] User needs onboarding, redirecting from:', location.pathname);
       navigate('/onboarding', { replace: true });
+    } else {
+      clog('[OnboardingRedirect] ✅ User does NOT need onboarding, staying on:', location.pathname);
     }
   }, [currentUser, needsOnboarding, isLoading, navigate, location.pathname, hasCheckedInvitations, hasInvitations]);
 

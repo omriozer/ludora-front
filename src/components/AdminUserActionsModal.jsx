@@ -36,6 +36,7 @@ export default function AdminUserActionsModal({
   onManageSubscription,
   onImpersonate,
   onResetOnboarding,
+  onHardResetOnboarding,
   impersonationLoading,
   getRoleText,
   getUserTypeText,
@@ -222,7 +223,7 @@ export default function AdminUserActionsModal({
                 )}
               </Button>
 
-              {/* Reset Onboarding */}
+              {/* Soft Reset Onboarding */}
               <Button
                 variant="outline"
                 onClick={() => {
@@ -232,7 +233,20 @@ export default function AdminUserActionsModal({
                 className="flex items-center gap-2 text-purple-600 hover:text-purple-700 hover:bg-purple-50 border-purple-200"
               >
                 <RotateCcw className="w-4 h-4" />
-                איפוס הכנה
+                איפוס הכנה (רך)
+              </Button>
+
+              {/* Hard Reset Onboarding */}
+              <Button
+                variant="outline"
+                onClick={() => {
+                  onHardResetOnboarding(user);
+                  onClose();
+                }}
+                className="flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+              >
+                <RotateCcw className="w-4 h-4" />
+                איפוס הכנה (קשה)
               </Button>
 
               {/* View Details (placeholder) */}

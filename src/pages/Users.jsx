@@ -731,6 +731,65 @@ export default function UsersPage() {
 		}
 	};
 
+	// Handler for hard resetting user onboarding (resets onboarding + subscription)
+	const handleHardResetOnboarding = async (user) => {
+		try {
+			// Show confirmation dialog with more warning about hard reset
+			const confirmed = window.confirm(
+				`האם אתה בטוח שברצונך לבצע איפוס קשה של ההכנה עבור ${user.display_name || user.full_name}?\n\n` +
+				`איפוס קשה יאפס:\n` +
+				`• את סטטוס ההכנה\n` +
+				`• את מנוי המשתמש (יחזור לחינמי)\n` +
+				`• את כל נתוני המנוי\n\n` +
+				`המשתמש יידרש להשלים את תהליך ההכנה שוב ולבחור מנוי מחדש.`
+			);
+
+			if (!confirmed) return;
+
+			setLoading(true);
+
+			// First reset onboarding
+			await apiRequest(`/entities/user/${user.id}/reset-onboarding`, {
+				method: 'PUT'
+			});
+
+			// Then reset subscription data to free plan
+			await User.update(user.id, {
+				current_subscription_plan_id: null,
+				subscription_status: 'free_plan',
+				subscription_start_date: null,
+				subscription_end_date: null,
+				subscription_status_updated_at: new Date().toISOString(),
+				payplus_subscription_uid: null
+			});
+
+			// Update the user in local state
+			setUsers(prevUsers =>
+				prevUsers.map(u =>
+					u.id === user.id
+						? {
+							...u,
+							onboarding_completed: false,
+							current_subscription_plan_id: null,
+							subscription_status: 'free_plan',
+							subscription_start_date: null,
+							subscription_end_date: null,
+							payplus_subscription_uid: null
+						}
+						: u
+				)
+			);
+
+			showMessage('success', `איפוס קשה עבור ${user.display_name || user.full_name} בוצע בהצלחה`);
+
+		} catch (error) {
+			console.error('Error hard resetting onboarding:', error);
+			showMessage('error', `שגיאה באיפוס קשה: ${error.message}`);
+		} finally {
+			setLoading(false);
+		}
+	};
+
 	const getSubscriptionPlanName = (planId) => {
 		if (!planId) return 'אין מנוי';
 		const plan = subscriptionPlans.find((p) => p.id === planId);
@@ -1012,6 +1071,7 @@ export default function UsersPage() {
 					onManageSubscription={handleManageSubscriptionFromModal}
 					onImpersonate={handleImpersonate}
 					onResetOnboarding={handleResetOnboarding}
+					onHardResetOnboarding={handleHardResetOnboarding}
 					impersonationLoading={impersonationLoading}
 					getRoleText={getRoleText}
 					getUserTypeText={getUserTypeText}

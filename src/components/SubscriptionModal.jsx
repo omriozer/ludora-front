@@ -315,7 +315,26 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
 
     setIsSelecting(true);
     try {
-      if (plan.price === 0) {
+      // Debug: Log plan details to understand the issue
+      console.log('🔍 Plan selection debug:', {
+        planId: plan.id,
+        planName: plan.name,
+        planPrice: plan.price,
+        planPriceType: typeof plan.price,
+        planPriceNumber: Number(plan.price),
+        planType: plan.plan_type
+      });
+
+      // Robust free plan detection - check multiple conditions
+      const isFreeplan = (
+        Number(plan.price) === 0 ||
+        plan.price === '0' ||
+        plan.plan_type === 'free' ||
+        plan.price === null ||
+        plan.price === undefined
+      );
+
+      if (isFreeplan) {
         // Free plan - handle subscription cancellation if needed
         if (currentUser?.payplus_subscription_uid && currentUser?.subscription_status === 'active') {
           // Show confirmation dialog instead of browser confirm
@@ -345,9 +364,10 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
 
         setCurrentPlan(plan);
 
-        // Notify parent component
+        // Get updated user data and notify parent component
         if (onSubscriptionChange) {
-          onSubscriptionChange(plan);
+          const updatedUser = await User.me();
+          onSubscriptionChange(updatedUser);
         }
         setMessage({ type: 'success', text: 'המנוי שלך עודכן בהצלחה למנוי חינם.' });
         // Close modal after successful selection
@@ -479,9 +499,18 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
 
     try {
       let environment = 'production'; // Default
-      
-      // If user is admin, show environment selection
-      if (currentUser?.role === 'admin') {
+
+      // If user is admin and target plan is NOT free, show environment selection
+      // For switching TO free plans, skip environment selection for better UX
+      const isTargetPlanFree = (
+        Number(planToCancel.price) === 0 ||
+        planToCancel.price === '0' ||
+        planToCancel.plan_type === 'free' ||
+        planToCancel.price === null ||
+        planToCancel.price === undefined
+      );
+
+      if (currentUser?.role === 'admin' && !isTargetPlanFree) {
         environment = await new Promise((resolve) => {
           setShowEnvironmentSelection(true);
           setEnvironmentSelectionResolve(() => resolve);
@@ -679,7 +708,14 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
                           const discountedPrice = calculateDiscountedPrice(plan);
                           const hasDiscount = plan.has_discount && plan.discount_value && plan.price > 0;
                           const isCurrent = isCurrentPlan(plan);
-                          const isFree = plan.price == 0;
+                          // Use same robust free plan detection as in handleSelectPlan
+                          const isFree = (
+                            Number(plan.price) === 0 ||
+                            plan.price === '0' ||
+                            plan.plan_type === 'free' ||
+                            plan.price === null ||
+                            plan.price === undefined
+                          );
 
                           return (
                             <Card key={plan.id} className={`relative group hover:shadow-2xl transition-all duration-500 border-2 ${

@@ -45,6 +45,8 @@ export default function OnboardingSubscriptionStep({ onComplete, onBack, onboard
 
   const handleSubscriptionChange = (updatedUser) => {
     clog('[OnboardingSubscriptionStep] Subscription changed:', updatedUser);
+    clog('[OnboardingSubscriptionStep] 🔍 updatedUser.onboarding_completed:', updatedUser?.onboarding_completed);
+    clog('[OnboardingSubscriptionStep] 🔍 About to call onComplete with data');
     setHasSelectedPlan(true);
 
     toast({
@@ -57,7 +59,9 @@ export default function OnboardingSubscriptionStep({ onComplete, onBack, onboard
     setIsModalOpen(false);
 
     // Complete the onboarding step
+    clog('[OnboardingSubscriptionStep] 🚀 Calling onComplete in 1 second...');
     setTimeout(() => {
+      clog('[OnboardingSubscriptionStep] 🏁 NOW calling onComplete!');
       onComplete({
         subscriptionSelected: true,
         subscriptionPlan: updatedUser
