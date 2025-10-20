@@ -28,42 +28,43 @@ import {
 // Move static data outside component to prevent recreating on every render
 const sizeConfig = {
   sm: {
-    spinner: "w-16 h-16",
+    spinner: "w-14 h-14",
     text: "text-sm",
-    particles: 8,
-    icons: 4,
-    containerSize: "w-32 h-32"
+    particles: 6,
+    icons: 3,
+    containerSize: "w-28 h-28"
   },
   md: {
-    spinner: "w-20 h-20",
+    spinner: "w-18 h-18",
     text: "text-base",
-    particles: 12,
-    icons: 6,
-    containerSize: "w-40 h-40"
+    particles: 8,
+    icons: 4,
+    containerSize: "w-36 h-36"
   },
   lg: {
-    spinner: "w-24 h-24",
+    spinner: "w-22 h-22",
     text: "text-lg",
-    particles: 16,
-    icons: 8,
-    containerSize: "w-48 h-48"
+    particles: 10,
+    icons: 5,
+    containerSize: "w-44 h-44"
   },
   xl: {
-    spinner: "w-32 h-32",
+    spinner: "w-28 h-28",
     text: "text-xl",
-    particles: 20,
-    icons: 10,
-    containerSize: "w-56 h-56"
+    particles: 12,
+    icons: 6,
+    containerSize: "w-52 h-52"
   }
 };
 
 const themes = {
   educational: {
     colors: {
-      primary: "from-blue-500 via-indigo-500 to-purple-600",
-      secondary: "from-emerald-400 via-teal-500 to-cyan-600",
-      accent: "from-amber-400 via-orange-500 to-red-500",
-      background: "from-blue-50 via-indigo-50 to-purple-50"
+      primary: "from-blue-400 via-blue-500 to-blue-600",
+      secondary: "from-slate-400 via-slate-500 to-slate-600",
+      accent: "from-indigo-400 via-indigo-500 to-indigo-600",
+      background: "from-blue-50/10 via-indigo-50/10 to-slate-50/10",
+      glow: "rgba(59, 130, 246, 0.3)"
     },
     icon: GraduationCap,
     floatingIcons: [BookOpen, Lightbulb, Brain, Calculator, Globe, Puzzle],
@@ -71,10 +72,11 @@ const themes = {
   },
   science: {
     colors: {
-      primary: "from-green-400 via-emerald-500 to-teal-600",
-      secondary: "from-blue-400 via-cyan-500 to-teal-600",
-      accent: "from-yellow-400 via-amber-500 to-orange-500",
-      background: "from-emerald-50 via-teal-50 to-cyan-50"
+      primary: "from-emerald-400 via-emerald-500 to-emerald-600",
+      secondary: "from-teal-400 via-teal-500 to-teal-600",
+      accent: "from-green-400 via-green-500 to-green-600",
+      background: "from-emerald-50/10 via-teal-50/10 to-green-50/10",
+      glow: "rgba(16, 185, 129, 0.3)"
     },
     icon: Microscope,
     floatingIcons: [Atom, Microscope, Globe, Lightbulb, Target, Rocket],
@@ -82,10 +84,11 @@ const themes = {
   },
   creative: {
     colors: {
-      primary: "from-pink-400 via-rose-500 to-red-500",
-      secondary: "from-purple-400 via-violet-500 to-indigo-500",
-      accent: "from-yellow-400 via-amber-500 to-orange-500",
-      background: "from-pink-50 via-rose-50 to-orange-50"
+      primary: "from-pink-400 via-pink-500 to-pink-600",
+      secondary: "from-purple-400 via-purple-500 to-purple-600",
+      accent: "from-rose-400 via-rose-500 to-rose-600",
+      background: "from-pink-50/10 via-purple-50/10 to-rose-50/10",
+      glow: "rgba(236, 72, 153, 0.3)"
     },
     icon: Palette,
     floatingIcons: [Palette, Music, PenTool, Heart, Star, Sparkles],
@@ -93,10 +96,11 @@ const themes = {
   },
   gaming: {
     colors: {
-      primary: "from-violet-500 via-purple-600 to-indigo-700",
-      secondary: "from-cyan-400 via-blue-500 to-indigo-600",
-      accent: "from-lime-400 via-green-500 to-emerald-600",
-      background: "from-violet-50 via-purple-50 to-indigo-50"
+      primary: "from-violet-400 via-violet-500 to-violet-600",
+      secondary: "from-purple-400 via-purple-500 to-purple-600",
+      accent: "from-indigo-400 via-indigo-500 to-indigo-600",
+      background: "from-violet-50/10 via-purple-50/10 to-indigo-50/10",
+      glow: "rgba(139, 92, 246, 0.3)"
     },
     icon: Gamepad2,
     floatingIcons: [Gamepad2, Trophy, Target, Zap, Star, Puzzle],
@@ -104,10 +108,11 @@ const themes = {
   },
   arcade: {
     colors: {
-      primary: "from-yellow-400 via-orange-500 to-red-500",
-      secondary: "from-blue-400 via-purple-500 to-pink-500",
-      accent: "from-green-400 to-emerald-500",
-      background: "from-yellow-50 via-orange-50 to-red-50"
+      primary: "from-orange-400 via-orange-500 to-orange-600",
+      secondary: "from-yellow-400 via-yellow-500 to-yellow-600",
+      accent: "from-amber-400 via-amber-500 to-amber-600",
+      background: "from-orange-50/10 via-yellow-50/10 to-amber-50/10",
+      glow: "rgba(251, 146, 60, 0.3)"
     },
     icon: Gamepad2,
     floatingIcons: [Gamepad2, Trophy, Star, Zap, Target, Sparkles],
@@ -115,10 +120,11 @@ const themes = {
   },
   neon: {
     colors: {
-      primary: "from-cyan-400 via-blue-500 to-purple-600",
-      secondary: "from-pink-400 via-purple-500 to-indigo-600",
-      accent: "from-emerald-400 to-teal-500",
-      background: "from-slate-800 via-gray-900 to-black"
+      primary: "from-cyan-400 via-cyan-500 to-cyan-600",
+      secondary: "from-blue-400 via-blue-500 to-blue-600",
+      accent: "from-teal-400 via-teal-500 to-teal-600",
+      background: "from-slate-800/20 via-gray-800/20 to-zinc-800/20",
+      glow: "rgba(34, 211, 238, 0.4)"
     },
     icon: Zap,
     floatingIcons: [Zap, Star, Sparkles, Target, Trophy, Rocket],
@@ -126,10 +132,11 @@ const themes = {
   },
   space: {
     colors: {
-      primary: "from-indigo-400 via-purple-500 to-pink-500",
-      secondary: "from-blue-400 via-indigo-500 to-purple-600",
-      accent: "from-yellow-400 to-orange-500",
-      background: "from-slate-900 via-purple-900 to-indigo-900"
+      primary: "from-indigo-400 via-indigo-500 to-indigo-600",
+      secondary: "from-blue-400 via-blue-500 to-blue-600",
+      accent: "from-purple-400 via-purple-500 to-purple-600",
+      background: "from-slate-900/20 via-indigo-900/20 to-purple-900/20",
+      glow: "rgba(99, 102, 241, 0.3)"
     },
     icon: Rocket,
     floatingIcons: [Rocket, Star, Globe, Atom, Zap, Target],
@@ -183,7 +190,7 @@ const LudoraLoadingSpinner = ({
     if (status === "loading" && showLogo) {
       const interval = setInterval(() => {
         setActiveLetter(prev => (prev + 1) % ludoraLetters.length);
-      }, 600); // Change active letter every 600ms
+      }, 800); // Change active letter every 800ms for smoother feel
       return () => clearInterval(interval);
     }
   }, [status, showLogo]); // Remove ludoraLetters.length since it's constant
@@ -223,13 +230,16 @@ const LudoraLoadingSpinner = ({
     >
       {/* Animated background glow */}
       <motion.div
-        className={`absolute inset-0 rounded-full bg-gradient-to-r ${currentTheme.colors.background} opacity-30 blur-xl`}
+        className="absolute inset-0 rounded-full blur-2xl"
+        style={{
+          background: `radial-gradient(circle, ${currentTheme.colors.glow} 0%, transparent 70%)`
+        }}
         animate={{
-          scale: [1, 1.3, 1],
-          opacity: [0.2, 0.4, 0.2]
+          scale: [1, 1.4, 1],
+          opacity: [0.4, 0.8, 0.4]
         }}
         transition={{
-          duration: 3,
+          duration: 4,
           repeat: Infinity,
           ease: "easeInOut"
         }}
@@ -237,10 +247,11 @@ const LudoraLoadingSpinner = ({
 
       {/* Outer rotating ring with gradient border */}
       <motion.div
-        className={`${config.spinner} absolute border-4 border-transparent rounded-full`}
+        className={`${config.spinner} absolute rounded-full`}
         style={{
-          background: `conic-gradient(from 0deg, transparent, ${currentTheme.colors.primary.replace('from-', '').replace(' via-', ', ').replace(' to-', ', ')}, transparent)`,
-          padding: '2px'
+          background: `conic-gradient(from 0deg, transparent 30%, ${currentTheme.colors.glow} 50%, transparent 70%)`,
+          padding: '3px',
+          borderRadius: '50%'
         }}
         animate={{ rotate: 360 }}
         transition={{
@@ -249,18 +260,21 @@ const LudoraLoadingSpinner = ({
           ease: "linear"
         }}
       >
-        <div className="w-full h-full bg-white dark:bg-gray-900 rounded-full" />
+        <div className="w-full h-full bg-white/90 dark:bg-gray-900/90 rounded-full backdrop-blur-sm border border-white/20" />
       </motion.div>
 
       {/* Middle pulsing ring */}
       <motion.div
-        className={`absolute w-14 h-14 ${size === 'lg' ? 'w-16 h-16' : ''} ${size === 'xl' ? 'w-20 h-20' : ''} ${size === 'sm' ? 'w-10 h-10' : ''} rounded-full bg-gradient-to-r ${currentTheme.colors.secondary} opacity-20`}
+        className={`absolute ${size === 'sm' ? 'w-8 h-8' : size === 'md' ? 'w-10 h-10' : size === 'lg' ? 'w-12 h-12' : 'w-16 h-16'} rounded-full`}
+        style={{
+          background: `radial-gradient(circle, ${currentTheme.colors.glow} 0%, transparent 60%)`,
+        }}
         animate={{
-          scale: [0.8, 1.2, 0.8],
-          opacity: [0.1, 0.3, 0.1]
+          scale: [0.9, 1.1, 0.9],
+          opacity: [0.3, 0.6, 0.3]
         }}
         transition={{
-          duration: 2,
+          duration: 2.5,
           repeat: Infinity,
           ease: "easeInOut"
         }}
@@ -268,14 +282,16 @@ const LudoraLoadingSpinner = ({
 
       {/* Inner spinning ring */}
       <motion.div
-        className={`absolute w-10 h-10 ${size === 'lg' ? 'w-12 h-12' : ''} ${size === 'xl' ? 'w-16 h-16' : ''} ${size === 'sm' ? 'w-8 h-8' : ''} border-2 border-transparent rounded-full`}
+        className={`absolute ${size === 'sm' ? 'w-6 h-6 border-1' : size === 'md' ? 'w-8 h-8 border-2' : size === 'lg' ? 'w-10 h-10 border-2' : 'w-12 h-12 border-2'} border-transparent rounded-full`}
         style={{
-          borderTopColor: currentTheme.colors.accent.includes('from-') ? '#10b981' : currentTheme.colors.accent,
-          borderRightColor: 'transparent'
+          borderTopColor: currentTheme.colors.glow,
+          borderRightColor: 'transparent',
+          borderBottomColor: 'transparent',
+          borderLeftColor: 'transparent'
         }}
         animate={{ rotate: -360 }}
         transition={{
-          duration: 1.5,
+          duration: 1.8,
           repeat: Infinity,
           ease: "linear"
         }}
@@ -285,28 +301,27 @@ const LudoraLoadingSpinner = ({
       <motion.div
         className="relative z-10"
         animate={{
-          scale: [1, 1.15, 1],
-          rotate: currentTheme.name === 'educational' ? [0, 0, 0] : [0, 10, -10, 0],
-          y: [0, -2, 0]
+          scale: [1, 1.08, 1],
+          y: [0, -1, 0]
         }}
         transition={{
-          duration: 2,
+          duration: 2.5,
           repeat: Infinity,
           ease: "easeInOut"
         }}
       >
         <currentTheme.icon
-          className={`w-6 h-6 ${size === 'lg' ? 'w-8 h-8' : ''} ${size === 'xl' ? 'w-10 h-10' : ''} ${size === 'sm' ? 'w-5 h-5' : ''} text-white drop-shadow-xl`}
+          className={`${size === 'sm' ? 'w-4 h-4' : size === 'md' ? 'w-5 h-5' : size === 'lg' ? 'w-6 h-6' : 'w-8 h-8'} text-white`}
           style={{
-            filter: `drop-shadow(0 0 8px ${currentTheme.colors.primary.includes('from-blue') ? '#3b82f6' : '#8b5cf6'})`
+            filter: `drop-shadow(0 2px 12px ${currentTheme.colors.glow}) drop-shadow(0 0 6px rgba(255,255,255,0.4))`
           }}
         />
       </motion.div>
 
       {/* Floating educational icons */}
       {showParticles && floatingIcons.map((iconData) => {
-        const { Icon, id, delay, angle, speed } = iconData;
-        const radius = size === 'sm' ? 50 : size === 'lg' ? 80 : size === 'xl' ? 100 : 65;
+        const { Icon, id, delay, angle } = iconData;
+        const radius = size === 'sm' ? 35 : size === 'md' ? 45 : size === 'lg' ? 55 : 65;
 
         return (
           <motion.div
@@ -314,42 +329,46 @@ const LudoraLoadingSpinner = ({
             className="absolute"
             initial={{ opacity: 0, scale: 0 }}
             animate={{
-              opacity: [0, 0.7, 0],
-              scale: [0, 1, 0],
-              x: Math.cos((angle + currentFrame * 3) * Math.PI / 180) * radius,
-              y: Math.sin((angle + currentFrame * 3) * Math.PI / 180) * radius,
+              opacity: [0, 0.5, 0],
+              scale: [0, 0.8, 0],
+              x: Math.cos((angle + currentFrame * 2) * Math.PI / 180) * radius,
+              y: Math.sin((angle + currentFrame * 2) * Math.PI / 180) * radius,
             }}
             transition={{
-              duration: 3,
+              duration: 4,
               repeat: Infinity,
               delay: delay,
               ease: "easeInOut"
             }}
           >
-            <Icon className={`w-4 h-4 ${size === 'lg' ? 'w-5 h-5' : ''} ${size === 'xl' ? 'w-6 h-6' : ''} ${size === 'sm' ? 'w-3 h-3' : ''} text-gray-400 opacity-60`} />
+            <Icon
+              className={`${size === 'sm' ? 'w-3 h-3' : size === 'md' ? 'w-3.5 h-3.5' : size === 'lg' ? 'w-4 h-4' : 'w-5 h-5'} opacity-40`}
+              style={{ color: currentTheme.colors.glow }}
+            />
           </motion.div>
         );
       })}
 
       {/* Energy particles */}
-      {showParticles && [...Array(config.particles)].map((_, i) => (
+      {showParticles && [...Array(Math.floor(config.particles * 0.6))].map((_, i) => (
         <motion.div
           key={`particle-${i}`}
           className="absolute w-1 h-1 rounded-full"
           style={{
-            background: `linear-gradient(45deg, ${currentTheme.colors.accent.includes('from-') ? '#10b981' : currentTheme.colors.accent}, transparent)`
+            backgroundColor: currentTheme.colors.glow,
+            opacity: 0.6
           }}
           animate={{
             scale: [0, 1, 0],
-            opacity: [0, 1, 0],
-            x: Math.cos((i * 30 + currentFrame * 5) * Math.PI / 180) * (30 + i * 3),
-            y: Math.sin((i * 30 + currentFrame * 5) * Math.PI / 180) * (30 + i * 3),
+            opacity: [0, 0.8, 0],
+            x: Math.cos((i * 45 + currentFrame * 3) * Math.PI / 180) * (25 + i * 2),
+            y: Math.sin((i * 45 + currentFrame * 3) * Math.PI / 180) * (25 + i * 2),
           }}
           transition={{
-            duration: 2 + (i % 3) * 0.5,
+            duration: 3 + (i % 2) * 0.5,
             repeat: Infinity,
-            delay: i * 0.1,
-            ease: "easeOut"
+            delay: i * 0.15,
+            ease: "easeInOut"
           }}
         />
       ))}
@@ -374,13 +393,13 @@ const LudoraLoadingSpinner = ({
             className="relative"
             initial={{ y: 0, scale: 1 }}
             animate={{
-              y: isActive ? [-20, -40, -20, 0] : shouldBounce ? [-10, 0] : 0,
-              scale: isActive ? [1, 1.3, 1.1, 1] : shouldBounce ? [1, 1.1, 1] : 1,
-              rotateY: isActive ? [0, 180, 360] : 0,
+              y: isActive ? [-15, -25, -15, 0] : shouldBounce ? [-8, 0] : 0,
+              scale: isActive ? [1, 1.15, 1.05, 1] : shouldBounce ? [1, 1.05, 1] : 1,
+              rotateY: isActive ? [0, 15, -15, 0] : 0,
             }}
             transition={{
-              duration: isActive ? 1.2 : shouldBounce ? 0.6 : 0.4,
-              ease: isActive ? "easeInOut" : "easeOut",
+              duration: isActive ? 1.5 : shouldBounce ? 0.8 : 0.5,
+              ease: isActive ? [0.4, 0, 0.2, 1] : "easeOut",
               delay: letterData.delay
             }}
           >
@@ -439,26 +458,30 @@ const LudoraLoadingSpinner = ({
             {/* Sparkle particles for active letter */}
             {isActive && showParticles && (
               <>
-                {[...Array(8)].map((_, i) => (
+                {[...Array(4)].map((_, i) => (
                   <motion.div
                     key={`sparkle-${i}`}
-                    className="absolute w-1 h-1 bg-yellow-400 rounded-full"
+                    className="absolute w-1 h-1 rounded-full"
                     style={{
                       left: '50%',
                       top: '50%',
+                      backgroundColor: letterData.color.includes('teal') ? '#14b8a6' :
+                                     letterData.color.includes('cyan') ? '#06b6d4' :
+                                     letterData.color.includes('yellow') ? '#eab308' :
+                                     letterData.color.includes('orange') ? '#ea580c' :
+                                     letterData.color.includes('pink') ? '#ec4899' : '#f59e0b'
                     }}
                     animate={{
-                      x: Math.cos(i * 45 * Math.PI / 180) * (30 + i * 5),
-                      y: Math.sin(i * 45 * Math.PI / 180) * (30 + i * 5),
-                      scale: [0, 1, 0],
-                      opacity: [0, 1, 0],
-                      rotate: [0, 360]
+                      x: Math.cos(i * 90 * Math.PI / 180) * (20 + i * 3),
+                      y: Math.sin(i * 90 * Math.PI / 180) * (20 + i * 3),
+                      scale: [0, 0.8, 0],
+                      opacity: [0, 0.9, 0]
                     }}
                     transition={{
-                      duration: 1.5,
-                      delay: i * 0.1,
+                      duration: 2,
+                      delay: i * 0.15,
                       repeat: Infinity,
-                      ease: "easeOut"
+                      ease: "easeInOut"
                     }}
                   />
                 ))}
@@ -553,7 +576,7 @@ const LudoraLoadingSpinner = ({
       </motion.div>
 
       {/* Enhanced success particles */}
-      {showSuccessParty && [...Array(config.particles * 1.5)].map((_, i) => (
+      {showSuccessParty && [...Array(Math.floor(config.particles * 0.8))].map((_, i) => (
         <motion.div
           key={i}
           className="absolute"
@@ -564,22 +587,22 @@ const LudoraLoadingSpinner = ({
             opacity: 1
           }}
           animate={{
-            scale: [0, 1, 0.5, 0],
-            x: (Math.cos(i * 22.5) * (40 + i * 4)),
-            y: (Math.sin(i * 22.5) * (40 + i * 4)),
-            opacity: [1, 1, 0.5, 0],
-            rotate: [0, 360]
+            scale: [0, 1, 0.3, 0],
+            x: (Math.cos(i * 30) * (35 + i * 2)),
+            y: (Math.sin(i * 30) * (35 + i * 2)),
+            opacity: [1, 0.9, 0.3, 0],
+            rotate: [0, 180]
           }}
           transition={{
-            duration: 2,
-            delay: i * 0.05,
-            ease: "easeOut"
+            duration: 2.5,
+            delay: i * 0.08,
+            ease: [0.4, 0, 0.2, 1]
           }}
         >
           <div
-            className="w-2 h-2 rounded-full"
+            className="w-1.5 h-1.5 rounded-full"
             style={{
-              background: ['#10b981', '#059669', '#047857', '#fbbf24', '#f59e0b', '#8b5cf6', '#7c3aed'][i % 7]
+              background: ['#10b981', '#059669', '#fbbf24', '#f59e0b'][i % 4]
             }}
           />
         </motion.div>
@@ -673,7 +696,7 @@ const LudoraLoadingSpinner = ({
       </motion.div>
 
       {/* Error warning particles */}
-      {[...Array(8)].map((_, i) => (
+      {[...Array(6)].map((_, i) => (
         <motion.div
           key={i}
           className="absolute"
@@ -684,22 +707,22 @@ const LudoraLoadingSpinner = ({
             opacity: 1
           }}
           animate={{
-            scale: [0, 1, 0],
-            x: (Math.cos(i * 45) * (30 + i * 3)),
-            y: (Math.sin(i * 45) * (30 + i * 3)),
-            opacity: [1, 0.5, 0],
+            scale: [0, 0.8, 0],
+            x: (Math.cos(i * 60) * (25 + i * 2)),
+            y: (Math.sin(i * 60) * (25 + i * 2)),
+            opacity: [1, 0.7, 0],
           }}
           transition={{
-            duration: 1.2,
-            delay: 0.5 + i * 0.05,
-            ease: "easeOut",
-            repeat: 2
+            duration: 1.5,
+            delay: 0.4 + i * 0.08,
+            ease: [0.4, 0, 0.2, 1],
+            repeat: 1
           }}
         >
           <div
-            className="w-1.5 h-1.5 rounded-full"
+            className="w-1 h-1 rounded-full"
             style={{
-              background: ['#ef4444', '#dc2626', '#b91c1c', '#fbbf24'][i % 4]
+              background: ['#ef4444', '#dc2626', '#fbbf24'][i % 3]
             }}
           />
         </motion.div>
@@ -749,13 +772,13 @@ const LudoraLoadingSpinner = ({
 
   return (
     <motion.div
-      className="flex flex-col items-center justify-center py-8 px-4"
+      className="flex flex-col items-center justify-center py-12 px-6"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
     >
       {/* Main spinner/status animation */}
-      <div className="mb-8 relative">
+      <div className="mb-10 relative">
         <AnimatePresence mode="wait">
           {status === "loading" && (
             <motion.div
@@ -791,17 +814,18 @@ const LudoraLoadingSpinner = ({
 
       {/* Enhanced status message with better typography */}
       <motion.div
-        className="text-center max-w-sm"
+        className="text-center max-w-md"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3, type: "spring", damping: 25, stiffness: 300 }}
       >
         <motion.p
           key={getStatusMessage()}
-          className={`${config.text} font-semibold text-center ${getStatusColor()} mb-2`}
+          className={`${config.text} font-medium text-center ${getStatusColor()} mb-4 tracking-wide`}
           style={{
-            fontFamily: 'system-ui, -apple-system, sans-serif',
-            letterSpacing: '0.025em'
+            fontFamily: '"Inter", "Segoe UI", system-ui, sans-serif',
+            lineHeight: '1.6',
+            fontWeight: '500'
           }}
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -812,58 +836,69 @@ const LudoraLoadingSpinner = ({
 
         {/* Subtle theme indicator */}
         <motion.div
-          className="flex justify-center items-center gap-1 opacity-40"
+          className="flex justify-center items-center gap-2 opacity-50"
           initial={{ opacity: 0 }}
-          animate={{ opacity: 0.4 }}
-          transition={{ delay: 0.6 }}
+          animate={{ opacity: 0.5 }}
+          transition={{ delay: 0.8 }}
         >
-          <div className={`w-1 h-1 rounded-full bg-gradient-to-r ${currentTheme.colors.primary}`} />
-          <div className={`w-1 h-1 rounded-full bg-gradient-to-r ${currentTheme.colors.secondary}`} />
-          <div className={`w-1 h-1 rounded-full bg-gradient-to-r ${currentTheme.colors.accent}`} />
+          <div
+            className="w-1.5 h-1.5 rounded-full"
+            style={{ backgroundColor: currentTheme.colors.glow }}
+          />
+          <div
+            className="w-1 h-1 rounded-full"
+            style={{ backgroundColor: currentTheme.colors.glow, opacity: 0.7 }}
+          />
+          <div
+            className="w-1.5 h-1.5 rounded-full"
+            style={{ backgroundColor: currentTheme.colors.glow }}
+          />
         </motion.div>
       </motion.div>
 
       {/* Enhanced loading progress dots for loading state */}
       {status === "loading" && (
         <motion.div
-          className="flex justify-center items-center gap-2 mt-6"
+          className="flex justify-center items-center gap-3 mt-8"
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.5, type: "spring" }}
+          transition={{ delay: 0.6, type: "spring" }}
         >
-          {[0, 1, 2, 3, 4].map((index) => (
+          {[0, 1, 2].map((index) => (
             <motion.div
               key={index}
               className="relative"
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
-              transition={{ delay: 0.6 + index * 0.1 }}
+              transition={{ delay: 0.8 + index * 0.1 }}
             >
               <motion.div
-                className={`w-2 h-2 rounded-full bg-gradient-to-r ${currentTheme.colors.accent}`}
+                className="w-2 h-2 rounded-full"
+                style={{ backgroundColor: currentTheme.colors.glow }}
                 animate={{
-                  scale: [0.8, 1.4, 0.8],
-                  opacity: [0.3, 1, 0.3],
-                  y: [0, -8, 0]
+                  scale: [0.8, 1.2, 0.8],
+                  opacity: [0.4, 1, 0.4],
+                  y: [0, -4, 0]
                 }}
                 transition={{
-                  duration: 1.5,
+                  duration: 1.8,
                   repeat: Infinity,
-                  delay: index * 0.15,
+                  delay: index * 0.2,
                   ease: "easeInOut"
                 }}
               />
               {/* Dot glow effect */}
               <motion.div
-                className={`absolute inset-0 w-2 h-2 rounded-full bg-gradient-to-r ${currentTheme.colors.accent} blur-sm`}
+                className="absolute inset-0 w-2 h-2 rounded-full blur-sm"
+                style={{ backgroundColor: currentTheme.colors.glow }}
                 animate={{
-                  scale: [1, 2, 1],
-                  opacity: [0, 0.6, 0]
+                  scale: [1, 1.8, 1],
+                  opacity: [0, 0.5, 0]
                 }}
                 transition={{
-                  duration: 1.5,
+                  duration: 1.8,
                   repeat: Infinity,
-                  delay: index * 0.15,
+                  delay: index * 0.2,
                   ease: "easeInOut"
                 }}
               />

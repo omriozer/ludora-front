@@ -38,6 +38,7 @@ export default function SubscriptionSettings() {
   const [showForm, setShowForm] = useState(false);
   const [editingPlan, setEditingPlan] = useState(null);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [isSavingPlan, setIsSavingPlan] = useState(false);
 
   // Global settings state
   const [globalDiscountDisplayType, setGlobalDiscountDisplayType] = useState('percentage'); // 'percentage' or 'amount'
@@ -258,25 +259,42 @@ export default function SubscriptionSettings() {
   };
 
   const handleSave = async () => {
+    console.log('🔍 HandleSave called:', { formData, editingPlan });
+
+    if (isSavingPlan) {
+      console.log('⏳ Already saving, ignoring click');
+      return;
+    }
+
     if (!formData.name.trim() || !formData.description.trim()) {
+      console.log('❌ Validation failed: missing name or description');
       showMessage('error', 'יש למלא את השם והתיאור');
       return;
     }
 
+    console.log('✅ Validation passed, attempting to save...');
+    setIsSavingPlan(true);
+
     try {
       if (editingPlan) {
+        console.log('📝 Updating existing plan:', editingPlan.id);
         await SubscriptionPlan.update(editingPlan.id, formData);
         showMessage('success', 'תוכנית המנוי עודכנה בהצלחה');
       } else {
-        await SubscriptionPlan.create(formData);
+        console.log('➕ Creating new plan');
+        const result = await SubscriptionPlan.create(formData);
+        console.log('✅ Plan created successfully:', result);
         showMessage('success', 'תוכנית המנוי נוצרה בהצלחה');
       }
 
       resetForm();
       loadData();
     } catch (error) {
-      console.error("Error saving subscription plan:", error);
-      showMessage('error', 'שגיאה בשמירת תוכנית המנוי');
+      console.error("❌ Error saving subscription plan:", error);
+      console.error("Error details:", error.message, error.stack);
+      showMessage('error', `שגיאה בשמירת תוכנית המנוי: ${error.message || 'שגיאה לא ידועה'}`);
+    } finally {
+      setIsSavingPlan(false);
     }
   };
 
@@ -815,7 +833,7 @@ export default function SubscriptionSettings() {
 
         {/* Subscription Plan Form Modal */}
         {showForm && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
             <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-white rounded-3xl shadow-2xl">
               <div className="p-8">
                 <div className="flex items-center justify-between mb-8">
@@ -1141,9 +1159,25 @@ export default function SubscriptionSettings() {
                   <Button variant="outline" onClick={resetForm}>
                     ביטול
                   </Button>
-                  <Button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700">
-                    <Save className="w-4 h-4 ml-2" />
-                    {editingPlan ? 'עדכן תוכנית' : 'צור תוכנית'}
+                  <Button
+                    onClick={(e) => {
+                      console.log('🖱️ Save button clicked!', e);
+                      handleSave();
+                    }}
+                    className="bg-blue-600 hover:bg-blue-700"
+                    disabled={isSavingPlan}
+                  >
+                    {isSavingPlan ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white ml-2"></div>
+                        שומר...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4 ml-2" />
+                        {editingPlan ? 'עדכן תוכנית' : 'צור תוכנית'}
+                      </>
+                    )}
                   </Button>
                 </div>
               </div>
