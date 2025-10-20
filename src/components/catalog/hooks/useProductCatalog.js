@@ -11,7 +11,7 @@ import { useUser } from '@/contexts/UserContext';
  */
 export default function useProductCatalog(productType, filters, activeTab) {
   // Get user from UserContext instead of loading independently
-  const { currentUser, isLoading } = useUser();
+  const { currentUser, isLoading: isLoadingUser } = useUser();
 
   // State management
   const [products, setProducts] = useState([]);
@@ -19,6 +19,7 @@ export default function useProductCatalog(productType, filters, activeTab) {
   const [categories, setCategories] = useState([]);
   const [userPurchases, setUserPurchases] = useState([]);
   const [settings, setSettings] = useState(null);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const [error, setError] = useState(null);
 
 
@@ -49,6 +50,7 @@ export default function useProductCatalog(productType, filters, activeTab) {
 
   // Main data loading function
   const loadData = useCallback(async () => {
+    setIsLoadingProducts(true);
     setError(null);
 
     let productsData = [];
@@ -231,6 +233,8 @@ export default function useProductCatalog(productType, filters, activeTab) {
       setError(`שגיאה בטעינת ${getProductTypeName(productType, 'plural')}`);
       setProducts([]);
       setCategories([]);
+    } finally {
+      setIsLoadingProducts(false);
     }
   }, [productType, getProductService, getEntityService, currentUser]);
 
@@ -352,10 +356,10 @@ export default function useProductCatalog(productType, filters, activeTab) {
 
   // Load data on mount and when dependencies change (but only after UserContext is loaded)
   useEffect(() => {
-    if (!isLoading) {
+    if (!isLoadingUser) {
       loadData();
     }
-  }, [loadData, isLoading]);
+  }, [loadData, isLoadingUser]);
 
   return {
     products,
@@ -364,7 +368,7 @@ export default function useProductCatalog(productType, filters, activeTab) {
     currentUser,
     userPurchases,
     settings,
-    isLoading,
+    isLoading: isLoadingUser || isLoadingProducts,
     error,
     loadData
   };
