@@ -250,6 +250,7 @@ const PurchaseHistory = ({
     switch (status) {
       case 'paid':
       case 'completed':
+      case 'success':
         return 'text-green-600 bg-green-50 border-green-200';
       case 'pending':
       case 'cart':
@@ -268,6 +269,7 @@ const PurchaseHistory = ({
     switch (status) {
       case 'paid':
       case 'completed':
+      case 'success':
         return 'הושלם';
       case 'pending':
         return 'ממתין';
@@ -408,7 +410,7 @@ const PurchaseHistory = ({
                         {product && !isSubscription && (
                           <div className="space-y-3">
                             {/* Professional Action Buttons using ProductActionBar */}
-                            {(purchase.payment_status === 'paid' || purchase.payment_status === 'completed') && (
+                            {(purchase.payment_status === 'paid' || purchase.payment_status === 'completed' || purchase.payment_status === 'success') && (
                               <ProductActionBar
                                 product={buildProductForActionBar(purchase)}
                                 className="w-full text-sm sm:text-base"
@@ -535,7 +537,7 @@ const PurchaseHistory = ({
                               {product && !isSubscription && (
                                 <div className="flex items-center gap-2">
                                   {/* Professional Action Button using ProductActionBar */}
-                                  {(purchase.payment_status === 'paid' || purchase.payment_status === 'completed') && (
+                                  {(purchase.payment_status === 'paid' || purchase.payment_status === 'completed' || purchase.payment_status === 'success') && (
                                     <ProductActionBar
                                       product={buildProductForActionBar(purchase)}
                                       className="text-xs"
