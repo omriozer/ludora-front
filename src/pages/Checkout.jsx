@@ -37,7 +37,8 @@ import {
   getCartPurchases,
   calculateTotalPrice,
   groupPurchasesByType,
-  showPurchaseErrorToast
+  showPurchaseErrorToast,
+  findProductForEntity
 } from "@/utils/purchaseHelpers";
 import paymentClient from "@/services/paymentClient";
 import { toast } from "@/components/ui/use-toast";
@@ -52,6 +53,7 @@ export default function Checkout() {
   const { removeFromCart } = useCart();
 
   const [cartItems, setCartItems] = useState([]);
+  const [cartItemProducts, setCartItemProducts] = useState({}); // Map of purchase.id -> Product
   const [currentUser, setCurrentUser] = useState(null);
   const [settings, setSettings] = useState({});
   const [isLoading, setIsLoading] = useState(true);
@@ -93,6 +95,33 @@ export default function Checkout() {
     payplusSecurePayment: "תשלום מאובטח באמצעות PayPlus"
   });
 
+  // Load Product data for cart items
+  const loadCartItemProducts = useCallback(async (cartPurchases) => {
+    try {
+      const productMap = {};
+
+      // Fetch Product data for each cart item
+      for (const purchase of cartPurchases) {
+        try {
+          const product = await findProductForEntity(
+            purchase.purchasable_type,
+            purchase.purchasable_id
+          );
+          if (product) {
+            productMap[purchase.id] = product;
+          }
+        } catch (error) {
+          console.error(`Error loading product for purchase ${purchase.id}:`, error);
+          // Continue loading other products even if one fails
+        }
+      }
+
+      setCartItemProducts(productMap);
+    } catch (error) {
+      console.error('Error loading cart item products:', error);
+    }
+  }, []);
+
   // Load checkout data
   const loadCheckoutData = useCallback(async () => {
     setIsLoading(true);
@@ -124,6 +153,9 @@ export default function Checkout() {
       // Load cart purchases (cart items)
       const cartPurchases = await getCartPurchases(userId);
       setCartItems(cartPurchases);
+
+      // Load Product data for each cart item
+      await loadCartItemProducts(cartPurchases);
 
       // Calculate pricing
       calculatePricing(cartPurchases);
@@ -253,6 +285,12 @@ export default function Checkout() {
       // Remove from local state
       const updatedItems = cartItems.filter(item => item.id !== purchaseId);
       setCartItems(updatedItems);
+
+      // Remove product data for this item
+      setCartItemProducts(prevProducts => {
+        const { [purchaseId]: removed, ...remaining } = prevProducts;
+        return remaining;
+      });
 
       // Notify cart context about the removal
       removeFromCart(purchaseId);
@@ -390,6 +428,7 @@ export default function Checkout() {
     try {
       // Clear local cart state
       setCartItems([]);
+      setCartItemProducts({});
 
       // Notify cart context to update
       cartItems.forEach(item => removeFromCart(item.id));
@@ -549,6 +588,17 @@ export default function Checkout() {
                       <p className="text-sm text-gray-600">
                         {getProductTypeName(purchase.purchasable_type, 'singular')}
                       </p>
+                      {/* Access Days Display */}
+                      {cartItemProducts[purchase.id] && (
+                        <div className="flex items-center gap-2 mt-1">
+                          <Clock className="w-3 h-3 text-green-600" />
+                          <span className="text-xs text-green-700 font-medium">
+                            {cartItemProducts[purchase.id].access_days === null || cartItemProducts[purchase.id].access_days === undefined
+                              ? 'גישה לכל החיים'
+                              : `${cartItemProducts[purchase.id].access_days} ימים`}
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="text-left">

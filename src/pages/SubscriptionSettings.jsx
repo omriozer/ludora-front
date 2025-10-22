@@ -39,6 +39,7 @@ export default function SubscriptionSettings() {
   const [editingPlan, setEditingPlan] = useState(null);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [isSavingPlan, setIsSavingPlan] = useState(false);
+  const [validationErrors, setValidationErrors] = useState({});
 
   // Global settings state
   const [globalDiscountDisplayType, setGlobalDiscountDisplayType] = useState('percentage'); // 'percentage' or 'amount'
@@ -184,6 +185,26 @@ export default function SubscriptionSettings() {
     });
     setEditingPlan(null);
     setShowForm(false);
+    setValidationErrors({});
+  };
+
+  const validateForm = () => {
+    const errors = {};
+
+    if (!formData.name.trim()) {
+      errors.name = 'שם התוכנית הוא שדה חובה';
+    }
+
+    if (!formData.description.trim()) {
+      errors.description = 'תיאור התוכנית הוא שדה חובה';
+    }
+
+    if (formData.price === null || formData.price === undefined || formData.price < 0) {
+      errors.price = 'מחיר התוכנית חייב להיות 0 או יותר';
+    }
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleEdit = (plan) => {
@@ -266,9 +287,10 @@ export default function SubscriptionSettings() {
       return;
     }
 
-    if (!formData.name.trim() || !formData.description.trim()) {
-      console.log('❌ Validation failed: missing name or description');
-      showMessage('error', 'יש למלא את השם והתיאור');
+    // Run form validation
+    if (!validateForm()) {
+      console.log('❌ Validation failed:', validationErrors);
+      showMessage('error', 'יש לתקן את השגיאות בטופס לפני השמירה');
       return;
     }
 
@@ -855,10 +877,22 @@ export default function SubscriptionSettings() {
                       <Input
                         id="name"
                         value={formData.name}
-                        onChange={(e) => setFormData({...formData, name: e.target.value})}
+                        onChange={(e) => {
+                          setFormData({...formData, name: e.target.value});
+                          // Clear validation error when user starts typing
+                          if (validationErrors.name) {
+                            setValidationErrors(prev => ({ ...prev, name: undefined }));
+                          }
+                        }}
                         placeholder="למשל: מנוי בסיסי"
-                        className="rounded-lg"
+                        className={`rounded-lg ${validationErrors.name ? 'border-red-500 focus:ring-red-500' : ''}`}
                       />
+                      {validationErrors.name && (
+                        <div className="mt-1 text-sm text-red-600 flex items-center gap-1">
+                          <AlertCircle className="w-4 h-4" />
+                          {validationErrors.name}
+                        </div>
+                      )}
                     </div>
 
                     <div>
@@ -868,10 +902,22 @@ export default function SubscriptionSettings() {
                       <Textarea
                         id="description"
                         value={formData.description}
-                        onChange={(e) => setFormData({...formData, description: e.target.value})}
+                        onChange={(e) => {
+                          setFormData({...formData, description: e.target.value});
+                          // Clear validation error when user starts typing
+                          if (validationErrors.description) {
+                            setValidationErrors(prev => ({ ...prev, description: undefined }));
+                          }
+                        }}
                         placeholder="תיאור קצר של התוכנית והטבותיה"
-                        className="rounded-lg h-24"
+                        className={`rounded-lg h-24 ${validationErrors.description ? 'border-red-500 focus:ring-red-500' : ''}`}
                       />
+                      {validationErrors.description && (
+                        <div className="mt-1 text-sm text-red-600 flex items-center gap-1">
+                          <AlertCircle className="w-4 h-4" />
+                          {validationErrors.description}
+                        </div>
+                      )}
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
@@ -885,10 +931,22 @@ export default function SubscriptionSettings() {
                           min="0"
                           step="0.01"
                           value={formData.price}
-                          onChange={(e) => setFormData({...formData, price: parseFloat(e.target.value) || 0})}
+                          onChange={(e) => {
+                            setFormData({...formData, price: parseFloat(e.target.value) || 0});
+                            // Clear validation error when user starts typing
+                            if (validationErrors.price) {
+                              setValidationErrors(prev => ({ ...prev, price: undefined }));
+                            }
+                          }}
                           placeholder="0"
-                          className="rounded-lg"
+                          className={`rounded-lg ${validationErrors.price ? 'border-red-500 focus:ring-red-500' : ''}`}
                         />
+                        {validationErrors.price && (
+                          <div className="mt-1 text-sm text-red-600 flex items-center gap-1">
+                            <AlertCircle className="w-4 h-4" />
+                            {validationErrors.price}
+                          </div>
+                        )}
                       </div>
 
                       <div>

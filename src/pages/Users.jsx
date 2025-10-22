@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, SubscriptionPlan, SubscriptionHistory, PendingSubscription } from '@/services/entities';
+import { User, SubscriptionPlan, SubscriptionHistory, PendingSubscription, Purchase } from '@/services/entities';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -342,7 +342,10 @@ function SubscriptionManagementModal({
 										<span>{getPlanName(pending.subscription_plan_id)}</span>
 										<Badge variant='outline'>{pending.status}</Badge>
 										<span className='text-xs text-gray-500'>
-											נוצר ב-{format(new Date(pending.created_date), 'dd/MM/yyyy', { locale: he })}
+											נוצר ב-{pending.created_date && !isNaN(new Date(pending.created_date))
+												? format(new Date(pending.created_date), 'dd/MM/yyyy', { locale: he })
+												: 'תאריך לא ידוע'
+											}
 										</span>
 									</div>
 									<Button
@@ -548,14 +551,24 @@ export default function UsersPage() {
 				}
 			}
 
-			// Reset user subscription data completely - INCLUDING pending_subscription_plan_id
+			// Delete any pending purchases for this user
+			console.log(`[RESET_SUBSCRIPTION] Cleaning up pending purchases...`);
+			const pendingPurchases = await Purchase.filter({
+				buyer_user_id: userToReset.id,
+				payment_status: 'pending'
+			});
+			for (const purchase of pendingPurchases) {
+				await Purchase.delete(purchase.id);
+				console.log(`[RESET_SUBSCRIPTION] Deleted pending purchase: ${purchase.id}`);
+			}
+
+			// Reset user subscription data completely
 			await User.update(userToReset.id, {
 				current_subscription_plan_id: null,
-				pending_subscription_plan_id: null, // Ensure this is also nulled out by reset
 				subscription_start_date: null,
 				subscription_end_date: null,
 				subscription_status: 'free_plan',
-				subscription_status_updated_at: null,
+				subscription_status_updated_at: new Date().toISOString(), // Set timestamp for reset
 				payplus_subscription_uid: null,
 			});
 

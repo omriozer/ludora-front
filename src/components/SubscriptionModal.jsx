@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { SubscriptionPlan, User, PendingSubscription, SubscriptionHistory } from "@/services/entities";
 import { processSubscriptionCallbacks } from "@/services/functions"; // This import is still used
@@ -6,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getProductTypeName } from "@/config/productTypes";
+import { useToast } from "@/components/ui/use-toast";
 import {
   X,
   Crown,
@@ -26,6 +28,7 @@ import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 
 export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubscriptionChange, isAutoOpened = false }) {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [subscriptionPlans, setSubscriptionPlans] = useState([]);
   const [currentPlan, setCurrentPlan] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -36,8 +39,6 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
   // Confirmation dialog states
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [planToCancel, setPlanToCancel] = useState(null);
-  // Message / Toast state
-  const [message, setMessage] = useState(null); // { type: 'success' | 'error' | 'warning', text: string }
 
   // New states for upgrade confirmation and environment selection
   const [showUpgradeConfirm, setShowUpgradeConfirm] = useState(false);
@@ -47,17 +48,13 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
   const [showEnvironmentSelection, setShowEnvironmentSelection] = useState(false);
   const [environmentSelectionResolve, setEnvironmentSelectionResolve] = useState(null);
 
+  // Payment modal states (using Portal)
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentUrl, setPaymentUrl] = useState('');
+  const [selectedPlanForPayment, setSelectedPlanForPayment] = useState(null);
+
   // Ref for managing the interval ID
   const intervalRef = useRef(null);
-
-  useEffect(() => {
-    if (message) {
-      const timer = setTimeout(() => {
-        setMessage(null);
-      }, 5000); // Clear message after 5 seconds
-      return () => clearTimeout(timer);
-    }
-  }, [message]);
 
   const loadSubscriptionPlans = useCallback(async () => {
     setIsLoading(true);
@@ -75,7 +72,11 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
       }
     } catch (error) {
       console.error("Error loading subscription plans:", error);
-      setMessage({ type: 'error', text: 'שגיאה בטעינת תוכניות המנוי.' });
+      toast({
+        variant: "destructive",
+        title: "שגיאה בטעינת תוכניות המנוי",
+        description: "אנא נסה שוב או פנה לתמיכה"
+      });
     }
     setIsLoading(false);
   }, [currentUser]);
@@ -122,7 +123,11 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
           }
 
           // No need to clear interval, as it wouldn't have been set for an expired pending sub
-          setMessage({ type: 'warning', text: 'תהליך התשלום לא הושלם בזמן. אנא נסה שוב.' });
+          toast({
+            variant: "destructive",
+            title: "תהליך התשלום לא הושלם",
+            description: "תהליך התשלום לא הושלם בזמן. אנא נסה שוב."
+          });
           return;
         }
 
@@ -159,7 +164,11 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
               onClose();
 
               // Show success message
-              setMessage({ type: 'success', text: 'המנוי שלך אושר בהצלחה! הדף יתרענן כעת.' });
+              toast({
+                variant: "default",
+                title: "המנוי שלך אושר בהצלחה!",
+                description: "הדף יתרענן כעת כדי לעדכן את הנתונים"
+              });
               setTimeout(() => window.location.reload() /* TODO: Consider if this reload is necessary */, 1000); // Reload page to reflect changes
             } else {
               // Update elapsed time message
@@ -185,13 +194,21 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
                 });
                 setPaymentInProgress(false);
                 setPendingMessage('');
-                setMessage({ type: 'error', text: 'התשלום לא הושלם בזמן. אנא נסה שוב.' });
+                toast({
+                  variant: "destructive",
+                  title: "התשלום לא הושלם בזמן",
+                  description: "אנא נסה שוב או פנה לתמיכה"
+                });
                 setTimeout(() => window.location.reload() /* TODO: Consider if this reload is necessary */, 1000); // Reload page to reflect changes
               }
             }
           } catch (error) {
             console.error('Error processing subscription in interval:', error);
-            setMessage({ type: 'error', text: 'שגיאה בעת בדיקת סטטוס תשלום.' });
+            toast({
+              variant: "destructive",
+              title: "שגיאה בבדיקת סטטוס תשלום",
+              description: "אנא נסה שוב או פנה לתמיכה"
+            });
           }
         }, 60000); // Check every minute
 
@@ -209,9 +226,79 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
       }
     } catch (error) {
       console.error('Error checking payment status:', error);
-      setMessage({ type: 'error', text: 'שגיאה בבדיקת סטטוס תשלום.' });
+      toast({
+        variant: "destructive",
+        title: "שגיאה בבדיקת סטטוס תשלום",
+        description: "אנא נסה שוב או פנה לתמיכה"
+      });
     }
   }, [currentUser, onSubscriptionChange, onClose]);
+
+  // Handle iframe messages from PayPlus (enhanced with better logging and immediate feedback)
+  useEffect(() => {
+    const handleMessage = async (event) => {
+      // Log ALL messages for debugging
+      console.log('🎯 SubscriptionModal: Raw message received:', {
+        origin: event.origin,
+        data: event.data,
+        source: event.source
+      });
+
+      // Filter out non-PayPlus messages (React DevTools, etc.)
+      if (!event.data ||
+          event.data.source === 'react-devtools-bridge' ||
+          event.data.source === 'react-devtools-content-script' ||
+          event.data.source === 'react-devtools-inject-script') {
+        console.log('🎯 SubscriptionModal: Filtered out non-PayPlus message');
+        return;
+      }
+
+      console.log('🎯 SubscriptionModal: Processing potential PayPlus message:', event.data);
+
+      if (typeof event.data === 'string') {
+        try {
+          const data = JSON.parse(event.data);
+          console.log('🎯 SubscriptionModal: Parsed message data:', data);
+
+          if (data.type === 'payplus_payment_complete') {
+            console.log('🎯 SubscriptionModal: Payment completed via PostMessage with status:', data.status);
+
+            if (data.status === 'success') {
+              // Payment was successful - provide immediate feedback like checkout
+              console.log('✅ Subscription payment completed via PostMessage - providing immediate feedback');
+              await handleSubscriptionPaymentSuccessImmediate();
+            } else {
+              // Payment failed/cancelled - close modal and show message
+              console.log('❌ Subscription payment failed via PostMessage:', data.status);
+              handlePaymentModalClose();
+
+              toast({
+                variant: "destructive",
+                title: "תשלום לא הושלם",
+                description: "התשלום בוטל או נכשל. אנא נסה שוב."
+              });
+            }
+          } else {
+            console.log('🎯 SubscriptionModal: Message type not recognized:', data.type);
+          }
+        } catch (e) {
+          console.log('🎯 SubscriptionModal: Failed to parse message as JSON:', e.message);
+          return;
+        }
+      } else {
+        console.log('🎯 SubscriptionModal: Message data is not a string:', typeof event.data);
+      }
+    };
+
+    if (showPaymentModal && paymentUrl) {
+      console.log('🎯 SubscriptionModal: Adding message listener for PayPlus iframe');
+      window.addEventListener('message', handleMessage);
+      return () => {
+        console.log('🎯 SubscriptionModal: Removing message listener for PayPlus iframe');
+        window.removeEventListener('message', handleMessage);
+      };
+    }
+  }, [showPaymentModal, paymentUrl]);
 
   // useEffect for loading plans and checking pending status
   useEffect(() => {
@@ -278,23 +365,21 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
 
       // Use dynamic import to call the function properly
       const { createPayplusSubscriptionPage } = await import('@/services/functions');
-      
-      const frontendOrigin = window.location.origin;
-      
+
       const response = await createPayplusSubscriptionPage({
-        subscriptionPlanId: plan.id,
-        environment: environment,
-        frontendOrigin: frontendOrigin
+        planId: plan.id,
+        userId: currentUser.id,
+        userEmail: currentUser.email
       });
 
       console.log('Payment page creation response:', response);
 
-      if (response.data?.success) {
-        // Return the payment URL
-        return response.data.payment_url;
+      if (response.success && response.data?.subscriptionUrl) {
+        // Return the payment URL - PayPlus returns it as 'subscriptionUrl'
+        return response.data.subscriptionUrl;
       } else {
         console.error('Failed to create payment page:', response);
-        const errorMessage = response.data?.error || response.error || 'שגיאה לא ידועה';
+        const errorMessage = response.data?.error || response.error || response.message || 'שגיאה לא ידועה';
         const details = response.data?.details ? ` (${response.data.details})` : '';
         throw new Error(`שגיאה ביצירת דף התשלום: ${errorMessage}${details}`);
       }
@@ -307,7 +392,11 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
   const handleSelectPlan = async (plan) => {
     // Don't allow new payments if payment is in progress or user has a pending status
     if (paymentInProgress || currentUser?.subscription_status === 'pending') {
-      setMessage({ type: 'warning', text: 'יש לך תהליך תשלום פעיל. אנא המתן לסיום העיבוד או נסה שוב בעוד מספר דקות.' });
+      toast({
+        variant: "destructive",
+        title: "תהליך תשלום פעיל",
+        description: "יש לך תהליך תשלום פעיל. אנא המתן לסיום העיבוד או נסה שוב בעוד מספר דקות."
+      });
       return;
     }
 
@@ -369,7 +458,11 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
           const updatedUser = await User.me();
           onSubscriptionChange(updatedUser);
         }
-        setMessage({ type: 'success', text: 'המנוי שלך עודכן בהצלחה למנוי חינם.' });
+        toast({
+          variant: "default",
+          title: "המנוי עודכן בהצלחה",
+          description: "המנוי שלך עודכן בהצלחה למנוי חינם"
+        });
         // Close modal after successful selection
         setTimeout(() => {
           onClose();
@@ -423,11 +516,19 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
             // Record history for the old subscription being cancelled due to upgrade
             await recordSubscriptionHistory(currentUser, plan, 'cancelled');
             console.log('✅ Old PayPlus subscription cancelled due to upgrade.');
-            setMessage({ type: 'success', text: 'המנוי הקודם בוטל בהצלחה. כעת תועבר למסך תשלום עבור המנוי החדש.' });
+            toast({
+              variant: "default",
+              title: "המנוי הקודם בוטל בהצלחה",
+              description: "כעת תועבר למסך תשלום עבור המנוי החדש"
+            });
 
           } catch (error) {
             console.error('Error cancelling existing subscription:', error);
-            setMessage({ type: 'error', text: 'שגיאה בביטול המנוי הקיים. אנא נסה שוב.' });
+            toast({
+              variant: "destructive",
+              title: "שגיאה בביטול המנוי הקיים",
+              description: "אנא נסה שוב או פנה לתמיכה"
+            });
             setIsSelecting(false);
             return;
           }
@@ -462,25 +563,30 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
           }
 
           const paymentUrl = await redirectToPaymentPage(plan, paymentEnvironment);
-          
-          // ONLY if redirectToPaymentPage succeeds (returns URL without throwing), update user to pending
-          console.log('Payment page created successfully, updating user status to pending...');
-          
-          await User.updateMyUserData({
-            current_subscription_plan_id: plan.id,
-            subscription_status: 'pending',
-            subscription_status_updated_at: new Date().toISOString()
-          });
 
-          console.log('User status updated to pending successfully');
-          
-          // Now, perform the actual redirect
-          window.location.href = paymentUrl;
+          console.log('Payment page created successfully');
+
+          // Now, open payment modal instead of redirect
+          console.log('🎯 SubscriptionModal: Opening payment modal with URL:', paymentUrl);
+
+          // Close any other dialogs that might interfere
+          setShowEnvironmentSelection(false);
+          setShowUpgradeConfirm(false);
+          setShowCancelConfirm(false);
+
+          setPaymentUrl(paymentUrl);
+          setSelectedPlanForPayment(plan); // Store the plan for later use
+          setShowPaymentModal(true);
+          console.log('🎯 SubscriptionModal: Modal state set to true');
 
         } catch (error) {
           console.error('Error creating payment page:', error);
           // Don't update user status if payment page creation failed
-          setMessage({ type: 'error', text: `שגיאה ביצירת דף התשלום: ${error.message}` });
+          toast({
+            variant: "destructive",
+            title: "שגיאה ביצירת דף התשלום",
+            description: error.message || "אנא נסה שוב או פנה לתמיכה"
+          });
           setIsSelecting(false);
           return;
         }
@@ -488,7 +594,11 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
       }
     } catch (error) {
       console.error("Error selecting subscription plan:", error);
-      setMessage({ type: 'error', text: 'שגיאה בבחירת תוכנית המנוי.' });
+      toast({
+        variant: "destructive",
+        title: "שגיאה בבחירת תוכנית המנוי",
+        description: "אנא נסה שוב או פנה לתמיכה"
+      });
       setIsSelecting(false);
     }
     // No finally block needed - handled in catch and specific cases above
@@ -555,9 +665,10 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
         }
 
         // Show success message explaining the cancellation behavior
-        setMessage({ 
-          type: 'success', 
-          text: `המנוי שלך בוטל בהצלחה ולא יתחדש אוטומטי. המנוי הנוכחי יישאר פעיל עד ${currentUser.subscription_end_date ? new Date(currentUser.subscription_end_date).toLocaleDateString('he-IL') : 'מועד החיוב הבא'}, ואז יעבור אוטומטית למנוי החינם.` 
+        toast({
+          variant: "default",
+          title: "המנוי בוטל בהצלחה",
+          description: `המנוי שלך בוטל בהצלחה ולא יתחדש אוטומטי. המנוי הנוכחי יישאר פעיל עד ${currentUser.subscription_end_date ? new Date(currentUser.subscription_end_date).toLocaleDateString('he-IL') : 'מועד החיוב הבא'}, ואז יעבור אוטומטית למנוי החינם.`
         });
 
         // Close modal after successful selection
@@ -567,18 +678,149 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
       } else {
         console.error('❌ Failed to cancel PayPlus subscription:', cancelResult);
         const errorMessage = cancelResult.data?.error || cancelResult.error || 'שגיאה לא ידועה';
-        setMessage({ type: 'error', text: `שגיאה בביטול המנוי ב-PayPlus: ${errorMessage}` });
+        toast({
+          variant: "destructive",
+          title: "שגיאה בביטול המנוי ב-PayPlus",
+          description: errorMessage
+        });
       }
     } catch (error) {
       console.error('❌ Error cancelling subscription:', error);
       const errorMessage = error.message || 'שגיאה לא ידועה';
-      setMessage({ type: 'error', text: `שגיאה בביטול המנוי: ${errorMessage}` });
+      toast({
+        variant: "destructive",
+        title: "שגיאה בביטול המנוי",
+        description: errorMessage
+      });
     } finally {
       setShowCancelConfirm(false);
       setPlanToCancel(null);
     }
   };
 
+  // Handle payment modal close
+  const handlePaymentModalClose = () => {
+    console.log('🎯 SubscriptionModal: Closing payment modal and cleaning up state');
+    setShowPaymentModal(false);
+    setIsSelecting(false);
+    setPaymentUrl('');
+    setSelectedPlanForPayment(null);
+
+    // Show message about cancelled payment
+    toast({
+      variant: "default",
+      title: "תשלום בוטל",
+      description: "התשלום בוטל. ניתן לנסות שוב בכל עת."
+    });
+
+    // Main subscription modal will automatically reappear due to the condition change
+    console.log('🎯 SubscriptionModal: Main modal will reappear automatically');
+  };
+
+  // Handle successful subscription payment with immediate feedback (like checkout)
+  const handleSubscriptionPaymentSuccessImmediate = async () => {
+    try {
+      console.log('🎯 SubscriptionModal: Processing successful subscription payment with immediate feedback');
+
+      // Close payment modal immediately
+      setShowPaymentModal(false);
+      setPaymentUrl('');
+      setIsSelecting(false);
+
+      // Show immediate success message
+      toast({
+        variant: "default",
+        title: "תשלום הושלם בהצלחה!",
+        description: "המנוי שלך מתעדכן. הדף יתרענן בקרוב..."
+      });
+
+      // Close the subscription modal immediately (like checkout)
+      onClose();
+
+      // Do backend processing asynchronously without blocking user
+      setTimeout(async () => {
+        try {
+          console.log('🎯 SubscriptionModal: Starting background subscription processing');
+
+          // Set user to pending status
+          await User.updateMyUserData({
+            current_subscription_plan_id: selectedPlanForPayment?.id,
+            subscription_status: 'pending',
+            subscription_status_updated_at: new Date().toISOString()
+          });
+
+          // Process subscription activation in background
+          await checkPendingSubscription();
+
+          // Refresh user data to reflect changes
+          const updatedUser = await User.me();
+          if (onSubscriptionChange) {
+            onSubscriptionChange(updatedUser);
+          }
+
+          console.log('🎯 SubscriptionModal: Background subscription processing completed');
+        } catch (error) {
+          console.error('Error in background subscription processing:', error);
+          // Show another toast for backend issues, but don't block user
+          toast({
+            variant: "destructive",
+            title: "בעיה בעדכון המנוי",
+            description: "התשלום הושלם אך יכול להיות שצריך לרענן את הדף לראות את השינויים"
+          });
+        }
+      }, 500); // Brief delay to let the success message show
+
+    } catch (error) {
+      console.error('Error handling immediate subscription payment success:', error);
+      toast({
+        variant: "destructive",
+        title: "שגיאה בעדכון המנוי",
+        description: "התשלום הושלם אך יש בעיה בעדכון המנוי. אנא פנה לתמיכה."
+      });
+    }
+  };
+
+  // Handle successful subscription payment (original polling-based approach)
+  const handleSubscriptionPaymentSuccess = async () => {
+    try {
+      console.log('🎯 SubscriptionModal: Processing successful subscription payment');
+
+      // NOW set user to pending status since payment was confirmed
+      console.log('🎯 SubscriptionModal: Setting user status to pending after payment confirmation');
+      await User.updateMyUserData({
+        current_subscription_plan_id: selectedPlanForPayment?.id,
+        subscription_status: 'pending',
+        subscription_status_updated_at: new Date().toISOString()
+      });
+
+      // Close payment modal
+      handlePaymentModalClose();
+
+      // Show success message
+      toast({
+        variant: "default",
+        title: "תשלום הושלם בהצלחה!",
+        description: "המנוי שלך מתעדכן כעת..."
+      });
+
+      // Start monitoring for subscription activation
+      // The existing checkPendingSubscription function will handle the polling
+      await checkPendingSubscription();
+
+      // Close the subscription modal after a brief delay
+      setTimeout(() => {
+        onClose();
+      }, 2000);
+
+    } catch (error) {
+      console.error('Error handling subscription payment success:', error);
+      toast({
+        variant: "destructive",
+        title: "שגיאה בעדכון המנוי",
+        description: "התשלום הושלם אך יש בעיה בעדכון המנוי. אנא פנה לתמיכה."
+      });
+    }
+  };
 
   // Add function to record subscription history
   const recordSubscriptionHistory = async (user, newPlan, actionType) => {
@@ -600,7 +842,11 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
       });
     } catch (error) {
       console.error('Error recording subscription history:', error);
-      setMessage({ type: 'error', text: 'שגיאה בתיעוד היסטוריית מנוי.' });
+      toast({
+        variant: "destructive",
+        title: "שגיאה בתיעוד היסטוריית מנוי",
+        description: "פעולת המנוי הצליחה אך יכול להיות שלא נרשמה בהיסטוריה"
+      });
     }
   };
 
@@ -611,18 +857,8 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
 
   return (
     <>
-      {message && (
-        <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 p-4 rounded-lg shadow-lg text-white max-w-sm w-full text-center ${
-          message.type === 'success' ? 'bg-green-500' :
-          message.type === 'error' ? 'bg-red-500' :
-          'bg-yellow-500'}`}
-        >
-          {message.text}
-        </div>
-      )}
-
-      {/* Main Modal - Full Screen */}
-      <Dialog open={isOpen} onOpenChange={onClose}>
+      {/* Main Modal - Full Screen - Hide when payment modal is open */}
+      <Dialog open={isOpen && !showPaymentModal} onOpenChange={onClose}>
         <DialogContent className="max-w-none w-screen h-screen max-h-none m-0 p-0 bg-white" hideCloseButton={true} dir="rtl">
           {paymentInProgress ? (
             <div className="flex items-center justify-center h-full">
@@ -1105,6 +1341,47 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* PayPlus Payment Modal - Portal to document root to avoid z-index conflicts */}
+      {showPaymentModal && paymentUrl && createPortal(
+        <div
+          className="fixed inset-0 flex items-center justify-center p-4"
+          style={{ zIndex: 100000, backgroundColor: 'rgba(0, 0, 0, 0.9)' }}
+          onClick={(e) => {
+            // Close modal if clicking on backdrop
+            if (e.target === e.currentTarget) {
+              console.log('🎯 SubscriptionModal: Backdrop click detected, closing payment modal');
+              handlePaymentModalClose();
+            }
+          }}
+        >
+          <div className="bg-white rounded-lg w-full max-w-4xl h-[90vh] flex flex-col shadow-2xl relative" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b">
+              <div className="flex items-center gap-3">
+                <h2 className="text-xl font-semibold">תשלום מנוי מאובטח</h2>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handlePaymentModalClose}
+                className="relative z-10 hover:bg-gray-100"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+            <div className="flex-1">
+              <iframe
+                src={paymentUrl}
+                className="w-full h-full border-0"
+                title="PayPlus Subscription Payment"
+                onLoad={() => console.log('🎯 SubscriptionModal: PayPlus iframe loaded successfully')}
+                onError={(e) => console.error('🎯 SubscriptionModal: PayPlus iframe error:', e)}
+              />
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </>
   );
 }

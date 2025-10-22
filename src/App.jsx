@@ -1,6 +1,7 @@
 import './App.css';
 import './styles/tutorial.css';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
 import * as Pages from '@/pages/index.jsx';
 import { EnhancedToaster } from '@/components/ui/enhanced-toast';
 import Layout from '@/pages/Layout';
@@ -13,9 +14,40 @@ import TutorialOverlay from '@/components/TutorialOverlay';
 import { ConfirmationProvider } from '@/components/ui/ConfirmationProvider';
 import { PRODUCT_TYPES } from './config/productTypes';
 import OnboardingWizard from '@/components/onboarding/OnboardingWizard';
+import { toast } from '@/components/ui/use-toast';
 
 function App() {
 	const { currentUser, isLoading } = useUser();
+	const location = useLocation();
+
+	// Handle subscription payment result query parameters
+	useEffect(() => {
+		const params = new URLSearchParams(location.search);
+
+		if (params.get('subscription_success') === 'true') {
+			console.log('🎉 Subscription payment success detected via URL parameter');
+			toast({
+				variant: "default",
+				title: "תשלום המנוי הושלם בהצלחה!",
+				description: "המנוי שלך מתעדכן במערכת. ייתכן שיידרש רענון הדף לראות את השינויים."
+			});
+			// Clean up URL parameter
+			const newUrl = window.location.pathname;
+			window.history.replaceState({}, '', newUrl);
+		}
+
+		if (params.get('subscription_failed') === 'true') {
+			console.log('❌ Subscription payment failure detected via URL parameter');
+			toast({
+				variant: "destructive",
+				title: "תשלום המנוי נכשל",
+				description: "התשלום לא הושלם בהצלחה. אנא נסה שוב או פנה לתמיכה."
+			});
+			// Clean up URL parameter
+			const newUrl = window.location.pathname;
+			window.history.replaceState({}, '', newUrl);
+		}
+	}, [location.search]);
 
 	return (
 		<ConfirmationProvider>

@@ -6,6 +6,7 @@ import path from 'path'
 export default defineConfig({
   plugins: [react()],
   server: {
+    https: process.env.NODE_ENV !== 'development', // Enable HTTPS for PayPlus autofill functionality
     allowedHosts: true,
     proxy: {
       '/api': {
@@ -15,6 +16,7 @@ export default defineConfig({
       }
     }
   },
+  // logLevel: 'warn', // Reduce HMR noise, only show warnings and errors
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
