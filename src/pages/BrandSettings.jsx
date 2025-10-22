@@ -324,7 +324,7 @@ export default function BrandSettings() {
                       type="email"
                       value={formData.contact_email}
                       onChange={(e) => handleInputChange('contact_email', e.target.value)}
-                      placeholder="info@ludora.com"
+                      placeholder="support@ludora.app"
                       className="pr-10"
                     />
                   </div>
