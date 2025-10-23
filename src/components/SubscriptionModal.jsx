@@ -369,7 +369,8 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
       const response = await createPayplusSubscriptionPage({
         planId: plan.id,
         userId: currentUser.id,
-        userEmail: currentUser.email
+        userEmail: currentUser.email,
+        environment: environment
       });
 
       console.log('Payment page creation response:', response);
