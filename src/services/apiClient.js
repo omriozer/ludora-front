@@ -510,13 +510,6 @@ export const User = {
 };
 
 // Function APIs
-export async function sendPaymentConfirmation(data) {
-  return apiRequest('/functions/sendPaymentConfirmation', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  });
-}
-
 export async function testPayplusConnection(data) {
   return apiRequest('/functions/testPayplusConnection', {
     method: 'POST',
@@ -552,36 +545,30 @@ export async function handlePayplusCallback(data) {
   });
 }
 
+/**
+ * Unified PayPlus payment page creation for both checkout and subscriptions
+ *
+ * This function handles the frontend side of PayPlus payment page creation.
+ * The actual PayPlus API integration and validation happens on the backend for security.
+ *
+ * PayPlus API Flow:
+ * 1. Frontend calls this function with cart data
+ * 2. Backend receives request at /payments/createPayplusPaymentPage
+ * 3. Backend calls shouldOpenPayplusPage() to validate if any paid items exist
+ * 4. If validation passes, backend calls PayPlus API: POST /api/v1.0/PaymentPages/GenerateLink
+ * 5. Backend returns payment URL to frontend
+ * 6. Frontend opens PayPlus payment page in modal/iframe
+ *
+ * @param {Object} data - Payment request data
+ * @param {Array} data.cartItems - Cart items to process
+ * @param {string} data.environment - 'production' or 'staging'
+ * @param {string} data.frontendOrigin - Source of payment request
+ * @returns {Promise<Object>} Payment page creation response
+ */
 export async function createPayplusPaymentPage(data) {
-  return apiRequest('/functions/createPayplusPaymentPage', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  });
-}
+  clog('🎯 createPayplusPaymentPage: Starting payment page creation', data);
 
-export async function checkPaymentStatus(data) {
-  return apiRequest('/functions/checkPaymentStatus', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  });
-}
-
-export async function cleanupStuckPaymentSessions(data) {
-  return apiRequest('/functions/cleanupStuckPaymentSessions', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  });
-}
-
-export async function cleanupUserStuckSessions(data) {
-  return apiRequest('/functions/cleanupUserStuckSessions', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  });
-}
-
-export async function handlePayplusProductCallback(data) {
-  return apiRequest('/functions/handlePayplusProductCallback', {
+  return apiRequest('/payments/createPayplusPaymentPage', {
     method: 'POST',
     body: JSON.stringify(data)
   });
@@ -629,54 +616,6 @@ export async function cleanupStaticTexts(data) {
   });
 }
 
-export async function createPayplusSubscriptionPage(data) {
-  return apiRequest('/functions/createPayplusSubscriptionPage', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  });
-}
-
-export async function handlePayplusSubscriptionCallback(data) {
-  return apiRequest('/functions/handlePayplusSubscriptionCallback', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  });
-}
-
-export async function testCallback(data) {
-  return apiRequest('/functions/testCallback', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  });
-}
-
-export async function checkSubscriptionStatus(data) {
-  return apiRequest('/functions/checkSubscriptionStatus', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  });
-}
-
-export async function processSubscriptionCallbacks(data) {
-  return apiRequest('/functions/processSubscriptionCallbacks', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  });
-}
-
-export async function getPayplusRecurringStatus(data) {
-  return apiRequest('/functions/getPayplusRecurringStatus', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  });
-}
-
-export async function cancelPayplusRecurringSubscription(data) {
-  return apiRequest('/functions/cancelPayplusRecurringSubscription', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  });
-}
 
 export async function deleteFile(data) {
   return apiRequest('/functions/deleteFile', {

@@ -58,9 +58,8 @@ export default function MaintenancePage({
         <div className="relative z-10 text-center max-w-md mx-auto">
         <div className="mb-8">
           <div
-            className="mx-auto w-24 h-24 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl flex items-center justify-center shadow-2xl transform rotate-3 cursor-pointer hover:scale-105 transition-transform duration-200"
+            className="mx-auto w-24 h-24 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl flex items-center justify-center shadow-2xl transform rotate-3"
             onClick={handleLogin}
-            title="כניסת מנהלים"
           >
             <ShieldAlert className="w-12 h-12 text-white" />
           </div>

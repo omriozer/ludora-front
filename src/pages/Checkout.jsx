@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   ShoppingCart,
   Trash2,
@@ -41,11 +40,13 @@ import {
   findProductForEntity
 } from "@/utils/purchaseHelpers";
 import paymentClient from "@/services/paymentClient";
+import { createPayplusPaymentPage } from "@/services/apiClient";
 import { toast } from "@/components/ui/use-toast";
 import { useCart } from "@/contexts/CartContext";
 import CouponInput from "@/components/CouponInput";
 import couponClient from "@/services/couponClient";
 import { getApiBase } from "@/utils/api";
+import PayPlusEnvironmentSelector from "@/components/PayPlusEnvironmentSelector";
 
 
 export default function Checkout() {
@@ -62,6 +63,7 @@ export default function Checkout() {
   const [paymentEnvironment, setPaymentEnvironment] = useState('production');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentUrl, setPaymentUrl] = useState('');
+  const [isIframeLoading, setIsIframeLoading] = useState(true);
 
   // PaymentIntent state
   const [currentTransactionId, setCurrentTransactionId] = useState(null);
@@ -356,59 +358,31 @@ export default function Checkout() {
     setIsProcessingPayment(true);
 
     try {
-      const userId = getUserIdFromToken();
-      if (!userId) {
-        throw new Error('לא ניתן לזהות את המשתמש');
-      }
-
-      // Prepare cart items with id and payment_amount
-      const cartItemsForPayment = cartItems.map(item => ({
-        id: item.id,
-        payment_amount: parseFloat(item.payment_amount)
-      }));
-
-      // Create PaymentIntent using new Transaction-centric flow
-      const paymentResponse = await paymentClient.createPaymentIntent({
-        cartItems: cartItemsForPayment,
-        userId,
-        appliedCoupons: appliedCoupons.map(coupon => ({
-          code: coupon.code,
-          id: coupon.id,
-          discountAmount: coupon.discountAmount,
-          discountType: coupon.discountType
-        })),
+      const paymentResponse = await createPayplusPaymentPage({
+        cartItems: cartItems,
         environment: paymentEnvironment,
-        frontendOrigin: window.location.origin
+        frontendOrigin: 'cart'
       });
 
-      if (paymentResponse.success && paymentResponse.data) {
-        const { transactionId, paymentUrl, totalAmount, status } = paymentResponse.data;
+      if (paymentResponse.success && paymentResponse.paymentUrl) {
+        console.log('🎯 PaymentPage created successfully:', {
+          paymentUrl: paymentResponse.paymentUrl,
+          transactionId: paymentResponse.transactionId,
+          environment: paymentResponse.environment
+        });
 
-        console.log('🎯 PaymentIntent created:', { transactionId, totalAmount, status });
-
-        // Store transaction ID for confirmation
-        setCurrentTransactionId(transactionId);
-
-        // Set payment URL and show modal with PayPlus iframe
-        setPaymentUrl(paymentUrl);
+        // Set payment URL and transaction ID, then show modal
+        setPaymentUrl(paymentResponse.paymentUrl);
+        setCurrentTransactionId(paymentResponse.transactionId);
+        setIsIframeLoading(true); // Reset loading state for new iframe
         setShowPaymentModal(true);
-
-        // Payment completion will be handled by PayPlus message handler
-
       } else {
-        throw new Error('לא ניתן ליצור PaymentIntent');
+        console.log('🎯 PaymentPage creation failed or no URL returned:', paymentResponse);
+        setIsProcessingPayment(false);
       }
 
     } catch (error) {
-      console.error('PaymentIntent error:', error);
-
-      // Show user-friendly error message
-      toast({
-        title: "שגיאה בעיבוד התשלום",
-        description: error.message || "אירעה שגיאה בעת יצירת דף התשלום. אנא נסו שוב.",
-        variant: "destructive",
-      });
-
+      console.log('🎯 PaymentIntent error:', error);
       setIsProcessingPayment(false);
     }
   };
@@ -418,6 +392,7 @@ export default function Checkout() {
     setShowPaymentModal(false);
     setIsProcessingPayment(false);
     setPaymentUrl('');
+    setIsIframeLoading(true);
 
     // Clear transaction ID
     setCurrentTransactionId(null);
@@ -687,39 +662,13 @@ export default function Checkout() {
                     />
                   </div>
 
-                  {/* Admin Environment Toggle */}
-                  {currentUser?.role === 'admin' && (
-                    <div className="space-y-3 p-4 bg-orange-50 rounded-2xl border border-orange-200">
-                      <Label className="text-sm font-medium text-orange-800 flex items-center gap-2">
-                        <Shield className="w-4 h-4" />
-                        PayPlus Environment (Admin Only)
-                      </Label>
-                      <RadioGroup
-                        value={paymentEnvironment}
-                        onValueChange={setPaymentEnvironment}
-                        className="space-y-2"
-                      >
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="production" id="prod" />
-                          <Label htmlFor="prod" className="text-sm cursor-pointer">
-                            Production (Live payments)
-                          </Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="test" id="test" />
-                          <Label htmlFor="test" className="text-sm cursor-pointer">
-                            Test/Staging (Test payments)
-                          </Label>
-                        </div>
-                      </RadioGroup>
-                      <div className="text-xs text-orange-600">
-                        {paymentEnvironment === 'production'
-                          ? 'Real money transactions will be processed'
-                          : 'Test mode - no real money will be charged'
-                        }
-                      </div>
-                    </div>
-                  )}
+                  {/* PayPlus Environment Selector */}
+                  <PayPlusEnvironmentSelector
+                    value={paymentEnvironment}
+                    onChange={setPaymentEnvironment}
+                    user={currentUser}
+                    disabled={isProcessingPayment}
+                  />
 
                   {/* Payment Button */}
                   <Button
@@ -781,13 +730,33 @@ export default function Checkout() {
                 <X className="w-4 h-4" />
               </Button>
             </div>
-            <div className="flex-1">
+            <div className="flex-1 relative">
+              {/* Loading Spinner Overlay */}
+              {isIframeLoading && (
+                <div className="absolute inset-0 bg-white flex items-center justify-center z-10">
+                  <LudoraLoadingSpinner
+                    message="טוען דף תשלום..."
+                    status="loading"
+                    size="lg"
+                    theme="neon"
+                    showParticles={true}
+                  />
+                </div>
+              )}
+
+              {/* PayPlus Iframe */}
               <iframe
                 src={paymentUrl}
                 className="w-full h-full border-0"
                 title="PayPlus Payment"
-                onLoad={() => console.log('🎯 Checkout: PayPlus iframe loaded successfully')}
-                onError={(e) => console.error('🎯 Checkout: PayPlus iframe error:', e)}
+                onLoad={() => {
+                  console.log('🎯 Checkout: PayPlus iframe loaded successfully');
+                  setIsIframeLoading(false);
+                }}
+                onError={(e) => {
+                  console.error('🎯 Checkout: PayPlus iframe error:', e);
+                  setIsIframeLoading(false);
+                }}
               />
             </div>
           </div>

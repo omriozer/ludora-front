@@ -8,12 +8,10 @@ import { useCart } from '@/contexts/CartContext';
 import { useProductAccess } from '@/hooks/useProductAccess';
 import {
   getUserIdFromToken,
-  isAuthenticated,
-  findProductForEntity,
-  createPendingPurchase,
-  showPurchaseSuccessToast,
-  showPurchaseErrorToast
+  isAuthenticated
 } from '@/utils/purchaseHelpers';
+import paymentClient from '@/services/paymentClient';
+import { toast } from '@/components/ui/use-toast';
 
 /**
  * Add to Cart Button - Handles adding items to cart only
@@ -69,41 +67,49 @@ export default function AddToCartButton({
       const entityType = productType;
       const entityId = product.entity_id || product.id;
 
-      // Find Product record to get price
-      const productRecord = await findProductForEntity(entityType, entityId);
-
-      if (!productRecord) {
-        throw new Error('לא נמצא מוצר מתאים להוספה לעגלה');
-      }
-
-      if (!productRecord.price || productRecord.price <= 0) {
-        throw new Error('מחיר המוצר לא זמין');
-      }
-
-      // Create pending purchase (add to cart)
-      const purchase = await createPendingPurchase({
-        entityType,
-        entityId,
-        price: productRecord.price,
-        userId,
-        metadata: {
-          product_title: product.title,
-          source: 'AddToCartButton'
-        }
+      // Create purchase using new API
+      const result = await paymentClient.createPurchase(entityType, entityId, {
+        product_title: product.title,
+        source: 'AddToCartButton'
       });
 
-      // Notify cart context
-      addToCart();
+      if (result.success) {
+        const { data } = result;
+        const isCompleted = data.completed || data.purchase?.payment_status === 'completed';
+        const isFreeItem = data.isFree;
 
-      // Show success message (but don't redirect)
-      showPurchaseSuccessToast(product.title, false);
+        if (isCompleted || isFreeItem) {
+          // Free item - completed immediately (shouldn't happen with AddToCartButton but handle it)
+          toast({
+            title: "מוצר התקבל בהצלחה!",
+            description: `${product.title} נוסף לספרייה שלך`,
+            variant: "default",
+          });
+        } else {
+          // Paid item - added to cart
+          addToCart();
 
-      if (onSuccess) {
-        onSuccess(purchase);
+          toast({
+            title: "נוסף לעגלה",
+            description: `${product.title} נוסף לעגלת הקניות`,
+            variant: "default",
+          });
+        }
+
+        if (onSuccess) {
+          onSuccess(data.purchase);
+        }
+      } else {
+        throw new Error(result.error || 'שגיאה בהוספה לעגלה');
       }
 
     } catch (error) {
-      showPurchaseErrorToast(error, 'בהוספה לעגלה');
+      cerror('Error adding to cart:', error);
+      toast({
+        title: "שגיאה בהוספה לעגלה",
+        description: error.message || "אירעה שגיאה בעת הוספת הפריט לעגלה. אנא נסו שוב.",
+        variant: "destructive",
+      });
     } finally {
       setIsAddingToCart(false);
     }

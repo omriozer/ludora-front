@@ -10,12 +10,11 @@ import { useProductAccess, getPurchaseActionText } from '@/hooks/useProductAcces
 import {
   getUserIdFromToken,
   isAuthenticated,
-  findProductForEntity,
-  createPendingPurchase,
-  createFreePurchase,
   showPurchaseSuccessToast,
   showPurchaseErrorToast
 } from '@/utils/purchaseHelpers';
+import paymentClient from '@/services/paymentClient';
+import { toast } from '@/components/ui/use-toast';
 
 /**
  * Buy Product Button - Handles purchase initiation only
@@ -70,102 +69,74 @@ export default function BuyProductButton({
       return;
     }
 
+    // If already in cart, redirect to checkout
+    if (isInCart) {
+      navigate('/checkout');
+      return;
+    }
+
     setIsProcessing(true);
 
     try {
-      if (isFree) {
-        await handleFreePurchase(userId);
-      } else if (isInCart) {
-        // Redirect to checkout if already in cart
-        navigate('/checkout');
+      const entityType = productType;
+      const entityId = product.entity_id || product.id;
+
+      // Create purchase using new API
+      const result = await paymentClient.createPurchase(entityType, entityId, {
+        product_title: product.title,
+        source: 'BuyProductButton'
+      });
+
+      if (result.success) {
+        const { data } = result;
+        const isCompleted = data.completed || data.purchase?.payment_status === 'completed';
+        const isFreeItem = data.isFree;
+
+        if (isCompleted || isFreeItem) {
+          // Free item - completed immediately
+          toast({
+            title: "מוצר התקבל בהצלחה!",
+            description: `${product.title} נוסף לספרייה שלך`,
+            variant: "default",
+          });
+
+          if (onSuccess) {
+            onSuccess(data.purchase);
+          }
+
+          // Redirect based on product type
+          if (entityType === 'file') {
+            navigate(`/product-details?type=${entityType}&id=${entityId}`);
+          } else {
+            // For other types, reload to show access
+            window.location.reload();
+          }
+        } else {
+          // Paid item - added to cart
+          addToCart();
+
+          toast({
+            title: "נוסף לעגלה",
+            description: `${product.title} נוסף לעגלת הקניות`,
+            variant: "default",
+          });
+
+          // Redirect to checkout
+          navigate('/checkout');
+        }
       } else {
-        await handlePaidPurchase(userId);
+        throw new Error(result.error || 'שגיאה ביצירת הרכישה');
       }
+
     } catch (error) {
       cerror('Error in purchase flow:', error);
+      toast({
+        title: "שגיאה ברכישה",
+        description: error.message || "אירעה שגיאה בעת הרכישה. אנא נסו שוב.",
+        variant: "destructive",
+      });
     } finally {
       setIsProcessing(false);
-    }
-  };
-
-  const handleFreePurchase = async (userId) => {
-    try {
-      const entityType = productType;
-      const entityId = product.entity_id || product.id;
-
-      // Get the actual price from Product record if needed
-      const productRecord = await findProductForEntity(entityType, entityId);
-      const price = productRecord?.price || product.price || 0;
-
-      const purchase = await createFreePurchase({
-        entityType,
-        entityId,
-        price,
-        userId,
-        metadata: {
-          product_title: product.title,
-          source: 'BuyProductButton'
-        }
-      });
-
-      showPurchaseSuccessToast(product.title, true);
-
-      if (onSuccess) {
-        onSuccess(purchase);
-      }
-
-      // Redirect based on product type
-      if (entityType === 'file') {
-        navigate(`/product-details?type=${entityType}&id=${entityId}`);
-      } else {
-        // For other types, reload to show access
-        window.location.reload();
-      }
-
-    } catch (error) {
-      showPurchaseErrorToast(error, 'בקבלת המוצר החינמי');
-    }
-  };
-
-  const handlePaidPurchase = async (userId) => {
-    try {
-      const entityType = productType;
-      const entityId = product.entity_id || product.id;
-
-      // Find Product record to get price
-      const productRecord = await findProductForEntity(entityType, entityId);
-
-      if (!productRecord) {
-        throw new Error('לא נמצא מוצר מתאים לרכישה');
-      }
-
-      if (!productRecord.price || productRecord.price <= 0) {
-        throw new Error('מחיר המוצר לא זמין');
-      }
-
-      // Create pending purchase
-      await createPendingPurchase({
-        entityType,
-        entityId,
-        price: productRecord.price,
-        userId,
-        metadata: {
-          product_title: product.title,
-          source: 'BuyProductButton'
-        }
-      });
-
-      // Notify cart context
-      addToCart();
-
-      // Show success message
-      showPurchaseSuccessToast(product.title, false);
-
-      // Redirect to checkout
-      navigate('/checkout');
-
-    } catch (error) {
-      showPurchaseErrorToast(error, 'ברכישת המוצר');
     }
   };
 

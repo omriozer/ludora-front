@@ -1,4 +1,4 @@
-import { getApiBase } from '@/utils/api';
+import { apiRequest } from '@/services/apiClient';
 import { clog, cerror } from '@/lib/utils';
 
 /**
@@ -6,135 +6,101 @@ import { clog, cerror } from '@/lib/utils';
  */
 class PaymentClient {
   constructor() {
-    this.apiBase = getApiBase();
+    // apiRequest handles base URL automatically
   }
 
-  // REMOVED: createCheckoutPaymentPage() - Legacy method replaced by createPaymentIntent()
-
-  // REMOVED: createPaymentPage() - Legacy method replaced by createPaymentIntent()
-
-  // REMOVED: checkPaymentStatus() - Legacy method replaced by checkPaymentIntentStatus()
-
   /**
-   * Create PaymentIntent using new Transaction-centric flow
-   * @param {Object} params - Payment parameters
-   * @param {Array} params.cartItems - Array of cart items with id and payment_amount
-   * @param {string} params.userId - User ID
-   * @param {Array} params.appliedCoupons - Applied coupons
-   * @param {string} params.environment - Payment environment (production/test)
-   * @param {string} params.frontendOrigin - Frontend origin for callbacks
-   * @returns {Promise<Object>} PaymentIntent response with transactionId and paymentUrl
+   * Create a new purchase (add item to cart or complete if free)
+   * @param {string} purchasableType - Type of item (workshop, course, file, tool, game, subscription)
+   * @param {string} purchasableId - ID of the item
+   * @param {Object} additionalData - Additional metadata for the purchase
+   * @returns {Promise<Object>} Purchase creation response
    */
-  async createPaymentIntent({ cartItems, userId, appliedCoupons = [], environment = 'production', frontendOrigin }) {
+  async createPurchase(purchasableType, purchasableId, additionalData = {}) {
     try {
-      clog('Creating PaymentIntent:', { cartItems, userId, appliedCoupons, environment });
+      clog('Creating purchase:', { purchasableType, purchasableId, additionalData });
 
-      const token = localStorage.getItem('authToken');
-      if (!token) {
-        throw new Error('Authentication token not found');
-      }
-
-      const response = await fetch(`${this.apiBase}/payments/start`, {
+      const data = await apiRequest('/payments/purchases', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
         body: JSON.stringify({
-          cartItems,
-          userId,
-          appliedCoupons,
-          environment,
-          frontendOrigin: frontendOrigin || window.location.origin
-        }),
+          purchasableType,
+          purchasableId,
+          additionalData
+        })
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        const errorMessage = data.error || data.message || `Server error: ${response.status} ${response.statusText}`;
-        throw new Error(errorMessage);
-      }
-
-      clog('PaymentIntent created successfully:', data);
-      return data;
+      clog('Purchase created:', data);
+      return {
+        success: true,
+        ...data
+      };
 
     } catch (error) {
-      cerror('Error creating PaymentIntent:', error);
+      // Handle special case for subscription update (409 conflict)
+      if (error.message.includes('409') || error.message.includes('Subscription already in cart')) {
+        clog('Subscription already in cart, can update');
+        return {
+          success: false,
+          canUpdate: true,
+          error: error.message
+        };
+      }
+
+      cerror('Error creating purchase:', error);
       throw error;
     }
   }
 
   /**
-   * Check PaymentIntent status using Transaction ID
-   * @param {string} transactionId - Transaction ID
-   * @returns {Promise<Object>} Payment status response
+   * Delete a cart item (remove from cart)
+   * @param {string} purchaseId - ID of the purchase to delete
+   * @returns {Promise<Object>} Deletion response
    */
-  async checkPaymentIntentStatus(transactionId) {
+  async deleteCartItem(purchaseId) {
     try {
-      clog('Checking PaymentIntent status:', transactionId);
+      clog('Deleting cart item:', { purchaseId });
 
-      const token = localStorage.getItem('authToken');
-      if (!token) {
-        throw new Error('Authentication token not found');
-      }
-
-      const response = await fetch(`${this.apiBase}/payments/status/${transactionId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
+      const data = await apiRequest(`/payments/purchases/${purchaseId}`, {
+        method: 'DELETE'
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to check PaymentIntent status');
-      }
-
-      clog('PaymentIntent status checked:', data);
-      return data;
+      clog('Cart item deleted:', data);
+      return {
+        success: true,
+        ...data
+      };
 
     } catch (error) {
-      cerror('Error checking PaymentIntent status:', error);
+      cerror('Error deleting cart item:', error);
       throw error;
     }
   }
 
   /**
-   * Retry a failed PaymentIntent
-   * @param {string} transactionId - Transaction ID
-   * @returns {Promise<Object>} Retry response
+   * Update cart subscription (change subscription plan)
+   * @param {string} purchaseId - ID of the subscription purchase to update
+   * @param {string} newSubscriptionPlanId - ID of the new subscription plan
+   * @returns {Promise<Object>} Update response
    */
-  async retryPaymentIntent(transactionId) {
+  async updateCartSubscription(purchaseId, newSubscriptionPlanId) {
     try {
-      clog('Retrying PaymentIntent:', transactionId);
+      clog('Updating cart subscription:', { purchaseId, newSubscriptionPlanId });
 
-      const token = localStorage.getItem('authToken');
-      if (!token) {
-        throw new Error('Authentication token not found');
-      }
-
-      const response = await fetch(`${this.apiBase}/payments/retry/${transactionId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
+      const data = await apiRequest(`/payments/purchases/${purchaseId}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          subscriptionPlanId: newSubscriptionPlanId
+        })
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to retry PaymentIntent');
-      }
-
-      clog('PaymentIntent retry result:', data);
-      return data;
+      clog('Cart subscription updated:', data);
+      return {
+        success: true,
+        ...data
+      };
 
     } catch (error) {
-      cerror('Error retrying PaymentIntent:', error);
+      cerror('Error updating cart subscription:', error);
       throw error;
     }
   }
@@ -143,28 +109,13 @@ class PaymentClient {
    * Test PayPlus connection
    * @returns {Promise<Object>} Connection test response
    */
-  async testConnection() {
+  async testPayPlusConnection() {
     try {
       clog('Testing PayPlus connection');
 
-      const token = localStorage.getItem('authToken');
-      if (!token) {
-        throw new Error('Authentication token not found');
-      }
-
-      const response = await fetch(`${this.apiBase}/functions/testPayplusConnection`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
+      const data = await apiRequest('/functions/testPayplusConnection', {
+        method: 'POST'
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to test PayPlus connection');
-      }
 
       clog('PayPlus connection test result:', data);
       return data;

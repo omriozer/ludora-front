@@ -254,20 +254,6 @@ export const purchaseUtils = {
   isPaymentCompleted: (purchase) => {
     return purchase.payment_status === 'completed' || purchase.payment_status === 'paid'; // Legacy support
   },
-
-  // Get purchase display title
-  getDisplayTitle: (purchase) => {
-    // Try to get from associated entities first
-    const entity = purchase.workshop || purchase.course || purchase.file ||
-                  purchase.tool || purchase.game || purchase.product;
-
-    if (entity && entity.title) {
-      return entity.title;
-    }
-
-    // Legacy fallbacks
-    return purchase.product_title || purchase.workshop_title || 'מוצר לא ידוע';
-  }
 };
 
 // Product utilities for clean polymorphic structure

@@ -2,12 +2,14 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { SubscriptionPlan, User, PendingSubscription, SubscriptionHistory } from "@/services/entities";
-import { processSubscriptionCallbacks } from "@/services/functions"; // This import is still used
+import { createPayplusPaymentPage } from "@/services/apiClient"; // Unified function
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getProductTypeName } from "@/config/productTypes";
 import { useToast } from "@/components/ui/use-toast";
+import PayPlusEnvironmentSelector from "@/components/PayPlusEnvironmentSelector";
+import paymentClient from "@/services/paymentClient";
 import {
   X,
   Crown,
@@ -19,9 +21,7 @@ import {
   Check,
   Star,
   Zap,
-  Gift,
-  Settings,
-  Globe
+  Gift
 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
@@ -45,8 +45,7 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
   const [planToUpgrade, setPlanToUpgrade] = useState(null);
   const [upgradeConfirmResolve, setUpgradeConfirmResolve] = useState(null);
 
-  const [showEnvironmentSelection, setShowEnvironmentSelection] = useState(false);
-  const [environmentSelectionResolve, setEnvironmentSelectionResolve] = useState(null);
+  const [paymentEnvironment, setPaymentEnvironment] = useState('production');
 
   // Payment modal states (using Portal)
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -138,9 +137,6 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
         const intervalId = setInterval(async () => {
           try {
             console.log('[SUBSCRIPTION_MODAL] Checking for processed subscription...');
-
-            // Call the processing function
-            await processSubscriptionCallbacks();
 
             // Check if subscription was processed
             const updatedUser = await User.me();
@@ -358,37 +354,6 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
     return billingPeriod === 'yearly' ? 'לשנה' : 'לחודש';
   };
 
-  // Modified to return the payment URL instead of redirecting immediately
-  const redirectToPaymentPage = async (plan, environment) => {
-    try {
-      console.log('Attempting to create PayPlus subscription page for plan:', plan.id);
-
-      // Use dynamic import to call the function properly
-      const { createPayplusSubscriptionPage } = await import('@/services/functions');
-
-      const response = await createPayplusSubscriptionPage({
-        planId: plan.id,
-        userId: currentUser.id,
-        userEmail: currentUser.email,
-        environment: environment
-      });
-
-      console.log('Payment page creation response:', response);
-
-      if (response.success && response.data?.subscriptionUrl) {
-        // Return the payment URL - PayPlus returns it as 'subscriptionUrl'
-        return response.data.subscriptionUrl;
-      } else {
-        console.error('Failed to create payment page:', response);
-        const errorMessage = response.data?.error || response.error || response.message || 'שגיאה לא ידועה';
-        const details = response.data?.details ? ` (${response.data.details})` : '';
-        throw new Error(`שגיאה ביצירת דף התשלום: ${errorMessage}${details}`);
-      }
-    } catch (error) {
-      console.error("Error in redirectToPaymentPage:", error);
-      throw error; // Re-throw to be caught by caller
-    }
-  };
 
   const handleSelectPlan = async (plan) => {
     // Don't allow new payments if payment is in progress or user has a pending status
@@ -485,41 +450,15 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
           }
 
           try {
-            // Determine environment for cancellation
-            let environment = 'production'; // Default
-            
-            // If user is admin, show environment selection
-            if (currentUser?.role === 'admin') {
-              environment = await new Promise((resolve) => {
-                setShowEnvironmentSelection(true);
-                setEnvironmentSelectionResolve(() => resolve);
-              });
-              // If admin cancelled environment selection
-              if (environment === null) {
-                setIsSelecting(false);
-                return;
-              }
-            }
-
-            // Cancel existing PayPlus subscription - Use dynamic import
-            const { cancelPayplusRecurringSubscription } = await import('@/services/functions');
-            
-            const cancelResult = await cancelPayplusRecurringSubscription({
-              recurring_uid: currentUser.payplus_subscription_uid,
-              environment: environment,
-              reason: 'User upgraded to different plan'
-            });
-
-            if (!cancelResult.data?.success) {
-              throw new Error(cancelResult.data?.error || 'Failed to cancel existing subscription in PayPlus');
-            }
+            // Use the selected environment from the PayPlus environment selector
+            const environment = paymentEnvironment;
 
             // Record history for the old subscription being cancelled due to upgrade
             await recordSubscriptionHistory(currentUser, plan, 'cancelled');
-            console.log('✅ Old PayPlus subscription cancelled due to upgrade.');
+            console.log('✅ Old subscription marked for cancellation due to upgrade.');
             toast({
               variant: "default",
-              title: "המנוי הקודם בוטל בהצלחה",
+              title: "מעבר למנוי חדש",
               description: "כעת תועבר למסך תשלום עבור המנוי החדש"
             });
 
@@ -543,49 +482,128 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
           await recordSubscriptionHistory(currentUser, plan, 'started');
         }
 
-        // FIXED: Create payment page FIRST, only update user status if successful
+        // Use new purchase system for subscription plans
         try {
-          console.log('Creating payment page for plan:', plan.id);
-          
-          // Try to create payment page - determine environment
-          let paymentEnvironment = 'production'; // Default for users
-          
-          // If user is admin, allow choosing environment
-          if (currentUser?.role === 'admin') {
-            paymentEnvironment = await new Promise((resolve) => {
-              setShowEnvironmentSelection(true);
-              setEnvironmentSelectionResolve(() => resolve);
-            });
-            // If admin cancelled environment selection
-            if (paymentEnvironment === null) {
+          console.log('Creating subscription purchase for plan:', plan.id);
+
+          // Create subscription purchase using new API
+          const result = await paymentClient.createPurchase('subscription', plan.id, {
+            product_title: plan.name,
+            source: 'SubscriptionModal'
+          });
+
+          if (result.success) {
+            const { data } = result;
+            const isCompleted = data.completed || data.purchase?.payment_status === 'completed';
+            const isFreeItem = data.isFree;
+
+            if (isCompleted || isFreeItem) {
+              // Free subscription - completed immediately
+              toast({
+                variant: "default",
+                title: "המנוי עודכן בהצלחה",
+                description: `${plan.name} הוגדר כמנוי שלך`
+              });
+
+              // Update current plan
+              setCurrentPlan(plan);
+
+              // Get updated user data and notify parent component
+              if (onSubscriptionChange) {
+                const updatedUser = await User.me();
+                onSubscriptionChange(updatedUser);
+              }
+
+              // Close modal after successful selection
+              setTimeout(() => {
+                onClose();
+              }, 1000);
               setIsSelecting(false);
-              return;
+            } else {
+              // Paid subscription - needs payment (redirect to checkout)
+              toast({
+                variant: "default",
+                title: "מנוי נוסף לעגלה",
+                description: `${plan.name} נוסף לעגלת הקניות. תועבר למסך התשלום.`
+              });
+
+              // Close modal and redirect to checkout
+              onClose();
+              navigate('/checkout');
+              setIsSelecting(false);
             }
+          } else if (result.canUpdate) {
+            // Subscription already in cart - ask user if they want to update
+            const shouldUpdate = window.confirm(
+              `יש כבר מנוי בעגלת הקניות. האם ברצונך להחליף אותו ב${plan.name}?`
+            );
+
+            if (shouldUpdate && result.existingPurchaseId) {
+              try {
+                const updateResult = await paymentClient.updateCartSubscription(
+                  result.existingPurchaseId,
+                  plan.id
+                );
+
+                if (updateResult.success) {
+                  const isCompleted = updateResult.data.completed || updateResult.data.purchase?.payment_status === 'completed';
+                  const isFreeItem = updateResult.data.isFree;
+
+                  if (isCompleted || isFreeItem) {
+                    // Free subscription - completed immediately
+                    toast({
+                      variant: "default",
+                      title: "המנוי עודכן בהצלחה",
+                      description: `${plan.name} הוגדר כמנוי שלך`
+                    });
+
+                    // Update current plan
+                    setCurrentPlan(plan);
+
+                    // Get updated user data and notify parent component
+                    if (onSubscriptionChange) {
+                      const updatedUser = await User.me();
+                      onSubscriptionChange(updatedUser);
+                    }
+
+                    // Close modal
+                    setTimeout(() => {
+                      onClose();
+                    }, 1000);
+                    setIsSelecting(false);
+                  } else {
+                    // Paid subscription - redirect to checkout
+                    toast({
+                      variant: "default",
+                      title: "מנוי עודכן בעגלה",
+                      description: `המנוי בעגלה עודכן ל${plan.name}. תועבר למסך התשלום.`
+                    });
+
+                    onClose();
+                    navigate('/checkout');
+                    setIsSelecting(false);
+                  }
+                } else {
+                  throw new Error(updateResult.error || 'שגיאה בעדכון המנוי');
+                }
+              } catch (updateError) {
+                console.error('Error updating cart subscription:', updateError);
+                toast({
+                  variant: "destructive",
+                  title: "שגיאה בעדכון המנוי",
+                  description: updateError.message || "אנא נסה שוב או פנה לתמיכה"
+                });
+              }
+            }
+          } else {
+            throw new Error(result.error || 'שגיאה ביצירת רכישת המנוי');
           }
 
-          const paymentUrl = await redirectToPaymentPage(plan, paymentEnvironment);
-
-          console.log('Payment page created successfully');
-
-          // Now, open payment modal instead of redirect
-          console.log('🎯 SubscriptionModal: Opening payment modal with URL:', paymentUrl);
-
-          // Close any other dialogs that might interfere
-          setShowEnvironmentSelection(false);
-          setShowUpgradeConfirm(false);
-          setShowCancelConfirm(false);
-
-          setPaymentUrl(paymentUrl);
-          setSelectedPlanForPayment(plan); // Store the plan for later use
-          setShowPaymentModal(true);
-          console.log('🎯 SubscriptionModal: Modal state set to true');
-
         } catch (error) {
-          console.error('Error creating payment page:', error);
-          // Don't update user status if payment page creation failed
+          console.error('Error creating subscription purchase:', error);
           toast({
             variant: "destructive",
-            title: "שגיאה ביצירת דף התשלום",
+            title: "שגיאה בבחירת המנוי",
             description: error.message || "אנא נסה שוב או פנה לתמיכה"
           });
           setIsSelecting(false);
@@ -609,46 +627,14 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
     if (!planToCancel) return;
 
     try {
-      let environment = 'production'; // Default
+      // Use the selected environment from the PayPlus environment selector
+      const environment = paymentEnvironment;
 
-      // If user is admin and target plan is NOT free, show environment selection
-      // For switching TO free plans, skip environment selection for better UX
-      const isTargetPlanFree = (
-        Number(planToCancel.price) === 0 ||
-        planToCancel.price === '0' ||
-        planToCancel.plan_type === 'free' ||
-        planToCancel.price === null ||
-        planToCancel.price === undefined
-      );
-
-      if (currentUser?.role === 'admin' && !isTargetPlanFree) {
-        environment = await new Promise((resolve) => {
-          setShowEnvironmentSelection(true);
-          setEnvironmentSelectionResolve(() => resolve);
-        });
-        // If admin cancelled environment selection
-        if (environment === null) {
-          setShowCancelConfirm(false); // Close the initial confirmation dialog
-          setPlanToCancel(null);
-          return;
-        }
-      }
-
-      // Cancel PayPlus recurring subscription - Use dynamic import
-      const { cancelPayplusRecurringSubscription } = await import('@/services/functions');
-      
-      const cancelResult = await cancelPayplusRecurringSubscription({
-        recurring_uid: currentUser.payplus_subscription_uid,
-        environment: environment,
-        reason: 'User switched to free plan'
-      });
-
-      if (cancelResult.data?.success) {
-        console.log('✅ PayPlus subscription cancelled successfully');
+      console.log('✅ Subscription marked for cancellation');
         
         // Record subscription history for the cancelled paid subscription
         await recordSubscriptionHistory(currentUser, planToCancel, 'cancelled');
-        
+
         // IMPORTANT: Don't switch to free plan immediately!
         // Keep current subscription active until end date, only remove PayPlus recurring
         await User.updateMyUserData({
@@ -676,15 +662,6 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
         setTimeout(() => {
           onClose();
         }, 3000); // Give more time to read the message
-      } else {
-        console.error('❌ Failed to cancel PayPlus subscription:', cancelResult);
-        const errorMessage = cancelResult.data?.error || cancelResult.error || 'שגיאה לא ידועה';
-        toast({
-          variant: "destructive",
-          title: "שגיאה בביטול המנוי ב-PayPlus",
-          description: errorMessage
-        });
-      }
     } catch (error) {
       console.error('❌ Error cancelling subscription:', error);
       const errorMessage = error.message || 'שגיאה לא ידועה';
@@ -903,6 +880,18 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
                         </Button>
                       )}
                     </div>
+                  </div>
+                </div>
+
+                {/* PayPlus Environment Selector */}
+                <div className="bg-white border-b border-gray-200 py-6">
+                  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <PayPlusEnvironmentSelector
+                      value={paymentEnvironment}
+                      onChange={setPaymentEnvironment}
+                      user={currentUser}
+                      disabled={isSelecting || paymentInProgress}
+                    />
                   </div>
                 </div>
 
@@ -1275,73 +1264,6 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
         variant="info"
       />
 
-      {/* Environment Selection Dialog - Only for Admins */}
-      <Dialog open={showEnvironmentSelection} onOpenChange={() => {
-        if (environmentSelectionResolve) {
-          environmentSelectionResolve(null); // Treat closing as cancellation
-        }
-        setShowEnvironmentSelection(false);
-        setEnvironmentSelectionResolve(null);
-      }}>
-        <DialogContent className="max-w-md w-full bg-white rounded-2xl shadow-2xl p-0" dir="rtl">
-          <div className="p-6">
-            <div className="text-center mb-6">
-              <div className="w-12 h-12 bg-gradient-to-br from-orange-400 to-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Settings className="w-6 h-6 text-white" />
-              </div>
-              <h2 className="text-xl font-bold text-gray-900 mb-2">בחר סביבת PayPlus</h2>
-              <p className="text-gray-600 text-sm">
-                כמנהל, אתה יכול לבחור באיזו סביבה לבטל את המנוי
-              </p>
-            </div>
-
-            <div className="space-y-3 mb-6">
-              <Button
-                onClick={() => {
-                  if (environmentSelectionResolve) {
-                    environmentSelectionResolve('production');
-                  }
-                  setShowEnvironmentSelection(false);
-                  setEnvironmentSelectionResolve(null);
-                }}
-                className="w-full py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-xl"
-              >
-                <Globe className="w-5 h-5 ml-2" />
-                סביבת ייצור (Production)
-              </Button>
-
-              <Button
-                onClick={() => {
-                  if (environmentSelectionResolve) {
-                    environmentSelectionResolve('test');
-                  }
-                  setShowEnvironmentSelection(false);
-                  setEnvironmentSelectionResolve(null);
-                }}
-                variant="outline"
-                className="w-full py-3 border-2 border-orange-200 hover:bg-orange-50 rounded-xl"
-              >
-                <Settings className="w-5 h-5 ml-2" />
-                סביבת בדיקות (Test)
-              </Button>
-            </div>
-
-            <Button
-              variant="ghost"
-              onClick={() => {
-                if (environmentSelectionResolve) {
-                  environmentSelectionResolve(null); // Indicate cancellation
-                  setEnvironmentSelectionResolve(null);
-                }
-                setShowEnvironmentSelection(false);
-              }}
-              className="w-full text-gray-500 hover:bg-gray-100"
-            >
-              ביטול
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* PayPlus Payment Modal - Portal to document root to avoid z-index conflicts */}
       {showPaymentModal && paymentUrl && createPortal(

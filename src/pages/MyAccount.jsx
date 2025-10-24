@@ -28,7 +28,6 @@ import {
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import SubscriptionModal from "../components/SubscriptionModal";
-import { processSubscriptionCallbacks } from "@/services/functions";
 import PurchaseHistory from "@/components/PurchaseHistory";
 
 const MyAccount = () => {
@@ -90,61 +89,26 @@ const MyAccount = () => {
         if (endDate < now) {
           console.log('[MY_ACCOUNT] Subscription end date passed, checking PayPlus status...');
 
-          // Import and call the PayPlus status function
-          const { getPayplusRecurringStatus } = await import('@/services/functions');
+          // Simple check: if subscription end date has passed, reset to free plan
+          console.log('[MY_ACCOUNT] Subscription end date passed, resetting to free plan');
+          await User.updateMyUserData({
+            current_subscription_plan_id: null,
+            subscription_status: 'free_plan',
+            subscription_end_date: null,
+            payplus_subscription_uid: null,
+            subscription_status_updated_at: now.toISOString()
+          });
 
-          try {
-            const statusResponse = await getPayplusRecurringStatus({
-              recurring_uid: user.payplus_subscription_uid,
-              environment: 'production'
-            });
+          setMessage({ type: 'error', text: 'המנוי שלך פג. אנא חדש את המנוי כדי להמשיך להשתמש בשירות.' });
 
-            if (statusResponse.data?.success && statusResponse.data?.data) {
-              const payplusData = statusResponse.data.data;
-              const recurringStatus = payplusData.recurring_status || payplusData.status;
-
-              if (recurringStatus === 'active' || recurringStatus === 'Active') {
-                // Subscription is still active, update end date
-                const nextChargeDate = payplusData.next_charge_date;
-                if (nextChargeDate) {
-                  console.log('[MY_ACCOUNT] Subscription still active, updating end date');
-                  await User.updateMyUserData({
-                    subscription_end_date: nextChargeDate,
-                    subscription_status_updated_at: now.toISOString()
-                  });
-
-                  return {
-                    ...user,
-                    subscription_end_date: nextChargeDate,
-                    subscription_status_updated_at: now.toISOString()
-                  };
-                }
-              } else {
-                // Subscription is no longer active
-                console.log('[MY_ACCOUNT] Subscription expired, resetting user subscription');
-                await User.updateMyUserData({
-                  current_subscription_plan_id: null,
-                  subscription_status: 'free_plan',
-                  subscription_end_date: null,
-                  payplus_subscription_uid: null,
-                  subscription_status_updated_at: now.toISOString()
-                });
-
-                setMessage({ type: 'error', text: 'המנוי שלך פג. אנא חדש את המנוי כדי להמשיך להשתמש בשירות.' });
-
-                return {
-                  ...user,
-                  current_subscription_plan_id: null,
-                  subscription_status: 'free_plan',
-                  subscription_end_date: null,
-                  payplus_subscription_uid: null,
-                  subscription_status_updated_at: now.toISOString()
-                };
-              }
-            }
-          } catch (error) {
-            console.error('[MY_ACCOUNT] Error checking PayPlus status:', error);
-          }
+          return {
+            ...user,
+            current_subscription_plan_id: null,
+            subscription_status: 'free_plan',
+            subscription_end_date: null,
+            payplus_subscription_uid: null,
+            subscription_status_updated_at: now.toISOString()
+          };
         }
       }
 
@@ -210,22 +174,10 @@ const MyAccount = () => {
 
       console.log('Subscription system is enabled, continuing with subscription logic...'); // Debug
 
-      // Check if user has pending subscription and process it
+      // Check if user has pending subscription
       if (user.subscription_status === 'pending') {
-        console.log('Found user with pending subscription, processing...');
-        try {
-          await processSubscriptionCallbacks();
-          const updatedUserAfterPending = await User.me();
-          user = updatedUserAfterPending;
-
-          if (user.subscription_status === 'active') {
-            setMessage({ type: 'success', text: 'המנוי שלך עודכן בהצלחה!' });
-            setTimeout(() => setMessage(null), 5000);
-          }
-        } catch (error) {
-          console.error('Error processing pending subscription:', error);
-          setMessage({ type: 'warning', text: 'יש בעיה בעיבוד המנוי. אנא פנה לתמיכה אם הבעיה נמשכת.' });
-        }
+        console.log('Found user with pending subscription status');
+        setMessage({ type: 'info', text: 'המנוי שלך נמצא בתהליך עיבוד. אנא המתן מספר דקות.' });
       }
 
       // Handle pending subscriptions timeout
