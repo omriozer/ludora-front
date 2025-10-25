@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { User } from "@/services/entities";
+import { User } from "@/services/apiClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -21,23 +21,32 @@ export default function UserSelector({ value, onValueChange, placeholder = "בח
     }
 
     const searchLower = searchTerm.toLowerCase();
-    const filtered = users.filter(user => 
+    const filtered = users.filter(user =>
       (user.full_name && user.full_name.toLowerCase().includes(searchLower)) ||
-      (user.display_name && user.display_name.toLowerCase().includes(searchLower)) ||
       (user.email && user.email.toLowerCase().includes(searchLower)) ||
       (user.phone && user.phone.toLowerCase().includes(searchLower))
     );
-    
+
     setFilteredUsers(filtered);
   }, [users, searchTerm]);
 
   const loadUsers = async () => {
     setIsLoading(true);
     try {
-      const usersData = await User.list("full_name");
-      setUsers(usersData);
+      // Use simple find() call without sorting options
+      const usersData = await User.find();
+
+      // Sort users by full_name on the frontend
+      const sortedUsers = (usersData || []).sort((a, b) => {
+        const nameA = (a.full_name || a.email || '').toLowerCase();
+        const nameB = (b.full_name || b.email || '').toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
+
+      setUsers(sortedUsers);
     } catch (error) {
-      console.error('Error loading users:', error);
+      console.error('UserSelector: Error loading users:', error);
+      setUsers([]);
     }
     setIsLoading(false);
   };
@@ -95,7 +104,7 @@ export default function UserSelector({ value, onValueChange, placeholder = "בח
               </div>
               <div className="flex-1">
                 <div className="font-medium text-gray-900">
-                  {selectedUser.display_name || selectedUser.full_name}
+                  {selectedUser.full_name || selectedUser.email}
                 </div>
                 <div className="text-sm text-gray-500">{selectedUser.email}</div>
                 {selectedUser.phone && (
@@ -186,7 +195,7 @@ export default function UserSelector({ value, onValueChange, placeholder = "בח
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="font-medium text-gray-900 truncate">
-                        {user.display_name || user.full_name}
+                        {user.full_name || user.email}
                       </div>
                       <div className="text-sm text-gray-500 truncate">{user.email}</div>
                       {user.phone && (

@@ -491,6 +491,7 @@ async function loginWithFirebaseAuth() {
 
 export const User = {
   ...UserEntityAPI,
+  find: UserEntityAPI.find.bind(UserEntityAPI), // Ensure find is exposed
   findById: UserEntityAPI.findById.bind(UserEntityAPI), // Ensure findById is exposed
   update: UserEntityAPI.update.bind(UserEntityAPI), // Ensure update is exposed
   getCurrentUser,

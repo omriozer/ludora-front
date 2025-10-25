@@ -5,9 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Save, X, Upload, School as SchoolIcon, Image as ImageIcon, Loader2 } from "lucide-react";
+import { Save, X, Upload, School as SchoolIcon, Image as ImageIcon, Loader2, Crown, Plus, Phone, Trash2 } from "lucide-react";
 import { UploadFile } from "@/services/integrations";
 import UserSelector from "@/components/ui/UserSelector";
+import CitySelector from "@/components/ui/CitySelector";
 
 // Israeli districts
 const DISTRICTS = [
@@ -34,11 +35,12 @@ export default function SchoolForm({ school, onSave, onCancel, title, currentUse
     address: "",
     institution_symbol: "",
     email: "",
-    phone: "",
+    phone_numbers: [],
     education_levels: [],
     logo_url: "",
     principal_id: "",
-    district: ""
+    district: "",
+    edu_system_id: ""
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
@@ -46,17 +48,27 @@ export default function SchoolForm({ school, onSave, onCancel, title, currentUse
 
   useEffect(() => {
     if (school) {
+      // Handle migration from old phone format to new phone_numbers format
+      let phoneNumbers = [];
+      if (school.phone_numbers && Array.isArray(school.phone_numbers)) {
+        phoneNumbers = school.phone_numbers;
+      } else if (school.phone && school.phone.trim()) {
+        // Migrate old single phone field to new format
+        phoneNumbers = [{ phone: school.phone.trim(), description: "טלפון ראשי" }];
+      }
+
       setFormData({
         name: school.name || "",
         city: school.city || "",
         address: school.address || "",
         institution_symbol: school.institution_symbol || "",
         email: school.email || "",
-        phone: school.phone || "",
+        phone_numbers: phoneNumbers,
         education_levels: school.education_levels || [],
         logo_url: school.logo_url || "",
         principal_id: school.principal_id || "",
-        district: school.district || ""
+        district: school.district || "",
+        edu_system_id: school.edu_system_id || ""
       });
     }
   }, [school]);
@@ -87,10 +99,12 @@ export default function SchoolForm({ school, onSave, onCancel, title, currentUse
       newErrors.email = "כתובת האימייל אינה תקינה";
     }
 
-    // Phone validation (optional but if provided should be valid)
-    if (formData.phone.trim() && !/^[\d\-\+\(\)\s]{7,}$/.test(formData.phone.trim())) {
-      newErrors.phone = "מספר הטלפון אינו תקין";
-    }
+    // Phone numbers validation (optional but if provided should be valid)
+    formData.phone_numbers.forEach((phoneEntry, index) => {
+      if (phoneEntry.phone && phoneEntry.phone.trim() && !/^[\d\-\+\(\)\s]{7,}$/.test(phoneEntry.phone.trim())) {
+        newErrors[`phone_${index}`] = "מספר הטלפון אינו תקין";
+      }
+    });
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -133,6 +147,39 @@ export default function SchoolForm({ school, onSave, onCancel, title, currentUse
     }));
   };
 
+  const addPhoneNumber = () => {
+    setFormData(prev => ({
+      ...prev,
+      phone_numbers: [...prev.phone_numbers, { phone: "", description: "" }]
+    }));
+  };
+
+  const removePhoneNumber = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      phone_numbers: prev.phone_numbers.filter((_, i) => i !== index)
+    }));
+    // Clear any errors for this phone number
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[`phone_${index}`];
+      return newErrors;
+    });
+  };
+
+  const updatePhoneNumber = (index, field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      phone_numbers: prev.phone_numbers.map((phoneEntry, i) =>
+        i === index ? { ...phoneEntry, [field]: value } : phoneEntry
+      )
+    }));
+    // Clear error when user starts typing
+    if (field === 'phone' && errors[`phone_${index}`]) {
+      setErrors(prev => ({ ...prev, [`phone_${index}`]: undefined }));
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -149,11 +196,17 @@ export default function SchoolForm({ school, onSave, onCancel, title, currentUse
         address: formData.address.trim(),
         institution_symbol: formData.institution_symbol.trim(),
         email: formData.email.trim() || null,
-        phone: formData.phone.trim() || null,
+        phone_numbers: formData.phone_numbers
+          .filter(phoneEntry => phoneEntry.phone.trim() || phoneEntry.description.trim())
+          .map(phoneEntry => ({
+            phone: phoneEntry.phone.trim(),
+            description: phoneEntry.description.trim()
+          })),
         education_levels: formData.education_levels,
         logo_url: formData.logo_url.trim() || null,
         principal_id: formData.principal_id.trim() || null,
-        district: formData.district || null
+        district: formData.district || null,
+        edu_system_id: formData.edu_system_id.trim() || null
       };
 
       await onSave(cleanedData);
@@ -205,16 +258,16 @@ export default function SchoolForm({ school, onSave, onCancel, title, currentUse
           {/* City and Address - Required */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="city" className="text-sm font-medium">
+              <Label className="text-sm font-medium">
                 עיר <span className="text-red-500">*</span>
               </Label>
-              <Input
-                id="city"
-                value={formData.city}
-                onChange={(e) => handleInputChange('city', e.target.value)}
-                placeholder="הכנס שם העיר"
-                className={`mt-1 ${errors.city ? 'border-red-500' : ''}`}
-              />
+              <div className="mt-1">
+                <CitySelector
+                  value={formData.city}
+                  onValueChange={(value) => handleInputChange('city', value)}
+                  placeholder="בחר עיר"
+                />
+              </div>
               {errors.city && (
                 <p className="text-red-500 text-xs mt-1">{errors.city}</p>
               )}
@@ -255,36 +308,90 @@ export default function SchoolForm({ school, onSave, onCancel, title, currentUse
             <p className="text-gray-500 text-xs mt-1">סמל המוסד חייב להיות יחודי במערכת</p>
           </div>
 
-          {/* Email and Phone - Optional */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="email" className="text-sm font-medium">אימייל</Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => handleInputChange('email', e.target.value)}
-                placeholder="הכנס כתובת אימייל"
-                className={`mt-1 ${errors.email ? 'border-red-500' : ''}`}
-              />
-              {errors.email && (
-                <p className="text-red-500 text-xs mt-1">{errors.email}</p>
-              )}
+          {/* Email - Optional */}
+          <div>
+            <Label htmlFor="email" className="text-sm font-medium">אימייל</Label>
+            <Input
+              id="email"
+              type="email"
+              value={formData.email}
+              onChange={(e) => handleInputChange('email', e.target.value)}
+              placeholder="הכנס כתובת אימייל"
+              className={`mt-1 ${errors.email ? 'border-red-500' : ''}`}
+            />
+            {errors.email && (
+              <p className="text-red-500 text-xs mt-1">{errors.email}</p>
+            )}
+          </div>
+
+          {/* Phone Numbers - Optional */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <Label className="text-sm font-medium">מספרי טלפון</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addPhoneNumber}
+                className="flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                הוסף מספר טלפון
+              </Button>
             </div>
 
-            <div>
-              <Label htmlFor="phone" className="text-sm font-medium">טלפון</Label>
-              <Input
-                id="phone"
-                value={formData.phone}
-                onChange={(e) => handleInputChange('phone', e.target.value)}
-                placeholder="הכנס מספר טלפון"
-                className={`mt-1 ${errors.phone ? 'border-red-500' : ''}`}
-              />
-              {errors.phone && (
-                <p className="text-red-500 text-xs mt-1">{errors.phone}</p>
-              )}
-            </div>
+            {formData.phone_numbers.length === 0 ? (
+              <div className="text-center py-8 text-gray-500 border border-dashed border-gray-300 rounded-lg">
+                <Phone className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                <p className="text-sm">לא נוספו מספרי טלפון</p>
+                <p className="text-xs">לחץ על "הוסף מספר טלפון" כדי להוסיף</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {formData.phone_numbers.map((phoneEntry, index) => (
+                  <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 border border-gray-200 rounded-lg bg-gray-50">
+                    <div>
+                      <Label htmlFor={`phone_${index}`} className="text-sm font-medium">מספר טלפון</Label>
+                      <Input
+                        id={`phone_${index}`}
+                        value={phoneEntry.phone}
+                        onChange={(e) => updatePhoneNumber(index, 'phone', e.target.value)}
+                        placeholder="הכנס מספר טלפון"
+                        className={`mt-1 ${errors[`phone_${index}`] ? 'border-red-500' : ''}`}
+                      />
+                      {errors[`phone_${index}`] && (
+                        <p className="text-red-500 text-xs mt-1">{errors[`phone_${index}`]}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <Label htmlFor={`phone_desc_${index}`} className="text-sm font-medium">תיאור</Label>
+                      <div className="flex gap-2 mt-1">
+                        <Input
+                          id={`phone_desc_${index}`}
+                          value={phoneEntry.description}
+                          onChange={(e) => updatePhoneNumber(index, 'description', e.target.value)}
+                          placeholder="תיאור המספר (למשל: משרד, פקס)"
+                          className="flex-1"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removePhoneNumber(index)}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="text-gray-500 text-xs mt-2">
+              ניתן להוסיף מספר מספרי טלפון עם תיאור לכל אחד
+            </p>
           </div>
 
           {/* Education Levels - Optional */}
@@ -388,20 +495,48 @@ export default function SchoolForm({ school, onSave, onCancel, title, currentUse
             </div>
           </div>
 
-          {/* Principal Selection - Admin Only */}
+          {/* Admin Only Fields */}
           {isAdmin && (
-            <div>
-              <Label className="text-sm font-medium">מנהל מוסד החינוך</Label>
-              <div className="mt-1">
-                <UserSelector
-                  value={formData.principal_id}
-                  onValueChange={(value) => handleInputChange('principal_id', value)}
-                  placeholder="בחר מנהל מוסד חינוך"
-                />
+            <div className="space-y-4 border border-purple-200 rounded-lg p-4 bg-purple-50/30">
+              <div className="flex items-center gap-2">
+                <Crown className="w-4 h-4 text-purple-600" />
+                <Label className="text-sm font-medium text-purple-900">הגדרות מנהל מערכת</Label>
+                <span className="text-xs text-purple-700 bg-purple-100 px-2 py-1 rounded-full">
+                  מנהלי מערכת בלבד
+                </span>
               </div>
-              <p className="text-gray-500 text-xs mt-1">
-                בחר משתמש רשום במערכת שיהיה מנהל מוסד החינוך (אופציונלי)
-              </p>
+
+              {/* Principal Selection */}
+              <div>
+                <Label className="text-sm font-medium text-purple-900">מנהל מוסד החינוך</Label>
+                <div className="mt-1">
+                  <UserSelector
+                    value={formData.principal_id}
+                    onValueChange={(value) => handleInputChange('principal_id', value)}
+                    placeholder="בחר מנהל מוסד חינוך"
+                  />
+                </div>
+                <p className="text-purple-700 text-xs mt-1">
+                  בחר משתמש רשום במערכת שיהיה מנהל מוסד החינוך (אופציונלי)
+                </p>
+              </div>
+
+              {/* Education System ID */}
+              <div>
+                <Label htmlFor="edu_system_id" className="text-sm font-medium text-purple-900">
+                  מזהה מערכת חינוך
+                </Label>
+                <Input
+                  id="edu_system_id"
+                  value={formData.edu_system_id}
+                  onChange={(e) => handleInputChange('edu_system_id', e.target.value)}
+                  placeholder="הכנס מזהה מערכת חינוך"
+                  className="mt-1"
+                />
+                <p className="text-purple-700 text-xs mt-1">
+                  מזהה המערכת החינוכית שאליה משתייך המוסד (אופציונלי)
+                </p>
+              </div>
             </div>
           )}
 

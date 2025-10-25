@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { School, User } from "@/services/entities";
+import { School, User } from "@/services/apiClient";
 import { UploadFile, ExtractDataFromUploadedFile } from "@/services/integrations";
+import { getCachedIsraeliCities } from "@/services/publicApis";
 import {
   School as SchoolIcon,
   Plus,
@@ -23,7 +24,7 @@ import {
   FileSpreadsheet,
   Loader2
 } from "lucide-react";
-import SchoolForm from "../components/schools/SchoolForm";
+import SchoolModal from "../components/schools/SchoolModal";
 
 export default function SchoolManagement() {
   const navigate = useNavigate();
@@ -53,8 +54,12 @@ export default function SchoolManagement() {
       }
       setCurrentUser(user);
 
-      // Load schools
-      const schoolsData = await School.list("name");
+      // Load schools and cities in parallel
+      const [schoolsData] = await Promise.all([
+        School.list("name"),
+        getCachedIsraeliCities() // Pre-load cities for better UX
+      ]);
+
       setSchools(schoolsData);
     } catch (error) {
       console.error('Error loading data:', error);
@@ -492,19 +497,14 @@ export default function SchoolManagement() {
         </div>
 
         {/* Add/Edit Form Modal */}
-        {showAddForm && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-              <SchoolForm
-                school={editingSchool}
-                onSave={handleSaveSchool}
-                onCancel={handleCloseForm}
-                title={editingSchool ? 'עריכת מוסד חינוך' : 'הוספת מוסד חינוך חדש'}
-                currentUser={currentUser}
-              />
-            </div>
-          </div>
-        )}
+        <SchoolModal
+          key={editingSchool?.id || 'new'}
+          isOpen={showAddForm}
+          onClose={handleCloseForm}
+          school={editingSchool}
+          onSave={handleSaveSchool}
+          currentUser={currentUser}
+        />
 
         {/* Search */}
         <Card className="mb-6">
