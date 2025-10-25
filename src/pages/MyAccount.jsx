@@ -29,13 +29,16 @@ import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import SubscriptionModal from "../components/SubscriptionModal";
 import PurchaseHistory from "@/components/PurchaseHistory";
+import { useSubscriptionState } from "@/hooks/useSubscriptionState";
+import SubscriptionBusinessLogic from "@/services/SubscriptionBusinessLogic";
+import { clog, cerror } from '@/lib/utils';
+import { toast } from '@/components/ui/use-toast';
 
 const MyAccount = () => {
   const navigate = useNavigate();
   const [registrations, setRegistrations] = useState([]);
   const [workshops, setWorkshops] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
-  const [currentSubscriptionPlan, setCurrentSubscriptionPlan] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState(null);
   const [supportPopup, setSupportPopup] = useState({ show: false, registrationId: null });
@@ -50,6 +53,9 @@ const MyAccount = () => {
 
   const [accountTexts, setAccountTexts] = useState({});
   const [settings, setSettings] = useState(null); // New state for global settings
+
+  // Use the new subscription state hook
+  const subscriptionState = useSubscriptionState(currentUser);
 
   // Modified getSettings function to fetch from Settings entity and handle defaults
   const getSettings = useCallback(async () => {
@@ -216,26 +222,8 @@ const MyAccount = () => {
         phone: user.phone || ''
       });
 
-      // Check and update subscription status
-      const potentiallyUpdatedUser = await checkAndUpdateUserSubscription(user);
-      if (potentiallyUpdatedUser !== user) {
-        user = potentiallyUpdatedUser;
-        setCurrentUser(user);
-      }
-
-      // Load current subscription plan
-      if (user?.current_subscription_plan_id) {
-        try {
-          const plans = await SubscriptionPlan.filter({ id: user.current_subscription_plan_id });
-          if (plans.length > 0) {
-            setCurrentSubscriptionPlan(plans[0]);
-          }
-        } catch (error) {
-          console.error("Error loading subscription plan:", error);
-        }
-      } else {
-        setCurrentSubscriptionPlan(null);
-      }
+      // Note: Subscription state is now handled by useSubscriptionState hook
+      // No need to manually load subscription plans or check subscription status
 
       // Clear legacy data since Registration is removed
       setRegistrations([]);
@@ -277,21 +265,40 @@ const MyAccount = () => {
 
 
   const handleSubscriptionChange = (plan) => {
-    setCurrentSubscriptionPlan(plan);
-    setCurrentUser(prev => ({
-      ...prev,
-      current_subscription_plan_id: plan.id,
-      ...(plan.price > 0 && { subscription_start_date: new Date().toISOString() }) // Only set start date for paid plans
-    }));
+    // Refresh subscription data when subscription changes
+    subscriptionState.refreshData();
   };
 
-  // Ensure all necessary data (user, texts, settings) is loaded before rendering main content
-  if (isLoading || settings === null) {
+  // Handle continue payment for pending subscriptions
+  const handleContinuePayment = async (plan) => {
+    try {
+      clog('Account page: Continue payment for plan', plan.id);
+
+      // Open subscription modal instead of redirecting to external payment page
+      setShowSubscriptionModal(true);
+
+      toast({
+        title: "מעבר לבחירת תוכנית",
+        description: "בחר את התוכנית והשלם את התשלום",
+        variant: "default"
+      });
+    } catch (error) {
+      cerror('Account page: Error opening subscription modal', error);
+      toast({
+        title: "שגיאה",
+        description: "אירעה שגיאה בפתיחת חלון התשלום",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Ensure all necessary data (user, texts, settings, subscription) is loaded before rendering main content
+  if (isLoading || settings === null || (settings?.subscription_system_enabled && subscriptionState.loading)) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">{accountTexts.loading}</p>
+          <p className="text-gray-600">{accountTexts.loading || 'טוען נתונים...'}</p>
         </div>
       </div>
     );
@@ -311,20 +318,6 @@ const MyAccount = () => {
           <p className="text-base sm:text-lg lg:text-xl text-gray-600 px-3 sm:px-4 lg:px-0">{accountTexts.subtitle}</p>
         </div>
 
-        {/* Pending Subscription Alert - Mobile Optimized */}
-        {settings?.subscription_system_enabled && currentUser?.subscription_status === 'pending' && (
-          <div className="mb-4 sm:mb-6 lg:mb-8 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg sm:rounded-xl lg:rounded-2xl p-3 sm:p-4 lg:p-6 shadow-lg mx-1 sm:mx-0">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 lg:gap-4">
-              <div className="animate-spin rounded-full h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 border-2 border-blue-600 border-t-transparent flex-shrink-0"></div>
-              <div className="flex-1 min-w-0">
-                <h3 className="text-blue-900 font-semibold text-sm sm:text-base lg:text-lg mb-1">התשלום שלך נמצא בתהליך עיבוד</h3>
-                <p className="text-blue-700 text-xs sm:text-sm lg:text-base leading-relaxed">
-                  המנוי שלך בתהליך אישור. אנא המתן לסיום התהליך לפני ביצוע פעולות נוספות.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
 
         {message && (
           <div className={`mb-4 sm:mb-6 lg:mb-8 rounded-lg sm:rounded-xl lg:rounded-2xl p-3 sm:p-4 lg:p-6 shadow-lg mx-1 sm:mx-0 ${
@@ -449,43 +442,199 @@ const MyAccount = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6 pt-0">
-                  {currentUser?.subscription_status === 'pending' ? (
-                    <div className="text-center p-3 sm:p-4 lg:p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg sm:rounded-xl border border-blue-200">
-                      <div className="flex items-center justify-center gap-2 mb-2 sm:mb-3">
-                        <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-2 border-blue-600 border-t-transparent"></div>
-                        <span className="text-blue-800 font-semibold text-sm sm:text-base lg:text-lg">מנוי בתהליך עיבוד</span>
-                      </div>
-                      <p className="text-blue-700 text-xs sm:text-sm lg:text-base leading-relaxed">
-                        המנוי החדש שלך נמצא בתהליך אישור. זה יכול לקחת מספר דקות.
-                      </p>
-                    </div>
-                  ) : currentSubscriptionPlan ? (
+                  {/* Check for pending subscription and display plan details */}
+                  {(() => {
+                    // Find pending subscription payments that need attention
+                    const pendingSubscriptions = subscriptionState.subscriptions?.filter(sub => sub.status === 'pending') || [];
+                    const availablePlans = subscriptionState.plans || [];
+                    const hasCurrentPlan = subscriptionState.summary?.currentPlan;
+
+                    // If there's a pending subscription, show it as the main plan display
+                    if (pendingSubscriptions.length > 0 && availablePlans.length > 0) {
+                      const pendingSubscription = pendingSubscriptions[0]; // Show the first pending subscription
+                      const pendingPlan = availablePlans.find(p => p.id === pendingSubscription.subscription_plan_id);
+
+                      if (pendingPlan) {
+                        // Check if this pending subscription needs a retry payment
+                        const actionDecision = (() => {
+                          try {
+                            return SubscriptionBusinessLogic.determineSubscriptionAction(
+                              currentUser,
+                              pendingPlan,
+                              subscriptionState.purchases || [],
+                              subscriptionState.plans || [],
+                              subscriptionState.subscriptions || []
+                            );
+                          } catch (error) {
+                            cerror('Error evaluating subscription action in account page:', error);
+                            return null;
+                          }
+                        })();
+
+                        const needsRetryPayment = actionDecision?.actionType === SubscriptionBusinessLogic.ACTION_TYPES.RETRY_PAYMENT;
+
+                        return (
+                          <div className="space-y-4">
+                            {/* Pending Plan Display - shows the selected plan */}
+                            <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border-2 border-blue-200 relative overflow-hidden">
+                              {/* Professional Pending Payment Banner */}
+                              <div className="absolute top-0 left-0 right-0 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-center py-3 text-sm font-medium shadow-lg">
+                                <div className="flex items-center justify-center gap-2">
+                                  <CreditCard className="w-4 h-4" />
+                                  <span>השלמת רכישה נדרשת להפעלת התוכנית</span>
+                                </div>
+                              </div>
+
+                              <div className="mt-12 space-y-6">
+                                {/* Plan Header */}
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
+                                  <div className={`w-16 h-16 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg ${
+                                    pendingPlan.price === 0
+                                      ? 'bg-gradient-to-br from-blue-500 to-cyan-500'
+                                      : 'bg-gradient-to-br from-purple-500 to-pink-500'
+                                  }`}>
+                                    {pendingPlan.price === 0 ? (
+                                      <Gift className="w-8 h-8 text-white" />
+                                    ) : (
+                                      <Crown className="w-8 h-8 text-white" />
+                                    )}
+                                  </div>
+
+                                  <div className="flex-1 min-w-0">
+                                    <h3 className="text-2xl font-bold text-gray-900 mb-2">{pendingPlan.name}</h3>
+                                    <p className="text-gray-600 text-base mb-3 leading-relaxed">{pendingPlan.description}</p>
+                                    <div className="flex items-baseline gap-3">
+                                      <span className="text-3xl font-bold text-indigo-600">
+                                        {pendingPlan.price === 0 ? 'חינם' : `₪${pendingPlan.price}`}
+                                      </span>
+                                      {pendingPlan.price > 0 && (
+                                        <span className="text-base text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                                          {pendingPlan.billing_period === 'yearly' ? 'לשנה' : 'לחודש'}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Primary Action Button */}
+                                <div className="pt-4 space-y-3">
+                                  {needsRetryPayment && (
+                                    <Button
+                                      onClick={() => handleContinuePayment(pendingPlan)}
+                                      disabled={subscriptionState.processing}
+                                      className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-8 py-5 rounded-xl font-bold text-xl shadow-xl hover:shadow-2xl transform hover:scale-[1.01] transition-all duration-200 border-0"
+                                    >
+                                      {subscriptionState.processing ? (
+                                        <>
+                                          <div className="animate-spin rounded-full h-6 w-6 border-3 border-white border-t-transparent ml-3" />
+                                          מעבד תשלום...
+                                        </>
+                                      ) : (
+                                        <>
+                                          <CreditCard className="w-7 h-7 ml-3" />
+                                          השלם תשלום ₪{pendingPlan.price}
+                                        </>
+                                      )}
+                                    </Button>
+                                  )}
+
+                                  {/* Cancel Pending Subscription Button - Show when user has both active and pending */}
+                                  {subscriptionState.summary?.hasActivePlusPending && (
+                                    <Button
+                                      onClick={() => subscriptionState.cancelPendingSubscription(pendingSubscription.id)}
+                                      disabled={subscriptionState.processing}
+                                      variant="outline"
+                                      className="w-full border-2 border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400 hover:text-red-700 px-6 py-3 rounded-xl font-medium text-base shadow-md hover:shadow-lg transition-all duration-200"
+                                    >
+                                      {subscriptionState.processing ? (
+                                        <>
+                                          <div className="animate-spin rounded-full h-5 w-5 border-2 border-red-600 border-t-transparent ml-2" />
+                                          מבטל...
+                                        </>
+                                      ) : (
+                                        <>
+                                          <X className="w-5 h-5 ml-2" />
+                                          בטל מנוי ממתין
+                                        </>
+                                      )}
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Compact Benefits List */}
+                              {pendingPlan.benefits && (
+                                <div className="mt-3 p-3 bg-blue-50/50 rounded-lg border border-blue-100">
+                                  <h4 className="text-sm font-medium text-blue-800 mb-2 text-center">כלול בתוכנית:</h4>
+                                  <div className="space-y-1">
+                                    {pendingPlan.benefits.games_access?.enabled && (
+                                      <div className="flex items-center gap-2 text-xs text-blue-700">
+                                        <CheckCircle className="w-3 h-3 flex-shrink-0" />
+                                        <span>גישה למשחקים ({pendingPlan.benefits.games_access.unlimited ? 'ללא הגבלה' : `עד ${pendingPlan.benefits.games_access.monthly_limit}`})</span>
+                                      </div>
+                                    )}
+                                    {pendingPlan.benefits.classroom_management?.enabled && (
+                                      <div className="flex items-center gap-2 text-xs text-blue-700">
+                                        <CheckCircle className="w-3 h-3 flex-shrink-0" />
+                                        <span>ניהול כיתות ({pendingPlan.benefits.classroom_management.unlimited_classrooms ? 'ללא הגבלה' : `עד ${pendingPlan.benefits.classroom_management.max_classrooms}`})</span>
+                                      </div>
+                                    )}
+                                    {pendingPlan.benefits.reports_access && (
+                                      <div className="flex items-center gap-2 text-xs text-blue-700">
+                                        <CheckCircle className="w-3 h-3 flex-shrink-0" />
+                                        <span>דוחות מתקדמים ואנליטיקס</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Small Change Plan Link */}
+                              <div className="mt-3 text-center">
+                                <button
+                                  onClick={() => setShowSubscriptionModal(true)}
+                                  className="text-xs text-gray-500 hover:text-gray-700 underline transition-colors"
+                                >
+                                  שנה תוכנית
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
+                    }
+
+                    return null;
+                  })()}
+
+                  {/* Current active subscription status (only if no pending) */}
+                  {!subscriptionState.subscriptions?.some(sub => sub.status === 'pending') && subscriptionState.summary?.currentPlan ? (
                     <div className="space-y-3 sm:space-y-4 lg:space-y-6">
                       {/* Current Plan Details */}
                       <div className="p-3 sm:p-4 lg:p-6 bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg sm:rounded-xl border border-purple-200">
                         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 mb-3 sm:mb-4">
                           <div className={`w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0 ${
-                            currentSubscriptionPlan.price === 0
+                            subscriptionState.summary.currentPlan.price === 0
                               ? 'bg-blue-500'
                               : 'bg-gradient-to-br from-purple-500 to-pink-500'
                           }`}>
-                            {currentSubscriptionPlan.price === 0 ? (
+                            {subscriptionState.summary.currentPlan.price === 0 ? (
                               <Gift className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-white" />
                             ) : (
                               <Crown className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-white" />
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <h3 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900 break-words leading-tight">{currentSubscriptionPlan.name}</h3>
-                            <p className="text-gray-600 text-xs sm:text-sm break-words mt-1">{currentSubscriptionPlan.description}</p>
+                            <h3 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900 break-words leading-tight">{subscriptionState.summary.currentPlan.name}</h3>
+                            <p className="text-gray-600 text-xs sm:text-sm break-words mt-1">{subscriptionState.summary.currentPlan.description}</p>
                           </div>
                           <div className="text-left sm:text-right flex-shrink-0">
                             <div className="text-lg sm:text-xl lg:text-2xl font-bold text-purple-600">
-                              {currentSubscriptionPlan.price === 0 ? 'חינם' : `₪${currentSubscriptionPlan.price}`}
+                              {subscriptionState.summary.currentPlan.price === 0 ? 'חינם' : `₪${subscriptionState.summary.currentPlan.price}`}
                             </div>
-                            {currentSubscriptionPlan.price > 0 && (
+                            {subscriptionState.summary.currentPlan.price > 0 && (
                               <div className="text-xs sm:text-sm text-gray-500">
-                                {currentSubscriptionPlan.billing_period === 'yearly' ? 'לשנה' : 'לחודש'}
+                                {subscriptionState.summary.currentPlan.billing_period === 'yearly' ? 'לשנה' : 'לחודש'}
                               </div>
                             )}
                           </div>
@@ -496,79 +645,84 @@ const MyAccount = () => {
                           <div className="bg-white/60 p-2 sm:p-3 rounded-md sm:rounded-lg">
                             <div className="text-gray-500 mb-1 text-xs sm:text-sm">סטטוס</div>
                             <div className={`font-semibold text-xs sm:text-sm ${
-                              currentUser.subscription_status === 'active'
+                              subscriptionState.summary?.hasActiveSubscription
                                 ? 'text-green-600'
                                 : 'text-gray-600'
                             }`}>
-                              {currentUser.subscription_status === 'active' ? 'פעיל' :
-                               currentUser.subscription_status === 'free_plan' ? 'חינם' :
-                               currentUser.subscription_status}
+                              {subscriptionState.summary?.hasActiveSubscription ? 'פעיל' : 'חינם'}
                             </div>
                           </div>
 
-                          {currentUser.subscription_end_date && currentUser.subscription_status === 'active' && (
-                            <div className="bg-white/60 p-2 sm:p-3 rounded-md sm:rounded-lg sm:col-span-2">
-                              <div className="text-gray-500 mb-1 text-xs sm:text-sm">
-                                {currentUser.payplus_subscription_uid ? 'מתחדש ב' : 'פג ב'}
+                          {/* Show subscription dates if available from active subscription */}
+                          {subscriptionState.summary?.activeSubscription && (
+                            <>
+                              <div className="bg-white/60 p-2 sm:p-3 rounded-md sm:rounded-lg sm:col-span-2">
+                                <div className="text-gray-500 mb-1 text-xs sm:text-sm">
+                                  {subscriptionState.summary.activeSubscription.payplus_subscription_uid ? 'מתחדש ב' : 'פג ב'}
+                                </div>
+                                <div className="font-semibold text-gray-900 flex flex-wrap items-center gap-1 sm:gap-2">
+                                  <Calendar className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                                  <span className="text-xs sm:text-sm">
+                                    {subscriptionState.summary.activeSubscription.next_billing_date ?
+                                      new Date(subscriptionState.summary.activeSubscription.next_billing_date).toLocaleDateString('he-IL') :
+                                      'תאריך לא ידוע'}
+                                  </span>
+                                  {subscriptionState.summary.activeSubscription.payplus_subscription_uid && (
+                                    <Badge className="bg-blue-100 text-blue-800 text-xs px-1.5 py-0.5">
+                                      חיוב אוטומטי
+                                    </Badge>
+                                  )}
+                                </div>
                               </div>
-                              <div className="font-semibold text-gray-900 flex flex-wrap items-center gap-1 sm:gap-2">
-                                <Calendar className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-                                <span className="text-xs sm:text-sm">
-                                  {new Date(currentUser.subscription_end_date).toLocaleDateString('he-IL')}
-                                </span>
-                                {currentUser.payplus_subscription_uid && (
-                                  <Badge className="bg-blue-100 text-blue-800 text-xs px-1.5 py-0.5">
-                                    חיוב אוטומטי
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
-                          )}
 
-                          {/* Days until renewal/expiry - Mobile Friendly */}
-                          {currentUser.subscription_end_date && (
-                            <div className="bg-white/60 p-3 rounded-lg sm:col-span-2">
-                              <div className="text-gray-500 mb-1 text-sm">
-                                {(() => {
-                                  const endDate = new Date(currentUser.subscription_end_date);
-                                  const today = new Date();
-                                  const diffTime = endDate.getTime() - today.getTime();
-                                  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                              {/* Days until renewal/expiry - Mobile Friendly */}
+                              {subscriptionState.summary.activeSubscription.next_billing_date && (
+                                <div className="bg-white/60 p-3 rounded-lg sm:col-span-2">
+                                  <div className="text-gray-500 mb-1 text-sm">
+                                    {(() => {
+                                      const nextBillingDate = new Date(subscriptionState.summary.activeSubscription.next_billing_date);
+                                      const today = new Date();
+                                      const diffTime = nextBillingDate.getTime() - today.getTime();
+                                      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-                                  if (diffDays > 0) {
-                                    return currentUser.payplus_subscription_uid ?
-                                      `מתחדש בעוד ${diffDays} ימים` :
-                                      `פג בעוד ${diffDays} ימים`;
-                                  } else if (diffDays === 0) {
-                                    return 'מתחדש היום';
-                                  } else {
-                                    return 'פג';
-                                  }
-                                })()}
-                              </div>
-                            </div>
+                                      if (diffDays > 0) {
+                                        return subscriptionState.summary.activeSubscription.payplus_subscription_uid ?
+                                          `מתחדש בעוד ${diffDays} ימים` :
+                                          `פג בעוד ${diffDays} ימים`;
+                                      } else if (diffDays === 0) {
+                                        return 'מתחדש היום';
+                                      } else {
+                                        return 'פג';
+                                      }
+                                    })()}
+                                  </div>
+                                </div>
+                              )}
+                            </>
                           )}
                         </div>
                       </div>
 
                       {/* Next Payment Info (for paid subscriptions) - Mobile Optimized */}
-                      {currentUser.subscription_status === 'active' &&
-                       currentUser.payplus_subscription_uid &&
-                       currentSubscriptionPlan.price > 0 && (
+                      {subscriptionState.summary?.activeSubscription?.status === 'active' &&
+                       subscriptionState.summary.activeSubscription.payplus_subscription_uid &&
+                       subscriptionState.summary.currentPlan.price > 0 && (
                         <div className="p-3 sm:p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200">
                           <div className="flex items-start sm:items-center gap-3">
                             <CreditCard className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5 sm:mt-0" />
                             <div className="min-w-0">
                               <div className="text-green-800 font-medium text-sm sm:text-base">החיוב הבא</div>
                               <div className="text-green-700 text-sm break-words">
-                                ₪{currentSubscriptionPlan.price} ב-{currentUser.subscription_end_date ? new Date(currentUser.subscription_end_date).toLocaleDateString('he-IL') : 'תאריך לא ידוע'}
+                                ₪{subscriptionState.summary.currentPlan.price} ב-{subscriptionState.summary.activeSubscription.next_billing_date ?
+                                  new Date(subscriptionState.summary.activeSubscription.next_billing_date).toLocaleDateString('he-IL') :
+                                  'תאריך לא ידוע'}
                               </div>
                             </div>
                           </div>
                         </div>
                       )}
                     </div>
-                  ) : (
+                  ) : !subscriptionState.subscriptions?.some(sub => sub.status === 'pending') ? (
                     <div className="text-center py-6 sm:py-8">
                       <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                         <Crown className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400" />
@@ -576,19 +730,21 @@ const MyAccount = () => {
                       <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">לא נבחרה תוכנית מנוי</h3>
                       <p className="text-gray-500 mb-4 text-sm sm:text-base">בחר תוכנית מנוי כדי לקבל גישה לכל התכונות</p>
                     </div>
-                  )}
+                  ) : null}
 
                   <Button
                     onClick={() => setShowSubscriptionModal(true)}
-                    disabled={currentUser?.subscription_status === 'pending'}
+                    disabled={subscriptionState.loading || subscriptionState.processing}
                     className={`w-full py-3 rounded-xl text-base sm:text-lg font-semibold transition-all ${
-                      currentUser?.subscription_status === 'pending'
+                      subscriptionState.loading || subscriptionState.processing
                         ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                         : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105'
                     }`}
                   >
                     <Crown className="w-5 h-5 ml-2" />
-                    {currentUser?.subscription_status === 'pending' ? 'ממתין לעיבוד...' : accountTexts.changePlan}
+                    {subscriptionState.loading ? 'טוען...' :
+                     subscriptionState.processing ? 'מעבד...' :
+                     accountTexts.changePlan}
                   </Button>
                 </CardContent>
               </Card>

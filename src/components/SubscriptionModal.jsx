@@ -1,15 +1,16 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
-import { useNavigate } from "react-router-dom";
-import { SubscriptionPlan, User, PendingSubscription, SubscriptionHistory } from "@/services/entities";
-import { createPayplusPaymentPage } from "@/services/apiClient"; // Unified function
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getProductTypeName } from "@/config/productTypes";
 import { useToast } from "@/components/ui/use-toast";
+import LudoraLoadingSpinner from "@/components/ui/LudoraLoadingSpinner";
 import PayPlusEnvironmentSelector from "@/components/PayPlusEnvironmentSelector";
-import paymentClient from "@/services/paymentClient";
+import useSubscriptionState from "@/hooks/useSubscriptionState";
+import SubscriptionBusinessLogic from "@/services/SubscriptionBusinessLogic";
+import { User, SubscriptionHistory } from "@/services/entities";
+import { clog, cerror } from "@/lib/utils";
 import {
   X,
   Crown,
@@ -20,65 +21,62 @@ import {
   Infinity,
   Check,
   Star,
-  Zap,
-  Gift
+  Gift,
+  AlertTriangle,
+  Calendar,
+  Clock
 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 
 export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubscriptionChange, isAutoOpened = false }) {
-  const navigate = useNavigate();
   const { toast } = useToast();
-  const [subscriptionPlans, setSubscriptionPlans] = useState([]);
-  const [currentPlan, setCurrentPlan] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSelecting, setIsSelecting] = useState(false);
+
+  // Use the new subscription state hook
+  const {
+    plans,
+    summary,
+    loading,
+    error,
+    processing,
+    evaluatePlanSelection,
+    executeSubscriptionAction,
+    cancelPendingSwitch,
+    cancelPendingSubscription,
+    isCurrentPlan,
+    isPlanDisabled,
+    getPlanButtonText
+  } = useSubscriptionState(currentUser);
+
+  // Legacy payment states - kept for compatibility with existing payment modal
   const [paymentInProgress, setPaymentInProgress] = useState(false);
   const [pendingMessage, setPendingMessage] = useState('');
-
-  // Confirmation dialog states
-  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
-  const [planToCancel, setPlanToCancel] = useState(null);
-
-  // New states for upgrade confirmation and environment selection
-  const [showUpgradeConfirm, setShowUpgradeConfirm] = useState(false);
-  const [planToUpgrade, setPlanToUpgrade] = useState(null);
-  const [upgradeConfirmResolve, setUpgradeConfirmResolve] = useState(null);
-
   const [paymentEnvironment, setPaymentEnvironment] = useState('production');
 
   // Payment modal states (using Portal)
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentUrl, setPaymentUrl] = useState('');
   const [selectedPlanForPayment, setSelectedPlanForPayment] = useState(null);
+  const [isIframeLoading, setIsIframeLoading] = useState(true);
+
+  // Pending plan switch management
+  const [showPendingSwitchDialog, setShowPendingSwitchDialog] = useState(false);
+  const [showReplacePendingDialog, setShowReplacePendingDialog] = useState(false);
+  const [replacePendingDecision, setReplacePendingDecision] = useState(null);
+
+  // Cancel pending downgrade management
+  const [showCancelPendingDowngradeDialog, setShowCancelPendingDowngradeDialog] = useState(false);
+  const [cancelPendingDowngradeDecision, setCancelPendingDowngradeDecision] = useState(null);
+
+  // Legacy confirmation dialog states - kept for backward compatibility
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [planToCancel, setPlanToCancel] = useState(null);
+  const [showUpgradeConfirm, setShowUpgradeConfirm] = useState(false);
+  const [upgradeConfirmResolve, setUpgradeConfirmResolve] = useState(null);
 
   // Ref for managing the interval ID
   const intervalRef = useRef(null);
 
-  const loadSubscriptionPlans = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const plans = await SubscriptionPlan.filter({ is_active: true }, 'sort_order');
-      setSubscriptionPlans(plans);
-
-      // Set current plan only if user actually has one
-      if (currentUser?.current_subscription_plan_id) {
-        const userPlan = plans.find((plan) => plan.id === currentUser.current_subscription_plan_id);
-        setCurrentPlan(userPlan || null);
-      } else {
-        // No default plan - user must make a choice
-        setCurrentPlan(null);
-      }
-    } catch (error) {
-      console.error("Error loading subscription plans:", error);
-      toast({
-        variant: "destructive",
-        title: "שגיאה בטעינת תוכניות המנוי",
-        description: "אנא נסה שוב או פנה לתמיכה"
-      });
-    }
-    setIsLoading(false);
-  }, [currentUser]);
 
   // Check if user has pending subscription
   const checkPendingSubscription = useCallback(async () => {
@@ -296,10 +294,9 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
     }
   }, [showPaymentModal, paymentUrl]);
 
-  // useEffect for loading plans and checking pending status
+  // useEffect for checking pending status (plans are loaded by useSubscriptionState hook)
   useEffect(() => {
     if (isOpen && currentUser) {
-      loadSubscriptionPlans();
       checkPendingSubscription();
     }
 
@@ -310,7 +307,7 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
         intervalRef.current = null;
       }
     };
-  }, [isOpen, currentUser, loadSubscriptionPlans, checkPendingSubscription]);
+  }, [isOpen, currentUser, checkPendingSubscription]);
 
   const formatPrice = (price) => {
     const num = Number(price);
@@ -355,281 +352,189 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
   };
 
 
+  /**
+   * Simplified plan selection handler using business logic service
+   */
   const handleSelectPlan = async (plan) => {
-    // Don't allow new payments if payment is in progress or user has a pending status
-    if (paymentInProgress || currentUser?.subscription_status === 'pending') {
-      toast({
-        variant: "destructive",
-        title: "תהליך תשלום פעיל",
-        description: "יש לך תהליך תשלום פעיל. אנא המתן לסיום העיבוד או נסה שוב בעוד מספר דקות."
-      });
-      return;
-    }
-
-    if (isSelecting) return;
-
-    setIsSelecting(true);
     try {
-      // Debug: Log plan details to understand the issue
-      console.log('🔍 Plan selection debug:', {
-        planId: plan.id,
-        planName: plan.name,
-        planPrice: plan.price,
-        planPriceType: typeof plan.price,
-        planPriceNumber: Number(plan.price),
-        planType: plan.plan_type
-      });
+      clog('Plan selected:', plan.name);
 
-      // Robust free plan detection - check multiple conditions
-      const isFreeplan = (
-        Number(plan.price) === 0 ||
-        plan.price === '0' ||
-        plan.plan_type === 'free' ||
-        plan.price === null ||
-        plan.price === undefined
-      );
+      // Evaluate the plan selection using business logic
+      const decision = evaluatePlanSelection(plan);
 
-      if (isFreeplan) {
-        // Free plan - handle subscription cancellation if needed
-        if (currentUser?.payplus_subscription_uid && currentUser?.subscription_status === 'active') {
-          // Show confirmation dialog instead of browser confirm
-          setPlanToCancel(plan);
-          setShowCancelConfirm(true);
-          setIsSelecting(false); // Allow re-selection if they cancel the confirm
+      if (!decision) {
+        return; // Error already handled in evaluatePlanSelection
+      }
+
+      // Show message for blocked actions
+      if (!decision.canProceed) {
+        if (decision.reason === 'pending_switch') {
+          setShowPendingSwitchDialog(true);
           return;
         }
 
-        // Update to free plan directly
-        await User.updateMyUserData({
-          current_subscription_plan_id: plan.id,
-          subscription_start_date: new Date().toISOString(),
-          subscription_status: 'free_plan',
-          subscription_status_updated_at: new Date().toISOString(),
-          payplus_subscription_uid: null
+        if (decision.reason === 'current_plan') {
+          toast({
+            variant: "info",
+            title: "המנוי הנוכחי שלך",
+            description: decision.message
+          });
+          return;
+        }
+
+        toast({
+          variant: "destructive",
+          title: "לא ניתן לבחור תוכנית",
+          description: decision.message
         });
+        return;
+      }
 
-        // Record subscription history for the new free plan activation
-        if (currentUser?.current_subscription_plan_id && currentUser.current_subscription_plan_id !== plan.id) {
-          if (!currentUser?.payplus_subscription_uid && currentUser?.subscription_status !== 'active') {
-             await recordSubscriptionHistory(currentUser, plan, 'downgraded');
-          }
+      // Handle replace pending scenario - ask for confirmation
+      if (decision.actionType === SubscriptionBusinessLogic.ACTION_TYPES.REPLACE_PENDING) {
+        setReplacePendingDecision(decision);
+        setShowReplacePendingDialog(true);
+        return; // Wait for user confirmation
+      }
+
+      // Handle cancel pending downgrade scenario - ask for confirmation
+      if (decision.actionType === SubscriptionBusinessLogic.ACTION_TYPES.CANCEL_PENDING_DOWNGRADE) {
+        setCancelPendingDowngradeDecision(decision);
+        setShowCancelPendingDowngradeDialog(true);
+        return; // Wait for user confirmation
+      }
+
+      // Execute the subscription action
+      const result = await executeSubscriptionAction(decision);
+
+      if (result?.success) {
+        if (result.requiresPayment) {
+          // Handle payment redirect - open payment modal
+          setSelectedPlanForPayment(plan);
+          setPaymentUrl(result.paymentUrl);
+          setIsIframeLoading(true);
+          setShowPaymentModal(true);
         } else {
-          await recordSubscriptionHistory(currentUser, plan, 'started');
+          // Direct change completed - refresh and close
+          if (onSubscriptionChange) {
+            setTimeout(() => {
+              onSubscriptionChange(currentUser);
+              onClose();
+            }, 1000);
+          }
         }
+      }
 
-        setCurrentPlan(plan);
+    } catch (error) {
+      cerror('Error in plan selection:', error);
+      toast({
+        variant: "destructive",
+        title: "שגיאה בבחירת תוכנית",
+        description: error.message || "אנא נסה שוב או פנה לתמיכה"
+      });
+    }
+  };
 
-        // Get updated user data and notify parent component
+  /**
+   * Handle canceling pending plan switch
+   */
+  const handleCancelPendingSwitch = async () => {
+    try {
+      const success = await cancelPendingSwitch();
+      if (success) {
+        setShowPendingSwitchDialog(false);
         if (onSubscriptionChange) {
-          const updatedUser = await User.me();
-          onSubscriptionChange(updatedUser);
+          onSubscriptionChange(currentUser);
         }
+      }
+    } catch (error) {
+      cerror('Error canceling pending switch:', error);
+    }
+  };
+
+  /**
+   * Handle confirming replace pending subscription
+   */
+  const handleConfirmReplacePending = async () => {
+    if (!replacePendingDecision) return;
+
+    try {
+      setShowReplacePendingDialog(false);
+      setReplacePendingDecision(null);
+
+      // Execute the subscription action
+      const result = await executeSubscriptionAction(replacePendingDecision);
+
+      if (result?.success) {
+        if (result.requiresPayment) {
+          // Handle payment redirect - open payment modal
+          setSelectedPlanForPayment(replacePendingDecision.targetPlan);
+          setPaymentUrl(result.paymentUrl);
+          setIsIframeLoading(true);
+          setShowPaymentModal(true);
+        } else {
+          // Direct change completed - refresh and close
+          if (onSubscriptionChange) {
+            setTimeout(() => {
+              onSubscriptionChange(currentUser);
+              onClose();
+            }, 1000);
+          }
+        }
+      }
+    } catch (error) {
+      cerror('Error in replace pending subscription:', error);
+      toast({
+        variant: "destructive",
+        title: "שגיאה בהחלפת תוכנית ממתינה",
+        description: error.message || "אנא נסה שוב או פנה לתמיכה"
+      });
+    }
+  };
+
+  /**
+   * Handle confirming cancel pending downgrade to free plan
+   */
+  const handleConfirmCancelPendingDowngrade = async () => {
+    if (!cancelPendingDowngradeDecision) return;
+
+    try {
+      setShowCancelPendingDowngradeDialog(false);
+      setCancelPendingDowngradeDecision(null);
+
+      // Execute the subscription action (this will cancel pending and activate free plan)
+      const result = await executeSubscriptionAction(cancelPendingDowngradeDecision);
+
+      if (result?.success) {
+        // This should be a direct change (no payment required for free plan)
         toast({
           variant: "default",
           title: "המנוי עודכן בהצלחה",
-          description: "המנוי שלך עודכן בהצלחה למנוי חינם"
+          description: "המנוי הממתין בוטל והמנוי החינם הופעל"
         });
-        // Close modal after successful selection
-        setTimeout(() => {
-          onClose();
-        }, 1000);
-        setIsSelecting(false);
-      } else {
-        // Paid plan - check if user has existing active subscription
-        if (currentUser?.payplus_subscription_uid && currentUser?.subscription_status === 'active') {
-          // Show confirmation dialog for upgrade
-          const shouldUpgrade = await new Promise((resolve) => {
-            setShowUpgradeConfirm(true);
-            setUpgradeConfirmResolve(() => resolve);
-            setPlanToUpgrade(plan);
-          });
-          
-          if (!shouldUpgrade) {
-            setIsSelecting(false);
-            return;
-          }
 
-          try {
-            // Use the selected environment from the PayPlus environment selector
-            const environment = paymentEnvironment;
-
-            // Record history for the old subscription being cancelled due to upgrade
-            await recordSubscriptionHistory(currentUser, plan, 'cancelled');
-            console.log('✅ Old subscription marked for cancellation due to upgrade.');
-            toast({
-              variant: "default",
-              title: "מעבר למנוי חדש",
-              description: "כעת תועבר למסך תשלום עבור המנוי החדש"
-            });
-
-          } catch (error) {
-            console.error('Error cancelling existing subscription:', error);
-            toast({
-              variant: "destructive",
-              title: "שגיאה בביטול המנוי הקיים",
-              description: "אנא נסה שוב או פנה לתמיכה"
-            });
-            setIsSelecting(false);
-            return;
-          }
+        // Refresh and close
+        if (onSubscriptionChange) {
+          setTimeout(() => {
+            onSubscriptionChange(currentUser);
+            onClose();
+          }, 1000);
         }
-
-        // Record subscription history before starting new subscription
-        if (currentUser?.current_subscription_plan_id) {
-          const actionType = currentUser.current_subscription_plan_id !== plan.id ? 'upgraded' : 'started';
-          await recordSubscriptionHistory(currentUser, plan, actionType);
-        } else {
-          await recordSubscriptionHistory(currentUser, plan, 'started');
-        }
-
-        // Use new purchase system for subscription plans
-        try {
-          console.log('Creating subscription purchase for plan:', plan.id);
-
-          // Create subscription purchase using new API
-          const result = await paymentClient.createPurchase('subscription', plan.id, {
-            product_title: plan.name,
-            source: 'SubscriptionModal'
-          });
-
-          if (result.success) {
-            const { data } = result;
-            const isCompleted = data.completed || data.purchase?.payment_status === 'completed';
-            const isFreeItem = data.isFree;
-
-            if (isCompleted || isFreeItem) {
-              // Free subscription - completed immediately
-              toast({
-                variant: "default",
-                title: "המנוי עודכן בהצלחה",
-                description: `${plan.name} הוגדר כמנוי שלך`
-              });
-
-              // Update current plan
-              setCurrentPlan(plan);
-
-              // Get updated user data and notify parent component
-              if (onSubscriptionChange) {
-                const updatedUser = await User.me();
-                onSubscriptionChange(updatedUser);
-              }
-
-              // Close modal after successful selection
-              setTimeout(() => {
-                onClose();
-              }, 1000);
-              setIsSelecting(false);
-            } else {
-              // Paid subscription - needs payment (redirect to checkout)
-              toast({
-                variant: "default",
-                title: "מנוי נוסף לעגלה",
-                description: `${plan.name} נוסף לעגלת הקניות. תועבר למסך התשלום.`
-              });
-
-              // Close modal and redirect to checkout
-              onClose();
-              navigate('/checkout');
-              setIsSelecting(false);
-            }
-          } else if (result.canUpdate) {
-            // Subscription already in cart - ask user if they want to update
-            const shouldUpdate = window.confirm(
-              `יש כבר מנוי בעגלת הקניות. האם ברצונך להחליף אותו ב${plan.name}?`
-            );
-
-            if (shouldUpdate && result.existingPurchaseId) {
-              try {
-                const updateResult = await paymentClient.updateCartSubscription(
-                  result.existingPurchaseId,
-                  plan.id
-                );
-
-                if (updateResult.success) {
-                  const isCompleted = updateResult.data.completed || updateResult.data.purchase?.payment_status === 'completed';
-                  const isFreeItem = updateResult.data.isFree;
-
-                  if (isCompleted || isFreeItem) {
-                    // Free subscription - completed immediately
-                    toast({
-                      variant: "default",
-                      title: "המנוי עודכן בהצלחה",
-                      description: `${plan.name} הוגדר כמנוי שלך`
-                    });
-
-                    // Update current plan
-                    setCurrentPlan(plan);
-
-                    // Get updated user data and notify parent component
-                    if (onSubscriptionChange) {
-                      const updatedUser = await User.me();
-                      onSubscriptionChange(updatedUser);
-                    }
-
-                    // Close modal
-                    setTimeout(() => {
-                      onClose();
-                    }, 1000);
-                    setIsSelecting(false);
-                  } else {
-                    // Paid subscription - redirect to checkout
-                    toast({
-                      variant: "default",
-                      title: "מנוי עודכן בעגלה",
-                      description: `המנוי בעגלה עודכן ל${plan.name}. תועבר למסך התשלום.`
-                    });
-
-                    onClose();
-                    navigate('/checkout');
-                    setIsSelecting(false);
-                  }
-                } else {
-                  throw new Error(updateResult.error || 'שגיאה בעדכון המנוי');
-                }
-              } catch (updateError) {
-                console.error('Error updating cart subscription:', updateError);
-                toast({
-                  variant: "destructive",
-                  title: "שגיאה בעדכון המנוי",
-                  description: updateError.message || "אנא נסה שוב או פנה לתמיכה"
-                });
-              }
-            }
-          } else {
-            throw new Error(result.error || 'שגיאה ביצירת רכישת המנוי');
-          }
-
-        } catch (error) {
-          console.error('Error creating subscription purchase:', error);
-          toast({
-            variant: "destructive",
-            title: "שגיאה בבחירת המנוי",
-            description: error.message || "אנא נסה שוב או פנה לתמיכה"
-          });
-          setIsSelecting(false);
-          return;
-        }
-        // Note: setIsSelecting(false) is not needed here as page redirects
       }
     } catch (error) {
-      console.error("Error selecting subscription plan:", error);
+      cerror('Error in cancel pending downgrade:', error);
       toast({
         variant: "destructive",
-        title: "שגיאה בבחירת תוכנית המנוי",
-        description: "אנא נסה שוב או פנה לתמיכה"
+        title: "שגיאה בביטול המנוי הממתין",
+        description: error.message || "אנא נסה שוב או פנה לתמיכה"
       });
-      setIsSelecting(false);
     }
-    // No finally block needed - handled in catch and specific cases above
   };
 
   const handleCancelConfirm = async () => {
     if (!planToCancel) return;
 
     try {
-      // Use the selected environment from the PayPlus environment selector
-      const environment = paymentEnvironment;
-
       console.log('✅ Subscription marked for cancellation');
         
         // Record subscription history for the cancelled paid subscription
@@ -680,9 +585,9 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
   const handlePaymentModalClose = () => {
     console.log('🎯 SubscriptionModal: Closing payment modal and cleaning up state');
     setShowPaymentModal(false);
-    setIsSelecting(false);
     setPaymentUrl('');
     setSelectedPlanForPayment(null);
+    setIsIframeLoading(true); // Reset loading state for next time
 
     // Show message about cancelled payment
     toast({
@@ -703,7 +608,6 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
       // Close payment modal immediately
       setShowPaymentModal(false);
       setPaymentUrl('');
-      setIsSelecting(false);
 
       // Show immediate success message
       toast({
@@ -758,47 +662,6 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
     }
   };
 
-  // Handle successful subscription payment (original polling-based approach)
-  const handleSubscriptionPaymentSuccess = async () => {
-    try {
-      console.log('🎯 SubscriptionModal: Processing successful subscription payment');
-
-      // NOW set user to pending status since payment was confirmed
-      console.log('🎯 SubscriptionModal: Setting user status to pending after payment confirmation');
-      await User.updateMyUserData({
-        current_subscription_plan_id: selectedPlanForPayment?.id,
-        subscription_status: 'pending',
-        subscription_status_updated_at: new Date().toISOString()
-      });
-
-      // Close payment modal
-      handlePaymentModalClose();
-
-      // Show success message
-      toast({
-        variant: "default",
-        title: "תשלום הושלם בהצלחה!",
-        description: "המנוי שלך מתעדכן כעת..."
-      });
-
-      // Start monitoring for subscription activation
-      // The existing checkPendingSubscription function will handle the polling
-      await checkPendingSubscription();
-
-      // Close the subscription modal after a brief delay
-      setTimeout(() => {
-        onClose();
-      }, 2000);
-
-    } catch (error) {
-      console.error('Error handling subscription payment success:', error);
-      toast({
-        variant: "destructive",
-        title: "שגיאה בעדכון המנוי",
-        description: "התשלום הושלם אך יש בעיה בעדכון המנוי. אנא פנה לתמיכה."
-      });
-    }
-  };
 
   // Add function to record subscription history
   const recordSubscriptionHistory = async (user, newPlan, actionType) => {
@@ -828,10 +691,6 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
     }
   };
 
-  const isCurrentPlan = (plan) => {
-    // Only consider a plan "current" if the user explicitly has it set
-    return currentPlan && currentPlan.id === plan.id;
-  };
 
   return (
     <>
@@ -890,29 +749,36 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
                       value={paymentEnvironment}
                       onChange={setPaymentEnvironment}
                       user={currentUser}
-                      disabled={isSelecting || paymentInProgress}
+                      disabled={processing || paymentInProgress}
                     />
                   </div>
                 </div>
 
                 {/* Main Content */}
                 <div className="flex-1 py-12">
-                  {isLoading ? (
+                  {loading ? (
                     <div className="flex items-center justify-center py-20">
                       <div className="text-center">
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
                         <p className="text-gray-600">טוען תוכניות מנוי...</p>
                       </div>
                     </div>
+                  ) : error ? (
+                    <div className="flex items-center justify-center py-20">
+                      <div className="text-center text-red-600">
+                        <p className="text-lg font-semibold">שגיאה בטעינת נתוני המנוי</p>
+                        <p className="text-sm mt-2">{error}</p>
+                      </div>
+                    </div>
                   ) : (
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                       {/* Current User's Subscription Summary */}
-                      {currentPlan && ( // Only show if user has a current plan set
+                      {summary?.currentPlan && (
                         <div className="mb-8 p-6 rounded-2xl shadow-lg bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 flex flex-col sm:flex-row items-center justify-between gap-4">
-                          <div className="text-center sm:text-right"> {/* Adjusted for RTL and flex layout */}
+                          <div className="text-center sm:text-right">
                             <p className="text-sm text-gray-600">המנוי הנוכחי שלך:</p>
                             <h3 className="text-2xl font-bold text-gray-900 mt-1">
-                              {currentPlan.name}
+                              {summary.currentPlan.name}
                             </h3>
                           </div>
                           {currentUser.subscription_end_date && currentUser.subscription_status === 'active' && (
@@ -927,10 +793,71 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
                           )}
                         </div>
                       )}
-                      {/* End Current User's Subscription Summary */}
+
+                      {/* Pending Plan Switch Alert */}
+                      {summary?.hasPendingSwitch && summary?.pendingSwitch && (
+                        <div className="mb-8 p-6 rounded-2xl shadow-lg bg-gradient-to-br from-yellow-50 to-orange-50 border border-yellow-300">
+                          <div className="flex items-center gap-3 mb-4">
+                            <AlertTriangle className="w-6 h-6 text-yellow-600" />
+                            <h3 className="text-xl font-bold text-yellow-900">החלפת תוכנית ממתינה</h3>
+                          </div>
+                          <p className="text-yellow-800 mb-4">
+                            יש לך החלפת תוכנית ממתינה. בטל אותה כדי לבחור תוכנית חדשה.
+                          </p>
+                          <Button
+                            onClick={() => setShowPendingSwitchDialog(true)}
+                            variant="outline"
+                            className="border-yellow-400 text-yellow-700 hover:bg-yellow-100"
+                          >
+                            <Calendar className="w-4 h-4 ml-2" />
+                            נהל החלפה ממתינה
+                          </Button>
+                        </div>
+                      )}
+
+                      {/* Cancel Pending Subscription Alert - Show when user has both active and pending */}
+                      {summary?.hasActivePlusPending && (() => {
+                        // Find the pending subscription to display its details
+                        const pendingSubscriptions = summary?.subscriptions?.filter(sub => sub.status === 'pending') || [];
+                        const pendingSubscription = pendingSubscriptions[0];
+                        const pendingPlan = plans?.find(p => p.id === pendingSubscription?.subscription_plan_id);
+
+                        if (pendingSubscription && pendingPlan) {
+                          return (
+                            <div className="mb-8 p-6 rounded-2xl shadow-lg bg-gradient-to-br from-red-50 to-pink-50 border border-red-300">
+                              <div className="flex items-center gap-3 mb-4">
+                                <AlertTriangle className="w-6 h-6 text-red-600" />
+                                <h3 className="text-xl font-bold text-red-900">מנוי ממתין לתשלום</h3>
+                              </div>
+                              <p className="text-red-800 mb-4">
+                                יש לך מנוי ממתין ל{pendingPlan.name} בנוסף למנוי הפעיל. ניתן לבטל את המנוי הממתין.
+                              </p>
+                              <Button
+                                onClick={() => cancelPendingSubscription(pendingSubscription.id)}
+                                disabled={processing}
+                                variant="outline"
+                                className="border-red-400 text-red-700 hover:bg-red-100"
+                              >
+                                {processing ? (
+                                  <>
+                                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-red-600 border-t-transparent ml-2" />
+                                    מבטל...
+                                  </>
+                                ) : (
+                                  <>
+                                    <X className="w-4 h-4 ml-2" />
+                                    בטל מנוי ממתין
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
 
                       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {subscriptionPlans.map((plan) => {
+                        {plans.map((plan) => {
                           const discountedPrice = calculateDiscountedPrice(plan);
                           const hasDiscount = plan.has_discount && plan.discount_value && plan.price > 0;
                           const isCurrent = isCurrentPlan(plan);
@@ -943,9 +870,39 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
                             plan.price === undefined
                           );
 
+                          // Check if this plan has a pending payment that needs completion
+                          const hasPendingPayment = (() => {
+                            try {
+                              // Debug logging to see what data we have
+                              clog('Checking pending payment for plan:', plan.name, 'Plan ID:', plan.id);
+                              clog('Current user:', currentUser?.email);
+                              clog('Summary purchases:', summary?.purchases);
+                              clog('Available plans:', plans?.map(p => ({id: p.id, name: p.name})));
+
+                              const actionDecision = SubscriptionBusinessLogic.determineSubscriptionAction(
+                                currentUser,
+                                plan,
+                                summary?.purchases || [],
+                                plans,
+                                summary?.subscriptions || []
+                              );
+
+                              clog('Action decision for plan', plan.name, ':', actionDecision);
+
+                              const isPendingPayment = actionDecision?.actionType === SubscriptionBusinessLogic.ACTION_TYPES.RETRY_PAYMENT;
+                              clog('Has pending payment for plan', plan.name, ':', isPendingPayment);
+
+                              return isPendingPayment;
+                            } catch (error) {
+                              cerror('Error checking pending payment:', error);
+                              return false;
+                            }
+                          })();
+
                           return (
                             <Card key={plan.id} className={`relative group hover:shadow-2xl transition-all duration-500 border-2 ${
                               isCurrent ? 'border-green-500 bg-green-50/30 shadow-green-200/50' :
+                              hasPendingPayment ? 'border-orange-400 bg-orange-50/50 shadow-orange-200/50 ring-2 ring-orange-200' :
                               isFree ? 'border-blue-200 bg-blue-50/30 hover:border-blue-300' :
                               'border-purple-200 bg-white shadow-xl'} rounded-3xl overflow-hidden transform hover:scale-105`
                             }>
@@ -971,6 +928,16 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
                                     <Badge className="bg-green-500 text-white border-0 font-semibold">
                                       <Check className="w-3 h-3 ml-1" />
                                       המנוי הנוכחי שלך
+                                    </Badge>
+                                  </div>
+                                )}
+
+                                {/* Pending payment badge */}
+                                {hasPendingPayment && (
+                                  <div className="absolute top-4 left-4 z-10">
+                                    <Badge className="bg-orange-500 text-white border-0 font-semibold animate-pulse">
+                                      <Clock className="w-3 h-3 ml-1" />
+                                      תשלום ממתין
                                     </Badge>
                                   </div>
                                 )}
@@ -1182,22 +1149,30 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
                                     ) : (
                                       <Button
                                         onClick={() => handleSelectPlan(plan)}
-                                        disabled={isSelecting}
+                                        disabled={isPlanDisabled(plan) || processing}
                                         className={`w-full py-4 rounded-2xl text-lg font-semibold transition-all ${
+                                          isPlanDisabled(plan) ?
+                                          'bg-gray-300 text-gray-500 cursor-not-allowed' :
+                                          hasPendingPayment ?
+                                          'bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white animate-pulse shadow-lg ring-2 ring-orange-300' :
                                           isFree ?
                                           'bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 text-white' :
                                           plan.plan_type === 'pro' ?
                                           'bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-300 hover:to-orange-400 text-gray-900' :
                                           'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white'} shadow-lg hover:shadow-xl transform hover:scale-105`}>
-                                        {isSelecting ? (
+                                        {processing ? (
                                           <>
                                             <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white ml-2"></div>
-                                            מעדכן...
+                                            מעבד...
                                           </>
                                         ) : (
                                           <>
-                                            <Star className="w-5 h-5 ml-2" />
-                                            בחר תוכנית זו
+                                            {hasPendingPayment ? (
+                                              <Clock className="w-5 h-5 ml-2" />
+                                            ) : (
+                                              <Star className="w-5 h-5 ml-2" />
+                                            )}
+                                            {getPlanButtonText(plan)}
                                           </>
                                         )}
                                       </Button>
@@ -1244,7 +1219,6 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
             upgradeConfirmResolve(false); // User cancelled or closed the dialog
           }
           setShowUpgradeConfirm(false);
-          setPlanToUpgrade(null);
           setUpgradeConfirmResolve(null);
         }}
         onConfirm={() => {
@@ -1252,7 +1226,6 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
             upgradeConfirmResolve(true); // User confirmed
           }
           setShowUpgradeConfirm(false);
-          setPlanToUpgrade(null);
           setUpgradeConfirmResolve(null);
         }}
         title="מעבר למנוי חדש"
@@ -1262,6 +1235,52 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
         confirmText="כן, המשך"
         cancelText="לא, חזור"
         variant="info"
+      />
+
+      {/* Pending Plan Switch Management Dialog */}
+      <ConfirmationDialog
+        isOpen={showPendingSwitchDialog}
+        onClose={() => setShowPendingSwitchDialog(false)}
+        onConfirm={handleCancelPendingSwitch}
+        title="החלפת תוכנית ממתינה"
+        message={`יש לך החלפת תוכנית ממתינה${summary?.pendingSwitch ? ` ל${summary.pendingSwitch.plan?.name || 'תוכנית לא זוהתה'}` : ''}.
+
+כדי לבחור תוכנית חדשה, תחילה עליך לבטל את החלפת התוכנית הממתינה.
+
+האם ברצונך לבטל את החלפת התוכנית הממתינה?`}
+        confirmText="כן, בטל החלפה ממתינה"
+        cancelText="לא, השאר כמו שזה"
+        variant="warning"
+      />
+
+      {/* Replace Pending Plan Dialog */}
+      <ConfirmationDialog
+        isOpen={showReplacePendingDialog}
+        onClose={() => {
+          setShowReplacePendingDialog(false);
+          setReplacePendingDecision(null);
+        }}
+        onConfirm={handleConfirmReplacePending}
+        title="החלפת תוכנית ממתינה"
+        message={replacePendingDecision?.message || 'האם ברצונך להחליף את התוכנית הממתינה?'}
+        confirmText="כן, החלף תוכנית"
+        cancelText="לא, בטל"
+        variant="info"
+      />
+
+      {/* Cancel Pending Downgrade Dialog */}
+      <ConfirmationDialog
+        isOpen={showCancelPendingDowngradeDialog}
+        onClose={() => {
+          setShowCancelPendingDowngradeDialog(false);
+          setCancelPendingDowngradeDecision(null);
+        }}
+        onConfirm={handleConfirmCancelPendingDowngrade}
+        title="ביטול מנוי ממתין ומעבר למנוי חינם"
+        message={cancelPendingDowngradeDecision?.message || 'האם ברצונך לבטל את המנוי הממתין ולעבור למנוי החינם?'}
+        confirmText="כן, בטל ועבור למנוי חינם"
+        cancelText="לא, השאר מנוי ממתין"
+        variant="warning"
       />
 
 
@@ -1292,13 +1311,33 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
                 <X className="w-4 h-4" />
               </Button>
             </div>
-            <div className="flex-1">
+            <div className="flex-1 relative">
+              {/* Loading Spinner Overlay */}
+              {isIframeLoading && (
+                <div className="absolute inset-0 bg-white flex items-center justify-center z-10">
+                  <LudoraLoadingSpinner
+                    message="טוען דף תשלום..."
+                    status="loading"
+                    size="lg"
+                    theme="neon"
+                    showParticles={true}
+                  />
+                </div>
+              )}
+
+              {/* PayPlus Iframe */}
               <iframe
                 src={paymentUrl}
                 className="w-full h-full border-0"
                 title="PayPlus Subscription Payment"
-                onLoad={() => console.log('🎯 SubscriptionModal: PayPlus iframe loaded successfully')}
-                onError={(e) => console.error('🎯 SubscriptionModal: PayPlus iframe error:', e)}
+                onLoad={() => {
+                  console.log('🎯 SubscriptionModal: PayPlus iframe loaded successfully');
+                  setIsIframeLoading(false);
+                }}
+                onError={(e) => {
+                  console.error('🎯 SubscriptionModal: PayPlus iframe error:', e);
+                  setIsIframeLoading(false);
+                }}
               />
             </div>
           </div>
