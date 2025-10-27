@@ -8,6 +8,7 @@
  */
 
 import { Calendar, BookOpen, FileText, Play } from "lucide-react";
+import { GAME_TYPES } from './gameTypes.js';
 
 // Product Types Configuration with Catalog Settings
 export const PRODUCT_TYPES = {
@@ -413,42 +414,90 @@ export const TYPE_ATTRIBUTE_SCHEMAS = {
     }
   },
   game: {
-    min_age: {
-      type: 'number',
-      min: 3,
-      max: 18,
-      label: 'גיל מינימלי',
-      description: 'הגיל המינימלי המתאים למשחק',
-      placeholder: 'למשל: 6'
+    grade_min: {
+      type: 'select',
+      label: 'כיתה מינימלית',
+      description: 'הכיתה הנמוכה ביותר המתאימה למשחק',
+      placeholder: 'בחר כיתה מינימלית',
+      options: [
+        { value: 1, label: 'כיתה א' },
+        { value: 2, label: 'כיתה ב' },
+        { value: 3, label: 'כיתה ג' },
+        { value: 4, label: 'כיתה ד' },
+        { value: 5, label: 'כיתה ה' },
+        { value: 6, label: 'כיתה ו' },
+        { value: 7, label: 'כיתה ז' },
+        { value: 8, label: 'כיתה ח' },
+        { value: 9, label: 'כיתה ט' },
+        { value: 10, label: 'כיתה י' },
+        { value: 11, label: 'כיתה יא' },
+        { value: 12, label: 'כיתה יב' }
+      ],
+      validate: (value, allAttributes) => {
+        if (!value) return true; // Optional field
+        const gradeMax = allAttributes.grade_max;
+        if (gradeMax && value >= gradeMax) {
+          return 'הכיתה המינימלית חייבת להיות נמוכה מהכיתה המקסימלית';
+        }
+        return true;
+      }
     },
-    max_age: {
-      type: 'number',
-      min: 3,
-      max: 99,
-      label: 'גיל מקסימלי',
-      description: 'הגיל המקסימלי המתאים למשחק',
-      placeholder: 'למשל: 12'
+    grade_max: {
+      type: 'select',
+      label: 'כיתה מקסימלית',
+      description: 'הכיתה הגבוהה ביותר המתאימה למשחק',
+      placeholder: 'בחר כיתה מקסימלית',
+      options: [
+        { value: 1, label: 'כיתה א' },
+        { value: 2, label: 'כיתה ב' },
+        { value: 3, label: 'כיתה ג' },
+        { value: 4, label: 'כיתה ד' },
+        { value: 5, label: 'כיתה ה' },
+        { value: 6, label: 'כיתה ו' },
+        { value: 7, label: 'כיתה ז' },
+        { value: 8, label: 'כיתה ח' },
+        { value: 9, label: 'כיתה ט' },
+        { value: 10, label: 'כיתה י' },
+        { value: 11, label: 'כיתה יא' },
+        { value: 12, label: 'כיתה יב' }
+      ],
+      validate: (value, allAttributes) => {
+        if (!value) return true; // Optional field
+        const gradeMin = allAttributes.grade_min;
+        if (gradeMin && value <= gradeMin) {
+          return 'הכיתה המקסימלית חייבת להיות גבוהה מהכיתה המינימלית';
+        }
+        return true;
+      }
+    },
+    subject: {
+      type: 'select',
+      label: 'מקצוע',
+      description: 'המקצוע הרלוונטי למשחק',
+      placeholder: 'בחר מקצוע (אופציונלי)',
+      nullable: true,
+      options: [] // This will be populated dynamically from settings
     },
     game_type: {
       type: 'select',
       label: 'סוג משחק',
-      description: 'קטגוריית המשחק',
+      description: 'סוג המשחק הספציפי',
       placeholder: 'בחר סוג משחק',
-      options: [
-        { value: 'memory', label: 'זיכרון' },
-        { value: 'puzzle', label: 'פאזל' },
-        { value: 'quiz', label: 'חידון' },
-        { value: 'adventure', label: 'הרפתקאות' },
-        { value: 'educational', label: 'חינוכי' }
-      ]
+      options: Object.values(GAME_TYPES).map(gameType => ({
+        value: gameType.key,
+        label: gameType.singular
+      }))
     },
-    estimated_duration: {
-      type: 'number',
-      min: 1,
-      max: 120,
-      label: 'משך משחק משוער (דקות)',
-      description: 'משך המשחק הממוצע בדקות',
-      placeholder: 'למשל: 15'
+    device_compatibility: {
+      type: 'select',
+      label: 'תאימות מכשירים',
+      description: 'באילו מכשירים ניתן לשחק במשחק',
+      placeholder: 'בחר תאימות מכשירים',
+      options: [
+        { value: 'both', label: 'הכל' },
+        { value: 'desktop_only', label: 'מחשב בלבד' },
+        { value: 'mobile_only', label: 'מכשירי טאץ בלבד' }
+      ]
     }
   },
   tool: {

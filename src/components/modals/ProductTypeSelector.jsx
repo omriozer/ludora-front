@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PRODUCT_TYPES } from "@/config/productTypes";
 
-export default function ProductTypeSelector({ onSelect, enabledTypes = ['workshop', 'course', 'file'] }) {
+export default function ProductTypeSelector({ onSelect, enabledTypes = []}) {
   const availableTypes = Object.values(PRODUCT_TYPES).filter(type => enabledTypes.includes(type.key));
 
   return (

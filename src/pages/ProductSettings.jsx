@@ -19,6 +19,7 @@ import {
   Video,
   BookOpen,
   FileText,
+  Play,
   Users,
   Wrench
 } from "lucide-react";
@@ -45,10 +46,15 @@ export default function ProductSettings() {
     default_file_access_days: 365,
     file_lifetime_access: false,
 
+    // Game settings
+    default_game_access_days: 365,
+    game_lifetime_access: true,
+
     // Content creator permissions
     allow_content_creator_workshops: true,
     allow_content_creator_courses: true,
     allow_content_creator_files: true,
+    allow_content_creator_games: true,
     allow_content_creator_tools: true
   });
 
@@ -79,9 +85,12 @@ export default function ProductSettings() {
         course_lifetime_access: currentSettings.course_lifetime_access || false,
         default_file_access_days: currentSettings.default_file_access_days || 365,
         file_lifetime_access: currentSettings.file_lifetime_access || false,
+        default_game_access_days: currentSettings.default_game_access_days || 365,
+        game_lifetime_access: currentSettings.game_lifetime_access ?? true,
         allow_content_creator_workshops: currentSettings.allow_content_creator_workshops ?? true,
         allow_content_creator_courses: currentSettings.allow_content_creator_courses ?? true,
         allow_content_creator_files: currentSettings.allow_content_creator_files ?? true,
+        allow_content_creator_games: currentSettings.allow_content_creator_games ?? true,
         allow_content_creator_tools: currentSettings.allow_content_creator_tools ?? true
       };
 
@@ -293,6 +302,42 @@ export default function ProductSettings() {
           </CardContent>
         </Card>
 
+        {/* Game Settings */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Play className="w-5 h-5 text-pink-500" />
+              ימי גישה ל{getProductTypeName('game', 'singular')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <Label className="text-sm font-medium">ימים</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  max="9999"
+                  value={formData.default_game_access_days}
+                  onChange={(e) => handleInputChange('default_game_access_days', parseInt(e.target.value) || 365)}
+                  className="w-24"
+                  disabled={formData.game_lifetime_access}
+                />
+              </div>
+              <div className="flex items-center space-x-2 space-x-reverse">
+                <Switch
+                  checked={formData.game_lifetime_access}
+                  onCheckedChange={(checked) => handleSwitchChange('game_lifetime_access', checked)}
+                />
+                <Label className="flex items-center gap-2">
+                  <Infinity className="w-4 h-4" />
+                  גישה לכל החיים
+                </Label>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Content Creator Permissions */}
         <Card className="shadow-lg">
           <CardHeader>
@@ -343,6 +388,18 @@ export default function ProductSettings() {
                 <Switch
                   checked={formData.allow_content_creator_files}
                   onCheckedChange={(checked) => handleInputChange('allow_content_creator_files', checked)}
+                />
+              </div>
+
+              {/* Game Permission */}
+              <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <Play className="w-5 h-5 text-pink-600" />
+                  <Label className="font-medium">{getProductTypeName('game', 'plural')}</Label>
+                </div>
+                <Switch
+                  checked={formData.allow_content_creator_games}
+                  onCheckedChange={(checked) => handleInputChange('allow_content_creator_games', checked)}
                 />
               </div>
 

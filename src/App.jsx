@@ -309,6 +309,16 @@ function App() {
 							</ProtectedRoute>
 						}
 					/>
+					<Route
+						path='/games-management'
+						element={
+							<ProtectedRoute>
+								<OnboardingRedirect>
+									<Pages.GamesManagement />
+								</OnboardingRedirect>
+							</ProtectedRoute>
+						}
+					/>
 
 					{/* Admin-only routes */}
 					<Route
@@ -324,6 +334,14 @@ function App() {
 						element={
 							<ProtectedRoute>
 								<Pages.Products />
+							</ProtectedRoute>
+						}
+					/>
+					<Route
+						path='/game-settings/:gameId'
+						element={
+							<ProtectedRoute>
+								<Pages.GameSettings />
 							</ProtectedRoute>
 						}
 					/>

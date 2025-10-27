@@ -50,7 +50,8 @@ export default function Products() {
     workshops: true,
     courses: true,
     files: true,
-    tools: true
+    tools: true,
+    games: true
   });
   const [selectedTab, setSelectedTab] = useState("file");
 
@@ -81,7 +82,8 @@ export default function Products() {
             workshops: settings.allow_content_creator_workshops !== false,
             courses: settings.allow_content_creator_courses !== false,
             files: settings.allow_content_creator_files !== false,
-            tools: settings.allow_content_creator_tools !== false
+            tools: settings.allow_content_creator_tools !== false,
+            games: settings.allow_content_creator_games !== false
           });
         } catch (error) {
           console.warn('Failed to load content creator permissions:', error);
@@ -141,6 +143,8 @@ export default function Products() {
         return contentCreatorPermissions.courses;
       case 'file':
         return contentCreatorPermissions.files;
+      case 'game':
+        return contentCreatorPermissions.games;
       default:
         return false;
     }

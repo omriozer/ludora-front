@@ -48,6 +48,8 @@ import AdminHelp from './AdminHelp';
 import Documentation from './Documentation';
 import Curriculum from './Curriculum';
 import ClassCurriculum from './ClassCurriculum';
+import GamesManagement from './GamesManagement';
+import GameSettings from './GameSettings';
 import ProductCatalog from '../components/catalog/ProductCatalog';
 
 // Create Games component using ProductCatalog
@@ -104,6 +106,8 @@ export {
   BulkCouponGenerator,
   Curriculum,
   ClassCurriculum,
+  GamesManagement,
+  GameSettings,
   ProductCatalog,
   Games
 };

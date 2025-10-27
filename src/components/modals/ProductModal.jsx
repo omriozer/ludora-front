@@ -44,10 +44,24 @@ import PdfFooterPreview from '../pdf/PdfFooterPreview';
 const getEnabledProductTypes = (settings, isContentCreatorMode = false, isAdmin = false, editingProduct = null) => {
   // NOTE: Tools are excluded from creation - they are defined as constants in the Tool service class
   // However, editing existing tools should be allowed for admins
-  // IMPORTANT: Admins in admin mode (not content creator mode) get access to workshop, course, file types
-  // regardless of any visibility or permission settings
+
   if (isAdmin && !isContentCreatorMode) {
-    const types = ['workshop', 'course', 'file'];
+    // For admins in admin mode, check nav_*_enabled settings
+    const types = [];
+
+    if (settings?.nav_files_enabled === true) {
+      types.push('file');
+    }
+    if (settings?.nav_games_enabled === true) {
+      types.push('game');
+    }
+    if (settings?.nav_workshops_enabled === true) {
+      types.push('workshop');
+    }
+    if (settings?.nav_courses_enabled === true) {
+      types.push('course');
+    }
+
     // Allow tool editing if we're editing an existing tool
     if (editingProduct && editingProduct.product_type === 'tool') {
       types.push('tool');
@@ -70,25 +84,14 @@ const getEnabledProductTypes = (settings, isContentCreatorMode = false, isAdmin 
     enabledTypes.push('file');
   }
 
-  // Tools cannot be created via UI - they are managed as code constants
-  // However, editing existing tools should be allowed
-  // if (settings?.allow_content_creator_tools === true) {
-  //   enabledTypes.push('tool');
-  // }
-
-  // Allow tool editing if we're editing an existing tool
-  if (editingProduct && editingProduct.product_type === 'tool') {
-    enabledTypes.push('tool');
+  if (settings?.allow_content_creator_games === true) {
+    enabledTypes.push('game');
   }
 
-  // If no settings found or all are enabled, return all available types (excluding tools unless editing)
-  if (enabledTypes.length === 0) {
-    const defaultTypes = ['workshop', 'course', 'file'];
-    // Add tool if editing an existing tool
-    if (editingProduct && editingProduct.product_type === 'tool') {
-      defaultTypes.push('tool');
-    }
-    return defaultTypes;
+  // Tools cannot be created via UI - they are managed as code constants
+  // However, editing existing tools should be allowed
+  if (editingProduct && editingProduct.product_type === 'tool') {
+    enabledTypes.push('tool');
   }
 
   return enabledTypes;
@@ -282,7 +285,9 @@ export default function ProductModal({
       case 'course':
         return settings?.default_course_access_days || null;
       case 'file':
-        return settings?.default_tool_access_days || null;
+        return settings?.default_file_access_days || null;
+      case 'game':
+        return settings?.default_game_access_days || null;
       default:
         return null;
     }
@@ -291,11 +296,13 @@ export default function ProductModal({
   const getDefaultLifetimeAccess = (productType, settings) => {
     switch (productType) {
       case 'workshop':
-        return settings?.recording_lifetime_access || false;
+        return settings?.recording_lifetime_access || true;
       case 'course':
-        return settings?.course_lifetime_access || false;
+        return settings?.course_lifetime_access || true;
       case 'file':
-        return settings?.tool_lifetime_access || false;
+        return settings?.file_lifetime_access || false;
+      case 'game':
+        return settings?.game_lifetime_access || true;
       default:
         return false;
     }
@@ -1414,7 +1421,8 @@ export default function ProductModal({
                   </div>
 
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Category and basic info grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <Label className="text-sm font-medium">קטגוריה</Label>
                       <Select
@@ -1433,109 +1441,282 @@ export default function ProductModal({
                         </SelectContent>
                       </Select>
                     </div>
-                    {/* Type-specific attributes */}
-                    {/* Special handling for grade fields - show them on same line with preview */}
-                    {formData.product_type === 'file' && (
-                      <div className="space-y-4">
+
+                    <div>
+                      <Label className="text-sm font-medium">מחיר (₪)</Label>
+                      <Input
+                        type="number"
+                        value={formData.price ?? ""}
+                        onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value === "" ? 0 : parseFloat(e.target.value) || 0 }))}
+                        className="mt-1"
+                        min="0"
+                        step="0.01"
+                      />
+                    </div>
+
+                    <div>
+                      <Label className="text-sm font-medium">קהל יעד</Label>
+                      <Select
+                        value={formData.target_audience || "__none__"}
+                        onValueChange={(value) => setFormData(prev => ({ ...prev, target_audience: value === "__none__" ? "" : value }))}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="בחר קהל יעד..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">ללא קהל יעד מוגדר</SelectItem>
+                          {globalSettings?.audiance_targets?.[formData.product_type]?.map((target) => (
+                            <SelectItem key={target} value={target}>
+                              {target}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Grade fields for files and games */}
+                  {(formData.product_type === 'file' || formData.product_type === 'game') && (
+                    <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-4">
+                      <h4 className="text-sm font-semibold text-gray-700 mb-3">יעוד ומאפיינים</h4>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {/* Grade Min */}
                         <div>
-                          <Label className="text-sm font-medium mb-2 block">טווח כיתות</Label>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            {/* Grade Min */}
-                            <div>
-                              <Label className="text-xs text-gray-600">כיתה מינימלית</Label>
-                              <Select
-                                value={formData.type_attributes.grade_min ? String(formData.type_attributes.grade_min) : ""}
-                                onValueChange={(value) => {
-                                  const newValue = parseInt(value);
-                                  setFormData(prev => {
-                                    let newTypeAttributes = {
-                                      ...prev.type_attributes,
-                                      grade_min: newValue
-                                    };
+                          <Label className="text-sm font-medium">מכיתה</Label>
+                          <Select
+                            value={formData.type_attributes.grade_min ? String(formData.type_attributes.grade_min) : ""}
+                            onValueChange={(value) => {
+                              const newValue = parseInt(value);
+                              setFormData(prev => {
+                                let newTypeAttributes = {
+                                  ...prev.type_attributes,
+                                  grade_min: newValue
+                                };
 
-                                    // Validation: if max exists and new min > max, clear max
-                                    if (prev.type_attributes.grade_max && newValue > prev.type_attributes.grade_max) {
-                                      newTypeAttributes.grade_max = undefined;
-                                    }
+                                // Validation: if max exists and new min > max, clear max
+                                if (prev.type_attributes.grade_max && newValue > prev.type_attributes.grade_max) {
+                                  newTypeAttributes.grade_max = undefined;
+                                }
 
-                                    return {
-                                      ...prev,
-                                      type_attributes: newTypeAttributes
-                                    };
-                                  });
-                                }}
-                              >
-                                <SelectTrigger className="mt-1">
-                                  <SelectValue placeholder="בחר כיתה מינימלית" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {[1,2,3,4,5,6,7,8,9,10,11,12].map((grade) => (
-                                    <SelectItem key={grade} value={String(grade)}>
-                                      כיתה {['א','ב','ג','ד','ה','ו','ז','ח','ט','י','יא','יב'][grade-1]}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
+                                return {
+                                  ...prev,
+                                  type_attributes: newTypeAttributes
+                                };
+                              });
+                            }}
+                          >
+                            <SelectTrigger className="mt-1">
+                              <SelectValue placeholder="בחר מכיתה" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {[1,2,3,4,5,6,7,8,9,10,11,12].map((grade) => (
+                                <SelectItem key={grade} value={String(grade)}>
+                                  כיתה {['א','ב','ג','ד','ה','ו','ז','ח','ט','י','יא','יב'][grade-1]}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
 
-                            {/* Grade Max */}
-                            <div>
-                              <Label className="text-xs text-gray-600">כיתה מקסימלית</Label>
-                              <Select
-                                value={formData.type_attributes.grade_max ? String(formData.type_attributes.grade_max) : ""}
-                                onValueChange={(value) => {
-                                  const newValue = parseInt(value);
-                                  setFormData(prev => {
-                                    let newTypeAttributes = {
-                                      ...prev.type_attributes,
-                                      grade_max: newValue
-                                    };
+                        {/* Grade Max */}
+                        <div>
+                          <Label className="text-sm font-medium">עד כיתה</Label>
+                          <Select
+                            value={formData.type_attributes.grade_max ? String(formData.type_attributes.grade_max) : ""}
+                            onValueChange={(value) => {
+                              const newValue = parseInt(value);
+                              setFormData(prev => {
+                                let newTypeAttributes = {
+                                  ...prev.type_attributes,
+                                  grade_max: newValue
+                                };
 
-                                    // Validation: if min exists and new max < min, clear min
-                                    if (prev.type_attributes.grade_min && newValue < prev.type_attributes.grade_min) {
-                                      newTypeAttributes.grade_min = undefined;
-                                    }
+                                // Validation: if min exists and new max < min, clear min
+                                if (prev.type_attributes.grade_min && newValue < prev.type_attributes.grade_min) {
+                                  newTypeAttributes.grade_min = undefined;
+                                }
 
-                                    return {
-                                      ...prev,
-                                      type_attributes: newTypeAttributes
-                                    };
-                                  });
-                                }}
-                              >
-                                <SelectTrigger className="mt-1">
-                                  <SelectValue placeholder="בחר כיתה מקסימלית" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {[1,2,3,4,5,6,7,8,9,10,11,12].map((grade) => (
-                                    <SelectItem key={grade} value={String(grade)}>
-                                      כיתה {['א','ב','ג','ד','ה','ו','ז','ח','ט','י','יא','יב'][grade-1]}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
+                                return {
+                                  ...prev,
+                                  type_attributes: newTypeAttributes
+                                };
+                              });
+                            }}
+                          >
+                            <SelectTrigger className="mt-1">
+                              <SelectValue placeholder="בחר עד כיתה" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {[1,2,3,4,5,6,7,8,9,10,11,12].map((grade) => (
+                                <SelectItem key={grade} value={String(grade)}>
+                                  כיתה {['א','ב','ג','ד','ה','ו','ז','ח','ט','י','יא','יב'][grade-1]}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
 
-                          {/* Grade Range Preview */}
-                          {(formData.type_attributes.grade_min || formData.type_attributes.grade_max) && (
-                            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                              <Label className="text-xs text-blue-600 font-medium">תצוגה מקדימה בכרטיס הקובץ:</Label>
-                              <div className="flex items-center gap-2 mt-1">
-                                <GraduationCap className="w-4 h-4 text-blue-400" />
-                                <span className="text-blue-700 text-sm">
-                                  {formatGradeRange(formData.type_attributes.grade_min, formData.type_attributes.grade_max)}
-                                </span>
-                              </div>
-                            </div>
-                          )}
+                        {/* Subject Field */}
+                        <div>
+                          <Label className="text-sm font-medium">מקצוע</Label>
+                          <Select
+                            value={formData.type_attributes.subject || "__none__"}
+                            onValueChange={(value) => {
+                              setFormData(prev => ({
+                                ...prev,
+                                type_attributes: {
+                                  ...prev.type_attributes,
+                                  subject: value === "__none__" ? undefined : value
+                                }
+                              }));
+                            }}
+                          >
+                            <SelectTrigger className="mt-1">
+                              <SelectValue placeholder="בחר מקצוע" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__none__">ללא מקצוע</SelectItem>
+                              {globalSettings?.study_subjects ?
+                                Object.entries(globalSettings.study_subjects).map(([key, label]) => (
+                                  <SelectItem key={key} value={label}>
+                                    {label}
+                                  </SelectItem>
+                                )) :
+                                // Default subjects if not loaded from settings
+                                [
+                                  { value: 'math', label: 'מתמטיקה' },
+                                  { value: 'hebrew', label: 'עברית' },
+                                  { value: 'english', label: 'אנגלית' },
+                                  { value: 'science', label: 'מדעים' },
+                                  { value: 'history', label: 'היסטוריה' },
+                                  { value: 'geography', label: 'גיאוגרפיה' },
+                                  { value: 'art', label: 'אמנות' },
+                                  { value: 'music', label: 'מוזיקה' },
+                                  { value: 'physical_education', label: 'חינוך גופני' }
+                                ].map((subject) => (
+                                  <SelectItem key={subject.value} value={subject.label}>
+                                    {subject.label}
+                                  </SelectItem>
+                                ))
+                              }
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
-                    )}
 
-                    {/* Regular type-specific attributes (excluding grade fields for files) */}
+                      {/* Game-specific fields */}
+                      {formData.product_type === 'game' && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* Game Type Selection */}
+                          <div>
+                            <Label className="text-sm font-medium">סוג משחק</Label>
+                            <Select
+                              value={formData.type_attributes.game_type || ""}
+                              onValueChange={(value) => {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  type_attributes: {
+                                    ...prev.type_attributes,
+                                    game_type: value
+                                  }
+                                }));
+                              }}
+                            >
+                              <SelectTrigger className="mt-1">
+                                <SelectValue placeholder="בחר סוג משחק" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="scatter_game">משחק פיזור</SelectItem>
+                                <SelectItem value="wisdom_maze">מבוך חוכמה</SelectItem>
+                                <SelectItem value="sharp_and_smooth">חד וחלק</SelectItem>
+                                <SelectItem value="memory_game">משחק זיכרון</SelectItem>
+                                <SelectItem value="ar_up_there">מעלה במציאות רבודה</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {/* Device Compatibility Selection */}
+                          <div>
+                            <Label className="text-sm font-medium">תאימות מכשירים</Label>
+                            <Select
+                              value={formData.type_attributes.device_compatibility || "both"}
+                              onValueChange={(value) => {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  type_attributes: {
+                                    ...prev.type_attributes,
+                                    device_compatibility: value
+                                  }
+                                }));
+                              }}
+                            >
+                              <SelectTrigger className="mt-1">
+                                <SelectValue placeholder="בחר תאימות מכשירים" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="both">הכל</SelectItem>
+                                <SelectItem value="desktop_only">מחשב בלבד</SelectItem>
+                                <SelectItem value="mobile_only">מכשירי טאץ בלבד</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Game Settings Button */}
+                      {formData.product_type === 'game' && (
+                        <div className="flex justify-center">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="flex items-center gap-2"
+                            onClick={() => {
+                              if (editingProduct) {
+                                window.open(`/game-settings/${editingProduct.entity_id}`, '_blank');
+                              } else {
+                                toast({
+                                  title: "יש לשמור מוצר תחילה",
+                                  description: "על מנת לערוך הגדרות משחק, יש לשמור את המוצר תחילה",
+                                  variant: "destructive"
+                                });
+                              }
+                            }}
+                          >
+                            <Play className="w-4 h-4" />
+                            {editingProduct ? 'עריכת הגדרות משחק' : 'צור משחק תחילה'}
+                          </Button>
+                        </div>
+                      )}
+
+                      {/* Grade Range Preview */}
+                      {(formData.type_attributes.grade_min || formData.type_attributes.grade_max) && (
+                        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <GraduationCap className="w-4 h-4 text-blue-500" />
+                            <span className="text-blue-700 text-sm font-medium">
+                              {formatGradeRange(formData.type_attributes.grade_min, formData.type_attributes.grade_max)}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Regular type-specific attributes (excluding grade fields for files and game fields for games) */}
+                  <div className="space-y-4">
                     {Object.entries(getAttributeSchema(formData.product_type))
-                      .filter(([key]) => !(formData.product_type === 'file' && (key === 'grade_min' || key === 'grade_max')))
+                      .filter(([key]) => {
+                        // Exclude grade and subject fields for files and games (handled in special section)
+                        if ((formData.product_type === 'file' || formData.product_type === 'game') && (key === 'grade_min' || key === 'grade_max' || key === 'subject')) {
+                          return false;
+                        }
+                        // Exclude game-specific fields for games (handled in dedicated section)
+                        if (formData.product_type === 'game' && (key === 'game_type' || key === 'device_compatibility')) {
+                          return false;
+                        }
+                        return true;
+                      })
                       .map(([key, schema]) => (
                       <div key={key}>
                         <Label className="text-sm font-medium">{schema.label}</Label>
@@ -1636,36 +1817,6 @@ export default function ProductModal({
                         )}
                       </div>
                     ))}
-                  </div>
-
-                  <div>
-                    <Label className="text-sm font-medium">מחיר (₪)</Label>
-                    <Input
-                      type="number"
-                      value={formData.price ?? ""}
-                      onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value === "" ? 0 : parseFloat(e.target.value) || 0 }))}
-                      className="mt-1"
-                    />
-                  </div>
-
-                  <div>
-                    <Label className="text-sm font-medium">קהל יעד</Label>
-                    <Select
-                      value={formData.target_audience || "__none__"}
-                      onValueChange={(value) => setFormData(prev => ({ ...prev, target_audience: value === "__none__" ? "" : value }))}
-                    >
-                      <SelectTrigger className="mt-1">
-                        <SelectValue placeholder="בחר קהל יעד..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">ללא קהל יעד מוגדר</SelectItem>
-                        {globalSettings?.audiance_targets?.[formData.product_type]?.map((target) => (
-                          <SelectItem key={target} value={target}>
-                            {target}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
                   </div>
 
                   {/* Tags Input */}
@@ -1802,7 +1953,7 @@ export default function ProductModal({
                                       src={`https://www.youtube.com/embed/${formData.marketing_video_id}`}
                                       title="YouTube Video Preview"
                                       className="w-full h-full"
-                                      frameBorder="0"
+                                      style={{ border: 0 }}
                                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                       allowFullScreen
                                     />
@@ -1933,7 +2084,7 @@ export default function ProductModal({
                                       height="100%"
                                       src={`https://www.youtube.com/embed/${formData.marketing_video_id.trim()}?controls=1&showinfo=0&rel=0`}
                                       title={formData.marketing_video_title || "YouTube Video Preview"}
-                                      frameBorder="0"
+                                      style={{ border: 0 }}
                                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                       allowFullScreen
                                       className="absolute inset-0 rounded"
@@ -2019,8 +2170,9 @@ export default function ProductModal({
                 </CardContent>
               </Card>
 
-              {/* Product Type Specific Section */}
-              <Card>
+              {/* Product Type Specific Section - Hide for games since all fields are in the first card */}
+              {formData.product_type !== 'game' && (
+                <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <BookOpen className="w-5 h-5" />
@@ -2637,6 +2789,7 @@ export default function ProductModal({
                   </div>
                 </CardContent>
               </Card>
+              )}
             </div>
           )}
         </div>
