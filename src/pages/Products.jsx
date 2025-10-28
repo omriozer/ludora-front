@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useLocation, useSearchParams } from "react-router-dom";
-import { Workshop, Course, File, Tool, Product, Category, User, Settings } from "@/services/entities";
+import { useLocation, useSearchParams, useNavigate } from "react-router-dom";
+import { Workshop, Course, File, Tool, Product, Category, User, Settings, Game } from "@/services/entities";
 import { deleteFile } from "@/services/apiClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,14 +24,17 @@ import {
   FileType,
   Image,
   Video,
-  AlignLeft
+  AlignLeft,
+  Gamepad2
 } from "lucide-react";
-import { getProductTypeName } from '@/config/productTypes';
+import { getProductTypeName, PRODUCT_TYPES } from '@/config/productTypes';
 import { formatPriceSimple } from '@/lib/utils';
+import FeatureFlagService from '@/services/FeatureFlagService';
 
 export default function Products() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -43,6 +46,7 @@ export default function Products() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isContentCreator, setIsContentCreator] = useState(false);
   const [showAllContent, setShowAllContent] = useState(true);
+  const [visibleProductTypes, setVisibleProductTypes] = useState([]);
 
   // Access context and permissions
   const [isContentCreatorMode, setIsContentCreatorMode] = useState(false);
@@ -53,7 +57,7 @@ export default function Products() {
     tools: true,
     games: true
   });
-  const [selectedTab, setSelectedTab] = useState("file");
+  const [selectedTab, setSelectedTab] = useState(null);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -67,6 +71,27 @@ export default function Products() {
 
       setIsAdmin(hasAdminAccess);
       setIsContentCreator(hasContentCreatorAccess);
+
+      // Load visible product types based on nav_*_visibility settings
+      const productTypesToCheck = ['file', 'course', 'workshop', 'tool', 'game'];
+      const visibleTypes = [];
+
+      for (const productType of productTypesToCheck) {
+        const visibility = await FeatureFlagService.getFeatureVisibility(productType === 'file' ? 'files' : `${productType}s`);
+
+        // Product management is admin-only regardless of public visibility
+        // But we respect if something is explicitly hidden
+        if (visibility !== 'hidden' && (hasAdminAccess || hasContentCreatorAccess)) {
+          visibleTypes.push(productType);
+        }
+      }
+
+      setVisibleProductTypes(visibleTypes);
+
+      // Set default selected tab to first visible type
+      if (visibleTypes.length > 0 && !selectedTab) {
+        setSelectedTab(visibleTypes[0]);
+      }
 
       // Detect access context
       const contextParam = searchParams.get('context');
@@ -121,7 +146,7 @@ export default function Products() {
       console.error("Error loading data:", error);
     }
     setIsLoading(false);
-  }, [showAllContent]);
+  }, [showAllContent, selectedTab]);
 
   // Helper function to check if a product type can be created
   const canCreateProductType = useCallback((productType) => {
@@ -162,26 +187,21 @@ export default function Products() {
       if (editProductId) {
         const productToEdit = products.find(p => p.id === editProductId);
         if (productToEdit) {
-          handleEdit(productToEdit);
+          // Navigate to edit page instead of opening modal
+          navigate(`/products/edit/${editProductId}`);
           // Clean up URL
           window.history.replaceState({}, document.title, window.location.pathname);
         }
       }
     }
-  }, [products]);
+  }, [products, navigate]);
 
   const handleEdit = (product) => {
-    setEditingProduct(product);
-    setShowModal(true);
+    navigate(`/products/edit/${product.id}`);
   };
 
   const handleCreateNew = () => {
-    setEditingProduct(null);
-    setShowModal(true);
-  };
-
-  const handleModalSave = () => {
-    loadData();
+    navigate('/products/create');
   };
 
   const handleDelete = async (product) => {
@@ -231,6 +251,9 @@ export default function Products() {
         case 'tool':
           await Tool.delete(product.id);
           break;
+        case 'game':
+          await Game.delete(product.id);
+          break;
         default:
           throw new Error('Unknown product type');
       }
@@ -258,6 +281,8 @@ export default function Products() {
         return <FileText className="w-5 h-5 text-purple-500" />;
       case 'tool':
         return <Package className="w-5 h-5 text-orange-500" />;
+      case 'game':
+        return <Gamepad2 className="w-5 h-5 text-pink-500" />;
       default:
         return <FileText className="w-5 h-5 text-gray-500" />;
     }
@@ -277,6 +302,8 @@ export default function Products() {
         return FileText;
       case 'tool':
         return Package;
+      case 'game':
+        return Gamepad2;
       default:
         return Package;
     }
@@ -292,6 +319,8 @@ export default function Products() {
         return 'bg-purple-100 text-purple-800 border-purple-200';
       case 'tool':
         return 'bg-orange-100 text-orange-800 border-orange-200';
+      case 'game':
+        return 'bg-pink-100 text-pink-800 border-pink-200';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200';
     }
@@ -422,70 +451,59 @@ export default function Products() {
           </Alert>
         )}
 
-        {/* Product Modal */}
+        {/* Keep old modal for backwards compatibility during transition */}
         <ProductModal
           isOpen={showModal}
           onClose={() => setShowModal(false)}
           editingProduct={editingProduct}
-          onSave={handleModalSave}
+          onSave={() => loadData()}
           currentUser={currentUser}
           canCreateProductType={canCreateProductType}
           isContentCreatorMode={isContentCreatorMode}
         />
 
         {/* Enhanced Tabs */}
-        <Tabs value={selectedTab} onValueChange={setSelectedTab}>
-          <div className="bg-white/70 backdrop-blur-sm rounded-xl md:rounded-2xl shadow-lg border border-slate-200/60 p-2 md:p-3 mb-4 md:mb-6 ring-1 ring-slate-900/5">
-            <TabsList className="flex w-full flex-wrap justify-center lg:justify-center lg:gap-6 bg-slate-50/50 backdrop-blur-sm gap-1 md:gap-2 p-1 rounded-lg md:rounded-xl">
-              <TabsTrigger
-                value="file"
-                className="flex items-center gap-1 md:gap-2 text-xs md:text-sm font-medium px-2 py-2 md:px-4 md:py-3 rounded-md md:rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-gray-50 flex-1 lg:flex-none min-w-0"
-              >
-                <FileText className="w-3 h-3 md:w-4 md:h-4" />
-                <span className="hidden md:inline">{getProductTypeName('file', 'plural')}</span>
-                <span className="md:hidden">קבצים</span>
-                <Badge variant="secondary" className="bg-gray-200 text-gray-700 text-xs">
-                  {products.filter(p => p.product_type === 'file').length}
-                </Badge>
-              </TabsTrigger>
-              <TabsTrigger
-                value="course"
-                className="flex items-center gap-1 md:gap-2 text-xs md:text-sm font-medium px-2 py-2 md:px-4 md:py-3 rounded-md md:rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-green-600 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-gray-50 flex-1 lg:flex-none min-w-0"
-              >
-                <BookOpen className="w-3 h-3 md:w-4 md:h-4" />
-                <span className="hidden md:inline">{getProductTypeName('course', 'plural')}</span>
-                <span className="md:hidden">קורסים</span>
-                <Badge variant="secondary" className="bg-gray-200 text-gray-700 text-xs">
-                  {products.filter(p => p.product_type === 'course').length}
-                </Badge>
-              </TabsTrigger>
-              <TabsTrigger
-                value="workshop"
-                className="flex items-center gap-1 md:gap-2 text-xs md:text-sm font-medium px-2 py-2 md:px-4 md:py-3 rounded-md md:rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-gray-50 flex-1 lg:flex-none min-w-0"
-              >
-                <Play className="w-3 h-3 md:w-4 md:h-4" />
-                <span className="hidden md:inline">{getProductTypeName('workshop', 'plural')}</span>
-                <span className="md:hidden">סדנאות</span>
-                <Badge variant="secondary" className="bg-gray-200 text-gray-700 text-xs">
-                  {products.filter(p => p.product_type === 'workshop').length}
-                </Badge>
-              </TabsTrigger>
-              <TabsTrigger
-                value="tool"
-                className="flex items-center gap-1 md:gap-2 text-xs md:text-sm font-medium px-2 py-2 md:px-4 md:py-3 rounded-md md:rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-orange-600 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-gray-50 flex-1 lg:flex-none min-w-0"
-              >
-                <Package className="w-3 h-3 md:w-4 md:h-4" />
-                <span className="hidden md:inline">{getProductTypeName('tool', 'plural')}</span>
-                <span className="md:hidden">כלים</span>
-                <Badge variant="secondary" className="bg-gray-200 text-gray-700 text-xs">
-                  {products.filter(p => p.product_type === 'tool').length}
-                </Badge>
-              </TabsTrigger>
-            </TabsList>
-          </div>
+        {visibleProductTypes.length > 0 && (
+          <Tabs value={selectedTab} onValueChange={setSelectedTab}>
+            <div className="bg-white/70 backdrop-blur-sm rounded-xl md:rounded-2xl shadow-lg border border-slate-200/60 p-2 md:p-3 mb-4 md:mb-6 ring-1 ring-slate-900/5">
+              <TabsList className="flex w-full flex-wrap justify-center lg:justify-center lg:gap-6 bg-slate-50/50 backdrop-blur-sm gap-1 md:gap-2 p-1 rounded-lg md:rounded-xl">
+                {visibleProductTypes.map(productType => {
+                  const config = PRODUCT_TYPES[productType];
+                  const IconComponent = config.icon;
 
-          <TabsContent value={selectedTab} className="space-y-6">
-            {getFilteredProducts().length > 0 ? (
+                  // Get gradient colors for active state
+                  const getActiveGradient = (type) => {
+                    switch (type) {
+                      case 'file': return 'data-[state=active]:from-purple-500 data-[state=active]:to-purple-600';
+                      case 'course': return 'data-[state=active]:from-green-500 data-[state=active]:to-green-600';
+                      case 'workshop': return 'data-[state=active]:from-blue-500 data-[state=active]:to-blue-600';
+                      case 'tool': return 'data-[state=active]:from-orange-500 data-[state=active]:to-orange-600';
+                      case 'game': return 'data-[state=active]:from-pink-500 data-[state=active]:to-pink-600';
+                      default: return 'data-[state=active]:from-gray-500 data-[state=active]:to-gray-600';
+                    }
+                  };
+
+                  return (
+                    <TabsTrigger
+                      key={productType}
+                      value={productType}
+                      className={`flex items-center gap-1 md:gap-2 text-xs md:text-sm font-medium px-2 py-2 md:px-4 md:py-3 rounded-md md:rounded-lg data-[state=active]:bg-gradient-to-r ${getActiveGradient(productType)} data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-gray-50 flex-1 lg:flex-none min-w-0`}
+                    >
+                      <IconComponent className="w-3 h-3 md:w-4 md:h-4" />
+                      <span className="hidden md:inline">{config.plural}</span>
+                      <span className="md:hidden">{config.navText}</span>
+                      <Badge variant="secondary" className="bg-gray-200 text-gray-700 text-xs">
+                        {products.filter(p => p.product_type === productType).length}
+                      </Badge>
+                    </TabsTrigger>
+                  );
+                })}
+              </TabsList>
+            </div>
+
+            {selectedTab && (
+              <TabsContent value={selectedTab} className="space-y-6">
+                {getFilteredProducts().length > 0 ? (
               <>
                 {/* Mobile/Tablet Card Layout */}
                 <div className="block lg:hidden space-y-4">
@@ -542,7 +560,7 @@ export default function Products() {
                           <div className="text-center">
                             <div className="text-xs text-slate-500 mb-1">מחיר</div>
                             <div className="text-lg font-bold text-blue-600" dir="rtl">
-                              {formatPriceSimple(product.price, (!product.original_price && product.original_price !== 0) && product.price === 0)}
+                              {formatPriceSimple(product.price, product.price === 0)}
                             </div>
                             {product.access_days && (
                               <div className="text-xs text-slate-500 mt-1" dir="rtl">
@@ -684,13 +702,8 @@ export default function Products() {
                         <div className={`${isAdmin && showAllContent ? 'col-span-1' : 'col-span-1'} text-center`}>
                           <div className="font-bold text-base" dir="rtl">
                             <span className={product.price > 0 ? "text-emerald-600" : "text-blue-600"}>
-                              {formatPriceSimple(product.price, (!product.original_price && product.original_price !== 0) && product.price === 0)}
+                              {formatPriceSimple(product.price, product.price === 0)}
                             </span>
-                            {product.original_price && product.original_price > product.price && (
-                              <div className="text-xs text-gray-500 line-through">
-                                {product.original_price} ₪
-                              </div>
-                            )}
                           </div>
                           <div className="text-xs text-slate-500 mt-1" dir="rtl">
                             {(product.access_days === null || product.access_days === undefined) ? 'לכל החיים' : `${product.access_days} ימים`}
@@ -807,8 +820,25 @@ export default function Products() {
                 </div>
               </div>
             )}
-          </TabsContent>
-        </Tabs>
+              </TabsContent>
+            )}
+          </Tabs>
+        )}
+
+        {/* Empty state when no product types are visible */}
+        {visibleProductTypes.length === 0 && !isLoading && (
+          <div className="text-center py-20 text-gray-500">
+            <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-12 mx-auto max-w-md">
+              <div className="bg-white rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6 shadow-sm">
+                <Package className="w-10 h-10 text-gray-400" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-700 mb-3">אין מוצרים זמינים</h3>
+              <p className="text-gray-500 mb-6 leading-relaxed">
+                לא נמצאו סוגי מוצרים נגישים על פי הגדרות התצוגה
+              </p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

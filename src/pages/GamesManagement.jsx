@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Search,
@@ -30,6 +31,8 @@ import { clog, cerror } from "@/lib/utils";
 import { useUser } from "@/contexts/UserContext";
 import GameModal from "@/components/modals/GameModal";
 import ProductModal from "@/components/modals/ProductModal";
+// DEBUG: Import new modal for comparison
+import ProductModalV2 from '@/components/product/ProductModalV2';
 
 const ITEMS_PER_PAGE = 20;
 
@@ -45,6 +48,9 @@ export default function GamesManagement() {
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [selectedGame, setSelectedGame] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
+
+  // DEBUG: State for modal comparison - REMOVE IN PRODUCTION
+  const [useOldModal, setUseOldModal] = useState(true); // Default to old modal for games
 
   // Filters and search
   const [searchTerm, setSearchTerm] = useState("");
@@ -276,6 +282,22 @@ export default function GamesManagement() {
               <p className="text-gray-500">צור, ערוך וניהל את המשחקים שלך</p>
             </div>
             <div className="flex items-center gap-3">
+              {/* DEBUG: Modal comparison toggle - REMOVE IN PRODUCTION */}
+              {process.env.NODE_ENV === 'development' && (
+                <div className="bg-red-50 rounded-lg p-3 border border-red-200">
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={useOldModal}
+                      onCheckedChange={setUseOldModal}
+                      id="use-old-modal-games"
+                    />
+                    <label htmlFor="use-old-modal-games" className="text-sm font-medium text-red-700">
+                      🐛 DEBUG: {useOldModal ? 'Modal ישן' : 'Modal חדש'}
+                    </label>
+                  </div>
+                </div>
+              )}
+
               <Button onClick={handleCreateGame} className="flex items-center gap-2">
                 <Plus className="w-4 h-4" />
                 צור משחק חדש
@@ -639,14 +661,27 @@ export default function GamesManagement() {
           onSaved={handleGameSaved}
         />
 
-        <ProductModal
-          isOpen={isProductModalOpen}
-          onClose={() => setIsProductModalOpen(false)}
-          product={selectedProduct}
-          entityType="game"
-          entityId={selectedGame?.id}
-          onSaved={handleProductSaved}
-        />
+        {/* DEBUG: Conditional modal rendering - REMOVE IN PRODUCTION */}
+        {useOldModal ? (
+          <ProductModal
+            isOpen={isProductModalOpen}
+            onClose={() => setIsProductModalOpen(false)}
+            product={selectedProduct}
+            entityType="game"
+            entityId={selectedGame?.id}
+            onSaved={handleProductSaved}
+          />
+        ) : (
+          <ProductModalV2
+            isOpen={isProductModalOpen}
+            onClose={() => setIsProductModalOpen(false)}
+            editingProduct={selectedProduct}
+            onSave={handleProductSaved}
+            currentUser={currentUser}
+            canCreateProductType={() => true}
+            isContentCreatorMode={false}
+          />
+        )}
       </div>
     </div>
   );

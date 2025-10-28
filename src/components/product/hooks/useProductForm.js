@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 
 /**
  * Custom hook for managing product form data and form-related state
@@ -10,22 +10,34 @@ export const useProductForm = (editingProduct = null) => {
     if (editingProduct) {
       return {
         product_type: editingProduct.product_type || '',
-        name: editingProduct.name || '',
+        title: editingProduct.title || '',
+        short_description: editingProduct.short_description || '',
         description: editingProduct.description || '',
         price: editingProduct.price || '',
-        old_price: editingProduct.old_price || '',
-        is_published: editingProduct.is_published || false,
-        category_id: editingProduct.category_id || '',
+        is_published: editingProduct.is_published ?? false,
+        category: editingProduct.category || '',
         tags: editingProduct.tags || [],
         access_days: editingProduct.access_days || '',
         total_duration_minutes: editingProduct.total_duration_minutes || 0,
         target_audience: editingProduct.target_audience || '',
-        has_image: editingProduct.has_image || false,
+        // Marketing fields
+        image_url: editingProduct.image_url || '',
+        marketing_video_type: editingProduct.marketing_video_type || '',
+        marketing_video_id: editingProduct.marketing_video_id || '',
         marketing_video_title: editingProduct.marketing_video_title || '',
-        marketing_video_url: editingProduct.marketing_video_url || '',
+        marketing_video_duration: editingProduct.marketing_video_duration || '',
+        // Product type attributes (for grade/subject fields, etc.)
+        type_attributes: editingProduct.type_attributes || {},
+        // Entity relationship
+        entity_id: editingProduct.entity_id || '',
         // File specific
         file_extension: editingProduct.file_extension || '',
         file_size: editingProduct.file_size || '',
+        file_type: editingProduct.file_type || 'pdf',
+        allow_preview: editingProduct.allow_preview ?? true,
+        add_copyrights_footer: editingProduct.add_copyrights_footer ?? true,
+        creator_user_id: editingProduct.creator_user_id,
+        image_is_private: editingProduct.image_is_private ?? false,
         // Workshop specific
         workshop_video_url: editingProduct.workshop_video_url || '',
         // Course specific
@@ -46,23 +58,39 @@ export const useProductForm = (editingProduct = null) => {
 
     return {
       product_type: '',
-      name: '',
+      title: '',
+      short_description: '',
       description: '',
       price: '',
-      old_price: '',
       is_published: false,
-      category_id: '',
+      category: '',
       tags: [],
       access_days: '',
       total_duration_minutes: 0,
       target_audience: '',
-      has_image: false,
+      // Marketing fields
+      image_url: '',
+      marketing_video_type: '',
+      marketing_video_id: '',
       marketing_video_title: '',
-      marketing_video_url: '',
+      marketing_video_duration: '',
+      // Product type attributes (for grade/subject fields, etc.)
+      type_attributes: {},
+      // Entity relationship
+      entity_id: '',
+      // File specific
       file_extension: '',
       file_size: '',
+      file_type: 'pdf',
+      allow_preview: true,
+      add_copyrights_footer: true,
+      creator_user_id: null, // Will be set to current user when creating
+      image_is_private: false,
+      // Workshop specific
       workshop_video_url: '',
+      // Course specific
       course_modules: [],
+      // Tool specific
       tool_url: '',
       tool_description: '',
       tool_category: ''
@@ -70,8 +98,16 @@ export const useProductForm = (editingProduct = null) => {
   }, [editingProduct]);
 
   const [formData, setFormData] = useState(getInitialFormData);
+  const [initialFormData, setInitialFormData] = useState(getInitialFormData);
   const [isSaving, setIsSaving] = useState(false);
   const [saveAndContinue, setSaveAndContinue] = useState(false);
+
+  // Update form data when editingProduct changes
+  useEffect(() => {
+    const newInitialData = getInitialFormData();
+    setFormData(newInitialData);
+    setInitialFormData(newInitialData);
+  }, [getInitialFormData]);
 
   // Helper function to update form data
   const updateFormData = useCallback((updates) => {
@@ -116,16 +152,22 @@ export const useProductForm = (editingProduct = null) => {
 
   // Reset form data
   const resetForm = useCallback(() => {
-    setFormData(getInitialFormData());
+    const newInitialData = getInitialFormData();
+    setFormData(newInitialData);
+    setInitialFormData(newInitialData);
     setIsSaving(false);
     setSaveAndContinue(false);
   }, [getInitialFormData]);
 
+  // Reset changes (alias for resetForm for backward compatibility)
+  const resetChanges = useCallback(() => {
+    resetForm();
+  }, [resetForm]);
+
   // Check if form has changes
   const hasChanges = useCallback(() => {
-    const initial = getInitialFormData();
-    return JSON.stringify(formData) !== JSON.stringify(initial);
-  }, [formData, getInitialFormData]);
+    return JSON.stringify(formData) !== JSON.stringify(initialFormData);
+  }, [formData, initialFormData]);
 
   return {
     formData,
@@ -135,6 +177,7 @@ export const useProductForm = (editingProduct = null) => {
     addTag,
     removeTag,
     resetForm,
+    resetChanges,
     hasChanges,
     isSaving,
     setIsSaving,

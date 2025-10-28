@@ -338,6 +338,22 @@ function App() {
 						}
 					/>
 					<Route
+						path='/products/create'
+						element={
+							<ProtectedRoute>
+								<Pages.ProductPage />
+							</ProtectedRoute>
+						}
+					/>
+					<Route
+						path='/products/edit/:productId'
+						element={
+							<ProtectedRoute>
+								<Pages.ProductPage />
+							</ProtectedRoute>
+						}
+					/>
+					<Route
 						path='/game-settings/:gameId'
 						element={
 							<ProtectedRoute>

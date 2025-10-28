@@ -510,6 +510,47 @@ export const User = {
   }
 };
 
+// Unified Product API for all product types
+export const ProductAPI = {
+  async create(data) {
+    clog('🏭 ProductAPI.create called with:', data);
+    return apiRequest('/products', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  },
+
+  async findById(id) {
+    clog('🔍 ProductAPI.findById called with:', id);
+    return apiRequest(`/entities/product/${id}`, {
+      method: 'GET'
+    });
+  },
+
+  async update(id, data) {
+    clog('✏️ ProductAPI.update called with:', { id, data });
+    return apiRequest(`/entities/product/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  },
+
+  async list(query = {}) {
+    const searchParams = new URLSearchParams();
+    for (const [key, value] of Object.entries(query)) {
+      if (Array.isArray(value)) {
+        value.forEach(item => searchParams.append(key, item));
+      } else {
+        searchParams.set(key, value);
+      }
+    }
+
+    const queryString = searchParams.toString();
+    const endpoint = queryString ? `/products?${queryString}` : '/products';
+    return apiRequest(endpoint);
+  }
+};
+
 // Function APIs
 export async function testPayplusConnection(data) {
   return apiRequest('/functions/testPayplusConnection', {

@@ -18,6 +18,7 @@ import VideoViewer from './VideoViewer';
 import Checkout from './Checkout';
 import CourseViewer from './CourseViewer';
 import Products from './Products';
+import ProductPage from './ProductPage';
 import ProductDetails from './ProductDetails';
 import EmailAutomations from './EmailAutomations';
 import Purchases from './Purchases';
@@ -76,6 +77,7 @@ export {
   Checkout,
   CourseViewer,
   Products,
+  ProductPage,
   ProductDetails,
   EmailAutomations,
   Purchases,
