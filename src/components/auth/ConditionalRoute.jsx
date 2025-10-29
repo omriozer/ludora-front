@@ -1,6 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useUser } from '@/contexts/UserContext';
 import { isStaff } from '@/lib/userUtils';
+import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
 
 /**
  * ConditionalRoute component that protects routes based on system settings visibility
@@ -19,7 +20,11 @@ export default function ConditionalRoute({
 
   // Show loading while user/settings are being fetched
   if (isLoading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center" dir="rtl">
+        <LudoraLoadingSpinner size="lg" text="טוען הגדרות..." />
+      </div>
+    );
   }
 
   // If no visibilityField is provided, use standard ProtectedRoute logic

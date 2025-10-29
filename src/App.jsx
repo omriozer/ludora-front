@@ -262,6 +262,16 @@ function App() {
 						}
 					/>
 					<Route
+						path={PRODUCT_TYPES.lesson_plan.url}
+						element={
+							<ConditionalRoute visibilityField='nav_lesson_plans_visibility'>
+								<OnboardingRedirect>
+									<Pages.ProductCatalog productType='lesson_plan' />
+								</OnboardingRedirect>
+							</ConditionalRoute>
+						}
+					/>
+					<Route
 						path='/workshops'
 						element={
 							<ConditionalRoute visibilityField='nav_workshops_visibility'>

@@ -149,23 +149,40 @@ export const WizardLayout = ({
     }
   }, [visibleSections.length, currentStepIndex]);
 
+  // Check if step is accessible for new products
+  const isStepAccessibleForNewProduct = (stepIndex) => {
+    if (!isNewProduct) return true; // For existing products, all steps are accessible
+
+    // For new products, only first step is accessible until product is saved
+    return stepIndex === 0;
+  };
+
   // Navigation functions
   const goToStep = (stepIndex) => {
     if (stepIndex >= 0 && stepIndex < visibleSections.length) {
-      // Always allow navigation to any step (improved UX)
+      // Check accessibility for new products
+      if (!isStepAccessibleForNewProduct(stepIndex)) {
+        return; // Don't allow navigation to locked steps
+      }
       setCurrentStepIndex(stepIndex);
     }
   };
 
   const goNext = () => {
     if (currentStepIndex < visibleSections.length - 1) {
-      setCurrentStepIndex(currentStepIndex + 1);
+      const nextStepIndex = currentStepIndex + 1;
+      if (isStepAccessibleForNewProduct(nextStepIndex)) {
+        setCurrentStepIndex(nextStepIndex);
+      }
     }
   };
 
   const goPrevious = () => {
     if (currentStepIndex > 0) {
-      setCurrentStepIndex(currentStepIndex - 1);
+      const prevStepIndex = currentStepIndex - 1;
+      if (isStepAccessibleForNewProduct(prevStepIndex)) {
+        setCurrentStepIndex(prevStepIndex);
+      }
     }
   };
 
@@ -235,7 +252,10 @@ export const WizardLayout = ({
     const productTypeName = getProductTypeName(formData.product_type, 'singular') || 'מוצר';
     const stepTitle = currentSection ? currentSection.title : '';
 
-    return editingProduct
+    // Check if we're actually editing an existing product (has an ID)
+    const isEditingExisting = editingProduct?.id;
+
+    return isEditingExisting
       ? `עריכת ${productTypeName} - ${stepTitle}`
       : `יצירת ${productTypeName} חדש - ${stepTitle}`;
   };
@@ -258,12 +278,6 @@ export const WizardLayout = ({
             <h2 className="text-xl font-semibold text-gray-900">
               טוען נתונים...
             </h2>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <X className="w-5 h-5 text-gray-500" />
-            </button>
           </div>
           <div className="flex items-center justify-center p-8">
             <LudoraLoadingSpinner />
@@ -282,24 +296,31 @@ export const WizardLayout = ({
             {visibleSections.map((section, index) => {
               const status = getStepStatus(section.id, index);
               const isAvailable = section.access.available;
+              const isStepAccessible = isStepAccessibleForNewProduct(index);
+              const isLocked = !isStepAccessible;
 
               return (
                 <button
                   key={section.id}
                   onClick={() => goToStep(index)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-                    status === 'current'
-                      ? 'bg-blue-600 text-white'
+                  disabled={isLocked}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    isLocked
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-60'
+                      : status === 'current'
+                      ? 'bg-blue-600 text-white cursor-pointer'
                       : status === 'completed'
-                      ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                      ? 'bg-green-100 text-green-800 hover:bg-green-200 cursor-pointer'
                       : status === 'visited'
-                      ? 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      ? 'bg-gray-200 text-gray-700 hover:bg-gray-300 cursor-pointer'
                       : !isAvailable
-                      ? 'bg-orange-100 text-orange-600 hover:bg-orange-200'
-                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                      ? 'bg-orange-100 text-orange-600 hover:bg-orange-200 cursor-pointer'
+                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200 cursor-pointer'
                   }`}
                 >
-                  {!isAvailable ? (
+                  {isLocked ? (
+                    <Lock className="w-4 h-4" />
+                  ) : !isAvailable ? (
                     <Lock className="w-4 h-4" />
                   ) : (
                     getStepIcon(section.id, index)
@@ -372,24 +393,27 @@ export const WizardLayout = ({
               </div>
 
               <div className={
-                isSaving || !currentSection.access.available
+                isSaving || !currentSection.access.available || !isStepAccessibleForNewProduct(currentStepIndex)
                   ? 'pointer-events-none opacity-50'
                   : ''
               }>
                 <currentSection.component
                   {...currentSection.props}
-                  disabled={isSaving || !currentSection.access.available}
+                  disabled={isSaving || !currentSection.access.available || !isStepAccessibleForNewProduct(currentStepIndex)}
                 />
               </div>
 
-              {!currentSection.access.available && (
+              {(!currentSection.access.available || !isStepAccessibleForNewProduct(currentStepIndex)) && (
                 <div className="mt-4 p-4 bg-orange-100 border border-orange-200 rounded-lg">
                   <div className="flex items-center gap-2 text-orange-800">
                     <Lock className="w-5 h-5" />
                     <span className="font-medium">השלב נעול</span>
                   </div>
                   <p className="mt-1 text-sm text-orange-700">
-                    {currentSection.access.reason || 'השלב הזה אינו זמין כרגע'}
+                    {!isStepAccessibleForNewProduct(currentStepIndex)
+                      ? 'יש לשמור את המוצר תחילה כדי לגשת לשלבים הבאים'
+                      : currentSection.access.reason || 'השלב הזה אינו זמין כרגע'
+                    }
                   </p>
                 </div>
               )}
@@ -418,7 +442,7 @@ export const WizardLayout = ({
                 type="button"
                 variant="outline"
                 onClick={goPrevious}
-                disabled={currentStepIndex === 0 || isSaving}
+                disabled={currentStepIndex === 0 || isSaving || !isStepAccessibleForNewProduct(currentStepIndex - 1)}
                 className="flex items-center gap-2"
               >
                 <ChevronRight className="w-4 h-4" />
@@ -429,7 +453,7 @@ export const WizardLayout = ({
                 <Button
                   type="button"
                   onClick={goNext}
-                  disabled={isSaving}
+                  disabled={isSaving || !isStepAccessibleForNewProduct(currentStepIndex + 1)}
                   className="flex items-center gap-2"
                 >
                   הבא
@@ -559,13 +583,6 @@ export const WizardLayout = ({
           <h2 className="text-xl font-semibold text-gray-900">
             {getModalTitle()}
           </h2>
-          <button
-            onClick={onClose}
-            disabled={isSaving}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <X className="w-5 h-5 text-gray-500" />
-          </button>
         </div>
         {mainContent}
       </DialogContent>

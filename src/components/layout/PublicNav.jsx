@@ -186,6 +186,21 @@ function getNavigationItems({ currentUser, settings, isActualAdmin, isContentCre
         }
         break;
       }
+      case 'lesson_plans': {
+        const lessonPlansVisibility = settings?.nav_lesson_plans_visibility || 'public';
+        if (canUserSeeItem(lessonPlansVisibility, currentUser, isActualAdmin, isContentCreator)) {
+          const iconName = settings?.nav_lesson_plans_icon || navItemConfig.defaultIcon;
+          const IconComponent = iconMap[iconName] || BookOpen;
+          navItems.push({
+            title: navItemConfig.text,
+            url: PRODUCT_TYPES.lesson_plan.url,
+            icon: IconComponent,
+            isAdminOnly: lessonPlansVisibility === 'admin_only',
+            gradient: navItemConfig.gradient
+          });
+        }
+        break;
+      }
       default:
         break;
     }

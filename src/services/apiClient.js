@@ -399,6 +399,7 @@ export const Workshop = new EntityAPI('workshop');
 export const Course = new EntityAPI('course');
 export const File = new EntityAPI('file');
 export const Tool = new EntityAPI('tool');
+export const LessonPlan = new EntityAPI('lessonplan');
 
 export const Purchase = new EntityAPI('purchase');
 export const EmailLog = new EntityAPI('emaillog');

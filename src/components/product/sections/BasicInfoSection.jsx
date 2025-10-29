@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Info, Plus, X, AlertCircle } from 'lucide-react';
 import { Category } from '@/services/entities';
 import { getProductTypeName } from '@/config/productTypes';
-import ProductTypeSelector from '../shared/ProductTypeSelector';
+import ProductTypeSelector from '@/components/ui/ProductTypeSelector';
 
 /**
  * BasicInfoSection - Handles core product information
@@ -82,9 +82,9 @@ export const BasicInfoSection = ({
         </CardHeader>
         <CardContent>
           <ProductTypeSelector
-            onProductTypeSelect={handleProductTypeSelect}
-            enabledProductTypes={enabledProductTypes}
-            canCreateProductType={canCreateProductType}
+            onSelect={handleProductTypeSelect}
+            layout="grid"
+            size="md"
           />
         </CardContent>
       </Card>

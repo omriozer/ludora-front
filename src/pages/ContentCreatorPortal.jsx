@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { User, Settings, Game, Workshop, Course, File, Tool } from "@/services/entities";
+import { User, Settings, Game, Workshop, Course, File, Tool, LessonPlan } from "@/services/entities";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -32,7 +32,8 @@ export default function ContentCreatorPortal() {
     files: { total: 0, published: 0 },
     tools: { total: 0, published: 0 },
     workshops: { total: 0, published: 0 },
-    courses: { total: 0, published: 0 }
+    courses: { total: 0, published: 0 },
+    lesson_plans: { total: 0, published: 0 }
   });
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState(null);
@@ -69,7 +70,8 @@ export default function ContentCreatorPortal() {
           NAV_ITEMS.tools,
           NAV_ITEMS.games,
           NAV_ITEMS.workshops,
-          NAV_ITEMS.courses
+          NAV_ITEMS.courses,
+          NAV_ITEMS.lesson_plans
         ].map(navItem => {
           return {
             key: navItem.key,
@@ -79,7 +81,8 @@ export default function ContentCreatorPortal() {
                   navItem.key === 'tools' ? SettingsIcon :
                   navItem.key === 'games' ? Play :
                   navItem.key === 'workshops' ? Calendar :
-                  navItem.key === 'courses' ? BookOpen : FileText,
+                  navItem.key === 'courses' ? BookOpen :
+                  navItem.key === 'lesson_plans' ? BookOpen : FileText,
             gradient: navItem.gradient,
             bgGradient: navItem.gradient.replace('from-', 'from-').replace('via-', '').replace('to-', 'to-').replace(/(\d+)/g, '50'),
             createUrl: `/${navItem.key}?context=creator`,
@@ -151,7 +154,8 @@ export default function ContentCreatorPortal() {
         files: { total: 0, published: 0 },
         tools: { total: 0, published: 0 },
         workshops: { total: 0, published: 0 },
-        courses: { total: 0, published: 0 }
+        courses: { total: 0, published: 0 },
+        lesson_plans: { total: 0, published: 0 }
       };
 
       // Load games stats if games feature is available
@@ -212,6 +216,18 @@ export default function ContentCreatorPortal() {
           })).catch(error => {
             console.error("Error loading courses stats:", error);
             return { key: NAV_ITEMS.courses.key, data: [] };
+          })
+        );
+      }
+
+      if (features.some(f => f.key === NAV_ITEMS.lesson_plans.key)) {
+        entityPromises.push(
+          LessonPlan.filter({ created_by_id: user.id }).then(lessonPlans => ({
+            key: NAV_ITEMS.lesson_plans.key,
+            data: lessonPlans
+          })).catch(error => {
+            console.error("Error loading lesson plans stats:", error);
+            return { key: NAV_ITEMS.lesson_plans.key, data: [] };
           })
         );
       }

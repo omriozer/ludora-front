@@ -13,6 +13,7 @@ import { clog, cerror } from "@/lib/utils";
 import LudoraLoadingSpinner from "@/components/ui/LudoraLoadingSpinner";
 import EntityForm from "@/components/ui/EntityForm";
 import ClassSelector from "@/components/ui/ClassSelector";
+import AssociateProductDialog from "@/components/ui/AssociateProductDialog";
 import {
   BookOpen,
   GraduationCap,
@@ -52,8 +53,13 @@ export default function Curriculum() {
   const [itemsLoading, setItemsLoading] = useState(false);
   const [selectorsCollapsed, setSelectorsCollapsed] = useState(false);
 
+  // Available combinations state for non-admin disable logic
+  const [availableCombinations, setAvailableCombinations] = useState(new Set());
+  const [combinationsLoading, setCombinationsLoading] = useState(false);
+
   // Admin functionality state
   const [showCreateCurriculumDialog, setShowCreateCurriculumDialog] = useState(false);
+  const [showCreateRangeCurriculumDialog, setShowCreateRangeCurriculumDialog] = useState(false);
   const [showEditCurriculumDialog, setShowEditCurriculumDialog] = useState(false);
   const [showCreateItemDialog, setShowCreateItemDialog] = useState(false);
   const [showEditItemDialog, setShowEditItemDialog] = useState(false);
@@ -62,8 +68,6 @@ export default function Curriculum() {
   const [associatingItem, setAssociatingItem] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
   const [formErrors, setFormErrors] = useState({});
-  const [products, setProducts] = useState([]);
-  const [productLoading, setProductLoading] = useState(false);
   const [resetFormKey, setResetFormKey] = useState(0); // Used to force form reset
 
   // Class association state
@@ -81,15 +85,26 @@ export default function Curriculum() {
     loadSettings();
   }, []);
 
+  // Load available combinations for non-admin users
+  useEffect(() => {
+    if (!isAdmin && settings) {
+      loadAvailableCombinations();
+    }
+  }, [isAdmin, settings]);
+
+  // Note: Removed automatic loading of all item counts for performance
+
   // Load curriculum items when subject/grade selection changes
   useEffect(() => {
+    // Always clear current state first when selections change
+    setCurriculumItems([]);
+    setCurrentCurriculum(null);
+
     if (selectedSubject && selectedGrade) {
       loadCurriculumItems();
       // Auto-collapse selectors when both selections are made
       setTimeout(() => setSelectorsCollapsed(true), 500); // Small delay for better UX
     } else {
-      setCurriculumItems([]);
-      setCurrentCurriculum(null);
       // Expand selectors when selections are incomplete
       setSelectorsCollapsed(false);
     }
@@ -113,22 +128,85 @@ export default function Curriculum() {
     setSettingsLoading(false);
   };
 
-  const loadCurriculumItems = async () => {
-    if (!selectedSubject || !selectedGrade) return;
-
-    setItemsLoading(true);
+  // Load available subject/grade combinations for non-admin users using optimized API
+  const loadAvailableCombinations = async () => {
+    setCombinationsLoading(true);
     try {
-      // First, find the system curriculum for this subject/grade
+      // Use the new optimized endpoint that returns only combinations with curriculum items
+      const response = await apiRequest('/entities/curriculum/available-combinations');
+
+      // Convert the response format to the Set format used by the disable logic
+      const combinationsSet = new Set();
+
+      // Response format: { combinations: { subject: [grade1, grade2, ...], ... } }
+      Object.entries(response.combinations).forEach(([subject, grades]) => {
+        grades.forEach(grade => {
+          combinationsSet.add(`${subject}-${grade}`);
+        });
+      });
+
+      setAvailableCombinations(combinationsSet);
+      clog('Available combinations for non-admin users (optimized):', Array.from(combinationsSet));
+      clog('API response stats:', {
+        totalSubjects: response.total_subjects,
+        totalCombinations: response.total_combinations
+      });
+    } catch (error) {
+      cerror('Error loading available combinations:', error);
+      // On error, allow access to everything to avoid blocking users
+      setAvailableCombinations(new Set());
+    }
+    setCombinationsLoading(false);
+  };
+
+  // Simplified: Load item count for a specific subject+grade combination when needed
+  const loadItemCountForCombination = async (subject, grade) => {
+    try {
       const curricula = await CurriculumAPI.find({
-        subject: selectedSubject,
-        grade: selectedGrade,
+        subject: subject,
+        find_by_grade: grade,
         teacher_user_id: null,
         class_id: null,
         is_active: true
       });
 
+      let totalItems = 0;
+      for (const curriculum of curricula) {
+        const items = await CurriculumItem.find({
+          curriculum_id: curriculum.id
+        });
+        totalItems += items.length;
+      }
+
+      return totalItems;
+    } catch (error) {
+      cerror(`Error loading items count for ${subject} grade ${grade}:`, error);
+      return 0;
+    }
+  };
+
+  const loadCurriculumItems = async () => {
+    if (!selectedSubject || !selectedGrade) return;
+
+    setItemsLoading(true);
+    try {
+      clog('Loading curriculum items for:', { selectedSubject, selectedGrade });
+
+      // First, find the system curriculum for this subject/grade
+      // Use the new find_by_grade parameter to find curricula that include this grade
+      const curricula = await CurriculumAPI.find({
+        subject: selectedSubject,
+        find_by_grade: selectedGrade, // This will find both single grade and range curricula
+        teacher_user_id: null,
+        class_id: null,
+        is_active: true
+      });
+
+      clog('Found curricula:', curricula);
+
       if (curricula.length === 0) {
         // No curriculum found for this combination
+        clog('No curriculum found for this subject/grade combination');
         setCurriculumItems([]);
         setCurrentCurriculum(null);
         setItemsLoading(false);
@@ -137,11 +215,14 @@ export default function Curriculum() {
 
       const curriculum = curricula[0];
       setCurrentCurriculum(curriculum);
+      clog('Selected curriculum:', curriculum);
 
       // Now fetch curriculum items
       const items = await CurriculumItem.find({
         curriculum_id: curriculum.id
       });
+
+      clog('Found curriculum items:', items);
 
       // Sort items by order (mandatory_order first, then custom_order)
       const sortedItems = items.sort((a, b) => {
@@ -151,7 +232,7 @@ export default function Curriculum() {
       });
 
       setCurriculumItems(sortedItems);
-      clog('Loaded curriculum items:', sortedItems);
+      clog('Final sorted curriculum items:', sortedItems);
 
       // Load copy status for system curriculum (if this is a system curriculum and user is a teacher)
       if (isTeacher && curriculum.teacher_user_id === null && curriculum.class_id === null) {
@@ -292,23 +373,6 @@ export default function Curriculum() {
     return maxOrder + 1;
   };
 
-  const loadProducts = async () => {
-    if (productLoading) return;
-
-    setProductLoading(true);
-    try {
-      const productsData = await Product.find();
-      setProducts(productsData);
-    } catch (error) {
-      cerror('Error loading products:', error);
-      toast({
-        title: "שגיאה",
-        description: "שגיאה בטעינת רשימת המוצרים",
-        variant: "destructive"
-      });
-    }
-    setProductLoading(false);
-  };
 
   const handleCreateCurriculum = async () => {
     setFormLoading(true);
@@ -338,6 +402,45 @@ export default function Curriculum() {
     } catch (error) {
       cerror('Error creating curriculum:', error);
       setFormErrors({ general: error.message || 'שגיאה ביצירת תכנית הלימודים' });
+    }
+    setFormLoading(false);
+  };
+
+  const handleCreateRangeCurriculum = async (formData) => {
+    setFormLoading(true);
+    setFormErrors({});
+    try {
+      const response = await apiRequest('/entities/curriculum/create-range', {
+        method: 'POST',
+        body: JSON.stringify({
+          subject: formData.subject,
+          grade_from: parseInt(formData.grade_from),
+          grade_to: parseInt(formData.grade_to),
+          description: formData.description || ''
+        })
+      });
+
+      setShowCreateRangeCurriculumDialog(false);
+
+      const fromGrade = settings?.school_grades?.[formData.grade_from] || `כיתה ${formData.grade_from}`;
+      const toGrade = settings?.school_grades?.[formData.grade_to] || `כיתה ${formData.grade_to}`;
+      const gradeRange = fromGrade === toGrade ? fromGrade : `${fromGrade.replace('כיתה ', '')} - ${toGrade.replace('כיתה ', '')}`;
+
+      toast({
+        title: "תכנית טווח נוצרה",
+        description: `תכנית לימודים ל${gradeRange} נוצרה בהצלחה`,
+        variant: "default"
+      });
+
+      // Reload curriculum items if this range includes the currently selected grade
+      if (selectedSubject === formData.subject &&
+          selectedGrade >= formData.grade_from &&
+          selectedGrade <= formData.grade_to) {
+        loadCurriculumItems();
+      }
+    } catch (error) {
+      cerror('Error creating range curriculum:', error);
+      setFormErrors({ general: error.message || 'שגיאה ביצירת תכנית טווח הלימודים' });
     }
     setFormLoading(false);
   };
@@ -513,7 +616,6 @@ export default function Curriculum() {
     setFormErrors({});
     setAssociatingItem(item);
     setShowAssociateProductDialog(true);
-    loadProducts();
   };
 
   const handleCloseAssociateProductDialog = () => {
@@ -635,12 +737,105 @@ export default function Curriculum() {
   // Helper to check if both selections are made
   const hasBothSelections = selectedSubject && selectedGrade;
 
+  // Helper to format grade display using Hebrew names from settings
+  const formatGradeDisplay = (curriculum) => {
+    if (!curriculum) return '';
 
-  if (settingsLoading) {
+    if (curriculum.is_grade_range && curriculum.grade_from && curriculum.grade_to) {
+      const fromGrade = settings?.school_grades?.[curriculum.grade_from] || `כיתה ${curriculum.grade_from}`;
+      const toGrade = settings?.school_grades?.[curriculum.grade_to] || `כיתה ${curriculum.grade_to}`;
+
+      if (curriculum.grade_from === curriculum.grade_to) {
+        return fromGrade;
+      }
+      return `${fromGrade.replace('כיתה ', '')} - ${toGrade.replace('כיתה ', '')}`;
+    }
+
+    // Single grade curriculum
+    const grade = curriculum.grade || curriculum.grade_from || curriculum.grade_to;
+    return settings?.school_grades?.[grade] || `כיתה ${grade}`;
+  };
+
+  // Helper to get curriculum scope description for better UX clarity
+  const getCurriculumScopeDescription = (curriculum) => {
+    if (!curriculum) return '';
+
+    if (curriculum.is_grade_range && curriculum.grade_from && curriculum.grade_to) {
+      const fromGrade = settings?.school_grades?.[curriculum.grade_from] || `כיתה ${curriculum.grade_from}`;
+      const toGrade = settings?.school_grades?.[curriculum.grade_to] || `כיתה ${curriculum.grade_to}`;
+
+      if (curriculum.grade_from === curriculum.grade_to) {
+        return `תכנית לכיתה ספציפית: ${fromGrade}`;
+      }
+      return `תכנית לטווח כיתות: ${fromGrade.replace('כיתה ', '')} - ${toGrade.replace('כיתה ', '')}`;
+    }
+
+    // Single grade curriculum
+    const grade = curriculum.grade || curriculum.grade_from || curriculum.grade_to;
+    const gradeName = settings?.school_grades?.[grade] || `כיתה ${grade}`;
+    return `תכנית לכיתה ספציפית: ${gradeName}`;
+  };
+
+  // Disable logic for non-admin users based on available curriculum items
+  const isSubjectDisabled = (subjectKey) => {
+    // Admin users can access everything
+    if (isAdmin) return false;
+
+    // If still loading combinations, don't disable to avoid blocking
+    if (combinationsLoading) return false;
+
+    // Check if this subject has any grades with curriculum items
+    if (!settings?.school_grades) return false;
+
+    for (const gradeKey of Object.keys(settings.school_grades)) {
+      if (availableCombinations.has(`${subjectKey}-${gradeKey}`)) {
+        return false; // Subject has at least one grade with items
+      }
+    }
+
+    return true; // Subject has no grades with curriculum items
+  };
+
+  const isGradeDisabled = (gradeKey) => {
+    // Admin users can access everything
+    if (isAdmin) return false;
+
+    // If still loading combinations, don't disable to avoid blocking
+    if (combinationsLoading) return false;
+
+    // If no subject is selected, check if grade has any subjects with items
+    if (!selectedSubject) {
+      if (!settings?.study_subjects) return false;
+
+      for (const subjectKey of Object.keys(settings.study_subjects)) {
+        if (availableCombinations.has(`${subjectKey}-${gradeKey}`)) {
+          return false; // Grade has at least one subject with items
+        }
+      }
+      return true; // Grade has no subjects with curriculum items
+    }
+
+    // If subject is selected, check if this specific combination has items
+    return !availableCombinations.has(`${selectedSubject}-${gradeKey}`);
+  };
+
+  // Helper to get item count for display (simplified)
+  const getItemCount = (subjectKey, gradeKey = null) => {
+    // For now, return null to indicate counts are not loaded
+    // This removes the expensive loading but keeps the UI structure
+    return null;
+  };
+
+
+  // Show loading spinner while essential data is being loaded
+  if (settingsLoading || (!isAdmin && combinationsLoading)) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50" dir="rtl">
         <div className="container mx-auto px-4 py-8">
-          <LudoraLoadingSpinner size="lg" text="טוען הגדרות מערכת..." />
+          <LudoraLoadingSpinner
+            size="lg"
+            text="טוען דף תכניות הלימודים..."
+          />
         </div>
       </div>
     );
@@ -710,22 +905,44 @@ export default function Curriculum() {
                       <BookMarked className="w-5 h-5 text-blue-600" />
                       בחר מקצוע
                     </h3>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                      {settings?.study_subjects && Object.entries(settings.study_subjects).map(([key, label]) => (
-                        <Card
-                          key={key}
-                          className={`cursor-pointer transition-all duration-200 hover:shadow-md ${
-                            selectedSubject === key
-                              ? 'ring-2 ring-blue-500 bg-blue-50'
-                              : 'hover:bg-gray-50'
-                          }`}
-                          onClick={() => handleSubjectSelect(key)}
-                        >
-                          <CardContent className="p-4 text-center">
-                            <p className="font-medium text-sm">{label}</p>
-                          </CardContent>
-                        </Card>
-                      ))}
+                    <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2">
+                      {settings?.study_subjects && Object.entries(settings.study_subjects)
+                        .sort(([keyA, labelA], [keyB, labelB]) => {
+                          const disabledA = isSubjectDisabled(keyA);
+                          const disabledB = isSubjectDisabled(keyB);
+
+                          // First sort by enabled/disabled status (enabled first)
+                          if (disabledA !== disabledB) {
+                            return disabledA ? 1 : -1;
+                          }
+
+                          // Then sort alphabetically by Hebrew label
+                          return labelA.localeCompare(labelB, 'he');
+                        })
+                        .map(([key, label]) => {
+                        const disabled = isSubjectDisabled(key);
+                        return (
+                          <Card
+                            key={key}
+                            className={`transition-all duration-200 ${
+                              disabled
+                                ? 'opacity-50 cursor-not-allowed bg-gray-100'
+                                : 'cursor-pointer hover:shadow-md'
+                            } ${
+                              selectedSubject === key
+                                ? 'ring-2 ring-blue-500 bg-blue-50'
+                                : !disabled ? 'hover:bg-gray-50' : ''
+                            }`}
+                            onClick={() => !disabled && handleSubjectSelect(key)}
+                          >
+                            <CardContent className="p-2 text-center">
+                              <p className={`font-medium text-base ${disabled ? 'text-gray-400' : ''}`}>
+                                {label}
+                              </p>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -735,22 +952,44 @@ export default function Curriculum() {
                       <GraduationCap className="w-5 h-5 text-purple-600" />
                       בחר כיתה
                     </h3>
-                    <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">
-                      {settings?.school_grades && Object.entries(settings.school_grades).map(([key, label]) => (
-                        <Card
-                          key={key}
-                          className={`cursor-pointer transition-all duration-200 hover:shadow-md ${
-                            selectedGrade === key
-                              ? 'ring-2 ring-purple-500 bg-purple-50'
-                              : 'hover:bg-gray-50'
-                          }`}
-                          onClick={() => handleGradeSelect(key)}
-                        >
-                          <CardContent className="p-3 text-center">
-                            <p className="font-medium text-sm">{label}</p>
-                          </CardContent>
-                        </Card>
-                      ))}
+                    <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-2">
+                      {settings?.school_grades && Object.entries(settings.school_grades)
+                        .sort(([keyA, labelA], [keyB, labelB]) => {
+                          const disabledA = isGradeDisabled(keyA);
+                          const disabledB = isGradeDisabled(keyB);
+
+                          // First sort by enabled/disabled status (enabled first)
+                          if (disabledA !== disabledB) {
+                            return disabledA ? 1 : -1;
+                          }
+
+                          // Then sort alphabetically by Hebrew label
+                          return labelA.localeCompare(labelB, 'he');
+                        })
+                        .map(([key, label]) => {
+                        const disabled = isGradeDisabled(key);
+                        return (
+                          <Card
+                            key={key}
+                            className={`transition-all duration-200 ${
+                              disabled
+                                ? 'opacity-50 cursor-not-allowed bg-gray-100'
+                                : 'cursor-pointer hover:shadow-md'
+                            } ${
+                              selectedGrade === key
+                                ? 'ring-2 ring-purple-500 bg-purple-50'
+                                : !disabled ? 'hover:bg-gray-50' : ''
+                            }`}
+                            onClick={() => !disabled && handleGradeSelect(key)}
+                          >
+                            <CardContent className="p-2 text-center">
+                              <p className={`font-medium text-base ${disabled ? 'text-gray-400' : ''}`}>
+                                {label}
+                              </p>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -822,7 +1061,7 @@ export default function Curriculum() {
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
                   <Layers className="w-5 h-5 text-green-600" />
-                  {settings?.study_subjects?.[selectedSubject]} - {settings?.school_grades?.[selectedGrade]}
+                  {settings?.study_subjects?.[selectedSubject]} - {formatGradeDisplay(currentCurriculum)}
                 </CardTitle>
                 <div className="flex items-center gap-3">
                   {curriculumItems.length > 0 && (
@@ -882,15 +1121,28 @@ export default function Curriculum() {
                     </AlertDescription>
                   </Alert>
                   {isAdmin && !currentCurriculum && (
-                    <div className="text-center">
-                      <Dialog open={showCreateCurriculumDialog} onOpenChange={setShowCreateCurriculumDialog}>
-                        <DialogTrigger asChild>
-                          <Button>
-                            <Plus className="w-4 h-4 ml-2" />
-                            צור תכנית לימודים חדשה
-                          </Button>
-                        </DialogTrigger>
-                      </Dialog>
+                    <div className="text-center space-y-3">
+                      <div className="flex gap-3 justify-center">
+                        <Dialog open={showCreateCurriculumDialog} onOpenChange={setShowCreateCurriculumDialog}>
+                          <DialogTrigger asChild>
+                            <Button>
+                              <Plus className="w-4 h-4 ml-2" />
+                              צור תכנית לכיתה אחת
+                            </Button>
+                          </DialogTrigger>
+                        </Dialog>
+                        <Dialog open={showCreateRangeCurriculumDialog} onOpenChange={setShowCreateRangeCurriculumDialog}>
+                          <DialogTrigger asChild>
+                            <Button variant="outline">
+                              <Plus className="w-4 h-4 ml-2" />
+                              צור תכנית לטווח כיתות
+                            </Button>
+                          </DialogTrigger>
+                        </Dialog>
+                      </div>
+                      <p className="text-sm text-gray-500">
+                        תכנית לכיתה אחת מתאימה לכיתה ספציפית, ואילו תכנית טווח מתאימה למספר כיתות
+                      </p>
                     </div>
                   )}
                   {isAdmin && currentCurriculum && (
@@ -912,13 +1164,6 @@ export default function Curriculum() {
                     <Card key={item.id} className="hover:shadow-sm transition-shadow">
                       <CardContent className="p-4">
                         <div className="flex items-start gap-4">
-                          <div className="flex-shrink-0 mt-1">
-                            {item.is_completed ? (
-                              <CheckCircle className="w-5 h-5 text-green-500" />
-                            ) : (
-                              <Circle className="w-5 h-5 text-gray-400" />
-                            )}
-                          </div>
                           <div className="flex-1 space-y-2">
                             <div className="flex items-start justify-between">
                               <div className="flex-1">
@@ -1039,6 +1284,71 @@ export default function Curriculum() {
               </DialogContent>
             </Dialog>
 
+            {/* Create Range Curriculum Dialog */}
+            <Dialog open={showCreateRangeCurriculumDialog} onOpenChange={setShowCreateRangeCurriculumDialog}>
+              <DialogContent className="max-w-md" dir="rtl">
+                <DialogHeader>
+                  <DialogTitle>צור תכנית לימודים לטווח כיתות</DialogTitle>
+                </DialogHeader>
+                <EntityForm
+                  fields={[
+                    {
+                      key: 'subject',
+                      type: 'select',
+                      label: 'מקצוע',
+                      required: true,
+                      options: settings?.study_subjects ? Object.entries(settings.study_subjects).map(([key, label]) => ({
+                        value: key,
+                        label: label
+                      })) : [],
+                      placeholder: 'בחר מקצוע'
+                    },
+                    {
+                      key: 'grade_from',
+                      type: 'select',
+                      label: 'מכיתה',
+                      required: true,
+                      options: settings?.school_grades ? Object.entries(settings.school_grades).map(([key, label]) => ({
+                        value: key,
+                        label: label
+                      })) : [],
+                      placeholder: 'בחר כיתת התחלה'
+                    },
+                    {
+                      key: 'grade_to',
+                      type: 'select',
+                      label: 'עד כיתה',
+                      required: true,
+                      options: settings?.school_grades ? Object.entries(settings.school_grades).map(([key, label]) => ({
+                        value: key,
+                        label: label
+                      })) : [],
+                      placeholder: 'בחר כיתת סיום'
+                    },
+                    {
+                      key: 'description',
+                      type: 'textarea',
+                      label: 'תיאור (אופציונלי)',
+                      placeholder: 'תיאור קצר של תכנית הלימודים',
+                      rows: 3
+                    }
+                  ]}
+                  initialData={{
+                    subject: selectedSubject || '',
+                    grade_from: '',
+                    grade_to: '',
+                    description: ''
+                  }}
+                  onSubmit={handleCreateRangeCurriculum}
+                  onCancel={() => setShowCreateRangeCurriculumDialog(false)}
+                  loading={formLoading}
+                  errors={formErrors}
+                  title=""
+                  submitText="צור תכנית טווח"
+                />
+              </DialogContent>
+            </Dialog>
+
             {/* Edit Curriculum Dialog */}
             <Dialog open={showEditCurriculumDialog} onOpenChange={setShowEditCurriculumDialog}>
               <DialogContent className="max-w-md" dir="rtl">
@@ -1089,9 +1399,20 @@ export default function Curriculum() {
               <DialogContent className="max-w-2xl" dir="rtl">
                 <DialogHeader>
                   <DialogTitle>
-                    הוסף נושא לימוד חדש - {settings?.study_subjects?.[selectedSubject]} כיתה {settings?.school_grades?.[selectedGrade]}
+                    הוסף נושא לימוד חדש
                   </DialogTitle>
                 </DialogHeader>
+
+                {/* Clear curriculum scope indicator */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                  <div className="flex items-center gap-2 text-blue-800">
+                    <BookOpen className="w-5 h-5" />
+                    <div>
+                      <p className="font-semibold">{settings?.study_subjects?.[selectedSubject]}</p>
+                      <p className="text-sm">{getCurriculumScopeDescription(currentCurriculum)}</p>
+                    </div>
+                  </div>
+                </div>
                 <EntityForm
                   key={resetFormKey} // Force form reset when this changes
                   fields={[
@@ -1120,7 +1441,7 @@ export default function Curriculum() {
                       key: 'is_mandatory',
                       type: 'checkbox',
                       label: 'נושא חובה',
-                      description: 'האם זהו נושא חובה או רשות (הסדר יחושב אוטומטית)'
+                      description: `הנושא יתווסף לתכנית הלימודים ${formatGradeDisplay(currentCurriculum)} (הסדר יחושב אוטומטית)`
                     }
                   ]}
                   initialData={{ is_mandatory: true }}
@@ -1139,7 +1460,7 @@ export default function Curriculum() {
               <DialogContent className="max-w-2xl" dir="rtl">
                 <DialogHeader>
                   <DialogTitle>
-                    ערוך נושא לימוד - {settings?.study_subjects?.[selectedSubject]} כיתה {settings?.school_grades?.[selectedGrade]}
+                    ערוך נושא לימוד - {settings?.study_subjects?.[selectedSubject]} {formatGradeDisplay(currentCurriculum)}
                   </DialogTitle>
                 </DialogHeader>
                 {editingItem && (
@@ -1170,7 +1491,7 @@ export default function Curriculum() {
                         key: 'is_mandatory',
                         type: 'checkbox',
                         label: 'נושא חובה',
-                        description: 'האם זהו נושא חובה או רשות (שינוי הסדר יחושב אוטומטית)'
+                        description: `הנושא שייך לתכנית הלימודים ${formatGradeDisplay(currentCurriculum)} (שינוי הסדר יחושב אוטומטית)`
                       }
                     ]}
                     initialData={{
@@ -1191,44 +1512,14 @@ export default function Curriculum() {
             </Dialog>
 
             {/* Associate Product Dialog */}
-            <Dialog open={showAssociateProductDialog} onOpenChange={(open) => open ? null : handleCloseAssociateProductDialog()}>
-              <DialogContent className="max-w-md" dir="rtl">
-                <DialogHeader>
-                  <DialogTitle>קשר מוצר לנושא לימוד</DialogTitle>
-                </DialogHeader>
-                {associatingItem && (
-                  <div className="space-y-4">
-                    <Alert>
-                      <Link className="h-4 w-4" />
-                      <AlertDescription>
-                        קישור מוצר לנושא: {associatingItem.study_topic} - {associatingItem.content_topic}
-                      </AlertDescription>
-                    </Alert>
-                    <EntityForm
-                      fields={[
-                        {
-                          key: 'product_id',
-                          type: 'select',
-                          label: 'בחר מוצר',
-                          required: true,
-                          options: products.map(product => ({
-                            value: product.id,
-                            label: product.title
-                          })),
-                          placeholder: productLoading ? 'טוען מוצרים...' : 'בחר מוצר מהרשימה'
-                        }
-                      ]}
-                      onSubmit={handleAssociateProduct}
-                      onCancel={handleCloseAssociateProductDialog}
-                      loading={formLoading || productLoading}
-                      errors={formErrors}
-                      title=""
-                      submitText="קשר מוצר"
-                    />
-                  </div>
-                )}
-              </DialogContent>
-            </Dialog>
+            <AssociateProductDialog
+              open={showAssociateProductDialog}
+              onOpenChange={(open) => open ? null : handleCloseAssociateProductDialog()}
+              item={associatingItem}
+              onAssociate={handleAssociateProduct}
+              loading={formLoading}
+              errors={formErrors}
+            />
 
             {/* Associate Curriculum with Class Dialog */}
             <Dialog open={showAssociateClassDialog} onOpenChange={setShowAssociateClassDialog}>

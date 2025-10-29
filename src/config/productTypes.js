@@ -24,6 +24,7 @@ export const PRODUCT_TYPES = {
     bgColor: 'bg-blue-50',
     borderColor: 'border-blue-200',
     gradient: "from-blue-500 via-indigo-500 to-purple-600",
+    fallbackImageUrl: "https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400&h=250&fit=crop&q=60",
     catalog: {
       title: 'קטלוג הדרכות',
       subtitle: 'הדרכות אונליין ומוקלטות לבחירתך במגוון תחומים',
@@ -57,6 +58,7 @@ export const PRODUCT_TYPES = {
     bgColor: 'bg-green-50',
     borderColor: 'border-green-200',
     gradient: "from-orange-400 via-red-500 to-pink-600",
+    fallbackImageUrl: "https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?w=400&h=250&fit=crop&q=60",
     catalog: {
       title: 'קטלוג קורסים',
       subtitle: 'קורסים מקוונים עם מודולים מרובים ולמידה מתקדמת',
@@ -86,6 +88,7 @@ export const PRODUCT_TYPES = {
     bgColor: 'bg-purple-50',
     borderColor: 'border-purple-200',
     gradient: "from-emerald-400 via-teal-500 to-cyan-600",
+    fallbackImageUrl: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400&h=250&fit=crop&q=60",
     catalog: {
       title: 'קבצים',
       subtitle: 'כלים דיגיטליים, תבניות ומשאבים מוכנים להורדה שיעזרו לכם ליצור חוויות למידה מהנות',
@@ -115,6 +118,7 @@ export const PRODUCT_TYPES = {
     bgColor: 'bg-purple-50',
     borderColor: 'border-purple-200',
     gradient: "from-emerald-400 via-teal-500 to-cyan-600",
+    fallbackImageUrl: "https://images.unsplash.com/photo-1563206767-5b18f218e8de?w=400&h=250&fit=crop&q=60",
     catalog: {
       title: 'כלים דיגיטליים',
       subtitle: 'כלים ויישומונים דיגיטליים לשיפור חוויית הלמידה',
@@ -144,6 +148,7 @@ export const PRODUCT_TYPES = {
     bgColor: 'bg-pink-50',
     borderColor: 'border-pink-200',
     gradient: "from-purple-500 via-pink-500 to-red-500",
+    fallbackImageUrl: "https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?w=400&h=250&fit=crop&q=60",
     catalog: {
       title: 'קטלוג המשחקים',
       subtitle: 'משחקים חינוכיים אינטראקטיביים לכל הגילאים',
@@ -159,6 +164,36 @@ export const PRODUCT_TYPES = {
         primary: 'שחק עכשיו',
         secondary: 'פרטים נוספים',
         owned: 'שחק שוב'
+      }
+    }
+  },
+  lesson_plan: {
+    key: 'lesson_plan',
+    url: '/lesson-plans',
+    singular: 'מערך שיעור',
+    plural: 'מערכי שיעור',
+    navText: 'מערכי שיעור',
+    description: 'מערכי שיעור מוכנים עם מצגות ונכסים',
+    icon: BookOpen,
+    color: 'from-indigo-500 to-blue-600',
+    bgColor: 'bg-indigo-50',
+    borderColor: 'border-indigo-200',
+    gradient: "from-indigo-400 via-blue-500 to-cyan-600",
+    fallbackImageUrl: "https://images.unsplash.com/photo-1427504494785-3a9ca7044f45?w=400&h=250&fit=crop&q=60",
+    catalog: {
+      title: 'קטלוג מערכי שיעור',
+      subtitle: 'מערכי שיעור מוכנים עם מצגות, אודיו ונכסים לחוויית הוראה שלמה',
+      searchPlaceholder: 'חפש מערכי שיעור...',
+      emptyStateTitle: 'לא נמצאו מערכי שיעור',
+      emptyStateSubtitle: 'נסה לשנות את הפילטרים או חפש מערכי שיעור אחרים',
+      loadingMessage: 'טוען מערכי שיעור...',
+      filters: ['search', 'context', 'subject', 'grade', 'price'],
+      cardLayout: 'detailed',
+      showTabs: false,
+      actions: {
+        primary: 'רכישה',
+        secondary: 'פרטים נוספים',
+        owned: 'הצגת שיעור'
       }
     }
   }
@@ -234,6 +269,14 @@ export const NAV_ITEMS = {
     defaultIcon: 'BookOpen',
     description: 'ניהול תכניות לימודים לפי מקצועות וכיתות',
     gradient: "from-blue-500 via-indigo-500 to-purple-600"
+  },
+  lesson_plans: {
+    key: 'lesson_plans',
+    url: '/lesson-plans',
+    text: 'מערכי שיעור',
+    defaultIcon: 'BookOpen',
+    description: 'מערכי שיעור מוכנים עם מצגות ונכסים',
+    gradient: "from-indigo-400 via-blue-500 to-cyan-600"
   }
 };
 
@@ -502,6 +545,88 @@ export const TYPE_ATTRIBUTE_SCHEMAS = {
   },
   tool: {
     // Tools use the same basic fields as files - no special attributes needed
+  },
+  lesson_plan: {
+    context: {
+      type: 'text',
+      label: 'הקשר/נושא',
+      description: 'הקשר הנושאי של מערך השיעור (חיות, חגים, וכו\')',
+      placeholder: 'למשל: חיות, חנוכה, חג המולד...',
+      nullable: true,
+      maxLength: 100
+    },
+    grade_min: {
+      type: 'select',
+      label: 'כיתה מינימלית',
+      description: 'הכיתה הנמוכה ביותר המתאימה למערך השיעור',
+      placeholder: 'בחר כיתה מינימלית',
+      options: [
+        { value: 1, label: 'כיתה א' },
+        { value: 2, label: 'כיתה ב' },
+        { value: 3, label: 'כיתה ג' },
+        { value: 4, label: 'כיתה ד' },
+        { value: 5, label: 'כיתה ה' },
+        { value: 6, label: 'כיתה ו' },
+        { value: 7, label: 'כיתה ז' },
+        { value: 8, label: 'כיתה ח' },
+        { value: 9, label: 'כיתה ט' },
+        { value: 10, label: 'כיתה י' },
+        { value: 11, label: 'כיתה יא' },
+        { value: 12, label: 'כיתה יב' }
+      ],
+      validate: (value, allAttributes) => {
+        if (!value) return true; // Optional field
+        const gradeMax = allAttributes.grade_max;
+        if (gradeMax && value >= gradeMax) {
+          return 'הכיתה המינימלית חייבת להיות נמוכה מהכיתה המקסימלית';
+        }
+        return true;
+      }
+    },
+    grade_max: {
+      type: 'select',
+      label: 'כיתה מקסימלית',
+      description: 'הכיתה הגבוהה ביותר המתאימה למערך השיעור',
+      placeholder: 'בחר כיתה מקסימלית',
+      options: [
+        { value: 1, label: 'כיתה א' },
+        { value: 2, label: 'כיתה ב' },
+        { value: 3, label: 'כיתה ג' },
+        { value: 4, label: 'כיתה ד' },
+        { value: 5, label: 'כיתה ה' },
+        { value: 6, label: 'כיתה ו' },
+        { value: 7, label: 'כיתה ז' },
+        { value: 8, label: 'כיתה ח' },
+        { value: 9, label: 'כיתה ט' },
+        { value: 10, label: 'כיתה י' },
+        { value: 11, label: 'כיתה יא' },
+        { value: 12, label: 'כיתה יב' }
+      ],
+      validate: (value, allAttributes) => {
+        if (!value) return true; // Optional field
+        const gradeMin = allAttributes.grade_min;
+        if (gradeMin && value <= gradeMin) {
+          return 'הכיתה המקסימלית חייבת להיות גבוהה מהכיתה המינימלית';
+        }
+        return true;
+      }
+    },
+    subject: {
+      type: 'select',
+      label: 'מקצוע',
+      description: 'המקצוע הרלוונטי למערך השיעור',
+      placeholder: 'בחר מקצוע (אופציונלי)',
+      nullable: true,
+      options: [] // This will be populated dynamically from settings
+    },
+    estimated_duration: {
+      type: 'number',
+      min: 5,
+      max: 180,
+      label: 'משך שיעור משוער (דקות)',
+      description: 'משך השיעור המשוער בדקות',
+      placeholder: 'למשל: 45'
+    }
   }
 };
 

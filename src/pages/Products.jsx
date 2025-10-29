@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useLocation, useSearchParams, useNavigate } from "react-router-dom";
-import { Workshop, Course, File, Tool, Product, Category, User, Settings, Game } from "@/services/entities";
+import { Workshop, Course, File, Tool, Product, Category, User, Settings, Game, LessonPlan } from "@/services/entities";
 import { deleteFile } from "@/services/apiClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,7 @@ import {
 import { getProductTypeName, PRODUCT_TYPES } from '@/config/productTypes';
 import { formatPriceSimple } from '@/lib/utils';
 import FeatureFlagService from '@/services/FeatureFlagService';
+import { getProductTypeIconByType } from '@/lib/layoutUtils';
 
 export default function Products() {
   const location = useLocation();
@@ -47,6 +48,7 @@ export default function Products() {
   const [isContentCreator, setIsContentCreator] = useState(false);
   const [showAllContent, setShowAllContent] = useState(true);
   const [visibleProductTypes, setVisibleProductTypes] = useState([]);
+  const [globalSettings, setGlobalSettings] = useState({});
 
   // Access context and permissions
   const [isContentCreatorMode, setIsContentCreatorMode] = useState(false);
@@ -55,7 +57,8 @@ export default function Products() {
     courses: true,
     files: true,
     tools: true,
-    games: true
+    games: true,
+    lesson_plans: true
   });
   const [selectedTab, setSelectedTab] = useState(null);
 
@@ -73,11 +76,15 @@ export default function Products() {
       setIsContentCreator(hasContentCreatorAccess);
 
       // Load visible product types based on nav_*_visibility settings
-      const productTypesToCheck = ['file', 'course', 'workshop', 'tool', 'game'];
+      const productTypesToCheck = ['file', 'course', 'workshop', 'tool', 'game', 'lesson_plan'];
       const visibleTypes = [];
 
       for (const productType of productTypesToCheck) {
-        const visibility = await FeatureFlagService.getFeatureVisibility(productType === 'file' ? 'files' : `${productType}s`);
+        const visibility = await FeatureFlagService.getFeatureVisibility(
+          productType === 'file' ? 'files' :
+          productType === 'lesson_plan' ? 'lesson_plans' :
+          `${productType}s`
+        );
 
         // Product management is admin-only regardless of public visibility
         // But we respect if something is explicitly hidden
@@ -98,22 +105,25 @@ export default function Products() {
       const isInContentCreatorMode = contextParam === 'creator' && hasContentCreatorAccess;
       setIsContentCreatorMode(isInContentCreatorMode);
 
-      // Load content creator permissions if in content creator mode
-      if (isInContentCreatorMode) {
-        try {
-          const settingsData = await Settings.find();
-          const settings = settingsData.length > 0 ? settingsData[0] : {};
+      // Load settings and content creator permissions
+      try {
+        const settingsData = await Settings.find();
+        const settings = settingsData.length > 0 ? settingsData[0] : {};
+        setGlobalSettings(settings);
+
+        if (isInContentCreatorMode) {
           setContentCreatorPermissions({
             workshops: settings.allow_content_creator_workshops !== false,
             courses: settings.allow_content_creator_courses !== false,
             files: settings.allow_content_creator_files !== false,
             tools: settings.allow_content_creator_tools !== false,
-            games: settings.allow_content_creator_games !== false
+            games: settings.allow_content_creator_games !== false,
+            lesson_plans: settings.allow_content_creator_lesson_plans !== false
           });
-        } catch (error) {
-          console.warn('Failed to load content creator permissions:', error);
-          // Use defaults if settings can't be loaded
         }
+      } catch (error) {
+        console.warn('Failed to load settings:', error);
+        // Use defaults if settings can't be loaded
       }
 
       if (hasAdminAccess || hasContentCreatorAccess) {
@@ -170,6 +180,8 @@ export default function Products() {
         return contentCreatorPermissions.files;
       case 'game':
         return contentCreatorPermissions.games;
+      case 'lesson_plan':
+        return contentCreatorPermissions.lesson_plans;
       default:
         return false;
     }
@@ -254,6 +266,9 @@ export default function Products() {
         case 'game':
           await Game.delete(product.id);
           break;
+        case 'lesson_plan':
+          await LessonPlan.delete(product.id);
+          break;
         default:
           throw new Error('Unknown product type');
       }
@@ -272,20 +287,22 @@ export default function Products() {
   };
 
   const getProductIcon = (type) => {
-    switch (type) {
-      case 'workshop':
-        return <Play className="w-5 h-5 text-blue-500" />;
-      case 'course':
-        return <BookOpen className="w-5 h-5 text-green-500" />;
-      case 'file':
-        return <FileText className="w-5 h-5 text-purple-500" />;
-      case 'tool':
-        return <Package className="w-5 h-5 text-orange-500" />;
-      case 'game':
-        return <Gamepad2 className="w-5 h-5 text-pink-500" />;
-      default:
-        return <FileText className="w-5 h-5 text-gray-500" />;
-    }
+    const IconComponent = getProductTypeIconByType(globalSettings, type);
+
+    // Apply appropriate color based on type
+    const colorClass = (() => {
+      switch (type) {
+        case 'workshop': return 'text-blue-500';
+        case 'course': return 'text-green-500';
+        case 'file': return 'text-purple-500';
+        case 'tool': return 'text-orange-500';
+        case 'game': return 'text-pink-500';
+        case 'lesson_plan': return 'text-indigo-500';
+        default: return 'text-gray-500';
+      }
+    })();
+
+    return <IconComponent className={`w-5 h-5 ${colorClass}`} />;
   };
 
   const getProductTypeLabel = (type) => {
@@ -293,20 +310,7 @@ export default function Products() {
   };
 
   const getProductTypeIcon = (type) => {
-    switch (type) {
-      case 'workshop':
-        return Play;
-      case 'course':
-        return BookOpen;
-      case 'file':
-        return FileText;
-      case 'tool':
-        return Package;
-      case 'game':
-        return Gamepad2;
-      default:
-        return Package;
-    }
+    return getProductTypeIconByType(globalSettings, type);
   };
 
   const getProductTypeBadgeColor = (type) => {
@@ -321,6 +325,8 @@ export default function Products() {
         return 'bg-orange-100 text-orange-800 border-orange-200';
       case 'game':
         return 'bg-pink-100 text-pink-800 border-pink-200';
+      case 'lesson_plan':
+        return 'bg-indigo-100 text-indigo-800 border-indigo-200';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200';
     }
@@ -479,6 +485,7 @@ export default function Products() {
                       case 'workshop': return 'data-[state=active]:from-blue-500 data-[state=active]:to-blue-600';
                       case 'tool': return 'data-[state=active]:from-orange-500 data-[state=active]:to-orange-600';
                       case 'game': return 'data-[state=active]:from-pink-500 data-[state=active]:to-pink-600';
+                      case 'lesson_plan': return 'data-[state=active]:from-indigo-500 data-[state=active]:to-indigo-600';
                       default: return 'data-[state=active]:from-gray-500 data-[state=active]:to-gray-600';
                     }
                   };

@@ -25,6 +25,7 @@ import {
   Link as LinkIcon
 } from 'lucide-react';
 import { getProductTypeName, getAttributeSchema } from '@/config/productTypes';
+import { getProductTypeIconByType } from '@/lib/layoutUtils';
 
 // Import sub-components for each product type
 import FileProductSection from './product-specific/FileProductSection';
@@ -32,6 +33,7 @@ import WorkshopProductSection from './product-specific/WorkshopProductSection';
 import CourseProductSection from './product-specific/CourseProductSection';
 import ToolProductSection from './product-specific/ToolProductSection';
 import GameProductSection from './product-specific/GameProductSection';
+import LessonPlanProductSection from './product-specific/LessonPlanProductSection';
 
 /**
  * ProductSpecificSection - Renders product type-specific fields and functionality
@@ -114,24 +116,8 @@ export const ProductSpecificSection = ({
     );
   }
 
-  const getProductIcon = (productType) => {
-    switch (productType) {
-      case 'file':
-        return FileText;
-      case 'workshop':
-        return Calendar;
-      case 'course':
-        return BookOpen;
-      case 'tool':
-        return Wrench;
-      case 'game':
-        return Play;
-      default:
-        return FileText;
-    }
-  };
-
-  const Icon = getProductIcon(formData.product_type);
+  // Get icon from settings with fallback to defaults
+  const Icon = getProductTypeIconByType(globalSettings, formData.product_type);
 
   // Common props to pass to all product-specific components
   const commonProps = {
@@ -176,8 +162,8 @@ export const ProductSpecificSection = ({
           </div>
         )}
 
-        {/* Grade and subject fields for files and games */}
-        {(formData.product_type === 'file' || formData.product_type === 'game') && (
+        {/* Grade and subject fields for files, games, and lesson plans */}
+        {(formData.product_type === 'file' || formData.product_type === 'game' || formData.product_type === 'lesson_plan') && (
           <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-4 mb-6">
             <h4 className="text-sm font-semibold text-gray-700 mb-3">יעוד ומאפיינים</h4>
 
@@ -340,6 +326,12 @@ export const ProductSpecificSection = ({
               {...commonProps}
             />
           )}
+
+          {formData.product_type === 'lesson_plan' && (
+            <LessonPlanProductSection
+              {...commonProps}
+            />
+          )}
         </div>
 
         {/* Dynamic attributes from schema */}
@@ -350,7 +342,7 @@ export const ProductSpecificSection = ({
               {Object.entries(getAttributeSchema(formData.product_type))
                 .filter(([key]) => {
                   // Exclude fields that are handled in specific sections
-                  if ((formData.product_type === 'file' || formData.product_type === 'game') &&
+                  if ((formData.product_type === 'file' || formData.product_type === 'game' || formData.product_type === 'lesson_plan') &&
                       (key === 'grade_min' || key === 'grade_max' || key === 'subject')) {
                     return false;
                   }
@@ -362,6 +354,10 @@ export const ProductSpecificSection = ({
                     return false;
                   }
                   if (formData.product_type === 'course' && key === 'total_duration_minutes') {
+                    return false;
+                  }
+                  if (formData.product_type === 'lesson_plan' &&
+                      (key === 'estimated_duration' || key === 'total_slides' || key === 'teacher_notes')) {
                     return false;
                   }
                   return true;

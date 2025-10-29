@@ -1,10 +1,10 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { getProductTypeName, formatGradeRange } from "@/config/productTypes";
-import { getProductImageUrl } from "@/utils/videoUtils.js";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import ProductImage from "@/components/ui/ProductImage";
 import {
   Eye,
   CheckCircle,
@@ -207,18 +207,6 @@ export default function ProductCard({
     return baseHeight;
   }, []);
 
-  const backgroundImageUrl = useMemo(() => {
-    return getProductImageUrl(product);
-  }, [product.image_url, product.id]);
-
-  const cardStyle = useMemo(() => ({
-    height: `${cardHeight}px`,
-    backgroundImage: `url(${backgroundImageUrl})`,
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-    backgroundRepeat: 'no-repeat'
-  }), [cardHeight, backgroundImageUrl]);
-
   return (
     <div
       className="group transition-all duration-300 hover:scale-[1.02] break-inside-avoid mb-4 cursor-pointer"
@@ -229,8 +217,16 @@ export default function ProductCard({
       {/* 100% Image Card with Overlays */}
       <div
         className="relative rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden"
-        style={cardStyle}
+        style={{ height: `${cardHeight}px` }}
       >
+        {/* Background Image */}
+        <ProductImage
+          product={product}
+          className="absolute inset-0 w-full h-full object-cover"
+          iconClassName="w-16 h-16 text-gray-400"
+          containerClassName="absolute inset-0 w-full h-full"
+        />
+
         {/* Base overlay for better text readability */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/10"></div>
 

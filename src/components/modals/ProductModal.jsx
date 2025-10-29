@@ -31,7 +31,7 @@ import {
   Upload as UploadIcon
 } from "lucide-react";
 import SecureVideoPlayer from '../SecureVideoPlayer';
-import ProductTypeSelector from './ProductTypeSelector';
+import ProductTypeSelector from '@/components/ui/ProductTypeSelector';
 import { getProductTypeName, getAttributeSchema, validateTypeAttributes, formatGradeRange } from '@/config/productTypes';
 import { getApiBase } from '@/utils/api.js';
 import { apiRequest, apiUploadWithProgress } from '@/services/apiClient';
@@ -1336,29 +1336,20 @@ export default function ProductModal({
             </Alert>
           )}
 
-          {/* No Available Product Types Alert */}
-          {!editingProduct && getAvailableProductTypes(enabledProductTypes, canCreateProductType).length === 0 && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                {isContentCreatorMode
-                  ? 'כרגע אין לך הרשאה ליצור מוצרים חדשים. נא פנה למנהל המערכת להפעלת הרשאות יוצרי תוכן.'
-                  : 'לא נמצאו סוגי מוצרים זמינים ליצירה.'
-                }
-              </AlertDescription>
-            </Alert>
-          )}
+          {/* No Available Product Types Alert - handled by ProductTypeSelector */}
 
           {/* Type Selection Step */}
           {step === 'typeSelection' && !editingProduct && (
             <ProductTypeSelector
               onSelect={handleProductTypeSelect}
-              enabledTypes={getAvailableProductTypes(enabledProductTypes, canCreateProductType)}
+              layout="grid"
+              size="md"
+              adminOverride={false}
             />
           )}
 
           {/* Form Step */}
-          {step === 'form' && (editingProduct || getAvailableProductTypes(enabledProductTypes, canCreateProductType).length > 0) && (
+          {step === 'form' && (
             <div className="space-y-6">
 
               {/* Product Fields Section */}
@@ -2795,7 +2786,7 @@ export default function ProductModal({
         </div>
 
         {/* Footer */}
-        {step === 'form' && (editingProduct || getAvailableProductTypes(enabledProductTypes, canCreateProductType).length > 0) && (
+        {step === 'form' && (
           <div className="flex flex-col sm:flex-row justify-end gap-2 p-6 border-t">
             <Button variant="outline" onClick={handleCancel} className="order-3 sm:order-1">
               ביטול

@@ -77,9 +77,14 @@ export default function OnboardingRedirect({ children }) {
     }
   }, [currentUser, needsOnboarding, isLoading, navigate, location.pathname, hasCheckedInvitations, hasInvitations]);
 
-  // Show loading if we haven't checked invitations yet
-  if (!hasCheckedInvitations) {
+  // Show loading if we haven't checked invitations yet (only for logged-in users)
+  if (!hasCheckedInvitations && currentUser) {
     return null;
+  }
+
+  // If no current user, render children immediately (onboarding is only for authenticated users)
+  if (!currentUser) {
+    return children;
   }
 
   // If user has invitations and we're not on invitation pages, don't render content

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { User, Settings } from '@/services/entities';
 import { ArrowRight, Package } from 'lucide-react';
@@ -17,6 +17,7 @@ import { PublishSection } from '@/components/product/sections/PublishSection';
 import { ProductAPI } from '@/services/apiClient';
 import { PRODUCT_TYPES, getProductTypeName } from '@/config/productTypes';
 import { clog, cerror } from '@/lib/utils';
+import FeatureFlagService from '@/services/FeatureFlagService';
 
 export default function ProductPage() {
   const { productId } = useParams();
@@ -31,6 +32,11 @@ export default function ProductPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveAndContinue, setSaveAndContinue] = useState(false);
   const [message, setMessage] = useState(null);
+  const [enabledProductTypes, setEnabledProductTypes] = useState([]);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isContentCreator, setIsContentCreator] = useState(false);
+  const [isContentCreatorModeActive, setIsContentCreatorModeActive] = useState(false);
+  const [contentCreatorPermissions, setContentCreatorPermissions] = useState({});
 
   // Product form hooks
   const {
@@ -69,10 +75,7 @@ export default function ProductPage() {
     canSave,
     canPublish,
     isNewProduct,
-    isFileProduct,
-    isContentCreatorMode,
-    contentCreatorPermissions,
-    canCreateProductType
+    isFileProduct
   } = useProductAccess(editingProduct, formData, uploadedFileInfo, productId, isLoadingData);
 
   // Load initial data
@@ -90,7 +93,53 @@ export default function ProductPage() {
       ]);
 
       setCurrentUser(user);
-      setGlobalSettings(settingsData.length > 0 ? settingsData[0] : {});
+      const settings = settingsData.length > 0 ? settingsData[0] : {};
+      setGlobalSettings(settings);
+
+      // Check access permissions
+      const hasAdminAccess = user.role === 'admin' || user.role === 'sysadmin';
+      const hasContentCreatorAccess = user.content_creator_agreement_sign_date;
+
+      setIsAdmin(hasAdminAccess);
+      setIsContentCreator(hasContentCreatorAccess);
+
+      // Detect access context
+      const contextParam = searchParams.get('context');
+      const isInContentCreatorMode = contextParam === 'creator' && hasContentCreatorAccess;
+      setIsContentCreatorModeActive(isInContentCreatorMode);
+
+      // Load content creator permissions
+      if (isInContentCreatorMode) {
+        setContentCreatorPermissions({
+          workshops: settings.allow_content_creator_workshops !== false,
+          courses: settings.allow_content_creator_courses !== false,
+          files: settings.allow_content_creator_files !== false,
+          tools: settings.allow_content_creator_tools !== false,
+          games: settings.allow_content_creator_games !== false,
+          lesson_plans: settings.allow_content_creator_lesson_plans !== false
+        });
+      }
+
+      // Load visible product types based on nav_*_visibility settings
+      const productTypesToCheck = ['file', 'course', 'workshop', 'tool', 'game', 'lesson_plan'];
+      const visibleTypes = [];
+
+      for (const productType of productTypesToCheck) {
+        const visibility = await FeatureFlagService.getFeatureVisibility(
+          productType === 'file' ? 'files' :
+          productType === 'lesson_plan' ? 'lesson_plans' :
+          `${productType}s`
+        );
+
+        // Product management is admin-only regardless of public visibility
+        // But we respect if something is explicitly hidden
+        if (visibility !== 'hidden' && (hasAdminAccess || hasContentCreatorAccess)) {
+          visibleTypes.push(productType);
+        }
+      }
+
+      setEnabledProductTypes(visibleTypes);
+      clog('📝 Enabled product types:', visibleTypes);
 
       // Load product if editing
       if (productId) {
@@ -112,6 +161,35 @@ export default function ProductPage() {
       setIsLoadingData(false);
     }
   };
+
+  // Helper function to check if a product type can be created
+  const canCreateProductType = useCallback((productType) => {
+    // Tools cannot be created via UI - they are defined as constants in the Tool service class
+    if (productType === 'tool') {
+      return false;
+    }
+
+    // If not in content creator mode (admin access), all other product types are allowed
+    if (!isContentCreatorModeActive) {
+      return true;
+    }
+
+    // In content creator mode, check permissions
+    switch (productType) {
+      case 'workshop':
+        return contentCreatorPermissions.workshops;
+      case 'course':
+        return contentCreatorPermissions.courses;
+      case 'file':
+        return contentCreatorPermissions.files;
+      case 'game':
+        return contentCreatorPermissions.games;
+      case 'lesson_plan':
+        return contentCreatorPermissions.lesson_plans;
+      default:
+        return false;
+    }
+  }, [isContentCreatorModeActive, contentCreatorPermissions]);
 
   // Message handler
   const showMessage = (type, text) => {
@@ -248,7 +326,7 @@ export default function ProductPage() {
         addTag,
         removeTag,
         isNewProduct,
-        enabledProductTypes: [], // Will be populated by ProductSpecificSection
+        enabledProductTypes: enabledProductTypes,
         canCreateProductType,
         onStepChange: () => {},
         isFieldValid,
