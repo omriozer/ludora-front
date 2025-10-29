@@ -6,8 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useUser } from "@/contexts/UserContext";
 import { Settings, Curriculum as CurriculumAPI, CurriculumItem, Product, apiRequest } from "@/services/apiClient";
+import ProductItemDisplay from "@/components/ui/ProductItemDisplay";
+import { PRODUCT_TYPES } from "@/config/productTypes";
 import { toast } from "@/components/ui/use-toast";
 import { clog, cerror } from "@/lib/utils";
 import LudoraLoadingSpinner from "@/components/ui/LudoraLoadingSpinner";
@@ -52,6 +55,11 @@ export default function Curriculum() {
   const [currentCurriculum, setCurrentCurriculum] = useState(null);
   const [itemsLoading, setItemsLoading] = useState(false);
   const [selectorsCollapsed, setSelectorsCollapsed] = useState(false);
+
+  // Linked products state
+  const [linkedProducts, setLinkedProducts] = useState({}); // { curriculumItemId: [products] }
+  const [linkedProductsLoading, setLinkedProductsLoading] = useState(false);
+  const [relatedProductsOpen, setRelatedProductsOpen] = useState({}); // { curriculumItemId: boolean } - default closed
 
   // Available combinations state for non-admin disable logic
   const [availableCombinations, setAvailableCombinations] = useState(new Set());
@@ -99,6 +107,7 @@ export default function Curriculum() {
     // Always clear current state first when selections change
     setCurriculumItems([]);
     setCurrentCurriculum(null);
+    setLinkedProducts({}); // Clear linked products when changing selections
 
     if (selectedSubject && selectedGrade) {
       loadCurriculumItems();
@@ -239,6 +248,9 @@ export default function Curriculum() {
         loadCopyStatus(curriculum.id);
       }
 
+      // Load linked products for the curriculum items
+      await loadLinkedProducts(sortedItems);
+
     } catch (error) {
       cerror('Error loading curriculum items:', error);
       toast({
@@ -306,6 +318,58 @@ export default function Curriculum() {
       cerror('Error loading copy status:', error);
       // Don't show error toast for this, it's not critical
     }
+  };
+
+  const loadLinkedProducts = async (curriculumItems) => {
+    if (!curriculumItems || curriculumItems.length === 0) {
+      setLinkedProducts({});
+      return;
+    }
+
+    setLinkedProductsLoading(true);
+    try {
+      const linkedProductsMap = {};
+
+      // Load linked products for each curriculum item
+      for (const item of curriculumItems) {
+        try {
+          // Get product associations for this curriculum item
+          const associations = await apiRequest(`/entities/curriculumproduct?curriculum_item_id=${item.id}`);
+
+          if (associations && associations.length > 0) {
+            // Extract product IDs and fetch product details
+            const productIds = associations.map(assoc => assoc.product_id);
+            const products = [];
+
+            // Fetch each product
+            for (const productId of productIds) {
+              try {
+                const product = await Product.findById(productId);
+                if (product) {
+                  products.push(product);
+                }
+              } catch (productError) {
+                cerror(`Error loading product ${productId}:`, productError);
+              }
+            }
+
+            linkedProductsMap[item.id] = products;
+          } else {
+            linkedProductsMap[item.id] = [];
+          }
+        } catch (itemError) {
+          cerror(`Error loading linked products for curriculum item ${item.id}:`, itemError);
+          linkedProductsMap[item.id] = [];
+        }
+      }
+
+      setLinkedProducts(linkedProductsMap);
+      clog('Loaded linked products:', linkedProductsMap);
+    } catch (error) {
+      cerror('Error loading linked products:', error);
+      setLinkedProducts({});
+    }
+    setLinkedProductsLoading(false);
   };
 
   const handleAssociateCurriculumWithClass = (curriculum) => {
@@ -722,6 +786,9 @@ export default function Curriculum() {
       setShowAssociateProductDialog(false);
       setAssociatingItem(null);
 
+      // Reload linked products to show the new association
+      await loadLinkedProducts(curriculumItems);
+
       toast({
         title: "מוצר קושר",
         description: "המוצר קושר בהצלחה לנושא הלימוד",
@@ -730,6 +797,12 @@ export default function Curriculum() {
     } catch (error) {
       cerror('Error associating product:', error);
       setFormErrors({ general: error.message || 'שגיאה בקישור המוצר לנושא הלימוד' });
+
+      toast({
+        title: "שגיאה בקישור מוצר",
+        description: error.message || 'שגיאה בקישור המוצר לנושא הלימוד',
+        variant: "destructive"
+      });
     }
     setFormLoading(false);
   };
@@ -824,6 +897,35 @@ export default function Curriculum() {
     // For now, return null to indicate counts are not loaded
     // This removes the expensive loading but keeps the UI structure
     return null;
+  };
+
+  // Helper to group linked products by type
+  const groupProductsByType = (products) => {
+    if (!products || products.length === 0) return {};
+
+    const grouped = {};
+    products.forEach(product => {
+      const type = product.product_type || 'unknown';
+      if (!grouped[type]) {
+        grouped[type] = [];
+      }
+      grouped[type].push(product);
+    });
+
+    return grouped;
+  };
+
+  // Helper to get product type display name
+  const getProductTypeDisplayName = (type) => {
+    return PRODUCT_TYPES[type]?.plural || type;
+  };
+
+  // Helper to toggle related products open state
+  const toggleRelatedProducts = (curriculumItemId) => {
+    setRelatedProductsOpen(prev => ({
+      ...prev,
+      [curriculumItemId]: !prev[curriculumItemId] // Default is false (closed)
+    }));
   };
 
 
@@ -1216,6 +1318,74 @@ export default function Curriculum() {
                               <p className="text-sm text-gray-500">
                                 {item.description}
                               </p>
+                            )}
+
+                            {/* Linked Products Display - Collapsible */}
+                            {linkedProducts[item.id] && linkedProducts[item.id].length > 0 && (
+                              <div className="mt-4 pt-3 border-t border-gray-200">
+                                <Collapsible
+                                  open={relatedProductsOpen[item.id] || false}
+                                  onOpenChange={() => toggleRelatedProducts(item.id)}
+                                >
+                                  <CollapsibleTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      className="w-full justify-between p-0 h-auto text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-transparent"
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <Link className="w-4 h-4" />
+                                        <span>מוצרים קשורים ({linkedProducts[item.id].length})</span>
+                                      </div>
+                                      {relatedProductsOpen[item.id] ? (
+                                        <ChevronUp className="w-4 h-4" />
+                                      ) : (
+                                        <ChevronDown className="w-4 h-4" />
+                                      )}
+                                    </Button>
+                                  </CollapsibleTrigger>
+
+                                  <CollapsibleContent className="mt-3">
+                                    {(() => {
+                                      const groupedProducts = groupProductsByType(linkedProducts[item.id]);
+                                      return Object.entries(groupedProducts).map(([productType, typeProducts]) => (
+                                        <div key={productType} className="mb-3 last:mb-0">
+                                          <p className="text-xs font-medium text-gray-600 mb-2">
+                                            {getProductTypeDisplayName(productType)} ({typeProducts.length})
+                                          </p>
+                                          <div className="flex flex-wrap gap-2">
+                                            {typeProducts.map((product) => (
+                                              <ProductItemDisplay
+                                                key={product.id}
+                                                product={product}
+                                                layout="compact"
+                                                size="sm"
+                                                mode="purchase"
+                                                showPrice={true}
+                                                showDescription={false}
+                                                showGrades={false}
+                                                showImage={true}
+                                                showTypeIcon={true}
+                                                userPurchases={currentUser?.purchases || []}
+                                                className="max-w-48"
+                                              />
+                                            ))}
+                                          </div>
+                                        </div>
+                                      ));
+                                    })()}
+                                  </CollapsibleContent>
+                                </Collapsible>
+                              </div>
+                            )}
+
+                            {/* Loading indicator for linked products */}
+                            {linkedProductsLoading && (
+                              <div className="mt-4 pt-3 border-t border-gray-200">
+                                <div className="flex items-center gap-2 text-sm text-gray-500">
+                                  <LudoraLoadingSpinner size="sm" />
+                                  טוען מוצרים קשורים...
+                                </div>
+                              </div>
                             )}
                           </div>
                         </div>
