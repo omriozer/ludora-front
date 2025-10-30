@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { User, Settings } from '@/services/entities';
+import { User, Settings, LessonPlan } from '@/services/entities';
 import { ArrowRight, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -27,6 +27,7 @@ export default function ProductPage() {
   const [currentUser, setCurrentUser] = useState(null);
   const [globalSettings, setGlobalSettings] = useState({});
   const [editingProduct, setEditingProduct] = useState(null);
+  const [editingLessonPlan, setEditingLessonPlan] = useState(null);
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [step, setStep] = useState('wizard');
   const [isSaving, setIsSaving] = useState(false);
@@ -145,8 +146,49 @@ export default function ProductPage() {
       if (productId) {
         try {
           const product = await ProductAPI.findById(productId);
+          // If this is a lesson plan product, also load the lesson plan data and integrate into formData
+          if (product.product_type === 'lesson_plan') {
+            clog('🔍 Product is lesson plan type, attempting to load lesson plan data for entity_id:', product.entity_id);
+            try {
+              clog('🔍 Calling LessonPlan.findById with entity_id:', product.entity_id);
+              const lessonPlan = await LessonPlan.findById(product.entity_id);
+              clog('🔍 LessonPlan.findById response:', lessonPlan);
+
+              // Store complete lesson plan for reference but integrate file_configs into product
+              setEditingLessonPlan(lessonPlan);
+
+              if (lessonPlan) {
+                // Integrate lesson plan file_configs into product data like File products do
+                product.file_configs = lessonPlan.file_configs;
+                product.estimated_duration = lessonPlan.estimated_duration;
+                product.total_slides = lessonPlan.total_slides;
+                product.teacher_notes = lessonPlan.teacher_notes;
+                product.slide_configs = lessonPlan.slide_configs;
+                clog('📝 Integrated lesson plan file_configs into product:', {
+                  lessonPlan_file_configs: lessonPlan.file_configs,
+                  product_file_configs: product.file_configs,
+                  fileCount: lessonPlan.file_configs?.files?.length || 0
+                });
+              } else {
+                clog('⚠️ No lesson plan found, file_configs will be null');
+              }
+
+              clog('📝 Loaded lesson plan data:', lessonPlan);
+              if (!lessonPlan) {
+                clog('⚠️ No lesson plan found for entity_id:', product.entity_id);
+              }
+            } catch (error) {
+              cerror('❌ Failed to load lesson plan data:', error);
+              // Don't fail the whole loading process, just log the error
+              // Some lesson plans may not have been created yet
+            }
+          } else {
+            clog('📝 Product is not lesson plan type:', product.product_type);
+          }
+
+          // Set editing product AFTER lesson plan integration
           setEditingProduct(product);
-          clog('📝 Loaded product for editing:', product);
+          clog('📝 Loaded product for editing (after integration):', product);
         } catch (error) {
           cerror('Failed to load product:', error);
           showMessage('error', 'שגיאה בטעינת המוצר');
@@ -386,7 +428,9 @@ export default function ProductPage() {
         formData,
         updateFormData,
         isFieldValid,
-        getFieldError
+        getFieldError,
+        globalSettings,
+        isNewProduct
       },
       access: getSectionAccess('accessSettings')
     },

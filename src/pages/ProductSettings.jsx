@@ -34,10 +34,6 @@ export default function ProductSettings() {
   const [saveStatus, setSaveStatus] = useState("idle"); // 'idle', 'saving', 'success', 'error'
   const [message, setMessage] = useState(null);
   const [formData, setFormData] = useState({
-    // Recording settings
-    default_recording_access_days: 30,
-    recording_lifetime_access: false,
-
     // Course settings
     default_course_access_days: 365,
     course_lifetime_access: false,
@@ -46,16 +42,32 @@ export default function ProductSettings() {
     default_file_access_days: 365,
     file_lifetime_access: false,
 
+    // Workshop settings
+    default_workshop_access_days: 365,
+    workshop_lifetime_access: false,
+
     // Game settings
     default_game_access_days: 365,
     game_lifetime_access: true,
+
+    // Lesson plan settings
+    default_lesson_plan_access_days: 365,
+    lesson_plan_lifetime_access: false,
+
+    // Tool settings
+    default_tool_access_days: 365,
+    tool_lifetime_access: false,
+
+    // Navigation settings
+    nav_content_creators_enabled: true,
 
     // Content creator permissions
     allow_content_creator_workshops: true,
     allow_content_creator_courses: true,
     allow_content_creator_files: true,
     allow_content_creator_games: true,
-    allow_content_creator_tools: true
+    allow_content_creator_tools: true,
+    allow_content_creator_lesson_plans: true
   });
 
   useEffect(() => {
@@ -79,19 +91,25 @@ export default function ProductSettings() {
 
       // Initialize form with current values or defaults
       const newFormData = {
-        default_recording_access_days: currentSettings.default_recording_access_days || 30,
-        recording_lifetime_access: currentSettings.recording_lifetime_access || false,
         default_course_access_days: currentSettings.default_course_access_days || 365,
         course_lifetime_access: currentSettings.course_lifetime_access || false,
         default_file_access_days: currentSettings.default_file_access_days || 365,
         file_lifetime_access: currentSettings.file_lifetime_access || false,
+        default_workshop_access_days: currentSettings.default_workshop_access_days || 365,
+        workshop_lifetime_access: currentSettings.workshop_lifetime_access || false,
         default_game_access_days: currentSettings.default_game_access_days || 365,
         game_lifetime_access: currentSettings.game_lifetime_access ?? true,
+        default_lesson_plan_access_days: currentSettings.default_lesson_plan_access_days || 365,
+        lesson_plan_lifetime_access: currentSettings.lesson_plan_lifetime_access || false,
+        default_tool_access_days: currentSettings.default_tool_access_days || 365,
+        tool_lifetime_access: currentSettings.tool_lifetime_access || false,
+        nav_content_creators_enabled: currentSettings.nav_content_creators_enabled ?? true,
         allow_content_creator_workshops: currentSettings.allow_content_creator_workshops ?? true,
         allow_content_creator_courses: currentSettings.allow_content_creator_courses ?? true,
         allow_content_creator_files: currentSettings.allow_content_creator_files ?? true,
         allow_content_creator_games: currentSettings.allow_content_creator_games ?? true,
-        allow_content_creator_tools: currentSettings.allow_content_creator_tools ?? true
+        allow_content_creator_tools: currentSettings.allow_content_creator_tools ?? true,
+        allow_content_creator_lesson_plans: currentSettings.allow_content_creator_lesson_plans ?? true
       };
 
       setFormData(newFormData);
@@ -120,6 +138,15 @@ export default function ProductSettings() {
       ...prev,
       [field]: checked
     }));
+  };
+
+  // Helper function to determine if content creator permission can be enabled
+  const canEnableContentCreatorPermission = (currentValue) => {
+    // If nav_content_creators_enabled is false, only allow turning OFF permissions
+    if (!formData.nav_content_creators_enabled) {
+      return currentValue; // Can only turn off, not on
+    }
+    return true; // Can change in any direction if nav is enabled
   };
 
   const handleSave = async () => {
@@ -194,229 +221,282 @@ export default function ProductSettings() {
           </div>
         </div>
 
-        {/* Recording Settings */}
+        {/* Product Access Settings and Content Creator Permissions */}
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Video className="w-5 h-5 text-red-500" />
-              ימי גישה להקלטה
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <Label className="text-sm font-medium">ימים</Label>
-                <Input
-                  type="number"
-                  min="1"
-                  max="9999"
-                  value={formData.default_recording_access_days}
-                  onChange={(e) => handleInputChange('default_recording_access_days', parseInt(e.target.value) || 30)}
-                  className="w-24"
-                  disabled={formData.recording_lifetime_access}
-                />
+            <CardTitle className="flex items-center gap-3 text-xl">
+              <div className="p-2 bg-gradient-to-br from-blue-100 to-indigo-200 rounded-lg">
+                <Clock className="w-6 h-6 text-blue-600" />
               </div>
-              <div className="flex items-center space-x-2 space-x-reverse">
-                <Switch
-                  checked={formData.recording_lifetime_access}
-                  onCheckedChange={(checked) => handleSwitchChange('recording_lifetime_access', checked)}
-                />
-                <Label className="flex items-center gap-2">
-                  <Infinity className="w-4 h-4" />
-                  גישה לכל החיים
-                </Label>
+              הגדרות מוצרים והרשאות יוצרי תוכן
+            </CardTitle>
+            <p className="text-gray-600 text-sm mt-2">
+              קבעו ברירת מחדל לימי גישה לכל סוג מוצר והגדירו הרשאות ליוצרי תוכן
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-hidden rounded-lg border border-gray-200">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="text-right px-6 py-4 text-sm font-semibold text-gray-900">סוג מוצר</th>
+                    <th className="text-center px-6 py-4 text-sm font-semibold text-gray-900">ימי גישה</th>
+                    <th className="text-center px-6 py-4 text-sm font-semibold text-gray-900">גישה לכל החיים</th>
+                    <th className="text-center px-6 py-4 text-sm font-semibold text-gray-900">יוצרי תוכן</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {/* Courses */}
+                  <tr className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                          <BookOpen className="w-4 h-4 text-blue-600" />
+                        </div>
+                        <span className="font-medium">{getProductTypeName('course', 'plural')}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <Input
+                        type="number"
+                        min="1"
+                        max="9999"
+                        value={formData.default_course_access_days}
+                        onChange={(e) => handleInputChange('default_course_access_days', parseInt(e.target.value) || 365)}
+                        className="w-20 text-center"
+                        disabled={formData.course_lifetime_access}
+                      />
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <Switch
+                        checked={formData.course_lifetime_access}
+                        onCheckedChange={(checked) => handleSwitchChange('course_lifetime_access', checked)}
+                      />
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <Switch
+                        checked={formData.allow_content_creator_courses}
+                        onCheckedChange={(checked) => handleInputChange('allow_content_creator_courses', checked)}
+                        disabled={!formData.nav_content_creators_enabled && !formData.allow_content_creator_courses}
+                      />
+                    </td>
+                  </tr>
+
+                  {/* Files */}
+                  <tr className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                          <FileText className="w-4 h-4 text-green-600" />
+                        </div>
+                        <span className="font-medium">{getProductTypeName('file', 'plural')}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <Input
+                        type="number"
+                        min="1"
+                        max="9999"
+                        value={formData.default_file_access_days}
+                        onChange={(e) => handleInputChange('default_file_access_days', parseInt(e.target.value) || 365)}
+                        className="w-20 text-center"
+                        disabled={formData.file_lifetime_access}
+                      />
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <Switch
+                        checked={formData.file_lifetime_access}
+                        onCheckedChange={(checked) => handleSwitchChange('file_lifetime_access', checked)}
+                      />
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <Switch
+                        checked={formData.allow_content_creator_files}
+                        onCheckedChange={(checked) => handleInputChange('allow_content_creator_files', checked)}
+                        disabled={!formData.nav_content_creators_enabled && !formData.allow_content_creator_files}
+                      />
+                    </td>
+                  </tr>
+
+                  {/* Workshops */}
+                  <tr className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                          <Users className="w-4 h-4 text-purple-600" />
+                        </div>
+                        <span className="font-medium">{getProductTypeName('workshop', 'plural')}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <Input
+                        type="number"
+                        min="1"
+                        max="9999"
+                        value={formData.default_workshop_access_days}
+                        onChange={(e) => handleInputChange('default_workshop_access_days', parseInt(e.target.value) || 365)}
+                        className="w-20 text-center"
+                        disabled={formData.workshop_lifetime_access}
+                      />
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <Switch
+                        checked={formData.workshop_lifetime_access}
+                        onCheckedChange={(checked) => handleSwitchChange('workshop_lifetime_access', checked)}
+                      />
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <Switch
+                        checked={formData.allow_content_creator_workshops}
+                        onCheckedChange={(checked) => handleInputChange('allow_content_creator_workshops', checked)}
+                        disabled={!formData.nav_content_creators_enabled && !formData.allow_content_creator_workshops}
+                      />
+                    </td>
+                  </tr>
+
+                  {/* Games */}
+                  <tr className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-pink-100 rounded-lg flex items-center justify-center">
+                          <Play className="w-4 h-4 text-pink-600" />
+                        </div>
+                        <span className="font-medium">{getProductTypeName('game', 'plural')}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <Input
+                        type="number"
+                        min="1"
+                        max="9999"
+                        value={formData.default_game_access_days}
+                        onChange={(e) => handleInputChange('default_game_access_days', parseInt(e.target.value) || 365)}
+                        className="w-20 text-center"
+                        disabled={formData.game_lifetime_access}
+                      />
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <Switch
+                        checked={formData.game_lifetime_access}
+                        onCheckedChange={(checked) => handleSwitchChange('game_lifetime_access', checked)}
+                      />
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <Switch
+                        checked={formData.allow_content_creator_games}
+                        onCheckedChange={(checked) => handleInputChange('allow_content_creator_games', checked)}
+                        disabled={!formData.nav_content_creators_enabled && !formData.allow_content_creator_games}
+                      />
+                    </td>
+                  </tr>
+
+                  {/* Tools */}
+                  <tr className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+                          <Wrench className="w-4 h-4 text-gray-600" />
+                        </div>
+                        <span className="font-medium">{getProductTypeName('tool', 'plural')}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <Input
+                        type="number"
+                        min="1"
+                        max="9999"
+                        value={formData.default_tool_access_days}
+                        onChange={(e) => handleInputChange('default_tool_access_days', parseInt(e.target.value) || 365)}
+                        className="w-20 text-center"
+                        disabled={formData.tool_lifetime_access}
+                      />
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <Switch
+                        checked={formData.tool_lifetime_access}
+                        onCheckedChange={(checked) => handleSwitchChange('tool_lifetime_access', checked)}
+                      />
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <Switch
+                        checked={formData.allow_content_creator_tools}
+                        onCheckedChange={(checked) => handleInputChange('allow_content_creator_tools', checked)}
+                        disabled={!formData.nav_content_creators_enabled && !formData.allow_content_creator_tools}
+                      />
+                    </td>
+                  </tr>
+
+                  {/* Lesson Plans */}
+                  <tr className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
+                          <BookOpen className="w-4 h-4 text-indigo-600" />
+                        </div>
+                        <span className="font-medium">{getProductTypeName('lesson_plan', 'plural')}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <Input
+                        type="number"
+                        min="1"
+                        max="9999"
+                        value={formData.default_lesson_plan_access_days}
+                        onChange={(e) => handleInputChange('default_lesson_plan_access_days', parseInt(e.target.value) || 365)}
+                        className="w-20 text-center"
+                        disabled={formData.lesson_plan_lifetime_access}
+                      />
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <Switch
+                        checked={formData.lesson_plan_lifetime_access}
+                        onCheckedChange={(checked) => handleSwitchChange('lesson_plan_lifetime_access', checked)}
+                      />
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <Switch
+                        checked={formData.allow_content_creator_lesson_plans}
+                        onCheckedChange={(checked) => handleInputChange('allow_content_creator_lesson_plans', checked)}
+                        disabled={!formData.nav_content_creators_enabled && !formData.allow_content_creator_lesson_plans}
+                      />
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="flex items-start gap-2">
+                  <Infinity className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-blue-800">
+                    <p className="font-medium">גישה לכל החיים</p>
+                    <p className="text-blue-700">כשמופעל, המוצר יהיה זמין ללא הגבלת זמן</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className={`p-3 rounded-lg border ${formData.nav_content_creators_enabled ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}>
+                <div className="flex items-start gap-2">
+                  <Users className={`w-4 h-4 mt-0.5 flex-shrink-0 ${formData.nav_content_creators_enabled ? 'text-green-600' : 'text-amber-600'}`} />
+                  <div className={`text-sm ${formData.nav_content_creators_enabled ? 'text-green-800' : 'text-amber-800'}`}>
+                    <p className="font-medium">הרשאות יוצרי תוכן</p>
+                    {formData.nav_content_creators_enabled ? (
+                      <p className={`${formData.nav_content_creators_enabled ? 'text-green-700' : 'text-amber-700'}`}>
+                        פורטל יוצרי התוכן מופעל - ניתן לשנות הרשאות בחופשיות
+                      </p>
+                    ) : (
+                      <p className={`${formData.nav_content_creators_enabled ? 'text-green-700' : 'text-amber-700'}`}>
+                        פורטל יוצרי התוכן מושבת - ניתן רק לבטל הרשאות קיימות
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Course Settings */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BookOpen className="w-5 h-5 text-blue-500" />
-              ימי גישה ל{getProductTypeName('course', 'singular')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <Label className="text-sm font-medium">ימים</Label>
-                <Input
-                  type="number"
-                  min="1"
-                  max="9999"
-                  value={formData.default_course_access_days}
-                  onChange={(e) => handleInputChange('default_course_access_days', parseInt(e.target.value) || 365)}
-                  className="w-24"
-                  disabled={formData.course_lifetime_access}
-                />
-              </div>
-              <div className="flex items-center space-x-2 space-x-reverse">
-                <Switch
-                  checked={formData.course_lifetime_access}
-                  onCheckedChange={(checked) => handleSwitchChange('course_lifetime_access', checked)}
-                />
-                <Label className="flex items-center gap-2">
-                  <Infinity className="w-4 h-4" />
-                  גישה לכל החיים
-                </Label>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* File Settings */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5 text-green-500" />
-              ימי גישה ל{getProductTypeName('file', 'singular')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <Label className="text-sm font-medium">ימים</Label>
-                <Input
-                  type="number"
-                  min="1"
-                  max="9999"
-                  value={formData.default_file_access_days}
-                  onChange={(e) => handleInputChange('default_file_access_days', parseInt(e.target.value) || 365)}
-                  className="w-24"
-                  disabled={formData.file_lifetime_access}
-                />
-              </div>
-              <div className="flex items-center space-x-2 space-x-reverse">
-                <Switch
-                  checked={formData.file_lifetime_access}
-                  onCheckedChange={(checked) => handleSwitchChange('file_lifetime_access', checked)}
-                />
-                <Label className="flex items-center gap-2">
-                  <Infinity className="w-4 h-4" />
-                  גישה לכל החיים
-                </Label>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Game Settings */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Play className="w-5 h-5 text-pink-500" />
-              ימי גישה ל{getProductTypeName('game', 'singular')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <Label className="text-sm font-medium">ימים</Label>
-                <Input
-                  type="number"
-                  min="1"
-                  max="9999"
-                  value={formData.default_game_access_days}
-                  onChange={(e) => handleInputChange('default_game_access_days', parseInt(e.target.value) || 365)}
-                  className="w-24"
-                  disabled={formData.game_lifetime_access}
-                />
-              </div>
-              <div className="flex items-center space-x-2 space-x-reverse">
-                <Switch
-                  checked={formData.game_lifetime_access}
-                  onCheckedChange={(checked) => handleSwitchChange('game_lifetime_access', checked)}
-                />
-                <Label className="flex items-center gap-2">
-                  <Infinity className="w-4 h-4" />
-                  גישה לכל החיים
-                </Label>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Content Creator Permissions */}
-        <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-3 text-lg">
-              <div className="p-2 bg-gradient-to-br from-green-100 to-green-200 rounded-lg">
-                <Users className="w-5 h-5 text-green-600" />
-              </div>
-              הרשאות יוצרי תוכן
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="text-sm text-gray-600 bg-blue-50 p-4 rounded-lg border border-blue-200">
-              <p className="font-medium text-blue-800 mb-2">הסבר:</p>
-              <p>קבעו אילו סוגי מוצרים יוצרי תוכן יכולים ליצור כשהם נכנסים דרך פורטל יוצרי התוכן. מנהלי מערכת תמיד יכולים ליצור את כל סוגי המוצרים כשהם נכנסים דרך התפריט המנהלי.</p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Workshop Permission */}
-              <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <Video className="w-5 h-5 text-purple-600" />
-                  <Label className="font-medium">{getProductTypeName('workshop', 'plural')}</Label>
-                </div>
-                <Switch
-                  checked={formData.allow_content_creator_workshops}
-                  onCheckedChange={(checked) => handleInputChange('allow_content_creator_workshops', checked)}
-                />
-              </div>
-
-              {/* Course Permission */}
-              <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <BookOpen className="w-5 h-5 text-blue-600" />
-                  <Label className="font-medium">{getProductTypeName('course', 'plural')}</Label>
-                </div>
-                <Switch
-                  checked={formData.allow_content_creator_courses}
-                  onCheckedChange={(checked) => handleInputChange('allow_content_creator_courses', checked)}
-                />
-              </div>
-
-              {/* File Permission */}
-              <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <FileText className="w-5 h-5 text-orange-600" />
-                  <Label className="font-medium">{getProductTypeName('file', 'plural')}</Label>
-                </div>
-                <Switch
-                  checked={formData.allow_content_creator_files}
-                  onCheckedChange={(checked) => handleInputChange('allow_content_creator_files', checked)}
-                />
-              </div>
-
-              {/* Game Permission */}
-              <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <Play className="w-5 h-5 text-pink-600" />
-                  <Label className="font-medium">{getProductTypeName('game', 'plural')}</Label>
-                </div>
-                <Switch
-                  checked={formData.allow_content_creator_games}
-                  onCheckedChange={(checked) => handleInputChange('allow_content_creator_games', checked)}
-                />
-              </div>
-
-              {/* Tool Permission */}
-              <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <Wrench className="w-5 h-5 text-gray-600" />
-                  <Label className="font-medium">{getProductTypeName('tool', 'plural')}</Label>
-                </div>
-                <Switch
-                  checked={formData.allow_content_creator_tools}
-                  onCheckedChange={(checked) => handleInputChange('allow_content_creator_tools', checked)}
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Save Button Section */}
         <div className="flex flex-col items-center">

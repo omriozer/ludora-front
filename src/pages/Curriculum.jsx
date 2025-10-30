@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useUser } from "@/contexts/UserContext";
 import { Settings, Curriculum as CurriculumAPI, CurriculumItem, Product, apiRequest } from "@/services/apiClient";
-import ProductItemDisplay from "@/components/ui/ProductItemDisplay";
+import ProductCard from "@/components/ProductCard";
 import { PRODUCT_TYPES } from "@/config/productTypes";
 import { toast } from "@/components/ui/use-toast";
 import { clog, cerror } from "@/lib/utils";
@@ -36,7 +36,8 @@ import {
   Settings as SettingsIcon,
   Link,
   Users,
-  Copy
+  Copy,
+  X
 } from "lucide-react";
 
 
@@ -807,6 +808,40 @@ export default function Curriculum() {
     setFormLoading(false);
   };
 
+  const handleRemoveConnectedProduct = async (curriculumItemId, productId) => {
+    if (!confirm('האם אתה בטוח שברצונך להסיר את הקישור למוצר זה? פעולה זו לא ניתנת לביטול.')) {
+      return;
+    }
+
+    try {
+      // Find and delete the curriculum product association
+      const associations = await apiRequest(`/entities/curriculumproduct?curriculum_item_id=${curriculumItemId}&product_id=${productId}`);
+
+      if (associations && associations.length > 0) {
+        // Delete the association
+        await apiRequest(`/entities/curriculumproduct/${associations[0].id}`, {
+          method: 'DELETE'
+        });
+
+        // Reload linked products to reflect the removal
+        await loadLinkedProducts(curriculumItems);
+
+        toast({
+          title: "קישור הוסר",
+          description: "הקישור למוצר הוסר בהצלחה מנושא הלימוד",
+          variant: "default"
+        });
+      }
+    } catch (error) {
+      cerror('Error removing connected product:', error);
+      toast({
+        title: "שגיאה",
+        description: error.message || "שגיאה בהסרת הקישור למוצר",
+        variant: "destructive"
+      });
+    }
+  };
+
   // Helper to check if both selections are made
   const hasBothSelections = selectedSubject && selectedGrade;
 
@@ -944,22 +979,29 @@ export default function Curriculum() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50" dir="rtl">
-      <div className="container mx-auto px-4 py-8 space-y-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50" dir="rtl">
+      <div className="container mx-auto px-6 py-8 space-y-8 max-w-7xl">
 
         {/* Hero Header */}
         <div className="text-center space-y-4">
-          <div className="w-20 h-20 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg mx-auto">
-            <BookOpen className="w-10 h-10 text-white" />
+          <div className="flex items-center justify-center gap-4">
+            <div className="w-16 h-16 bg-gradient-to-r from-blue-500 via-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg transform hover:scale-105 transition-transform duration-300">
+              <BookOpen className="w-8 h-8 text-white drop-shadow-sm" />
+            </div>
+            <div className="space-y-2">
+              <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                תכניות לימודים
+              </h1>
+              <div className="w-20 h-1 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full"></div>
+            </div>
           </div>
-          <h1 className="text-4xl font-bold text-gray-900">תכניות לימודים</h1>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            בחר מקצוע וכיתה כדי לעיין בתכנית הלימודים המפורטת
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto leading-relaxed">
+            בחר מקצוע וכיתה כדי לעיין בתכנית הלימודים המפורטת, לגלות תכנים מרתקים ולחקור את עולם הלמידה
           </p>
         </div>
 
         {/* Selection Interface - Collapsible */}
-        <Card className="max-w-4xl mx-auto">
+        <Card className="w-full shadow-2xl border-0 bg-white/80 backdrop-blur-sm">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-center flex-1">
@@ -1000,14 +1042,19 @@ export default function Curriculum() {
                 transition={{ duration: 0.3, ease: "easeInOut" }}
                 style={{ overflow: "hidden" }}
               >
-                <CardContent className="space-y-6">
+                <CardContent className="space-y-10 p-8">
                   {/* Subject Selection */}
-                  <div className="space-y-3">
-                    <h3 className="text-lg font-semibold flex items-center gap-2">
-                      <BookMarked className="w-5 h-5 text-blue-600" />
-                      בחר מקצוע
-                    </h3>
-                    <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2">
+                  <div className="space-y-6">
+                    <div className="text-center space-y-3">
+                      <h3 className="text-2xl font-bold text-gray-800 flex items-center justify-center gap-3">
+                        <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+                          <BookMarked className="w-5 h-5 text-white" />
+                        </div>
+                        בחר מקצוע
+                      </h3>
+                      <p className="text-gray-600">גלה את המקצוע שמעניין אותך ביותר</p>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                       {settings?.study_subjects && Object.entries(settings.study_subjects)
                         .sort(([keyA, labelA], [keyB, labelB]) => {
                           const disabledA = isSubjectDisabled(keyA);
@@ -1026,22 +1073,40 @@ export default function Curriculum() {
                         return (
                           <Card
                             key={key}
-                            className={`transition-all duration-200 ${
+                            className={`transition-all duration-300 group relative overflow-hidden ${
                               disabled
                                 ? 'opacity-50 cursor-not-allowed bg-gray-100'
-                                : 'cursor-pointer hover:shadow-md'
+                                : 'cursor-pointer hover:shadow-xl hover:-translate-y-1 hover:scale-105'
                             } ${
                               selectedSubject === key
-                                ? 'ring-2 ring-blue-500 bg-blue-50'
-                                : !disabled ? 'hover:bg-gray-50' : ''
+                                ? 'ring-3 ring-blue-500 bg-gradient-to-br from-blue-50 to-blue-100 shadow-lg'
+                                : !disabled ? 'hover:bg-gradient-to-br hover:from-blue-50 hover:to-indigo-50' : ''
                             }`}
                             onClick={() => !disabled && handleSubjectSelect(key)}
                           >
-                            <CardContent className="p-2 text-center">
-                              <p className={`font-medium text-base ${disabled ? 'text-gray-400' : ''}`}>
-                                {label}
-                              </p>
+                            <CardContent className="p-4 text-center relative z-10">
+                              <div className="space-y-2">
+                                <div className={`w-12 h-12 mx-auto rounded-full flex items-center justify-center ${
+                                  selectedSubject === key
+                                    ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg'
+                                    : disabled
+                                      ? 'bg-gray-300'
+                                      : 'bg-gradient-to-r from-gray-100 to-gray-200 group-hover:from-blue-100 group-hover:to-indigo-100'
+                                }`}>
+                                  <BookOpen className={`w-6 h-6 ${
+                                    selectedSubject === key ? 'text-white' : disabled ? 'text-gray-400' : 'text-gray-600 group-hover:text-blue-600'
+                                  }`} />
+                                </div>
+                                <p className={`font-semibold text-sm leading-tight ${
+                                  disabled ? 'text-gray-400' : selectedSubject === key ? 'text-blue-700' : 'text-gray-700'
+                                }`}>
+                                  {label}
+                                </p>
+                              </div>
                             </CardContent>
+                            {selectedSubject === key && (
+                              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-blue-600/10 pointer-events-none"></div>
+                            )}
                           </Card>
                         );
                       })}
@@ -1049,12 +1114,17 @@ export default function Curriculum() {
                   </div>
 
                   {/* Grade Selection */}
-                  <div className="space-y-3">
-                    <h3 className="text-lg font-semibold flex items-center gap-2">
-                      <GraduationCap className="w-5 h-5 text-purple-600" />
-                      בחר כיתה
-                    </h3>
-                    <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-2">
+                  <div className="space-y-6">
+                    <div className="text-center space-y-3">
+                      <h3 className="text-2xl font-bold text-gray-800 flex items-center justify-center gap-3">
+                        <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
+                          <GraduationCap className="w-5 h-5 text-white" />
+                        </div>
+                        בחר כיתה
+                      </h3>
+                      <p className="text-gray-600">איזו כיתה אתה רוצה לחקור?</p>
+                    </div>
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3">
                       {settings?.school_grades && Object.entries(settings.school_grades)
                         .sort(([keyA, labelA], [keyB, labelB]) => {
                           const disabledA = isGradeDisabled(keyA);
@@ -1073,22 +1143,38 @@ export default function Curriculum() {
                         return (
                           <Card
                             key={key}
-                            className={`transition-all duration-200 ${
+                            className={`transition-all duration-300 group relative overflow-hidden aspect-square ${
                               disabled
                                 ? 'opacity-50 cursor-not-allowed bg-gray-100'
-                                : 'cursor-pointer hover:shadow-md'
+                                : 'cursor-pointer hover:shadow-xl hover:-translate-y-1 hover:scale-110'
                             } ${
                               selectedGrade === key
-                                ? 'ring-2 ring-purple-500 bg-purple-50'
-                                : !disabled ? 'hover:bg-gray-50' : ''
+                                ? 'ring-3 ring-purple-500 bg-gradient-to-br from-purple-50 to-purple-100 shadow-lg'
+                                : !disabled ? 'hover:bg-gradient-to-br hover:from-purple-50 hover:to-indigo-50' : ''
                             }`}
                             onClick={() => !disabled && handleGradeSelect(key)}
                           >
-                            <CardContent className="p-2 text-center">
-                              <p className={`font-medium text-base ${disabled ? 'text-gray-400' : ''}`}>
-                                {label}
-                              </p>
+                            <CardContent className="p-3 flex items-center justify-center h-full relative z-10">
+                              <div className="space-y-1 text-center">
+                                <div className={`w-8 h-8 mx-auto rounded-full flex items-center justify-center text-xs font-bold ${
+                                  selectedGrade === key
+                                    ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg'
+                                    : disabled
+                                      ? 'bg-gray-300 text-gray-500'
+                                      : 'bg-gradient-to-r from-gray-100 to-gray-200 text-gray-600 group-hover:from-purple-100 group-hover:to-indigo-100 group-hover:text-purple-600'
+                                }`}>
+                                  {key}
+                                </div>
+                                <p className={`font-medium text-xs leading-tight ${
+                                  disabled ? 'text-gray-400' : selectedGrade === key ? 'text-purple-700' : 'text-gray-700'
+                                }`}>
+                                  {label.replace('כיתה ', '')}
+                                </p>
+                              </div>
                             </CardContent>
+                            {selectedGrade === key && (
+                              <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-purple-600/10 pointer-events-none"></div>
+                            )}
                           </Card>
                         );
                       })}
@@ -1158,16 +1244,23 @@ export default function Curriculum() {
 
         {/* Curriculum Items Display */}
         {selectedSubject && selectedGrade && (
-          <Card className="max-w-4xl mx-auto">
-            <CardHeader>
+          <Card className="w-full shadow-2xl border-0 bg-white/90 backdrop-blur-sm">
+            <CardHeader className="bg-gradient-to-r from-green-50 via-emerald-50 to-teal-50 border-b border-green-100">
               <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <Layers className="w-5 h-5 text-green-600" />
-                  {settings?.study_subjects?.[selectedSubject]} - {formatGradeDisplay(currentCurriculum)}
+                <CardTitle className="flex items-center gap-3 text-2xl">
+                  <div className="w-12 h-12 bg-gradient-to-r from-green-500 via-emerald-600 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg">
+                    <Layers className="w-6 h-6 text-white drop-shadow-sm" />
+                  </div>
+                  <div className="space-y-1">
+                    <div className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 bg-clip-text text-transparent font-bold">
+                      {settings?.study_subjects?.[selectedSubject]} - {formatGradeDisplay(currentCurriculum)}
+                    </div>
+                    <div className="text-sm font-normal text-gray-600">תכנית לימודים מפורטת</div>
+                  </div>
                 </CardTitle>
                 <div className="flex items-center gap-3">
                   {curriculumItems.length > 0 && (
-                    <Badge variant="secondary">
+                    <Badge variant="secondary" className="bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border-green-200 px-4 py-2 text-sm font-semibold shadow-sm">
                       {curriculumItems.length} נושאים
                     </Badge>
                   )}
@@ -1178,7 +1271,7 @@ export default function Curriculum() {
                         size="sm"
                         variant="default"
                         onClick={() => handleAssociateCurriculumWithClass(currentCurriculum)}
-                        className="bg-green-600 hover:bg-green-700"
+                        className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 px-4 py-2"
                       >
                         <Users className="w-4 h-4 ml-2" />
                         קשר לכיתה
@@ -1188,7 +1281,7 @@ export default function Curriculum() {
                       <>
                         <Dialog open={showCreateItemDialog} onOpenChange={(open) => open ? handleOpenCreateItemDialog() : handleCloseCreateItemDialog()}>
                           <DialogTrigger asChild>
-                            <Button size="sm" variant="outline">
+                            <Button size="sm" variant="outline" className="border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300 shadow-sm hover:shadow-md transition-all duration-300 px-4 py-2">
                               <Plus className="w-4 h-4 ml-2" />
                               הוסף נושא
                             </Button>
@@ -1196,7 +1289,7 @@ export default function Curriculum() {
                         </Dialog>
                         <Dialog open={showEditCurriculumDialog} onOpenChange={setShowEditCurriculumDialog}>
                           <DialogTrigger asChild>
-                            <Button size="sm" variant="outline">
+                            <Button size="sm" variant="outline" className="border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300 shadow-sm hover:shadow-md transition-all duration-300 px-4 py-2">
                               <SettingsIcon className="w-4 h-4 ml-2" />
                               ניהול תכנית
                             </Button>
@@ -1208,9 +1301,11 @@ export default function Curriculum() {
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-8 space-y-6">
               {itemsLoading ? (
-                <LudoraLoadingSpinner text="טוען נושאי לימוד..." />
+                <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                  <LudoraLoadingSpinner text="טוען נושאי לימוד..." size="lg" />
+                </div>
               ) : curriculumItems.length === 0 ? (
                 <div className="space-y-4">
                   <Alert>
@@ -1261,133 +1356,164 @@ export default function Curriculum() {
                   )}
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-6">
                   {curriculumItems.map((item, index) => (
-                    <Card key={item.id} className="hover:shadow-sm transition-shadow">
-                      <CardContent className="p-4">
-                        <div className="flex items-start gap-4">
-                          <div className="flex-1 space-y-2">
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1">
-                                <h4 className="font-semibold text-gray-900">
-                                  {item.study_topic}
-                                </h4>
-                                <p className="text-gray-600">
-                                  {item.content_topic}
-                                </p>
+                    <Card key={item.id} className="group hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-r from-white via-gray-50/30 to-white hover:from-green-50/30 hover:via-emerald-50/50 hover:to-teal-50/30 shadow-lg hover:scale-[1.02]">
+                      <CardContent className="p-6">
+                        <div className="space-y-4">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-start gap-4 flex-1">
+                              <div className="w-12 h-12 bg-gradient-to-br from-green-100 to-emerald-100 rounded-2xl flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow duration-300 flex-shrink-0">
+                                <span className="text-green-700 font-bold text-lg">
+                                  {index + 1}
+                                </span>
                               </div>
-                              <div className="flex items-center gap-2">
-                                <Badge variant={item.is_mandatory ? "default" : "outline"}>
-                                  {item.is_mandatory ? "חובה" : "רשות"}
-                                </Badge>
-                                <Badge variant="secondary">
-                                  #{index + 1}
-                                </Badge>
-                                {isAdmin && (
-                                  <div className="flex items-center gap-1">
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      onClick={() => handleOpenAssociateProductDialog(item)}
-                                      title="קשר למוצר"
-                                    >
-                                      <Link className="w-4 h-4" />
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      onClick={() => handleOpenEditItemDialog(item)}
-                                      title="ערוך נושא"
-                                    >
-                                      <Edit className="w-4 h-4" />
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      onClick={() => handleDeleteCurriculumItem(item)}
-                                      title="מחק נושא"
-                                      className="text-red-600 hover:text-red-700"
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </Button>
-                                  </div>
+                              <div className="flex-1 space-y-3">
+                                <div>
+                                  <h4 className="text-xl font-bold text-gray-900 group-hover:text-green-700 transition-colors duration-300">
+                                    {item.study_topic}
+                                  </h4>
+                                  <p className="text-gray-600 mt-1 text-lg">
+                                    {item.content_topic}
+                                  </p>
+                                </div>
+                                {item.description && (
+                                  <p className="text-sm text-gray-500 bg-gray-50 rounded-lg p-3 border-r-4 border-green-200">
+                                    {item.description}
+                                  </p>
                                 )}
                               </div>
                             </div>
-                            {item.description && (
-                              <p className="text-sm text-gray-500">
-                                {item.description}
-                              </p>
-                            )}
-
-                            {/* Linked Products Display - Collapsible */}
-                            {linkedProducts[item.id] && linkedProducts[item.id].length > 0 && (
-                              <div className="mt-4 pt-3 border-t border-gray-200">
-                                <Collapsible
-                                  open={relatedProductsOpen[item.id] || false}
-                                  onOpenChange={() => toggleRelatedProducts(item.id)}
-                                >
-                                  <CollapsibleTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      className="w-full justify-between p-0 h-auto text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-transparent"
-                                    >
-                                      <div className="flex items-center gap-2">
-                                        <Link className="w-4 h-4" />
-                                        <span>מוצרים קשורים ({linkedProducts[item.id].length})</span>
-                                      </div>
-                                      {relatedProductsOpen[item.id] ? (
-                                        <ChevronUp className="w-4 h-4" />
-                                      ) : (
-                                        <ChevronDown className="w-4 h-4" />
-                                      )}
-                                    </Button>
-                                  </CollapsibleTrigger>
-
-                                  <CollapsibleContent className="mt-3">
-                                    {(() => {
-                                      const groupedProducts = groupProductsByType(linkedProducts[item.id]);
-                                      return Object.entries(groupedProducts).map(([productType, typeProducts]) => (
-                                        <div key={productType} className="mb-3 last:mb-0">
-                                          <p className="text-xs font-medium text-gray-600 mb-2">
-                                            {getProductTypeDisplayName(productType)} ({typeProducts.length})
-                                          </p>
-                                          <div className="flex flex-wrap gap-2">
-                                            {typeProducts.map((product) => (
-                                              <ProductItemDisplay
-                                                key={product.id}
-                                                product={product}
-                                                layout="compact"
-                                                size="sm"
-                                                mode="purchase"
-                                                showPrice={true}
-                                                showDescription={false}
-                                                showGrades={false}
-                                                showImage={true}
-                                                showTypeIcon={true}
-                                                userPurchases={currentUser?.purchases || []}
-                                                className="max-w-48"
-                                              />
-                                            ))}
-                                          </div>
-                                        </div>
-                                      ));
-                                    })()}
-                                  </CollapsibleContent>
-                                </Collapsible>
-                              </div>
-                            )}
-
-                            {/* Loading indicator for linked products */}
-                            {linkedProductsLoading && (
-                              <div className="mt-4 pt-3 border-t border-gray-200">
-                                <div className="flex items-center gap-2 text-sm text-gray-500">
-                                  <LudoraLoadingSpinner size="sm" />
-                                  טוען מוצרים קשורים...
+                            <div className="flex items-start gap-3 flex-shrink-0">
+                              <Badge variant={item.is_mandatory ? "default" : "outline"}
+                                     className={`px-3 py-1 text-sm font-semibold shadow-sm ${
+                                       item.is_mandatory
+                                         ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white border-0 shadow-md'
+                                         : 'border-gray-300 text-gray-600 bg-white'
+                                     }`}>
+                                {item.is_mandatory ? "חובה" : "רשות"}
+                              </Badge>
+                              {isAdmin && (
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => handleOpenAssociateProductDialog(item)}
+                                    title="קשר למוצר"
+                                    className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-xl p-2 transition-all duration-200"
+                                  >
+                                    <Link className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => handleOpenEditItemDialog(item)}
+                                    title="ערוך נושא"
+                                    className="text-gray-600 hover:text-gray-700 hover:bg-gray-50 rounded-xl p-2 transition-all duration-200"
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => handleDeleteCurriculumItem(item)}
+                                    title="מחק נושא"
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-50 rounded-xl p-2 transition-all duration-200"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
                                 </div>
-                              </div>
-                            )}
+                              )}
+                            </div>
                           </div>
+
+                          {/* Linked Products Display - Collapsible */}
+                          {linkedProducts[item.id] && linkedProducts[item.id].length > 0 && (
+                            <div className="mt-6 pt-4 border-t border-gradient-to-r from-green-100 via-emerald-100 to-teal-100">
+                              <Collapsible
+                                open={relatedProductsOpen[item.id] || false}
+                                onOpenChange={() => toggleRelatedProducts(item.id)}
+                              >
+                                <CollapsibleTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    className="w-full justify-between p-4 h-auto bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 rounded-xl border border-blue-100 hover:border-blue-200 transition-all duration-300 group"
+                                  >
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center">
+                                        <Link className="w-4 h-4 text-white" />
+                                      </div>
+                                      <span className="text-lg font-semibold text-gray-800 group-hover:text-blue-700 transition-colors duration-300">
+                                        מוצרים קשורים ({linkedProducts[item.id].length})
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-200">
+                                        {linkedProducts[item.id].length}
+                                      </Badge>
+                                      {relatedProductsOpen[item.id] ? (
+                                        <ChevronUp className="w-5 h-5 text-blue-600 group-hover:text-blue-700" />
+                                      ) : (
+                                        <ChevronDown className="w-5 h-5 text-blue-600 group-hover:text-blue-700" />
+                                      )}
+                                    </div>
+                                  </Button>
+                                </CollapsibleTrigger>
+
+                                <CollapsibleContent className="mt-4 space-y-4">
+                                  {(() => {
+                                    const groupedProducts = groupProductsByType(linkedProducts[item.id]);
+                                    return Object.entries(groupedProducts).map(([productType, typeProducts]) => (
+                                      <div key={productType} className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+                                        <div className="flex items-center gap-2 mb-3">
+                                          <div className="w-6 h-6 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+                                            <span className="text-white text-xs font-bold">
+                                              {typeProducts.length}
+                                            </span>
+                                          </div>
+                                          <p className="text-sm font-semibold text-gray-700">
+                                            {getProductTypeDisplayName(productType)}
+                                          </p>
+                                        </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                          {typeProducts.map((product) => (
+                                            <div key={product.id} className="relative group">
+                                              <ProductCard
+                                                product={product}
+                                                userPurchases={currentUser?.purchases || []}
+                                                showActionBar={true}
+                                                onFileAccess={null}
+                                                onPdfPreview={null}
+                                              />
+                                              {isAdmin && (
+                                                <button
+                                                  onClick={() => handleRemoveConnectedProduct(item.id, product.id)}
+                                                  className="absolute top-2 left-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50"
+                                                  title="הסר קישור למוצר"
+                                                >
+                                                  <X className="w-3 h-3" />
+                                                </button>
+                                              )}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    ));
+                                  })()}
+                                </CollapsibleContent>
+                              </Collapsible>
+                            </div>
+                          )}
+
+                          {/* Loading indicator for linked products */}
+                          {linkedProductsLoading && (
+                            <div className="mt-6 pt-4 border-t border-gray-200">
+                              <div className="flex items-center justify-center gap-3 p-4 bg-blue-50 rounded-xl border border-blue-100">
+                                <LudoraLoadingSpinner size="sm" />
+                                <span className="text-sm text-blue-700 font-medium">טוען מוצרים קשורים...</span>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </CardContent>
                     </Card>
@@ -1400,13 +1526,34 @@ export default function Curriculum() {
 
         {/* Call to Action when nothing selected */}
         {!selectedSubject && !selectedGrade && (
-          <Card className="max-w-2xl mx-auto">
-            <CardContent className="p-8 text-center space-y-4">
-              <ArrowRight className="w-12 h-12 text-gray-400 mx-auto" />
-              <h3 className="text-xl font-semibold text-gray-700">התחל בבחירת מקצוע וכיתה</h3>
-              <p className="text-gray-500">
-                לאחר הבחירה, תוכל לעיין בתכנית הלימודים המפורטת ולשתף אותה עם אחרים
-              </p>
+          <Card className="max-w-4xl mx-auto shadow-2xl border-0 bg-gradient-to-br from-white via-blue-50/30 to-purple-50/30">
+            <CardContent className="p-12 text-center space-y-8">
+              <div className="w-20 h-20 bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-500 rounded-3xl flex items-center justify-center shadow-2xl mx-auto transform hover:scale-110 transition-transform duration-300">
+                <ArrowRight className="w-10 h-10 text-white drop-shadow-sm" />
+              </div>
+              <div className="space-y-4">
+                <h3 className="text-3xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                  התחל בבחירת מקצוע וכיתה
+                </h3>
+                <div className="w-20 h-1 bg-gradient-to-r from-blue-500 to-purple-500 mx-auto rounded-full"></div>
+                <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
+                  לאחר הבחירה, תוכל לעיין בתכנית הלימודים המפורטת ולשתף אותה עם אחרים
+                </p>
+              </div>
+              <div className="flex items-center justify-center gap-8 pt-4">
+                <div className="flex items-center gap-2 text-gray-500">
+                  <BookOpen className="w-5 h-5" />
+                  <span>תכניות מפורטות</span>
+                </div>
+                <div className="flex items-center gap-2 text-gray-500">
+                  <Share2 className="w-5 h-5" />
+                  <span>שיתוף קל</span>
+                </div>
+                <div className="flex items-center gap-2 text-gray-500">
+                  <Users className="w-5 h-5" />
+                  <span>ניהול כיתות</span>
+                </div>
+              </div>
             </CardContent>
           </Card>
         )}

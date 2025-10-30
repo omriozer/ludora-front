@@ -75,20 +75,48 @@ const LessonPlanProductSection = ({
     }
   };
 
-  // Load existing files when editing
+  // Track if we've made local changes to avoid overriding them with useEffect
+  const [hasLocalChanges, setHasLocalChanges] = useState(false);
+
+  // Load existing files when editing or when form data changes
   useEffect(() => {
+    clog('🔍 LessonPlanProductSection useEffect triggered:', {
+      editingProduct: editingProduct?.id,
+      hasFormDataFileConfigs: !!formData.file_configs,
+      formDataFileConfigsLength: formData.file_configs?.files?.length || 0,
+      formDataFileConfigs: formData.file_configs,
+      hasLocalChanges
+    });
+
+    // If we have local changes, don't reload from props to avoid overriding user actions
+    if (hasLocalChanges) {
+      clog('⚠️ Skipping useEffect reload - has local changes');
+      return;
+    }
+
+    // Use formData file_configs (lesson plan data is now integrated into formData)
     if (editingProduct && formData.file_configs) {
-      loadExistingFiles();
+      clog('Loading existing files from formData file_configs');
+      loadExistingFiles(formData.file_configs);
+    } else if (editingProduct) {
+      clog('Editing product but no file_configs, initializing...');
+      initializeFileConfigs();
     } else {
+      clog('No editing product, initializing file configs');
       initializeFileConfigs();
     }
-  }, [editingProduct]);
+  }, [editingProduct, formData.file_configs, hasLocalChanges]);
 
   // Load existing files from file_configs
-  const loadExistingFiles = async () => {
-    if (!formData.file_configs?.files) return;
+  const loadExistingFiles = async (fileConfigsSource) => {
+    if (!fileConfigsSource?.files) {
+      clog('No file_configs found in source:', fileConfigsSource);
+      return;
+    }
 
     try {
+      clog('Loading existing files from file_configs:', fileConfigsSource.files);
+
       const filesByRole = {
         opening: [],
         body: [],
@@ -97,13 +125,17 @@ const LessonPlanProductSection = ({
       };
 
       // Group files by role
-      formData.file_configs.files.forEach(fileConfig => {
+      fileConfigsSource.files.forEach(fileConfig => {
         const role = fileConfig.file_role;
         if (filesByRole[role]) {
           filesByRole[role].push(fileConfig);
+          clog(`Added file ${fileConfig.filename} to role ${role}`);
+        } else {
+          cerror(`Unknown file role: ${role} for file ${fileConfig.filename}`);
         }
       });
 
+      clog('Grouped files by role:', filesByRole);
       setLessonPlanFiles(filesByRole);
     } catch (error) {
       cerror('Error loading existing files:', error);
@@ -125,6 +157,64 @@ const LessonPlanProductSection = ({
     }
   };
 
+  // Validate file types for opening and body (PPT only)
+  const validateFileType = (file, fileRole) => {
+    const fileName = file.name.toLowerCase();
+    const allowedExtensions = {
+      opening: ['.ppt', '.pptx'],
+      body: ['.ppt', '.pptx'],
+      audio: ['.mp3', '.wav', '.m4a'],
+      assets: [] // Allow all for assets
+    };
+
+    // For assets, allow any file type
+    if (fileRole === 'assets') {
+      return { valid: true };
+    }
+
+    const extensions = allowedExtensions[fileRole] || [];
+    const isValidType = extensions.some(ext => fileName.endsWith(ext));
+
+    if (!isValidType) {
+      const expectedTypes = extensions.join(', ');
+      return {
+        valid: false,
+        error: `עבור ${getRoleDisplayName(fileRole)} ניתן להעלות רק קבצים מסוג: ${expectedTypes}`
+      };
+    }
+
+    return { valid: true };
+  };
+
+  // Check if a section already has the maximum number of files
+  const canAddMoreFiles = (fileRole) => {
+    const currentFiles = lessonPlanFiles[fileRole] || [];
+
+    // Opening and body sections can only have ONE file
+    if (fileRole === 'opening' || fileRole === 'body') {
+      return currentFiles.length === 0;
+    }
+
+    // Audio and assets can have multiple files
+    return true;
+  };
+
+  // Validate File product for linking (PPT only for opening/body)
+  const validateFileProductForLinking = (fileProduct, fileRole) => {
+    // For opening and body, only allow PPT File products
+    if (fileRole === 'opening' || fileRole === 'body') {
+      const fileType = fileProduct.file?.file_type || fileProduct.entity?.file_type || 'other';
+      if (fileType !== 'ppt') {
+        return {
+          valid: false,
+          error: `עבור ${getRoleDisplayName(fileRole)} ניתן לקשר רק מוצרי קבצים מסוג PowerPoint (.ppt, .pptx)`
+        };
+      }
+    }
+
+    return { valid: true };
+  };
+
   // Handle file upload using atomic endpoint (creates File entities with is_asset_only=true)
   const handleFileUpload = async (files, fileRole) => {
     const fileArray = Array.from(files);
@@ -140,12 +230,50 @@ const LessonPlanProductSection = ({
       return;
     }
 
+    // Check if section can accept more files
+    if (!canAddMoreFiles(fileRole)) {
+      const sectionName = getRoleDisplayName(fileRole);
+      toast({
+        title: "מגבלת קבצים",
+        description: `בקטגוריית ${sectionName} ניתן להעלות רק קובץ אחד. אנא מחק את הקובץ הקיים תחילה.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // For opening/body sections, only allow one file per upload
+    if ((fileRole === 'opening' || fileRole === 'body') && fileArray.length > 1) {
+      const sectionName = getRoleDisplayName(fileRole);
+      toast({
+        title: "מגבלת קבצים",
+        description: `בקטגוריית ${sectionName} ניתן להעלות רק קובץ אחד בכל פעם.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate file types before upload
+    for (const file of fileArray) {
+      const validation = validateFileType(file, fileRole);
+      if (!validation.valid) {
+        toast({
+          title: "סוג קובץ לא תואם",
+          description: validation.error,
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+
     try {
       setUploadingFiles(prev => ({ ...prev, [uploadKey]: true }));
+      clog(`Starting file upload for role: ${fileRole}, files:`, fileArray.map(f => f.name));
 
       const uploadedFiles = [];
 
       for (const file of fileArray) {
+        clog(`Uploading file: ${file.name} (${file.type}) for role: ${fileRole}`);
+
         // Use atomic endpoint for file upload
         const formData = new FormData();
         formData.append('file', file);
@@ -164,10 +292,12 @@ const LessonPlanProductSection = ({
 
         if (!response.ok) {
           const error = await response.json();
+          cerror('Upload API error:', error);
           throw new Error(error.details || error.error || 'Upload failed');
         }
 
         const result = await response.json();
+        clog('Upload API response:', result);
 
         // Create file config from atomic endpoint response
         const fileConfig = {
@@ -184,13 +314,14 @@ const LessonPlanProductSection = ({
         };
 
         uploadedFiles.push(fileConfig);
-        clog('Atomic file upload completed:', result);
+        clog('File config created:', fileConfig);
       }
 
       // Update file_configs in formData
       const currentFileConfigs = formData.file_configs || { files: [] };
       const updatedFiles = [...currentFileConfigs.files, ...uploadedFiles];
 
+      clog('Updating formData with files:', updatedFiles);
       updateFormData({
         file_configs: {
           ...currentFileConfigs,
@@ -199,10 +330,17 @@ const LessonPlanProductSection = ({
       });
 
       // Update local state
-      setLessonPlanFiles(prev => ({
-        ...prev,
-        [fileRole]: [...prev[fileRole], ...uploadedFiles]
-      }));
+      setLessonPlanFiles(prev => {
+        const newState = {
+          ...prev,
+          [fileRole]: [...prev[fileRole], ...uploadedFiles]
+        };
+        clog('Updated lessonPlanFiles state:', newState);
+        return newState;
+      });
+
+      // Mark that we have local changes to prevent useEffect override
+      setHasLocalChanges(true);
 
       toast({
         title: "קבצים הועלו בהצלחה",
@@ -225,18 +363,88 @@ const LessonPlanProductSection = ({
   // Remove file (handles File entities properly)
   const removeFile = async (fileConfig, fileRole) => {
     try {
-      // If this is an asset-only file, delete the File entity completely
+      // If this is an asset-only file, use the lesson plan specific delete endpoint
       if (fileConfig.is_asset_only) {
-        await File.delete(fileConfig.file_id);
+        if (!editingProduct?.entity_id) {
+          toast({
+            title: "שגיאה במחיקת קובץ",
+            description: "לא ניתן למחוק קבצים ללא מזהה תכנית שיעור",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        // Use the lesson plan specific delete endpoint
+        const endpoint = `/entities/lesson-plan/${editingProduct.entity_id}/file/${fileConfig.file_id}`;
+
+        const response = await fetch(`${getApiBase()}${endpoint}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          cerror('Delete API error:', error);
+          throw new Error(error.details || error.error || 'Delete failed');
+        }
+
+        const result = await response.json();
+        clog('Delete API response:', result);
       } else {
-        // If it's a File product, just remove the link (don't delete the product)
+        // If it's a File product, call the unlink endpoint (don't delete the product)
         // The File product continues to exist independently
+        if (!editingProduct?.entity_id) {
+          toast({
+            title: "שגיאה בהסרת קישור",
+            description: "לא ניתן להסיר קישורים ללא מזהה תכנית שיעור",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        // Use the lesson plan specific unlink endpoint
+        const endpoint = `/entities/lesson-plan/${editingProduct.entity_id}/unlink-file-product/${fileConfig.file_id}`;
+
+        const response = await fetch(`${getApiBase()}${endpoint}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          cerror('Unlink API error:', error);
+          throw new Error(error.details || error.error || 'Unlink failed');
+        }
+
+        const result = await response.json();
+        clog('Unlink API response:', result);
       }
 
-      // Remove from file_configs
+      // Update local state FIRST to ensure immediate UI update
+      clog('🗑️ Updating local state - removing file:', fileConfig.file_id, 'from role:', fileRole);
+      setLessonPlanFiles(prev => {
+        const newState = {
+          ...prev,
+          [fileRole]: prev[fileRole].filter(f => f.file_id !== fileConfig.file_id)
+        };
+        clog('🗑️ New lessonPlanFiles state after removal:', newState);
+        return newState;
+      });
+
+      // Mark that we have local changes to prevent useEffect override
+      setHasLocalChanges(true);
+
+      // Then update formData (this may trigger useEffect but shouldn't override our state since the data is consistent)
       const currentFileConfigs = formData.file_configs || { files: [] };
       const updatedFiles = currentFileConfigs.files.filter(f => f.file_id !== fileConfig.file_id);
 
+      clog('🗑️ Updating formData - old files count:', currentFileConfigs.files.length, 'new count:', updatedFiles.length);
       updateFormData({
         file_configs: {
           ...currentFileConfigs,
@@ -244,22 +452,31 @@ const LessonPlanProductSection = ({
         }
       });
 
-      // Update local state
-      setLessonPlanFiles(prev => ({
-        ...prev,
-        [fileRole]: prev[fileRole].filter(f => f.file_id !== fileConfig.file_id)
-      }));
-
-      const action = fileConfig.is_asset_only ? "נמחק" : "הוסר";
+      const action = fileConfig.is_asset_only ? "נמחק" : "נותק";
+      const actionDescription = fileConfig.is_asset_only ? "נמחק מהמערכת" : "נותק מהשיעור";
       toast({
         title: `קובץ ${action} בהצלחה`,
-        description: `הקובץ ${fileConfig.filename} ${action} מהמערכת`,
+        description: `הקובץ ${fileConfig.filename} ${actionDescription}`,
         variant: "default"
       });
 
     } catch (error) {
       cerror('Error removing file:', error);
-      // Even if deletion fails, remove from UI
+      // Even if deletion fails, remove from UI - update local state FIRST
+      clog('🗑️ Error occurred, but removing from UI anyway');
+      setLessonPlanFiles(prev => {
+        const newState = {
+          ...prev,
+          [fileRole]: prev[fileRole].filter(f => f.file_id !== fileConfig.file_id)
+        };
+        clog('🗑️ New lessonPlanFiles state after error removal:', newState);
+        return newState;
+      });
+
+      // Mark that we have local changes to prevent useEffect override
+      setHasLocalChanges(true);
+
+      // Then update formData
       const currentFileConfigs = formData.file_configs || { files: [] };
       const updatedFiles = currentFileConfigs.files.filter(f => f.file_id !== fileConfig.file_id);
 
@@ -270,14 +487,10 @@ const LessonPlanProductSection = ({
         }
       });
 
-      setLessonPlanFiles(prev => ({
-        ...prev,
-        [fileRole]: prev[fileRole].filter(f => f.file_id !== fileConfig.file_id)
-      }));
-
+      const errorAction = fileConfig.is_asset_only ? "נמחק" : "נותק";
       toast({
-        title: "קובץ הוסר מהרשימה",
-        description: "הקובץ הוסר מהרשימה",
+        title: `קובץ ${errorAction} מהרשימה`,
+        description: `הקובץ ${errorAction} מהרשימה`,
         variant: "default"
       });
     }
@@ -286,11 +499,77 @@ const LessonPlanProductSection = ({
   // Link existing File product
   const linkFileProduct = async (fileProduct, fileRole) => {
     try {
-      // Create file config for linking to existing File product
+      // Check if we have the lesson plan ID from editingProduct
+      if (!editingProduct?.entity_id) {
+        toast({
+          title: "שגיאה בקישור קובץ",
+          description: "לא ניתן לקשר קבצים ללא מזהה תכנית שיעור. אנא שמור את המוצר תחילה.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Check if section can accept more files
+      if (!canAddMoreFiles(fileRole)) {
+        const sectionName = getRoleDisplayName(fileRole);
+        toast({
+          title: "מגבלת קבצים",
+          description: `בקטגוריית ${sectionName} ניתן לקשר רק קובץ אחד. אנא מחק את הקובץ הקיים תחילה.`,
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Validate File product for this role
+      const productValidation = validateFileProductForLinking(fileProduct, fileRole);
+      if (!productValidation.valid) {
+        toast({
+          title: "מוצר קובץ לא תואם",
+          description: productValidation.error,
+          variant: "destructive"
+        });
+        return;
+      }
+
+      clog('🔗 Starting File product linking:', {
+        fileProduct: fileProduct.id,
+        entity_id: fileProduct.entity_id,
+        title: fileProduct.title,
+        fileRole,
+        lessonPlanId: editingProduct.entity_id
+      });
+
+      // Call the new backend endpoint to link the File product
+      const endpoint = `/entities/lesson-plan/${editingProduct.entity_id}/link-file-product`;
+
+      const response = await fetch(`${getApiBase()}${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          product_id: fileProduct.id,
+          file_role: fileRole,
+          filename: fileProduct.title,
+          file_type: fileProduct.file?.file_type || 'other'
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        cerror('Link API error:', error);
+        throw new Error(error.details || error.error || 'Linking failed');
+      }
+
+      const result = await response.json();
+      clog('Link API response:', result);
+
+      // Create file config from API response
       const fileConfig = {
-        file_id: fileProduct.entity_id, // Use the entity_id from the Product
+        file_id: result.linked_file.file_id,
         file_role: fileRole,
-        filename: fileProduct.title,
+        filename: result.linked_file.filename,
         file_type: fileProduct.file?.file_type || 'other',
         upload_date: new Date().toISOString(),
         description: fileProduct.title,
@@ -298,22 +577,31 @@ const LessonPlanProductSection = ({
         product_id: fileProduct.id // Store the Product ID for reference
       };
 
-      // Update file_configs in formData
+      // Update local state FIRST to ensure immediate UI update
+      clog('🔗 Updating local state - adding file:', fileConfig.file_id, 'to role:', fileRole);
+      setLessonPlanFiles(prev => {
+        const newState = {
+          ...prev,
+          [fileRole]: [...prev[fileRole], fileConfig]
+        };
+        clog('🔗 New lessonPlanFiles state after linking:', newState);
+        return newState;
+      });
+
+      // Mark that we have local changes to prevent useEffect override
+      setHasLocalChanges(true);
+
+      // Then update formData
       const currentFileConfigs = formData.file_configs || { files: [] };
       const updatedFiles = [...currentFileConfigs.files, fileConfig];
 
+      clog('🔗 Updating formData - old files count:', currentFileConfigs.files.length, 'new count:', updatedFiles.length);
       updateFormData({
         file_configs: {
           ...currentFileConfigs,
           files: updatedFiles
         }
       });
-
-      // Update local state
-      setLessonPlanFiles(prev => ({
-        ...prev,
-        [fileRole]: [...prev[fileRole], fileConfig]
-      }));
 
       toast({
         title: "קובץ מוצר קושר בהצלחה",
@@ -325,7 +613,7 @@ const LessonPlanProductSection = ({
       cerror('Error linking file product:', error);
       toast({
         title: "שגיאה בקישור קובץ",
-        description: "לא ניתן לקשר את הקובץ. אנא נסה שנית.",
+        description: error.message || "לא ניתן לקשר את הקובץ. אנא נסה שנית.",
         variant: "destructive"
       });
     }
@@ -457,23 +745,58 @@ const LessonPlanProductSection = ({
   };
 
   // File upload component with three options
-  const FileUploadSection = ({ title, fileRole, icon: Icon, files, description, acceptedTypes = "*" }) => (
-    <Card className="p-4">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <Icon className="w-5 h-5 text-indigo-600" />
-          <h4 className="font-medium">{title}</h4>
+  const FileUploadSection = ({ title, fileRole, icon: Icon, files, description, acceptedTypes = "*" }) => {
+    const canAddFiles = canAddMoreFiles(fileRole);
+    const isSingleFileSection = fileRole === 'opening' || fileRole === 'body';
+    const isPdfOnlySection = fileRole === 'opening' || fileRole === 'body';
+
+    return (
+      <Card className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Icon className="w-5 h-5 text-indigo-600" />
+            <h4 className="font-medium">{title}</h4>
+            {isSingleFileSection && (
+              <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
+                קובץ אחד בלבד
+              </span>
+            )}
+          </div>
+          {uploadingFiles[fileRole] && (
+            <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
+          )}
         </div>
-        {uploadingFiles[fileRole] && (
-          <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
-        )}
-      </div>
 
-      <div className="space-y-4">
-        <Label className="text-sm text-gray-600">{description}</Label>
+        <div className="space-y-4">
+          <div className="space-y-1">
+            <Label className="text-sm text-gray-600">{description}</Label>
+            {isSingleFileSection && (
+              <p className="text-xs text-yellow-700">
+                ⚠️ ניתן להעלות או לקשר קובץ אחד בלבד בקטגוריה זו
+              </p>
+            )}
+            {isPdfOnlySection && (
+              <p className="text-xs text-blue-700">
+                📄 לקישור מוצרי קבצים: רק קבצי PowerPoint (.ppt, .pptx)
+              </p>
+            )}
+          </div>
 
-        {/* Three Options for Adding Files */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {/* Show limitation message if section is full */}
+          {!canAddFiles && (
+            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="flex items-center gap-2 text-yellow-800">
+                <AlertCircle className="w-4 h-4" />
+                <span className="text-sm font-medium">
+                  הקטגוריה מלאה - מחק את הקובץ הקיים להוספת קובץ חדש
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Three Options for Adding Files - only show if can add files */}
+          {canAddFiles && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {/* Option 1: Upload New File (Asset Only) */}
           <div className="border border-gray-200 rounded-lg p-3 text-center">
             <Upload className="w-6 h-6 mx-auto text-gray-400 mb-2" />
@@ -491,7 +814,7 @@ const LessonPlanProductSection = ({
               }}
               className="hidden"
               id={`upload-${fileRole}`}
-              disabled={uploadingFiles[fileRole]}
+              disabled={uploadingFiles[fileRole] || !canAddFiles}
             />
 
             <Button
@@ -499,7 +822,7 @@ const LessonPlanProductSection = ({
               variant="outline"
               size="sm"
               onClick={() => document.getElementById(`upload-${fileRole}`).click()}
-              disabled={uploadingFiles[fileRole]}
+              disabled={uploadingFiles[fileRole] || !canAddFiles}
               className="w-full"
             >
               {uploadingFiles[fileRole] ? 'מעלה...' : 'העלה קובץ'}
@@ -518,6 +841,7 @@ const LessonPlanProductSection = ({
               size="sm"
               onClick={() => createNewFileProduct(fileRole)}
               className="w-full"
+              disabled={!canAddFiles}
             >
               צור מוצר חדש
             </Button>
@@ -535,11 +859,13 @@ const LessonPlanProductSection = ({
               size="sm"
               onClick={() => selectExistingFileProduct(fileRole)}
               className="w-full"
+              disabled={!canAddFiles}
             >
               בחר מוצר
             </Button>
           </div>
         </div>
+          )}
 
         {/* Linked Files List */}
         {files.length > 0 && (
@@ -589,7 +915,8 @@ const LessonPlanProductSection = ({
         )}
       </div>
     </Card>
-  );
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -603,19 +930,39 @@ const LessonPlanProductSection = ({
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="opening" className="flex items-center gap-2">
               <FileText className="w-4 h-4" />
-              פתיחה
+              <span>פתיחה</span>
+              {lessonPlanFiles.opening.length > 0 && (
+                <span className="bg-blue-100 text-blue-800 text-xs px-1.5 py-0.5 rounded-full">
+                  {lessonPlanFiles.opening.length}
+                </span>
+              )}
             </TabsTrigger>
             <TabsTrigger value="body" className="flex items-center gap-2">
               <Play className="w-4 h-4" />
-              גוף השיעור
+              <span>גוף השיעור</span>
+              {lessonPlanFiles.body.length > 0 && (
+                <span className="bg-green-100 text-green-800 text-xs px-1.5 py-0.5 rounded-full">
+                  {lessonPlanFiles.body.length}
+                </span>
+              )}
             </TabsTrigger>
             <TabsTrigger value="audio" className="flex items-center gap-2">
               <Volume2 className="w-4 h-4" />
-              אודיו
+              <span>אודיו</span>
+              {lessonPlanFiles.audio.length > 0 && (
+                <span className="bg-purple-100 text-purple-800 text-xs px-1.5 py-0.5 rounded-full">
+                  {lessonPlanFiles.audio.length}
+                </span>
+              )}
             </TabsTrigger>
             <TabsTrigger value="assets" className="flex items-center gap-2">
               <Paperclip className="w-4 h-4" />
-              נכסים נוספים
+              <span>נכסים נוספים</span>
+              {lessonPlanFiles.assets.length > 0 && (
+                <span className="bg-orange-100 text-orange-800 text-xs px-1.5 py-0.5 rounded-full">
+                  {lessonPlanFiles.assets.length}
+                </span>
+              )}
             </TabsTrigger>
           </TabsList>
 
@@ -625,8 +972,8 @@ const LessonPlanProductSection = ({
               fileRole="opening"
               icon={FileText}
               files={lessonPlanFiles.opening}
-              description="קבצי PowerPoint לפתיחת השיעור והקדמה לנושא"
-              acceptedTypes=".ppt,.pptx,.pdf"
+              description="העלאה: קבצי PowerPoint (.ppt, .pptx) | קישור מוצרים: קבצי PDF בלבד | קובץ אחד בלבד"
+              acceptedTypes=".ppt,.pptx"
             />
           </TabsContent>
 
@@ -636,8 +983,8 @@ const LessonPlanProductSection = ({
               fileRole="body"
               icon={Play}
               files={lessonPlanFiles.body}
-              description="מצגות PowerPoint עיקריות עם תוכן השיעור"
-              acceptedTypes=".ppt,.pptx,.pdf"
+              description="העלאה: קבצי PowerPoint (.ppt, .pptx) | קישור מוצרים: קבצי PDF בלבד | קובץ אחד בלבד"
+              acceptedTypes=".ppt,.pptx"
             />
           </TabsContent>
 

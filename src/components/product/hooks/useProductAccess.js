@@ -100,8 +100,8 @@ export const useProductAccess = (editingProduct, formData, uploadedFileInfo, pro
       errors.price = 'מחיר חובה ויש להיות מספר חיובי';
     }
 
-    // Validate access days if provided
-    if (formData.access_days && (isNaN(formData.access_days) || formData.access_days < 1)) {
+    // Validate access days if provided (allow null, undefined, empty string for lifetime access)
+    if (formData.access_days !== null && formData.access_days !== undefined && formData.access_days !== "" && (isNaN(formData.access_days) || formData.access_days < 1)) {
       errors.access_days = 'ימי גישה חייבים להיות מספר חיובי';
     }
 

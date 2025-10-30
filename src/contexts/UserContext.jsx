@@ -20,6 +20,7 @@ export function UserProvider({ children }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [settingsLoadFailed, setSettingsLoadFailed] = useState(false);
+  const [userDataFresh, setUserDataFresh] = useState(false);
 
   // Load settings independently of user authentication
   const loadSettings = useCallback(async () => {
@@ -79,12 +80,27 @@ export function UserProvider({ children }) {
       }
 
       // Try to get current user with existing token
-      const user = await User.getCurrentUser();
-      if (user) {
-        await loadUserData(user);
-        updateLastActivity();
-        setIsAuthenticated(true);
-      } else {
+      try {
+        clog('[UserContext] 🔄 Calling User.getCurrentUser()...');
+        const user = await User.getCurrentUser();
+        clog('[UserContext] 🔄 User.getCurrentUser() response:', user);
+        if (user) {
+          clog('[UserContext] ✅ User.getCurrentUser() succeeded, calling loadUserData...');
+          await loadUserData(user);
+          updateLastActivity();
+          setIsAuthenticated(true);
+        } else {
+          clog('[UserContext] ❌ User.getCurrentUser() returned null/undefined');
+          clearAuth();
+        }
+      } catch (getCurrentUserError) {
+        cerror('[UserContext] ❌ Failed to get current user from API:', getCurrentUserError);
+        cerror('[UserContext] ❌ Error details:', {
+          message: getCurrentUserError.message,
+          stack: getCurrentUserError.stack,
+          name: getCurrentUserError.name
+        });
+        // If we can't get user from API, clear auth completely to force re-login
         clearAuth();
       }
     } catch (error) {
@@ -97,16 +113,67 @@ export function UserProvider({ children }) {
 
   // Check if user needs onboarding
   const needsOnboarding = useCallback((user) => {
-    if (!user) return false;
+    clog('[UserContext] 🎯 needsOnboarding called with user:', {
+      email: user?.email,
+      birth_date: user?.birth_date,
+      onboarding_completed: user?.onboarding_completed,
+      onboarding_completed_type: typeof user?.onboarding_completed,
+      user_type: user?.user_type,
+      hasUser: !!user,
+      userKeys: user ? Object.keys(user) : [],
+      isFromReactState: user === currentUser
+    });
 
-    // Users with onboarding_completed true don't need onboarding
-    if (user.onboarding_completed === true) return false;
+    if (!user) {
+      clog('[UserContext] ❌ No user provided to needsOnboarding - returning false');
+      return false;
+    }
 
-    // Check if user has pending invitations (they should go through invitation flow instead)
-    // This will be handled by checking for invitations in the onboarding component
+    // Additional validation to ensure we have a complete user object
+    if (!user.email) {
+      clog('[UserContext] ⚠️ User object missing email field - possible incomplete data');
+      return false; // Don't force onboarding for incomplete user objects
+    }
 
-    return true; // User needs onboarding if onboarding_completed is false
-  }, []);
+    // Users with onboarding_completed true AND required fields present don't need onboarding
+    if (user.onboarding_completed === true) {
+      // Double-check that required onboarding fields are actually present
+      const hasRequiredFields = user.birth_date && user.user_type;
+
+      if (hasRequiredFields) {
+        clog('[UserContext] ✅ User has onboarding_completed=true AND required fields - no onboarding needed');
+        clog('[UserContext] ✅ Final decision: NO onboarding needed');
+        return false;
+      } else {
+        clog('[UserContext] ⚠️ User has onboarding_completed=true but missing required fields:', {
+          birth_date: user.birth_date,
+          user_type: user.user_type,
+          hasRequiredFields
+        });
+        clog('[UserContext] 🔄 Forcing onboarding to complete missing data');
+        clog('[UserContext] 🔄 Final decision: Onboarding NEEDED (missing fields)');
+        return true; // Force onboarding if data is incomplete
+      }
+    }
+
+    // Check for explicit false or falsy values
+    if (user.onboarding_completed === false || user.onboarding_completed === null || user.onboarding_completed === undefined) {
+      clog('[UserContext] 🔄 User onboarding_completed is not true:', {
+        value: user.onboarding_completed,
+        type: typeof user.onboarding_completed
+      });
+      clog('[UserContext] 🔄 Final decision: Onboarding NEEDED (not completed)');
+      return true; // User needs onboarding if onboarding_completed is false/null/undefined
+    }
+
+    // Fallback - if onboarding_completed is some other value, be conservative
+    clog('[UserContext] ⚠️ User onboarding_completed has unexpected value:', {
+      value: user.onboarding_completed,
+      type: typeof user.onboarding_completed
+    });
+    clog('[UserContext] 🔄 Final decision: Onboarding NEEDED (unexpected value)');
+    return true;
+  }, [currentUser]);
 
   const checkUserSubscription = useCallback(async (user) => {
     try {
@@ -163,28 +230,98 @@ export function UserProvider({ children }) {
 
   const loadUserData = useCallback(async (user) => {
     try {
-      clog('[UserContext] Loading user data for:', user.email);
+      clog('[UserContext] 🚀 loadUserData called with user:', user);
+      clog('[UserContext] 🔍 Input user data analysis:', {
+        birth_date: user.birth_date,
+        onboarding_completed: user.onboarding_completed,
+        user_type: user.user_type,
+        email: user.email,
+        uid: user.uid,
+        id: user.id,
+        allKeys: Object.keys(user),
+        userSource: user.providerData ? 'Firebase' : 'API'
+      });
+
+      // Ensure we have complete user data before proceeding
+      if (!user || !user.email) {
+        throw new Error('Incomplete user data received from API');
+      }
 
       // User data is already clean from the API - no normalization needed
       // All user data comes from the database user table
 
       // Settings are already loaded independently, so get current settings
       const settingsObj = settings;
+      let finalUser = user;
+
       if (settingsObj?.subscription_system_enabled) {
         try {
           const updatedUser = await checkUserSubscription(user);
-          setCurrentUser(updatedUser);
+          clog('[UserContext] 💾 Setting updated user in state:', {
+            birth_date: updatedUser.birth_date,
+            onboarding_completed: updatedUser.onboarding_completed,
+            user_type: updatedUser.user_type,
+            email: updatedUser.email
+          });
+          finalUser = updatedUser;
         } catch (subscriptionError) {
           clog('[UserContext] Subscription check failed, proceeding without subscription:', subscriptionError);
           // If subscription check fails, proceed without it to allow login
-          setCurrentUser(user);
+          clog('[UserContext] 💾 Setting original user in state:', {
+            birth_date: user.birth_date,
+            onboarding_completed: user.onboarding_completed,
+            user_type: user.user_type,
+            email: user.email
+          });
+          finalUser = user;
         }
       } else {
-        setCurrentUser(user);
+        clog('[UserContext] 💾 Setting user in state (no subscription system):', {
+          birth_date: user.birth_date,
+          onboarding_completed: user.onboarding_completed,
+          user_type: user.user_type,
+          email: user.email
+        });
+        finalUser = user;
       }
+
+      // Ensure the final user object has all required fields
+      const completeUser = {
+        ...finalUser,
+        // Ensure critical fields are preserved
+        email: finalUser.email || user.email,
+        uid: finalUser.uid || user.uid,
+        id: finalUser.id || user.id,
+        birth_date: finalUser.birth_date,
+        onboarding_completed: finalUser.onboarding_completed,
+        user_type: finalUser.user_type
+      };
+
+      clog('[UserContext] 🔧 Final complete user object being stored:', {
+        email: completeUser.email,
+        birth_date: completeUser.birth_date,
+        onboarding_completed: completeUser.onboarding_completed,
+        user_type: completeUser.user_type,
+        hasAllFields: !!(completeUser.email && (completeUser.onboarding_completed !== undefined))
+      });
+
+      // Store the complete user data in React state
+      setCurrentUser(completeUser);
       setIsAuthenticated(true);
+
+      // Use setTimeout to ensure state update completes before marking data as fresh
+      setTimeout(() => {
+        setUserDataFresh(true);
+        clog('[UserContext] ✅ User data loading completed, userDataFresh set to true');
+        clog('[UserContext] 🔍 State should now contain complete user data');
+      }, 0);
+
     } catch (error) {
       cerror('[UserContext] Error loading user data:', error);
+      // Reset states on error
+      setCurrentUser(null);
+      setIsAuthenticated(false);
+      setUserDataFresh(false);
       throw error;
     }
   }, [settings, checkUserSubscription]);
@@ -231,13 +368,32 @@ export function UserProvider({ children }) {
   }, []);
 
   const clearAuth = useCallback(() => {
+    clog('[UserContext] Clearing authentication - user will be logged out');
     setCurrentUser(null);
     // Don't clear settings - they should remain available for non-logged-in users
     setIsAuthenticated(false);
+    setUserDataFresh(false); // Reset fresh data flag when clearing auth
     localStorage.removeItem('authToken');
+    localStorage.removeItem('token'); // Also clear backup token key
     localStorage.removeItem('tokenExpiry');
     localStorage.removeItem('rememberMe');
     localStorage.removeItem('lastActivity');
+
+    // Clear any Firebase session data that might be persisting
+    try {
+      // Clear any Firebase auth state
+      if (typeof window !== 'undefined' && window.localStorage) {
+        // Clear common Firebase keys
+        const firebaseKeys = Object.keys(localStorage).filter(key =>
+          key.startsWith('firebase:') ||
+          key.startsWith('_firebase') ||
+          key.startsWith('firebaseui')
+        );
+        firebaseKeys.forEach(key => localStorage.removeItem(key));
+      }
+    } catch (error) {
+      cerror('[UserContext] Error clearing Firebase session:', error);
+    }
   }, []);
 
   const updateLastActivity = useCallback(() => {
@@ -269,6 +425,7 @@ export function UserProvider({ children }) {
     isLoading,
     isAuthenticated,
     settingsLoadFailed,
+    userDataFresh,
     login,
     logout,
     updateUser,

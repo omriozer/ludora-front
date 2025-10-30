@@ -5,7 +5,7 @@ import { StudentInvitation } from '@/services/apiClient';
 import { clog } from '@/lib/utils';
 
 export default function OnboardingRedirect({ children }) {
-  const { currentUser, needsOnboarding, isLoading } = useUser();
+  const { currentUser, needsOnboarding, isLoading, userDataFresh } = useUser();
   const navigate = useNavigate();
   const location = useLocation();
   const [hasCheckedInvitations, setHasCheckedInvitations] = useState(false);
@@ -44,8 +44,27 @@ export default function OnboardingRedirect({ children }) {
   }, [currentUser, hasCheckedInvitations]);
 
   useEffect(() => {
-    // Don't redirect if still loading or no user
-    if (isLoading || !currentUser || !hasCheckedInvitations) return;
+    // Don't redirect if still loading, no user, or haven't checked invitations/fresh data
+    if (isLoading || !currentUser || !hasCheckedInvitations || !userDataFresh) {
+      clog('[OnboardingRedirect] ⏳ Waiting for complete data:', {
+        isLoading,
+        hasUser: !!currentUser,
+        hasCheckedInvitations,
+        userDataFresh,
+        userEmail: currentUser?.email
+      });
+      return;
+    }
+
+    // Additional validation - ensure we have complete user data before proceeding
+    if (!currentUser.email || currentUser.onboarding_completed === undefined) {
+      clog('[OnboardingRedirect] ⚠️ User data incomplete, waiting for complete data:', {
+        hasEmail: !!currentUser.email,
+        onboarding_completed: currentUser.onboarding_completed,
+        onboarding_completed_type: typeof currentUser.onboarding_completed
+      });
+      return;
+    }
 
     // Don't redirect if already on onboarding page
     if (location.pathname.startsWith('/onboarding')) return;
@@ -65,6 +84,11 @@ export default function OnboardingRedirect({ children }) {
     clog('[OnboardingRedirect] 🔍 Checking onboarding status for user:', currentUser?.email);
     clog('[OnboardingRedirect] 🔍 User onboarding_completed:', currentUser?.onboarding_completed);
     clog('[OnboardingRedirect] 🔍 User onboarding_completed type:', typeof currentUser?.onboarding_completed);
+    clog('[OnboardingRedirect] 🔍 Complete user data available:', {
+      birth_date: currentUser?.birth_date,
+      user_type: currentUser?.user_type,
+      email: currentUser?.email
+    });
 
     const userNeedsOnboarding = needsOnboarding(currentUser);
     clog('[OnboardingRedirect] 🔍 needsOnboarding() result:', userNeedsOnboarding);
@@ -75,10 +99,10 @@ export default function OnboardingRedirect({ children }) {
     } else {
       clog('[OnboardingRedirect] ✅ User does NOT need onboarding, staying on:', location.pathname);
     }
-  }, [currentUser, needsOnboarding, isLoading, navigate, location.pathname, hasCheckedInvitations, hasInvitations]);
+  }, [currentUser, needsOnboarding, isLoading, navigate, location.pathname, hasCheckedInvitations, hasInvitations, userDataFresh]);
 
-  // Show loading if we haven't checked invitations yet (only for logged-in users)
-  if (!hasCheckedInvitations && currentUser) {
+  // Show loading if we haven't checked invitations or fresh data yet (only for logged-in users)
+  if ((!hasCheckedInvitations || !userDataFresh) && currentUser) {
     return null;
   }
 
@@ -95,7 +119,7 @@ export default function OnboardingRedirect({ children }) {
   }
 
   // If user needs onboarding and we're not on onboarding/invitation pages, don't render content
-  if (!isLoading && currentUser && !hasInvitations && needsOnboarding(currentUser) &&
+  if (!isLoading && currentUser && !hasInvitations && userDataFresh && needsOnboarding(currentUser) &&
       !location.pathname.startsWith('/onboarding') &&
       !location.pathname.includes('student-invitations') &&
       !location.pathname.includes('parent-consent')) {

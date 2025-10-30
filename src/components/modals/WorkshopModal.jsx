@@ -157,7 +157,7 @@ export default function WorkshopModal({
         price: parseFloat(formData.price) || 0,
         max_participants: parseInt(formData.max_participants) || null,
         duration_minutes: parseInt(formData.duration_minutes) || null,
-        access_days: formData.access_days === null || formData.access_days === '' ? null : parseInt(formData.access_days)
+        access_days: (formData.access_days === null || formData.access_days === undefined || formData.access_days === '') ? null : (isNaN(parseInt(formData.access_days)) ? null : parseInt(formData.access_days))
       };
 
       let result;

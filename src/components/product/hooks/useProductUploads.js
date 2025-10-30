@@ -89,18 +89,21 @@ export const useProductUploads = (editingProduct = null) => {
       // Determine endpoint and update data based on file type
       switch (fileType) {
         case 'image':
-          if (!editingProduct || !editingProduct.entity_id) {
+          if (!editingProduct || !editingProduct.id) {
             throw new Error('מוצר חייב להישמר לפני העלאת תמונה');
           }
           const entityType = editingProduct?.product_type || 'product';
-          const entityId = editingProduct?.id || 'temp';
-          endpoint = `/assets/upload/image/public?entityType=${entityType}&entityId=${entityId}`;
+          const entityId = editingProduct?.id;
+          endpoint = `/assets/upload?entityType=${entityType}&entityId=${entityId}&assetType=image`;
           updateData.has_image = true;
           break;
 
         case 'marketing_video':
+          if (!editingProduct || !editingProduct.id) {
+            throw new Error('מוצר חייב להישמר לפני העלאת סרטון שיווקי');
+          }
           const entityTypeVideo = editingProduct?.product_type || 'product';
-          endpoint = `/assets/upload/video/public?entityType=${entityTypeVideo}&entityId=${editingProduct?.id || 'temp'}`;
+          endpoint = `/assets/upload/video/public?entityType=${entityTypeVideo}&entityId=${editingProduct.id}`;
           break;
 
         case 'file':
@@ -110,7 +113,7 @@ export const useProductUploads = (editingProduct = null) => {
           if ((editingProduct?.is_published) && uploadedFileInfo?.exists) {
             throw new Error('לא ניתן להחליף קובץ במוצר מפורסם');
           }
-          endpoint = `/assets/upload/file?entityType=file&entityId=${editingProduct.entity_id}`;
+          endpoint = `/assets/upload?entityType=file&entityId=${editingProduct.entity_id}&assetType=document`;
           break;
 
         case 'workshop_video':
@@ -133,17 +136,21 @@ export const useProductUploads = (editingProduct = null) => {
 
         case 'material':
           // Course module material
-          endpoint = `/assets/upload/file?entityType=course&entityId=${editingProduct?.entity_id}&moduleIndex=${moduleIndex}&assetType=material`;
+          endpoint = `/assets/upload?entityType=course&entityId=${editingProduct?.entity_id}&moduleIndex=${moduleIndex}&assetType=material`;
           break;
 
         default:
           throw new Error(`סוג קובץ לא נתמך: ${fileType}`);
       }
 
+      // Create FormData object for the upload
+      const formData = new FormData();
+      formData.append('file', file);
+
       // Perform the upload
       const result = await apiUploadWithProgress(
         endpoint,
-        file,
+        formData,
         (progress) => setUploadProgressValue(uploadKey, progress)
       );
 
@@ -152,10 +159,12 @@ export const useProductUploads = (editingProduct = null) => {
         switch (fileType) {
           case 'image':
             updateData.has_image = true;
+            updateData.image_url = 'HAS_IMAGE'; // Set image_url so UI knows image exists
             break;
           case 'marketing_video':
             setMarketingVideoExists(true);
-            updateData.marketing_video_id = editingProduct?.id || 'temp';
+            updateData.marketing_video_type = 'uploaded';
+            updateData.marketing_video_id = editingProduct?.id;
             break;
           case 'file':
             setUploadedFileInfo({
@@ -165,6 +174,29 @@ export const useProductUploads = (editingProduct = null) => {
             updateData.file_extension = file.name.split('.').pop();
             updateData.file_size = Math.round(file.size / 1024);
             break;
+        }
+
+        // Immediately update the product in database to prevent orphaned files
+        if (editingProduct?.id && Object.keys(updateData).length > 0) {
+          try {
+            const updateResponse = await fetch(`${getApiBase()}/entities/product/${editingProduct.id}`, {
+              method: 'PUT',
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(updateData)
+            });
+
+            if (!updateResponse.ok) {
+              console.error('Failed to update product after file upload:', updateResponse.statusText);
+              // Note: File is already uploaded to S3, but DB update failed
+              // In a production system, you'd want to implement rollback or cleanup
+            }
+          } catch (dbError) {
+            console.error('Database update error after file upload:', dbError);
+            // File uploaded but database not updated - this prevents orphaned files
+          }
         }
 
         toast({
@@ -209,12 +241,13 @@ export const useProductUploads = (editingProduct = null) => {
         case 'image':
           endpoint = `/assets/delete/image?entityType=${editingProduct?.product_type}&entityId=${editingProduct?.id}`;
           updateData.has_image = false;
+          updateData.image_url = null; // Clear image_url so UI knows image is gone
           break;
         case 'marketing_video':
           // Use the same API endpoint as original modal
           endpoint = `/assets/${editingProduct?.product_type}/${editingProduct?.id}?assetType=marketing-video`;
           setMarketingVideoExists(false);
-          updateData.marketing_video_type = null;
+          updateData.marketing_video_type = 'youtube'; // Reset to default
           updateData.marketing_video_id = '';
           updateData.marketing_video_title = '';
           updateData.marketing_video_duration = '';

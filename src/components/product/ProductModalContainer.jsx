@@ -263,7 +263,7 @@ export const ProductModalContainer = ({
         marketing_video_id: (formData.marketing_video_id && formData.marketing_video_id.trim()) ? formData.marketing_video_id : null,
         marketing_video_title: (formData.marketing_video_title && formData.marketing_video_title.trim()) ? formData.marketing_video_title : null,
         marketing_video_duration: formData.marketing_video_duration ? parseInt(formData.marketing_video_duration) || null : null,
-        access_days: formData.access_days === "" ? null : parseInt(formData.access_days) || null,
+        access_days: (formData.access_days === null || formData.access_days === undefined || formData.access_days === "") ? null : (isNaN(parseInt(formData.access_days)) ? null : parseInt(formData.access_days)),
         course_modules: formData.product_type === 'course' ? formData.course_modules : undefined,
         total_duration_minutes: formData.total_duration_minutes,
         creator_user_id: formData.creator_user_id || null
@@ -432,7 +432,9 @@ export const ProductModalContainer = ({
         formData,
         updateFormData,
         isFieldValid,
-        getFieldError
+        getFieldError,
+        globalSettings,
+        isNewProduct
       },
       access: getSectionAccess('accessSettings')
     },

@@ -360,7 +360,7 @@ export const PublishSection = ({
                   </p>
                 </div>
                 <Switch
-                  checked={formData.creator_user_id === null}
+                  checked={editingProduct ? formData.creator_user_id === null : true}
                   onCheckedChange={(checked) => updateFormData({
                     creator_user_id: checked ? null : currentUser?.uid || null
                   })}

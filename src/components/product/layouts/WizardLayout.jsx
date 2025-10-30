@@ -102,6 +102,17 @@ export const WizardLayout = ({
         if (formData.product_type === 'game') {
           return true; // Game products are considered complete when created
         }
+        if (formData.product_type === 'lesson_plan') {
+          // Lesson plans require at least one file in the opening section
+          const hasOpeningFiles = !!(formData.file_configs?.files?.some(file => file.file_role === 'opening'));
+          console.log('🎯 Lesson plan validation debug:', {
+            'formData.file_configs': formData.file_configs,
+            'formData.file_configs?.files?.length': formData.file_configs?.files?.length,
+            'hasOpeningFiles': hasOpeningFiles,
+            'files array': formData.file_configs?.files
+          });
+          return hasOpeningFiles;
+        }
         return true; // Other product types don't have specific requirements
       },
       marketing: () => {
@@ -138,6 +149,8 @@ export const WizardLayout = ({
     formData.tool_url,
     formData.course_modules?.length,
     formData.total_duration_minutes,
+    formData.file_configs?.files?.length, // For lesson plan file validation
+    JSON.stringify(formData.file_configs?.files?.filter(f => f.file_role === 'opening')), // Trigger on opening files change
     hasUploadedFile,
     visibleSections.length // Only depend on length, not the entire array
   ]);

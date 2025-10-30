@@ -234,7 +234,7 @@ export default function ProductModal({
     marketing_video_id: "",
     marketing_video_title: "",
     marketing_video_duration: "",
-    access_days: "",
+    access_days: null,
     is_lifetime_access: true,
     downloads_count: 0,
     course_modules: [],
@@ -357,6 +357,11 @@ export default function ProductModal({
             ...prev,
             access_days: defaultLifetime ? "" : (getDefaultAccessDays(prev.product_type, settings)?.toString() || "30")
           }));
+        } else {
+          setFormData(prev => ({
+            ...prev,
+            access_days: parseInt(prev.access_days) ? parseInt(prev.access_days) : null
+          }));
         }
       }
     } catch (error) {
@@ -378,7 +383,7 @@ export default function ProductModal({
         video_is_private: module.video_is_private ?? false,
         material_is_private: module.material_is_private ?? false,
       })),
-      access_days: product.access_days === null ? "" : product.access_days?.toString() || "",
+      access_days: parseInt(product.access_days) ? parseInt(product.access_days) : null,
       workshop_type: product.workshop_type || (product.video_file_url ? "recorded" : "online_live"),
       scheduled_date: product.scheduled_date ? format(new Date(product.scheduled_date), "yyyy-MM-dd'T'HH:mm") : "",
       meeting_link: product.meeting_link || product.zoom_link || "",
@@ -1013,7 +1018,7 @@ export default function ProductModal({
         marketing_video_id: (formData.marketing_video_id && formData.marketing_video_id.trim()) ? formData.marketing_video_id : null,
         marketing_video_title: (formData.marketing_video_title && formData.marketing_video_title.trim()) ? formData.marketing_video_title : null,
         marketing_video_duration: formData.marketing_video_duration ? parseInt(formData.marketing_video_duration) || null : null,
-        access_days: formData.access_days === "" ? null : parseInt(formData.access_days) || null,
+        access_days: parseInt(formData.access_days) ? parseInt(formData.access_days) : null,
         course_modules: formData.product_type === 'course' ? formData.course_modules : undefined,
         total_duration_minutes: formData.total_duration_minutes
       };
@@ -1108,7 +1113,7 @@ export default function ProductModal({
           marketing_video_id: cleanedData.marketing_video_id,
           marketing_video_title: cleanedData.marketing_video_title,
           marketing_video_duration: cleanedData.marketing_video_duration,
-          access_days: cleanedData.access_days,
+          access_days: parseInt(cleanedData.access_days) ? parseInt(cleanedData.access_days) : null,
           product_type: cleanedData.product_type
         };
 
@@ -1203,7 +1208,7 @@ export default function ProductModal({
           marketing_video_id: cleanedData.marketing_video_id,
           marketing_video_title: cleanedData.marketing_video_title,
           marketing_video_duration: cleanedData.marketing_video_duration,
-          access_days: cleanedData.access_days,
+          access_days: parseInt(cleanedData.access_days) ? parseInt(cleanedData.access_days) : null,
           product_type: cleanedData.product_type,
           // Include entity-specific fields and is_ludora_creator for creation
           ...cleanedData
@@ -2121,7 +2126,7 @@ export default function ProductModal({
                           onCheckedChange={(checked) => {
                             setFormData(prev => ({
                               ...prev,
-                              access_days: checked ? "" : "30"
+                              access_days: checked ? null : (getDefaultAccessDays(prev.product_type, settings) || 30)
                             }));
                           }}
                         />

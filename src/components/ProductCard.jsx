@@ -43,7 +43,8 @@ export default function ProductCard({
   onPdfPreview,
   isExpanded = false,
   onToggleExpanded,
-  onEdit
+  onEdit,
+  showActionBar = true
 }) {
   const navigate = useNavigate();
   const { currentUser } = useUser();
@@ -351,17 +352,19 @@ export default function ProductCard({
             </div>
 
             {/* Bottom: Action Buttons */}
-            <div className="flex justify-center">
-              <ProductActionBar
-                product={{...product, purchase: purchase}}
-                size="default"
-                className="text-base font-semibold"
-                showCartButton={true}
-                onPurchaseSuccess={handlePurchaseSuccess}
-                onFileAccess={onFileAccess}
-                onPdfPreview={onPdfPreview}
-              />
-            </div>
+            {showActionBar && (
+              <div className="flex justify-center">
+                <ProductActionBar
+                  product={{...product, purchase: purchase}}
+                  size="default"
+                  className="text-base font-semibold"
+                  showCartButton={true}
+                  onPurchaseSuccess={handlePurchaseSuccess}
+                  onFileAccess={onFileAccess}
+                  onPdfPreview={onPdfPreview}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>

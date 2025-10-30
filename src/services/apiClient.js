@@ -8,8 +8,16 @@ import { showError } from '@/utils/messaging';
 // Use centralized API base configuration
 const API_BASE = getApiBase();
 
-// Store authentication token in memory
+// Store authentication token in memory (but always sync with localStorage)
 let authToken = null;
+
+// Function to get current auth token (always read from localStorage for consistency)
+function getCurrentAuthToken() {
+  if (typeof localStorage !== 'undefined') {
+    authToken = localStorage.getItem('authToken');
+  }
+  return authToken;
+}
 
 export async function getCurrentUser() {
   return apiRequest('/auth/me');
@@ -51,18 +59,16 @@ export async function logout() {
   });
 }
 
-// Initialize auth token from localStorage on app start
-if (typeof localStorage !== 'undefined') {
-  authToken = localStorage.getItem('authToken');
-}
+// Note: Token initialization is now handled by getCurrentAuthToken() function
 
 // Generic API request helper with authentication
 export async function apiRequest(endpoint, options = {}) {
   const url = `${API_BASE}${endpoint}`;
+  const currentToken = getCurrentAuthToken();
 
   clog(`🌐 API Request: ${options.method || 'GET'} ${url}`);
   clog('📊 API Base:', API_BASE);
-  clog('🔑 Auth Token:', authToken ? `${authToken.substring(0, 20)}...` : 'None');
+  clog('🔑 Auth Token:', currentToken ? `${currentToken.substring(0, 20)}...` : 'None');
 
   const headers = {
     'Content-Type': 'application/json',
@@ -70,8 +76,8 @@ export async function apiRequest(endpoint, options = {}) {
   };
 
   // Add auth token if available
-  if (authToken) {
-    headers['Authorization'] = `Bearer ${authToken}`;
+  if (currentToken) {
+    headers['Authorization'] = `Bearer ${currentToken}`;
   }
 
   const defaultOptions = {
@@ -123,18 +129,19 @@ export async function apiRequest(endpoint, options = {}) {
 // File download helper - returns blob instead of JSON
 export async function apiDownload(endpoint, options = {}) {
   const url = `${API_BASE}${endpoint}`;
+  const currentToken = getCurrentAuthToken();
 
   clog(`📥 API Download: ${options.method || 'GET'} ${url}`);
   clog('📊 API Base:', API_BASE);
-  clog('🔑 Auth Token:', authToken ? `${authToken.substring(0, 20)}...` : 'None');
+  clog('🔑 Auth Token:', currentToken ? `${currentToken.substring(0, 20)}...` : 'None');
 
   const headers = {
     ...options.headers
   };
 
   // Add auth token if available
-  if (authToken) {
-    headers['Authorization'] = `Bearer ${authToken}`;
+  if (currentToken) {
+    headers['Authorization'] = `Bearer ${currentToken}`;
   }
 
   const defaultOptions = {
@@ -181,10 +188,11 @@ export async function apiDownload(endpoint, options = {}) {
 // File/video upload with progress tracking
 export async function apiUploadWithProgress(endpoint, formData, onProgress = null, options = {}) {
   const url = `${API_BASE}${endpoint}`;
+  const currentToken = getCurrentAuthToken();
 
   clog(`📤 API Upload with progress: POST ${url}`);
   clog('📊 API Base:', API_BASE);
-  clog('🔑 Auth Token:', authToken ? `${authToken.substring(0, 20)}...` : 'None');
+  clog('🔑 Auth Token:', currentToken ? `${currentToken.substring(0, 20)}...` : 'None');
 
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
@@ -248,8 +256,8 @@ export async function apiUploadWithProgress(endpoint, formData, onProgress = nul
     xhr.open('POST', url, true);
 
     // Add auth token
-    if (authToken) {
-      xhr.setRequestHeader('Authorization', `Bearer ${authToken}`);
+    if (currentToken) {
+      xhr.setRequestHeader('Authorization', `Bearer ${currentToken}`);
     }
 
     // Add custom headers (but NOT Content-Type - let browser set it with boundary for multipart)

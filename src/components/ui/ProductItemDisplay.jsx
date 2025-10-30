@@ -54,6 +54,7 @@ const HEBREW_GRADES = {
  * @param {boolean} showTags - Show product tags
  * @param {boolean} showImage - Show product image
  * @param {boolean} showTypeIcon - Show product type icon
+ * @param {boolean} showActionBar - Show ProductActionBar (default: true)
  * @param {boolean} selected - Selection state (for select mode)
  * @param {function} onSelect - Selection callback
  * @param {function} onPurchase - Purchase callback
@@ -75,6 +76,7 @@ export default function ProductItemDisplay({
   showTags = true,
   showImage = true,
   showTypeIcon = true,
+  showActionBar = true,
   selected = false,
   onSelect = null,
   onPurchase = null,
@@ -374,7 +376,7 @@ export default function ProductItemDisplay({
               )}
 
               {/* Action buttons */}
-              {mode === 'purchase' ? (
+              {mode === 'purchase' && showActionBar ? (
                 <ProductActionBar
                   product={{...product, purchase: purchase}}
                   size={config.buttonSize}
@@ -459,6 +461,19 @@ export default function ProductItemDisplay({
           {showDescription ? (getTruncatedDescription() || getSmartContext()) : getSmartContext()}
         </p>
 
+        {/* Price display for purchase mode */}
+        {mode === 'purchase' && showPrice && (
+          <div className="mb-3">
+            <PriceDisplayTag
+              originalPrice={product.price}
+              discount={product.discount || 0}
+              variant="simple"
+              size="sm"
+              showDiscount={true}
+            />
+          </div>
+        )}
+
         {/* Bottom section */}
         <div className="flex items-center justify-between">
           <div className="flex flex-wrap gap-1">
@@ -481,7 +496,7 @@ export default function ProductItemDisplay({
           </div>
 
           {/* Actions */}
-          {mode === 'purchase' ? (
+          {mode === 'purchase' && showActionBar ? (
             <ProductActionBar
               product={{...product, purchase: purchase}}
               size={config.buttonSize}
@@ -622,7 +637,7 @@ export default function ProductItemDisplay({
 
           {/* Action buttons */}
           <div className="flex items-center justify-between">
-            {mode === 'purchase' ? (
+            {mode === 'purchase' && showActionBar ? (
               <ProductActionBar
                 product={{...product, purchase: purchase}}
                 size={config.buttonSize}

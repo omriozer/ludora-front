@@ -13,12 +13,66 @@ export const AccessSettingsSection = ({
   formData,
   updateFormData,
   isFieldValid,
-  getFieldError
+  getFieldError,
+  globalSettings = {},
+  isNewProduct = false
 }) => {
+
+  // Helper function to get default access days based on product type
+  const getDefaultAccessDays = () => {
+    switch (formData.product_type) {
+      case 'file':
+        return globalSettings.default_file_access_days || 365;
+      case 'course':
+        return globalSettings.default_course_access_days || 365;
+      case 'workshop':
+        return globalSettings.default_workshop_access_days || 365;
+      case 'game':
+        return globalSettings.default_game_access_days || 365;
+      case 'tool':
+        return globalSettings.default_tool_access_days || 365;
+      case 'lesson_plan':
+        return globalSettings.default_lesson_plan_access_days || 365;
+      default:
+        return 365;
+    }
+  };
+
+  // Helper function to check if lifetime access is enabled by default for this product type
+  const getDefaultLifetimeAccess = () => {
+    switch (formData.product_type) {
+      case 'file':
+        return globalSettings.file_lifetime_access || false;
+      case 'course':
+        return globalSettings.course_lifetime_access || false;
+      case 'workshop':
+        return globalSettings.workshop_lifetime_access || false;
+      case 'game':
+        return globalSettings.game_lifetime_access || false;
+      case 'tool':
+        return globalSettings.tool_lifetime_access || false;
+      case 'lesson_plan':
+        return globalSettings.lesson_plan_lifetime_access || false;
+      default:
+        return false;
+    }
+  };
 
   // Helper function to check if access is lifetime
   const isLifetimeAccess = (accessDays) => {
-    return !accessDays || accessDays === '' || accessDays === null;
+    // For NEW products: check if we should default to lifetime access based on global settings
+    if (isNewProduct) {
+      // If access_days is explicitly set, use that value
+      if (accessDays !== null && accessDays !== undefined && accessDays !== '') {
+        return false; // Has explicit days value
+      }
+
+      // If not set, check global default for this product type
+      return getDefaultLifetimeAccess();
+    }
+
+    // For EXISTING products: empty/null means lifetime access
+    return !accessDays || accessDays === '' || accessDays === null || accessDays === undefined;
   };
 
   return (
@@ -41,7 +95,7 @@ export const AccessSettingsSection = ({
                   checked={isLifetimeAccess(formData.access_days)}
                   onCheckedChange={(checked) => {
                     updateFormData({
-                      access_days: checked ? "" : "30"
+                      access_days: checked ? null : getDefaultAccessDays()
                     });
                   }}
                 />
@@ -50,17 +104,29 @@ export const AccessSettingsSection = ({
                 <Label className="text-sm">ימי גישה (השאר ריק לברירת מחדל)</Label>
                 <Input
                   type="number"
-                  value={formData.access_days || ''}
-                  onChange={(e) => updateFormData({ access_days: e.target.value })}
+                  value={formData.access_days && !isNaN(formData.access_days) ? formData.access_days : ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    updateFormData({
+                      access_days: value === '' ? null : (isNaN(parseInt(value)) ? null : parseInt(value))
+                    });
+                  }}
                   disabled={isLifetimeAccess(formData.access_days)}
-                  placeholder="השאר ריק לברירת מחדל"
+                  placeholder={
+                    isNewProduct && !formData.access_days ?
+                      (getDefaultLifetimeAccess() ? 'ברירת מחדל: גישה לכל החיים' : `ברירת מחדל: ${getDefaultAccessDays()} ימים`) :
+                      `ברירת מחדל: ${getDefaultAccessDays()} ימים`
+                  }
                   className={!isFieldValid('access_days') ? 'border-red-500' : ''}
                 />
                 {!isFieldValid('access_days') && (
                   <p className="text-sm text-red-600">{getFieldError('access_days')}</p>
                 )}
                 <p className="text-xs text-gray-500">
-                  אם לא מוגדר, יתפוס ברירת מחדל מההגדרות הכלליות
+                  {getDefaultLifetimeAccess()
+                    ? 'ברירת המחדל הכללית: גישה לכל החיים'
+                    : `ברירת המחדל הכללית: ${getDefaultAccessDays()} ימים`
+                  }
                 </p>
               </div>
             </div>

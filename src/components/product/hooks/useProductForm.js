@@ -8,6 +8,12 @@ export const useProductForm = (editingProduct = null) => {
   // Initial form data based on editing vs creating
   const getInitialFormData = useCallback(() => {
     if (editingProduct) {
+      console.log('🔍 useProductForm initializing with editingProduct:', {
+        id: editingProduct.id,
+        product_type: editingProduct.product_type,
+        hasFileConfigs: !!editingProduct.file_configs,
+        fileConfigs: editingProduct.file_configs
+      });
       return {
         product_type: editingProduct.product_type || '',
         title: editingProduct.title || '',
@@ -17,7 +23,7 @@ export const useProductForm = (editingProduct = null) => {
         is_published: editingProduct.is_published ?? false,
         category: editingProduct.category || '',
         tags: editingProduct.tags || [],
-        access_days: editingProduct.access_days || '',
+        access_days: editingProduct.access_days,
         total_duration_minutes: editingProduct.total_duration_minutes || 0,
         target_audience: editingProduct.target_audience || '',
         // Marketing fields
@@ -38,6 +44,12 @@ export const useProductForm = (editingProduct = null) => {
         add_copyrights_footer: editingProduct.add_copyrights_footer ?? true,
         creator_user_id: editingProduct.creator_user_id,
         image_is_private: editingProduct.image_is_private ?? false,
+        // Lesson plan specific
+        file_configs: editingProduct.file_configs || null,
+        estimated_duration: editingProduct.estimated_duration || '',
+        total_slides: editingProduct.total_slides || '',
+        teacher_notes: editingProduct.teacher_notes || '',
+        slide_configs: editingProduct.slide_configs || [],
         // Workshop specific
         workshop_video_url: editingProduct.workshop_video_url || '',
         // Course specific
@@ -65,7 +77,7 @@ export const useProductForm = (editingProduct = null) => {
       is_published: false,
       category: '',
       tags: [],
-      access_days: '',
+      access_days: null,
       total_duration_minutes: 0,
       target_audience: '',
       // Marketing fields
@@ -86,6 +98,12 @@ export const useProductForm = (editingProduct = null) => {
       add_copyrights_footer: true,
       creator_user_id: null, // Will be set to current user when creating
       image_is_private: false,
+      // Lesson plan specific
+      file_configs: null,
+      estimated_duration: '',
+      total_slides: '',
+      teacher_notes: '',
+      slide_configs: [],
       // Workshop specific
       workshop_video_url: '',
       // Course specific
