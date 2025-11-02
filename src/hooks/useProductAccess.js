@@ -11,6 +11,14 @@ import { useMemo } from 'react';
 const findUserPurchaseForProduct = (product, userPurchases = []) => {
   if (!product) return null;
 
+  // DEBUG: Log what we're checking for embedded purchase
+  console.log(`🔍 findUserPurchaseForProduct Debug for product ${product.id}:`, {
+    product,
+    hasPurchaseProperty: !!product.purchase,
+    purchaseValue: product.purchase,
+    purchaseType: typeof product.purchase
+  });
+
   // 1. Check embedded purchase first (ProductDetails style)
   if (product.purchase) {
     console.log(`🔍 Found embedded purchase for product ${product.id}:`, product.purchase);

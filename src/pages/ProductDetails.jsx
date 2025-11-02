@@ -247,6 +247,9 @@ export default function ProductDetails() {
 
       setHasAccess(hasUserAccess);
       setPurchase(userPurchase);
+
+      // Ensure the item includes the purchase data immediately
+      setItem({...productDetails, purchase: userPurchase});
     } catch (e) {
       console.error("Error loading product:", e);
       setError("שגיאה בטעינת הנתונים");
@@ -417,13 +420,19 @@ export default function ProductDetails() {
 
                   {/* Purchase Button - Unified Design */}
                   <ProductActionBar
-                    product={{...item, purchase: purchase}}
+                    product={item}
                     className="px-3 sm:px-6 md:px-8 py-2 sm:py-3 flex-shrink-0 text-xs sm:text-sm md:text-base"
                     size="sm"
                     showCartButton={false}
                     onFileAccess={handleFileAccess}
                     onPdfPreview={handlePdfPreview}
                   />
+                  {/* DEBUG: Log what we're passing to ProductActionBar */}
+                  {console.log('🚀 ProductDetails passing to ProductActionBar:', {
+                    productId: item?.id,
+                    itemPurchase: item?.purchase,
+                    embeddedPurchase: item?.purchase
+                  })}
                 </div>
               </div>
             </div>
@@ -521,7 +530,7 @@ export default function ProductDetails() {
                 {/* Action Buttons */}
                 <div className="space-y-3 sm:space-y-4">
                   <ProductActionBar
-                    product={{...item, purchase: purchase}}
+                    product={item}
                     className="py-3 sm:py-4 text-base sm:text-lg font-semibold rounded-2xl shadow-lg"
                     size="lg"
                     fullWidth={true}
@@ -602,7 +611,7 @@ export default function ProductDetails() {
                 {/* Action Buttons */}
                 <div className="flex flex-col gap-3 sm:gap-4 max-w-md mx-auto">
                   <ProductActionBar
-                    product={{...item, purchase: purchase}}
+                    product={item}
                     className="py-3 sm:py-4 px-8 sm:px-12 text-base sm:text-lg font-semibold rounded-2xl shadow-xl"
                     size="lg"
                     fullWidth={true}
@@ -677,7 +686,7 @@ export default function ProductDetails() {
                   <Play className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400 mx-auto mb-3 sm:mb-4" />
                   <p className="text-sm sm:text-base text-gray-600 mb-3 sm:mb-4">צפייה ב{getProductTypeName('workshop', 'singular')} המוקלטת זמינה לאחר רכישה</p>
                   <ProductActionBar
-                    product={{...item, purchase: purchase}}
+                    product={item}
                     className="py-3 px-6 sm:py-4 sm:px-12 text-base sm:text-lg font-semibold rounded-xl sm:rounded-2xl shadow-xl"
                     size="lg"
                     showCartButton={false}
