@@ -98,7 +98,7 @@ export default function ClassroomForm({ isOpen, onClose, onSubmit, classroom = n
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px]" hideCloseButton={true}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3 text-xl">
             <div className="w-8 h-8 bg-gradient-to-br from-teal-500 to-blue-600 rounded-lg flex items-center justify-center">

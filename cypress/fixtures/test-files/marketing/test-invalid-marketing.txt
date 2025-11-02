@@ -1,0 +1,1 @@
+Test invalid marketing file - wrong format for testing file type validation

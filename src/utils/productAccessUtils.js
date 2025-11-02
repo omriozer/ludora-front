@@ -7,6 +7,13 @@ import { getProductTypeName } from "@/config/productTypes";
 // Same logic as Files.jsx for checking active access
 export const hasActiveAccess = (purchase) => {
   if (!purchase) return false;
+
+  // Only grant access for paid or completed purchases, not cart purchases
+  const validPaymentStatuses = ['paid', 'completed'];
+  if (!validPaymentStatuses.includes(purchase.payment_status)) {
+    return false;
+  }
+
   // null access_expires_at = lifetime access
   if (!purchase.access_expires_at) return true;
   // future access_expires_at = has access

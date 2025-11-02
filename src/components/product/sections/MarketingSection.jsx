@@ -79,6 +79,24 @@ export const MarketingSection = ({
     });
   };
 
+  // Handle image upload
+  const handleImageUpload = async (event) => {
+    try {
+      const result = await handleFileUpload(event, 'image');
+      return result;
+    } catch (error) {
+      console.error('Image upload error:', error);
+
+      // Clear the file input on error so user can try again
+      const fileInput = document.getElementById('product-image-upload');
+      if (fileInput) {
+        fileInput.value = '';
+      }
+
+      return { success: false, error: error.message };
+    }
+  };
+
   // Handle video upload
   const handleVideoUpload = async (event) => {
     try {
@@ -92,6 +110,13 @@ export const MarketingSection = ({
       return result;
     } catch (error) {
       console.error('Video upload error:', error);
+
+      // Clear the file input on error so user can try again
+      const fileInput = document.getElementById('marketing-video-upload');
+      if (fileInput) {
+        fileInput.value = '';
+      }
+
       return { success: false, error: error.message };
     }
   };
@@ -151,7 +176,7 @@ export const MarketingSection = ({
 
             <div className="space-y-3">
               {/* Current Image Preview */}
-              {formData.image_url && editingProduct && (
+              {editingProduct?.has_image && (
                 <div className="relative">
                   <img
                     src={getProductImageUrl(editingProduct)}
@@ -181,7 +206,7 @@ export const MarketingSection = ({
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={(e) => handleFileUpload(e, 'image')}
+                  onChange={handleImageUpload}
                   className="hidden"
                   id="product-image-upload"
                   disabled={isUploading('image')}
@@ -203,7 +228,7 @@ export const MarketingSection = ({
                       ) : (
                         <>
                           <Upload className="w-4 h-4 ml-2" />
-                          {formData.image_url ? 'החלף תמונה' : 'העלה תמונה'}
+                          {editingProduct?.has_image ? 'החלף תמונה' : 'העלה תמונה'}
                         </>
                       )}
                     </span>
@@ -445,9 +470,9 @@ export const MarketingSection = ({
             <h4 className="font-medium mb-3">סטטוס חומרי שיווק</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="flex items-center gap-2">
-                <div className={`w-3 h-3 rounded-full ${formData.image_url ? 'bg-green-500' : 'bg-gray-300'}`} />
+                <div className={`w-3 h-3 rounded-full ${editingProduct?.has_image ? 'bg-green-500' : 'bg-gray-300'}`} />
                 <span className="text-sm">
-                  {formData.image_url ? 'יש תמונת מוצר' : 'אין תמונת מוצר'}
+                  {editingProduct?.has_image ? 'יש תמונת מוצר' : 'אין תמונת מוצר'}
                 </span>
               </div>
 

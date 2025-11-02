@@ -1,0 +1,80 @@
+{
+  "videoContent": {
+    "productId": "video-prod-123",
+    "productName": "Test Video Workshop",
+    "videoId": "video-file-456",
+    "videoUrl": "http://localhost:3003/api/files/video-file-456.mp4",
+    "purchaseId": "purchase-789",
+    "userId": "test-user-001",
+    "purchaseDate": "2025-10-31T10:00:00Z",
+    "accessType": "unlimited",
+    "hasDownloadAccess": true
+  },
+  "courseContent": {
+    "productId": "course-prod-234",
+    "productName": "Test Complete Course",
+    "courseId": "course-file-567",
+    "purchaseId": "purchase-890",
+    "userId": "test-user-001",
+    "modules": [
+      {
+        "id": 1,
+        "title": "Module 1: Introduction",
+        "videoId": "mod1-video-001",
+        "videoUrl": "http://localhost:3003/api/files/mod1-video-001.mp4",
+        "duration": 300,
+        "completed": false
+      },
+      {
+        "id": 2,
+        "title": "Module 2: Advanced Topics",
+        "videoId": "mod2-video-002",
+        "videoUrl": "http://localhost:3003/api/files/mod2-video-002.mp4",
+        "duration": 450,
+        "completed": false
+      },
+      {
+        "id": 3,
+        "title": "Module 3: Practical Examples",
+        "videoId": "mod3-video-003",
+        "videoUrl": "http://localhost:3003/api/files/mod3-video-003.mp4",
+        "duration": 600,
+        "completed": false
+      }
+    ],
+    "progress": {
+      "currentModule": 1,
+      "completedModules": 0,
+      "totalProgress": 0
+    }
+  },
+  "fileContent": {
+    "productId": "file-prod-345",
+    "productName": "Test File Product",
+    "fileId": "file-document-678",
+    "fileName": "test-content-document.pdf",
+    "fileUrl": "http://localhost:3003/api/files/file-document-678.pdf",
+    "purchaseId": "purchase-901",
+    "userId": "test-user-001",
+    "downloadCount": 0,
+    "maxDownloads": 5,
+    "fileSize": 2048576,
+    "fileType": "application/pdf"
+  },
+  "unpurchasedContent": {
+    "productId": "unpurchased-prod-999",
+    "productName": "Unpurchased Video Content",
+    "videoId": "restricted-video-999",
+    "requiresPurchase": true,
+    "price": 29.99,
+    "currency": "ILS"
+  },
+  "expiredContent": {
+    "productId": "expired-prod-111",
+    "productName": "Expired Access Content",
+    "purchaseId": "expired-purchase-222",
+    "userId": "test-user-001",
+    "expiryDate": "2025-10-01T00:00:00Z",
+    "isExpired": true
+  }
+}

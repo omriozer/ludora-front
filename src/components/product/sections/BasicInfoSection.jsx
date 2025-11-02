@@ -160,6 +160,7 @@ export const BasicInfoSection = ({
               min="0"
               value={formData.price || ''}
               onChange={(e) => updateFormData({ price: e.target.value })}
+              onWheel={(e) => e.target.blur()} // Prevent scroll from changing value
               placeholder="0.00"
               className={`mt-1 ${!isFieldValid('price') ? 'border-red-500' : ''}`}
             />

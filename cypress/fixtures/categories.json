@@ -1,0 +1,132 @@
+{
+  "primaryCategories": [
+    {
+      "id": 1,
+      "name": "Mathematics",
+      "nameHebrew": "מתמטיקה",
+      "description": "Math resources and materials",
+      "isActive": true,
+      "sortOrder": 1
+    },
+    {
+      "id": 2,
+      "name": "Language Arts",
+      "nameHebrew": "אמנויות השפה",
+      "description": "Language and literature resources",
+      "isActive": true,
+      "sortOrder": 2
+    },
+    {
+      "id": 3,
+      "name": "Science",
+      "nameHebrew": "מדעים",
+      "description": "Science education materials",
+      "isActive": true,
+      "sortOrder": 3
+    },
+    {
+      "id": 4,
+      "name": "Technology",
+      "nameHebrew": "טכנולוגיה",
+      "description": "Technology and digital literacy",
+      "isActive": true,
+      "sortOrder": 4
+    },
+    {
+      "id": 5,
+      "name": "Arts",
+      "nameHebrew": "אמנויות",
+      "description": "Creative arts and expression",
+      "isActive": true,
+      "sortOrder": 5
+    }
+  ],
+  "subCategories": [
+    {
+      "id": 101,
+      "name": "Algebra",
+      "nameHebrew": "אלגברה",
+      "parentId": 1,
+      "isActive": true
+    },
+    {
+      "id": 102,
+      "name": "Geometry",
+      "nameHebrew": "גיאומטריה",
+      "parentId": 1,
+      "isActive": true
+    },
+    {
+      "id": 201,
+      "name": "Hebrew Literature",
+      "nameHebrew": "ספרות עברית",
+      "parentId": 2,
+      "isActive": true
+    },
+    {
+      "id": 202,
+      "name": "Creative Writing",
+      "nameHebrew": "כתיבה יצירתית",
+      "parentId": 2,
+      "isActive": true
+    },
+    {
+      "id": 301,
+      "name": "Physics",
+      "nameHebrew": "פיזיקה",
+      "parentId": 3,
+      "isActive": true
+    },
+    {
+      "id": 302,
+      "name": "Biology",
+      "nameHebrew": "ביולוגיה",
+      "parentId": 3,
+      "isActive": true
+    }
+  ],
+  "gradeCategories": [
+    {
+      "id": "grade-1",
+      "name": "Grade 1",
+      "nameHebrew": "כיתה א",
+      "ageRange": "6-7",
+      "isActive": true
+    },
+    {
+      "id": "grade-2",
+      "name": "Grade 2",
+      "nameHebrew": "כיתה ב",
+      "ageRange": "7-8",
+      "isActive": true
+    },
+    {
+      "id": "grade-3",
+      "name": "Grade 3",
+      "nameHebrew": "כיתה ג",
+      "ageRange": "8-9",
+      "isActive": true
+    },
+    {
+      "id": "grade-4",
+      "name": "Grade 4",
+      "nameHebrew": "כיתה ד",
+      "ageRange": "9-10",
+      "isActive": true
+    },
+    {
+      "id": "grade-5",
+      "name": "Grade 5",
+      "nameHebrew": "כיתה ה",
+      "ageRange": "10-11",
+      "isActive": true
+    },
+    {
+      "id": "grade-6",
+      "name": "Grade 6",
+      "nameHebrew": "כיתה ו",
+      "ageRange": "11-12",
+      "isActive": true
+    }
+  ]
+}

@@ -34,7 +34,7 @@ export default function BuyProductButton({
   const navigate = useNavigate();
   const [isProcessing, setIsProcessing] = useState(false);
   const { openLoginModal } = useLoginModal();
-  const { addToCart } = useCart();
+  const { addToCart, refreshCart } = useCart();
 
   const {
     canPurchase,
@@ -81,9 +81,20 @@ export default function BuyProductButton({
       const entityType = productType;
       const entityId = product.entity_id || product.id;
 
+      console.log('💰 BuyProductButton: Purchase data being sent:', {
+        productId: product.id,
+        entityType,
+        entityId,
+        productPrice: product.price,
+        productTitle: product.title,
+        productType: product.product_type
+      });
+
       // Create purchase using new API
       const result = await paymentClient.createPurchase(entityType, entityId, {
         product_title: product.title,
+        product_price: product.price, // Add price to additional data
+        product_id: product.id, // Add product ID for backend reference
         source: 'BuyProductButton'
       });
 
@@ -94,6 +105,9 @@ export default function BuyProductButton({
 
         if (isCompleted || isFreeItem) {
           // Free item - completed immediately
+          console.log('🛒 BuyProductButton: Taking FREE/COMPLETED path - calling refreshCart()');
+          refreshCart(); // Sync state to update ProductActionBar immediately
+
           toast({
             title: "מוצר התקבל בהצלחה!",
             description: `${product.title} נוסף לספרייה שלך`,
@@ -106,14 +120,19 @@ export default function BuyProductButton({
 
           // Redirect based on product type
           if (entityType === 'file') {
-            navigate(`/product-details?type=${entityType}&id=${entityId}`);
+            // Use product ID for redirect, not entity ID
+            console.log('🛒 BuyProductButton: Redirecting to product details with product ID:', product.id);
+            navigate(`/product-details?product=${product.id}`);
           } else {
-            // For other types, reload to show access
-            window.location.reload();
+            // For other types, let the UI update naturally without reload
+            // Our event system will handle the UI updates
+            console.log('🛒 BuyProductButton: Skipping reload - letting event system handle UI updates');
           }
         } else {
           // Paid item - added to cart
+          console.log('🛒 BuyProductButton: Taking PAID CART path - calling addToCart() and refreshCart()');
           addToCart();
+          refreshCart(); // Sync cart state to update ProductActionBar
 
           toast({
             title: "נוסף לעגלה",

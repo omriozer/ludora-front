@@ -177,7 +177,7 @@ export const getAccessActionText = (action, productType) => {
 export const getPurchaseActionText = (action, productType) => {
   switch (action) {
     case 'free':
-      return `קבל ${getProductTypeName(productType)}`;
+      return 'הוספה לספרייה'; // Universal text for all free products
     case 'buy':
       return `רכוש ${getProductTypeName(productType)}`;
     case 'checkout':

@@ -103,6 +103,14 @@ export default function BrandSettings() {
       }
     } catch (error) {
       console.error('Error uploading logo:', error);
+
+      // Clear the file input on error so user can try again
+      const fileInput = document.getElementById('logo-upload');
+      if (fileInput) {
+        fileInput.value = '';
+      }
+      setLogoFile(null);
+
       showMessage('error', 'שגיאה בהעלאת הלוגו');
     }
     setIsUploading(false);

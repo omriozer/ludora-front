@@ -111,6 +111,7 @@ export const AccessSettingsSection = ({
                       access_days: value === '' ? null : (isNaN(parseInt(value)) ? null : parseInt(value))
                     });
                   }}
+                  onWheel={(e) => e.target.blur()} // Prevent scroll from changing value
                   disabled={isLifetimeAccess(formData.access_days)}
                   placeholder={
                     isNewProduct && !formData.access_days ?

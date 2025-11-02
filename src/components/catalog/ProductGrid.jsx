@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Masonry from 'react-masonry-css';
 import ProductCard from '@/components/ProductCard';
 import { apiDownload } from '@/services/apiClient';
 import PdfViewer from '@/components/pdf/PdfViewer';
-import ProductModal from '@/components/modals/ProductModal';
+import { showConfirm } from '@/utils/messaging';
 
 /**
  * Unified Product Grid Component
@@ -17,6 +18,7 @@ export default function ProductGrid({
   currentUser,
   userPurchases = []
 }) {
+  const navigate = useNavigate();
 
   // Enhanced file access logic with PDF viewer support (same as ProductDetails)
   const handleFileAccess = async (file) => {
@@ -91,27 +93,21 @@ export default function ProductGrid({
   const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
 
-  // Product edit modal state
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [editingProduct, setEditingProduct] = useState(null);
-
   // Handle card expansion toggle - only one card can be expanded at a time
   const handleToggleExpanded = (productId) => {
     setExpandedCardId(expandedCardId === productId ? null : productId);
   };
 
-  // Handle product edit
-  const handleProductEdit = (product) => {
-    setEditingProduct(product);
-    setShowEditModal(true);
-  };
-
-  // Handle modal save
-  const handleModalSave = () => {
-    setShowEditModal(false);
-    setEditingProduct(null);
-    // Optionally reload data or trigger refresh
-    console.log('Product updated successfully');
+  // Handle product edit - navigate to edit page
+  const handleProductEdit = async (product) => {
+    const confirmed = await showConfirm(
+      "עריכת מוצר",
+      `האם ברצונך לערוך את המוצר "${product.title}"?\n\nתועבר לעמוד עריכת מוצרים.`,
+      { confirmText: "ערוך מוצר", cancelText: "ביטול" }
+    );
+    if (confirmed) {
+      navigate(`/products/edit/${product.id}`);
+    }
   };
 
   return (
@@ -161,15 +157,6 @@ export default function ProductGrid({
           onClose={() => setPdfViewerOpen(false)}
         />
       )}
-
-      {/* Product Edit Modal */}
-      <ProductModal
-        isOpen={showEditModal}
-        onClose={() => setShowEditModal(false)}
-        editingProduct={editingProduct}
-        onSave={handleModalSave}
-        currentUser={currentUser}
-      />
     </motion.div>
   );
 }

@@ -231,12 +231,18 @@ export default function ProductDetails() {
       const userPurchase = productDetails.purchase || null;
       const hasUserAccess = hasActiveAccess(userPurchase);
 
-      // DEBUG: Log access calculation
-      console.log('Access Debug:', {
+      // DEBUG: Log access calculation with more detail
+      console.log('🔐 ProductDetails Access Debug:', {
         productId: productDetails.id,
+        productTitle: productDetails.title,
+        productPrice: productDetails.price,
         userPurchase,
         hasUserAccess,
-        paymentStatus: userPurchase?.payment_status
+        paymentStatus: userPurchase?.payment_status,
+        paymentAmount: userPurchase?.payment_amount,
+        isFreeProduct: !productDetails.price || productDetails.price === 0,
+        purchaseType: userPurchase?.purchasable_type,
+        purchaseId: userPurchase?.id
       });
 
       setHasAccess(hasUserAccess);
@@ -250,6 +256,23 @@ export default function ProductDetails() {
 
   useEffect(() => {
     loadData();
+  }, [loadData]);
+
+  // Listen for cart changes to refresh purchase data
+  useEffect(() => {
+    const handleCartChange = () => {
+      console.log('🎧 ProductDetails: Received cart change event - refreshing data');
+      loadData();
+    };
+
+    console.log('🎧 ProductDetails: Setting up cart change listener');
+    // Listen for cart change events
+    window.addEventListener('ludora-cart-changed', handleCartChange);
+
+    return () => {
+      console.log('🎧 ProductDetails: Removing cart change listener');
+      window.removeEventListener('ludora-cart-changed', handleCartChange);
+    };
   }, [loadData]);
 
 

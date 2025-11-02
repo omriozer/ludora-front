@@ -42,7 +42,7 @@ import {
 
 
 export default function Curriculum() {
-  const { currentUser } = useUser();
+  const { currentUser, settings, settingsLoading } = useUser();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Get current selections from URL
@@ -50,8 +50,6 @@ export default function Curriculum() {
   const selectedGrade = searchParams.get('grade') || '';
 
   // State management
-  const [settings, setSettings] = useState(null);
-  const [settingsLoading, setSettingsLoading] = useState(true);
   const [curriculumItems, setCurriculumItems] = useState([]);
   const [currentCurriculum, setCurrentCurriculum] = useState(null);
   const [itemsLoading, setItemsLoading] = useState(false);
@@ -89,12 +87,7 @@ export default function Curriculum() {
   const isAdmin = currentUser?.role === 'admin';
   const isTeacher = currentUser?.role === 'teacher' || isAdmin;
 
-  // Load settings on component mount
-  useEffect(() => {
-    loadSettings();
-  }, []);
-
-  // Load available combinations for non-admin users
+  // Load available combinations for non-admin users when settings are available
   useEffect(() => {
     if (!isAdmin && settings) {
       loadAvailableCombinations();
@@ -119,24 +112,6 @@ export default function Curriculum() {
       setSelectorsCollapsed(false);
     }
   }, [selectedSubject, selectedGrade]);
-
-  const loadSettings = async () => {
-    setSettingsLoading(true);
-    try {
-      const settingsData = await Settings.find();
-      if (settingsData.length > 0) {
-        setSettings(settingsData[0]);
-      }
-    } catch (error) {
-      cerror('Error loading settings:', error);
-      toast({
-        title: "שגיאה",
-        description: "שגיאה בטעינת הגדרות המערכת",
-        variant: "destructive"
-      });
-    }
-    setSettingsLoading(false);
-  };
 
   // Load available subject/grade combinations for non-admin users using optimized API
   const loadAvailableCombinations = async () => {

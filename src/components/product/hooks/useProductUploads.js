@@ -2,6 +2,39 @@ import { useState, useCallback, useEffect } from 'react';
 import { apiUploadWithProgress, apiRequest } from '@/services/apiClient';
 import { getApiBase } from '@/utils/api.js';
 import { toast } from '@/components/ui/use-toast';
+import { useGlobalAuthErrorHandler } from '@/components/providers/AuthErrorProvider';
+
+/**
+ * Maps product types to backend-supported entity types for content assets
+ * Backend supports: ["workshop", "course", "file", "tool"]
+ */
+const getContentEntityType = (productType) => {
+  switch (productType) {
+    case 'workshop':
+      return 'workshop';
+    case 'course':
+      return 'course';
+    case 'file':
+      return 'file';
+    case 'tool':
+      return 'tool';
+    case 'lesson_plan':
+      return 'file'; // Lesson plan content files are stored as file entities
+    case 'game':
+      return 'tool'; // Game content is stored as tool entities
+    default:
+      return 'file'; // Default fallback for unknown types
+  }
+};
+
+/**
+ * Maps product types to backend-supported entity types for marketing assets (images, videos)
+ * Marketing assets always belong to the Product layer and use the actual product type
+ */
+const getMarketingEntityType = (productType) => {
+  // For marketing assets, use the actual product type as the entity type
+  return productType;
+};
 
 /**
  * Custom hook for managing product file uploads
@@ -13,6 +46,9 @@ export const useProductUploads = (editingProduct = null) => {
   const [isDeletingFile, setIsDeletingFile] = useState(false);
   const [uploadedFileInfo, setUploadedFileInfo] = useState(null);
   const [marketingVideoExists, setMarketingVideoExists] = useState(false);
+
+  // Auth error handling
+  const { handleAuthError } = useGlobalAuthErrorHandler();
 
   // API call to check if file exists (exactly like original ProductModal)
   const checkFileUploadExists = useCallback(async (product) => {
@@ -92,8 +128,10 @@ export const useProductUploads = (editingProduct = null) => {
           if (!editingProduct || !editingProduct.id) {
             throw new Error('מוצר חייב להישמר לפני העלאת תמונה');
           }
-          const entityType = editingProduct?.product_type || 'product';
-          const entityId = editingProduct?.id;
+
+          const entityType = getMarketingEntityType(editingProduct.product_type);
+          // Marketing images always belong to the Product layer, so always use Product ID
+          const entityId = editingProduct.id;
           endpoint = `/assets/upload?entityType=${entityType}&entityId=${entityId}&assetType=image`;
           updateData.has_image = true;
           break;
@@ -102,7 +140,7 @@ export const useProductUploads = (editingProduct = null) => {
           if (!editingProduct || !editingProduct.id) {
             throw new Error('מוצר חייב להישמר לפני העלאת סרטון שיווקי');
           }
-          const entityTypeVideo = editingProduct?.product_type || 'product';
+          const entityTypeVideo = getMarketingEntityType(editingProduct.product_type);
           endpoint = `/assets/upload/video/public?entityType=${entityTypeVideo}&entityId=${editingProduct.id}`;
           break;
 
@@ -113,7 +151,8 @@ export const useProductUploads = (editingProduct = null) => {
           if ((editingProduct?.is_published) && uploadedFileInfo?.exists) {
             throw new Error('לא ניתן להחליף קובץ במוצר מפורסם');
           }
-          endpoint = `/assets/upload?entityType=file&entityId=${editingProduct.entity_id}&assetType=document`;
+          const contentEntityType = getContentEntityType(editingProduct.product_type);
+          endpoint = `/assets/upload?entityType=${contentEntityType}&entityId=${editingProduct.entity_id}&assetType=document`;
           break;
 
         case 'workshop_video':
@@ -126,17 +165,20 @@ export const useProductUploads = (editingProduct = null) => {
           if (editingProduct?.is_published) {
             throw new Error('לא ניתן להחליף סרטון בסדנה מפורסמת');
           }
-          endpoint = `/assets/upload/video/private?entityType=workshop&entityId=${editingProduct.entity_id}`;
+          const workshopEntityType = getContentEntityType(editingProduct.product_type);
+          endpoint = `/assets/upload/video/private?entityType=${workshopEntityType}&entityId=${editingProduct.entity_id}`;
           break;
 
         case 'video':
           // Course module video
-          endpoint = `/assets/upload/video/private?entityType=course&entityId=${editingProduct?.entity_id}&moduleIndex=${moduleIndex}`;
+          const courseVideoEntityType = getContentEntityType(editingProduct.product_type);
+          endpoint = `/assets/upload/video/private?entityType=${courseVideoEntityType}&entityId=${editingProduct?.entity_id}&moduleIndex=${moduleIndex}`;
           break;
 
         case 'material':
           // Course module material
-          endpoint = `/assets/upload?entityType=course&entityId=${editingProduct?.entity_id}&moduleIndex=${moduleIndex}&assetType=material`;
+          const courseMaterialEntityType = getContentEntityType(editingProduct.product_type);
+          endpoint = `/assets/upload?entityType=${courseMaterialEntityType}&entityId=${editingProduct?.entity_id}&moduleIndex=${moduleIndex}&assetType=material`;
           break;
 
         default:
@@ -158,8 +200,11 @@ export const useProductUploads = (editingProduct = null) => {
         // Handle successful upload based on file type
         switch (fileType) {
           case 'image':
+            // Use standardized fields (Phase 3 implementation)
             updateData.has_image = true;
-            updateData.image_url = 'HAS_IMAGE'; // Set image_url so UI knows image exists
+            updateData.image_filename = 'image.jpg'; // Standard filename
+            // Keep legacy field for backward compatibility during transition period
+            updateData.image_url = 'HAS_IMAGE'; // DEPRECATED: Will be removed in Phase 4
             break;
           case 'marketing_video':
             setMarketingVideoExists(true);
@@ -178,24 +223,63 @@ export const useProductUploads = (editingProduct = null) => {
 
         // Immediately update the product in database to prevent orphaned files
         if (editingProduct?.id && Object.keys(updateData).length > 0) {
+          console.log('🔄 Attempting database update:', {
+            productId: editingProduct.id,
+            updateData,
+            fileType,
+            uploadResult: result
+          });
+
           try {
-            const updateResponse = await fetch(`${getApiBase()}/entities/product/${editingProduct.id}`, {
+            const dbUpdateResult = await apiRequest(`/entities/product/${editingProduct.id}`, {
               method: 'PUT',
-              headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                'Content-Type': 'application/json'
-              },
               body: JSON.stringify(updateData)
             });
-
-            if (!updateResponse.ok) {
-              console.error('Failed to update product after file upload:', updateResponse.statusText);
-              // Note: File is already uploaded to S3, but DB update failed
-              // In a production system, you'd want to implement rollback or cleanup
-            }
+            console.log('✅ Database update successful:', {
+              productId: editingProduct.id,
+              updateData,
+              dbResult: dbUpdateResult
+            });
           } catch (dbError) {
-            console.error('Database update error after file upload:', dbError);
-            // File uploaded but database not updated - this prevents orphaned files
+            console.error('❌ Database update error after file upload:', {
+              productId: editingProduct.id,
+              updateData,
+              error: dbError,
+              fileType,
+              uploadSuccessful: result.success
+            });
+
+            // Check if this is an auth error and handle it
+            const wasHandled = handleAuthError(dbError, async () => {
+              // Retry the database update after successful login
+              try {
+                await apiRequest(`/entities/product/${editingProduct.id}`, {
+                  method: 'PUT',
+                  body: JSON.stringify(updateData)
+                });
+                toast({
+                  title: "עודכן בהצלחה",
+                  description: "המוצר עודכן לאחר התחברות מחדש",
+                  variant: "default"
+                });
+              } catch (retryError) {
+                console.error('Retry failed:', retryError);
+                toast({
+                  title: "שגיאה בעדכון",
+                  description: "לא ניתן לעדכן את המוצר. הקובץ הועלה אך המוצר לא עודכן",
+                  variant: "destructive"
+                });
+              }
+            });
+
+            if (!wasHandled) {
+              // Not an auth error - show regular error message
+              toast({
+                title: "שגיאה בעדכון",
+                description: "הקובץ הועלה בהצלחה אך לא ניתן לעדכן את המוצר",
+                variant: "destructive"
+              });
+            }
           }
         }
 
@@ -222,7 +306,7 @@ export const useProductUploads = (editingProduct = null) => {
       setUploadState(uploadKey, false);
       setUploadProgressValue(uploadKey, 0);
     }
-  }, [editingProduct, uploadedFileInfo, setUploadState, setUploadProgressValue]);
+  }, [editingProduct, uploadedFileInfo, setUploadState, setUploadProgressValue, handleAuthError]);
 
   // Generic file delete handler
   const handleDeleteFile = useCallback(async (fileType, moduleIndex = null) => {
@@ -239,13 +323,20 @@ export const useProductUploads = (editingProduct = null) => {
 
       switch (fileType) {
         case 'image':
-          endpoint = `/assets/delete/image?entityType=${editingProduct?.product_type}&entityId=${editingProduct?.id}`;
+          const deleteEntityType = getMarketingEntityType(editingProduct.product_type);
+          // Marketing images always belong to the Product layer, so always use Product ID
+          const deleteEntityId = editingProduct.id;
+          // Backend expects: DELETE /api/assets/:entityType/:entityId?assetType=image
+          endpoint = `/assets/${deleteEntityType}/${deleteEntityId}?assetType=image`;
+          // Use standardized fields (Phase 3 implementation)
           updateData.has_image = false;
-          updateData.image_url = null; // Clear image_url so UI knows image is gone
+          updateData.image_filename = null;
+          // Keep legacy field for backward compatibility during transition period
+          updateData.image_url = null; // DEPRECATED: Will be removed in Phase 4
           break;
         case 'marketing_video':
-          // Use the same API endpoint as original modal
-          endpoint = `/assets/${editingProduct?.product_type}/${editingProduct?.id}?assetType=marketing-video`;
+          const deleteVideoEntityType = getMarketingEntityType(editingProduct.product_type);
+          endpoint = `/assets/${deleteVideoEntityType}/${editingProduct?.id}?assetType=marketing-video`;
           setMarketingVideoExists(false);
           updateData.marketing_video_type = 'youtube'; // Reset to default
           updateData.marketing_video_id = '';
@@ -256,47 +347,68 @@ export const useProductUploads = (editingProduct = null) => {
           if (editingProduct?.is_published) {
             throw new Error('לא ניתן למחוק קובץ ממוצר מפורסם');
           }
-          endpoint = `/assets/delete/file?entityType=file&entityId=${editingProduct?.entity_id}`;
+          const deleteFileEntityType = getContentEntityType(editingProduct.product_type);
+          endpoint = `/assets/delete/file?entityType=${deleteFileEntityType}&entityId=${editingProduct?.entity_id}`;
           setUploadedFileInfo(null);
           updateData.file_extension = '';
           updateData.file_size = '';
           break;
         case 'workshop_video':
-          endpoint = `/assets/delete/video?entityType=workshop&entityId=${editingProduct?.entity_id}`;
+          const deleteWorkshopEntityType = getContentEntityType(editingProduct.product_type);
+          endpoint = `/assets/delete/video?entityType=${deleteWorkshopEntityType}&entityId=${editingProduct?.entity_id}`;
           updateData.workshop_video_url = '';
           break;
       }
 
-      const response = await fetch(`${getApiBase()}${endpoint}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+      await apiRequest(endpoint, {
+        method: 'DELETE'
       });
 
-      if (response.ok) {
-        toast({
-          title: "הקובץ נמחק",
-          description: "הקובץ נמחק בהצלחה מהמערכת",
-          variant: "default"
-        });
-        return { success: true, updateData };
-      } else {
-        throw new Error('שגיאה במחיקת הקובץ');
-      }
+      toast({
+        title: "הקובץ נמחק",
+        description: "הקובץ נמחק בהצלחה מהמערכת",
+        variant: "default"
+      });
+      return { success: true, updateData };
 
     } catch (error) {
       console.error(`❌ Delete error for ${fileType}:`, error);
-      toast({
-        title: "שגיאה במחיקה",
-        description: error.message || 'אירעה שגיאה במחיקת הקובץ',
-        variant: "destructive"
+
+      // Check if this is an auth error and handle it
+      const wasHandled = handleAuthError(error, async () => {
+        // Retry the delete operation after successful login
+        try {
+          await apiRequest(endpoint, {
+            method: 'DELETE'
+          });
+          toast({
+            title: "הקובץ נמחק",
+            description: "הקובץ נמחק בהצלחה לאחר התחברות מחדש",
+            variant: "default"
+          });
+        } catch (retryError) {
+          console.error('Delete retry failed:', retryError);
+          toast({
+            title: "שגיאה במחיקה",
+            description: "לא ניתן למחוק את הקובץ גם לאחר התחברות מחדש",
+            variant: "destructive"
+          });
+        }
       });
+
+      if (!wasHandled) {
+        // Not an auth error - show regular error message
+        toast({
+          title: "שגיאה במחיקה",
+          description: error.message || 'אירעה שגיאה במחיקת הקובץ',
+          variant: "destructive"
+        });
+      }
       return { success: false, error: error.message };
     } finally {
       setIsDeletingFile(false);
     }
-  }, [editingProduct]);
+  }, [editingProduct, handleAuthError]);
 
   // Check if a specific file type is currently uploading
   const isUploading = useCallback((fileType, moduleIndex = null) => {

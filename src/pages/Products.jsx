@@ -5,10 +5,9 @@ import { deleteFile } from "@/services/apiClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import ProductModal from '@/components/modals/ProductModal';
+import { useConfirmation } from '@/components/ui/ConfirmationProvider';
 import {
   Plus,
   Edit,
@@ -16,8 +15,6 @@ import {
   FileText,
   BookOpen,
   Play,
-  AlertCircle,
-  CheckCircle,
   Package,
   User as UserIcon,
   Users,
@@ -25,12 +22,15 @@ import {
   Image,
   Video,
   AlignLeft,
-  Gamepad2
+  Gamepad2,
+  RefreshCw,
+  AlertCircle
 } from "lucide-react";
 import { getProductTypeName, PRODUCT_TYPES } from '@/config/productTypes';
 import { formatPriceSimple } from '@/lib/utils';
 import FeatureFlagService from '@/services/FeatureFlagService';
 import { getProductTypeIconByType } from '@/lib/layoutUtils';
+import { toast } from '@/components/ui/use-toast';
 
 export default function Products() {
   const location = useLocation();
@@ -41,9 +41,6 @@ export default function Products() {
   const [categories, setCategories] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [editingProduct, setEditingProduct] = useState(null);
-  const [message, setMessage] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isContentCreator, setIsContentCreator] = useState(false);
   const [showAllContent, setShowAllContent] = useState(true);
@@ -61,6 +58,9 @@ export default function Products() {
     lesson_plans: true
   });
   const [selectedTab, setSelectedTab] = useState(null);
+
+  // Use the existing confirmation system
+  const { showConfirmation } = useConfirmation();
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -146,6 +146,12 @@ export default function Products() {
 
         const allProducts = allProductsData || [];
 
+        // Debug: Log any products with missing or invalid IDs
+        const invalidProducts = allProducts.filter(p => !p.id || typeof p.id !== 'string');
+        if (invalidProducts.length > 0) {
+          console.warn('⚠️ Found products with invalid IDs:', invalidProducts);
+        }
+
         // Sort by creation date (newest first)
         allProducts.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
@@ -216,94 +222,164 @@ export default function Products() {
     navigate('/products/create');
   };
 
-  const handleDelete = async (product) => {
-    if (!confirm("האם למחוק את המוצר?")) return;
+  const handleRefresh = () => {
+    console.log('🔄 Manual refresh triggered');
+    toast({
+      title: "מרענן רשימת מוצרים",
+      description: "טוען נתונים עדכניים...",
+      variant: "default"
+    });
+    loadData();
+  };
 
-    try {
-      // Delete associated assets first
-      const filesToDelete = [];
+  // Extract deletion logic into separate async function
+  const performProductDeletion = async (product) => {
+    console.log('🗑️ Starting deletion for product:', {
+      id: product.id,
+      title: product.title,
+      product_type: product.product_type,
+      entity_id: product.entity_id
+    });
 
-      // For workshops, collect video files
-      if (product.product_type === 'workshop' && product.video_file_url) {
-        filesToDelete.push({ file_uri: product.video_file_url, type: 'video' });
-      }
+    // Delete associated assets first
+    const filesToDelete = [];
 
-      // For files, collect main file and preview file
-      if (product.product_type === 'file') {
-        if (product.file_url) {
-          filesToDelete.push({ file_uri: product.file_url, type: 'main file' });
-        }
-        if (product.preview_file_url) {
-          filesToDelete.push({ file_uri: product.preview_file_url, type: 'preview file' });
-        }
-      }
-
-      // Delete all associated files
-      for (const fileToDelete of filesToDelete) {
-        try {
-          await deleteFile({ file_uri: fileToDelete.file_uri });
-          console.log(`${fileToDelete.type} deleted successfully:`, fileToDelete.file_uri);
-        } catch (fileError) {
-          console.warn(`Failed to delete ${fileToDelete.type}:`, fileError);
-          // Continue with product deletion even if file deletion fails
-        }
-      }
-
-      // Delete from the correct entity type
-      switch (product.product_type) {
-        case 'workshop':
-          await Workshop.delete(product.id);
-          break;
-        case 'course':
-          await Course.delete(product.id);
-          break;
-        case 'file':
-          await File.delete(product.id);
-          break;
-        case 'tool':
-          await Tool.delete(product.id);
-          break;
-        case 'game':
-          await Game.delete(product.id);
-          break;
-        case 'lesson_plan':
-          await LessonPlan.delete(product.id);
-          break;
-        default:
-          throw new Error('Unknown product type');
-      }
-
-      setMessage({ type: 'success', text: 'המוצר נמחק בהצלחה' });
-      loadData();
-    } catch (error) {
-      setMessage({ type: 'error', text: 'שגיאה במחיקת המוצר' });
+    // For workshops, collect video files
+    if (product.product_type === 'workshop' && product.video_file_url) {
+      filesToDelete.push({ file_uri: product.video_file_url, type: 'video' });
     }
 
-    setTimeout(() => setMessage(null), 3000);
+    // For files, collect main file and preview file
+    if (product.product_type === 'file') {
+      if (product.file_url) {
+        filesToDelete.push({ file_uri: product.file_url, type: 'main file' });
+      }
+      if (product.preview_file_url) {
+        filesToDelete.push({ file_uri: product.preview_file_url, type: 'preview file' });
+      }
+    }
+
+    // Delete all associated files
+    for (const fileToDelete of filesToDelete) {
+      try {
+        await deleteFile({ file_uri: fileToDelete.file_uri });
+        console.log(`${fileToDelete.type} deleted successfully:`, fileToDelete.file_uri);
+      } catch (fileError) {
+        console.warn(`Failed to delete ${fileToDelete.type}:`, fileError);
+        // Continue with product deletion even if file deletion fails
+      }
+    }
+
+    // Delete from the correct entity type
+    switch (product.product_type) {
+      case 'workshop':
+        if (product.entity_id) {
+          try {
+            await Workshop.delete(product.entity_id);
+          } catch (error) {
+            console.warn('Failed to delete workshop entity (might not exist):', error);
+            // Continue with product deletion even if entity deletion fails
+          }
+        }
+        break;
+      case 'course':
+        if (product.entity_id) {
+          try {
+            await Course.delete(product.entity_id);
+          } catch (error) {
+            console.warn('Failed to delete course entity (might not exist):', error);
+            // Continue with product deletion even if entity deletion fails
+          }
+        }
+        break;
+      case 'file':
+        if (product.entity_id) {
+          try {
+            await File.delete(product.entity_id);
+          } catch (error) {
+            console.warn('Failed to delete file entity (might not exist for draft products):', error);
+            // Continue with product deletion even if entity deletion fails
+          }
+        }
+        break;
+      case 'tool':
+        if (product.entity_id) {
+          try {
+            await Tool.delete(product.entity_id);
+          } catch (error) {
+            console.warn('Failed to delete tool entity (might not exist):', error);
+            // Continue with product deletion even if entity deletion fails
+          }
+        }
+        break;
+      case 'game':
+        if (product.entity_id) {
+          try {
+            await Game.delete(product.entity_id);
+          } catch (error) {
+            console.warn('Failed to delete game entity (might not exist):', error);
+            // Continue with product deletion even if entity deletion fails
+          }
+        }
+        break;
+      case 'lesson_plan':
+        if (product.entity_id) {
+          try {
+            await LessonPlan.delete(product.entity_id);
+          } catch (error) {
+            console.warn('Failed to delete lesson plan entity (might not exist):', error);
+            // Continue with product deletion even if entity deletion fails
+          }
+        }
+        break;
+      default:
+        throw new Error('Unknown product type');
+    }
+
+    // Finally, delete the product record itself
+    console.log('🗑️ Attempting to delete product with ID:', product.id);
+    try {
+      await Product.delete(product.id);
+      console.log('✅ Product deleted successfully');
+    } catch (productError) {
+      console.warn('❌ Failed to delete product record (might already be deleted):', productError);
+      // Don't throw error if product doesn't exist - it might have been deleted already
+      if (!productError.message?.includes('not found')) {
+        throw productError; // Re-throw if it's not a "not found" error
+      }
+    }
+
+    // Refresh the list to remove any stale data
+    loadData();
+  };
+
+  const handleDeleteClick = async (product) => {
+    try {
+      await showConfirmation(
+        'מחיקת מוצר',
+        `האם אתה בטוח שברצונך למחוק את המוצר "${product.title}"?\n\nפעולה זו לא ניתנת לביטול ותסיר את המוצר וכל הנתונים הקשורים אליו מהמערכת.`,
+        {
+          confirmText: 'מחק מוצר',
+          cancelText: 'ביטול',
+          variant: 'danger',
+          asyncOperation: () => performProductDeletion(product),
+          loadingMessage: 'מוחק מוצר...',
+          successMessage: 'המוצר נמחק בהצלחה!',
+          errorMessage: 'שגיאה במחיקת המוצר'
+        }
+      );
+
+      // The dialog now handles the success/error states and loading spinner
+      // No need for additional toast calls here
+    } catch (error) {
+      console.error('❌ Error in confirmation dialog:', error);
+    }
   };
 
   const getFilteredProducts = () => {
     return products.filter(product => product.product_type === selectedTab);
   };
 
-  const getProductIcon = (type) => {
-    const IconComponent = getProductTypeIconByType(globalSettings, type);
-
-    // Apply appropriate color based on type
-    const colorClass = (() => {
-      switch (type) {
-        case 'workshop': return 'text-blue-500';
-        case 'course': return 'text-green-500';
-        case 'file': return 'text-purple-500';
-        case 'tool': return 'text-orange-500';
-        case 'game': return 'text-pink-500';
-        case 'lesson_plan': return 'text-indigo-500';
-        default: return 'text-gray-500';
-      }
-    })();
-
-    return <IconComponent className={`w-5 h-5 ${colorClass}`} />;
-  };
 
   const getProductTypeLabel = (type) => {
     return getProductTypeName(type, 'singular') || 'מוצר';
@@ -335,7 +411,10 @@ export default function Products() {
   const getDataIndicators = (product) => {
     const hasDescription = product.description && product.description.trim().length > 0;
     const hasLongDescription = product.description && product.description.trim().length > 100;
-    const hasImage = product.image_url && product.image_url.trim().length > 0;
+
+    // Use standardized has_image field only (legacy compatibility removed after cleanup)
+    const hasImage = product.has_image === true;
+
     const hasVideo = (product.marketing_video_type && product.marketing_video_id && product.marketing_video_id.trim().length > 0) ||
                      (product.video_file_url && product.video_file_url.trim().length > 0);
 
@@ -361,19 +440,21 @@ export default function Products() {
     );
   };
 
+  // Handle unauthorized access with toast and redirect
+  useEffect(() => {
+    if (!isLoading && !isAdmin && !isContentCreator) {
+      toast({
+        title: "אין הרשאות גישה",
+        description: "רק מנהלים ויוצרי תוכן יכולים לגשת לדף ניהול המוצרים",
+        variant: "destructive"
+      });
+      navigate('/');
+      return;
+    }
+  }, [isLoading, isAdmin, isContentCreator, navigate, toast]);
+
   if (!isAdmin && !isContentCreator) {
-    return (
-      <div className="p-4 md:p-8 bg-gray-50 min-h-screen">
-        <div className="max-w-4xl mx-auto">
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              אין לך הרשאות גישה לדף ניהול המוצרים. רק מנהלים ויוצרי תוכן יכולים לגשת לאזור זה.
-            </AlertDescription>
-          </Alert>
-        </div>
-      </div>
-    );
+    return null; // Component will redirect before rendering
   }
 
   return (
@@ -435,8 +516,16 @@ export default function Products() {
                     </div>
                   </div>
                 )}
-                
-                {/* Action Button */}
+
+                {/* Action Buttons */}
+                <Button
+                  onClick={handleRefresh}
+                  variant="outline"
+                  className="border-blue-200 text-blue-700 hover:bg-blue-50 shadow-sm hover:shadow-md transition-all duration-200 px-4 py-2.5 md:px-6 md:py-3 text-sm md:text-base w-full sm:w-auto"
+                >
+                  <RefreshCw className="w-4 h-4 md:w-5 md:h-5 ml-1.5 md:ml-2" />
+                  רענן
+                </Button>
                 <Button
                   onClick={handleCreateNew}
                   className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 px-4 py-2.5 md:px-6 md:py-3 text-sm md:text-base w-full sm:w-auto"
@@ -449,24 +538,7 @@ export default function Products() {
           </div>
         </div>
 
-        {/* Message Alert */}
-        {message && (
-          <Alert variant={message.type === 'error' ? 'destructive' : 'default'} className="mb-4 sm:mb-6">
-            {message.type === 'error' ? <AlertCircle className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
-            <AlertDescription>{message.text}</AlertDescription>
-          </Alert>
-        )}
 
-        {/* Keep old modal for backwards compatibility during transition */}
-        <ProductModal
-          isOpen={showModal}
-          onClose={() => setShowModal(false)}
-          editingProduct={editingProduct}
-          onSave={() => loadData()}
-          currentUser={currentUser}
-          canCreateProductType={canCreateProductType}
-          isContentCreatorMode={isContentCreatorMode}
-        />
 
         {/* Enhanced Tabs */}
         {visibleProductTypes.length > 0 && (
@@ -514,8 +586,7 @@ export default function Products() {
               <>
                 {/* Mobile/Tablet Card Layout */}
                 <div className="block lg:hidden space-y-4">
-                  {getFilteredProducts().map((product, index) => {
-                    const IconComponent = getProductTypeIcon(product.product_type);
+                  {getFilteredProducts().map((product) => {
                     return (
                       <div
                         key={product.id}
@@ -545,7 +616,7 @@ export default function Products() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleDelete(product)}
+                              onClick={() => handleDeleteClick(product)}
                               className="h-9 w-9 p-0 text-red-500 hover:bg-red-100 hover:text-red-600 rounded-lg"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -670,7 +741,6 @@ export default function Products() {
                 {/* Modern Table Body */}
                 <div className="divide-y divide-gray-100">
                   {getFilteredProducts().map((product, index) => {
-                    const IconComponent = getProductTypeIcon(product.product_type);
                     return (
                       <div
                         key={product.id}
@@ -692,7 +762,7 @@ export default function Products() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleDelete(product)}
+                              onClick={() => handleDeleteClick(product)}
                               className="h-8 w-8 p-0 text-red-500 hover:bg-red-100 hover:text-red-600 rounded-lg transition-colors"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -846,6 +916,7 @@ export default function Products() {
             </div>
           </div>
         )}
+
       </div>
     </div>
   );

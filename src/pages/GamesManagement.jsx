@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { getApiBase } from "@/utils/api";
+import { showConfirm } from "@/utils/messaging";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -30,14 +32,12 @@ import { toast } from "@/components/ui/use-toast";
 import { clog, cerror } from "@/lib/utils";
 import { useUser } from "@/contexts/UserContext";
 import GameModal from "@/components/modals/GameModal";
-import ProductModal from "@/components/modals/ProductModal";
-// DEBUG: Import new modal for comparison
-import ProductModalV2 from '@/components/product/ProductModalV2';
 
 const ITEMS_PER_PAGE = 20;
 
 export default function GamesManagement() {
   const { currentUser } = useUser();
+  const navigate = useNavigate();
   const [games, setGames] = useState([]);
   const [filteredGames, setFilteredGames] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -45,12 +45,7 @@ export default function GamesManagement() {
 
   // Modal states
   const [isGameModalOpen, setIsGameModalOpen] = useState(false);
-  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [selectedGame, setSelectedGame] = useState(null);
-  const [selectedProduct, setSelectedProduct] = useState(null);
-
-  // DEBUG: State for modal comparison - REMOVE IN PRODUCTION
-  const [useOldModal, setUseOldModal] = useState(true); // Default to old modal for games
 
   // Filters and search
   const [searchTerm, setSearchTerm] = useState("");
@@ -209,28 +204,39 @@ export default function GamesManagement() {
     setIsGameModalOpen(true);
   };
 
-  const handleCreateProduct = (game) => {
-    setSelectedGame(game);
-    setSelectedProduct(null);
-    setIsProductModalOpen(true);
+  const handleCreateProduct = async (game) => {
+    const confirmed = await showConfirm(
+      "יצירת מוצר חדש",
+      `האם ברצונך ליצור מוצר חדש עבור המשחק "${game.title || `משחק ${game.id}`}"?\n\nתועבר לעמוד יצירת מוצרים.`,
+      {
+        confirmText: "צור מוצר",
+        cancelText: "ביטול"
+      }
+    );
+
+    if (confirmed) {
+      navigate(`/products/create?type=game&gameId=${game.id}&gameTitle=${encodeURIComponent(game.title || `משחק ${game.id}`)}`);
+    }
   };
 
-  const handleEditProduct = (game) => {
-    setSelectedGame(game);
-    setSelectedProduct(game.product);
-    setIsProductModalOpen(true);
+  const handleEditProduct = async (game) => {
+    const confirmed = await showConfirm(
+      "עריכת מוצר",
+      `האם ברצונך לערוך את המוצר של המשחק "${game.title || `משחק ${game.id}`}"?\n\nתועבר לעמוד עריכת מוצרים.`,
+      {
+        confirmText: "ערוך מוצר",
+        cancelText: "ביטול"
+      }
+    );
+
+    if (confirmed) {
+      navigate(`/products/edit/${game.product.id}`);
+    }
   };
 
   const handleGameSaved = () => {
     setIsGameModalOpen(false);
     setSelectedGame(null);
-    loadData();
-  };
-
-  const handleProductSaved = () => {
-    setIsProductModalOpen(false);
-    setSelectedGame(null);
-    setSelectedProduct(null);
     loadData();
   };
 
@@ -282,22 +288,6 @@ export default function GamesManagement() {
               <p className="text-gray-500">צור, ערוך וניהל את המשחקים שלך</p>
             </div>
             <div className="flex items-center gap-3">
-              {/* DEBUG: Modal comparison toggle - REMOVE IN PRODUCTION */}
-              {process.env.NODE_ENV === 'development' && (
-                <div className="bg-red-50 rounded-lg p-3 border border-red-200">
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={useOldModal}
-                      onCheckedChange={setUseOldModal}
-                      id="use-old-modal-games"
-                    />
-                    <label htmlFor="use-old-modal-games" className="text-sm font-medium text-red-700">
-                      🐛 DEBUG: {useOldModal ? 'Modal ישן' : 'Modal חדש'}
-                    </label>
-                  </div>
-                </div>
-              )}
-
               <Button onClick={handleCreateGame} className="flex items-center gap-2">
                 <Plus className="w-4 h-4" />
                 צור משחק חדש
@@ -661,27 +651,6 @@ export default function GamesManagement() {
           onSaved={handleGameSaved}
         />
 
-        {/* DEBUG: Conditional modal rendering - REMOVE IN PRODUCTION */}
-        {useOldModal ? (
-          <ProductModal
-            isOpen={isProductModalOpen}
-            onClose={() => setIsProductModalOpen(false)}
-            product={selectedProduct}
-            entityType="game"
-            entityId={selectedGame?.id}
-            onSaved={handleProductSaved}
-          />
-        ) : (
-          <ProductModalV2
-            isOpen={isProductModalOpen}
-            onClose={() => setIsProductModalOpen(false)}
-            editingProduct={selectedProduct}
-            onSave={handleProductSaved}
-            currentUser={currentUser}
-            canCreateProductType={() => true}
-            isContentCreatorMode={false}
-          />
-        )}
       </div>
     </div>
   );

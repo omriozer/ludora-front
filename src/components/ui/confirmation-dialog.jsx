@@ -2,16 +2,22 @@ import React from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, CheckCircle, Info, X } from "lucide-react";
+import LudoraLoadingSpinner from "@/components/ui/LudoraLoadingSpinner";
 
-export default function ConfirmationDialog({ 
-  isOpen, 
-  onClose, 
-  onConfirm, 
-  title, 
-  message, 
-  confirmText = "אישור", 
-  cancelText = "ביטול", 
-  variant = "warning" // warning, danger, info, success
+export default function ConfirmationDialog({
+  isOpen,
+  onClose,
+  onConfirm,
+  title,
+  message,
+  confirmText = "אישור",
+  cancelText = "ביטול",
+  variant = "warning", // warning, danger, info, success
+  isLoading = false,
+  loadingMessage = "מעבד...",
+  successMessage = "",
+  errorMessage = "",
+  operationStatus = null // null, 'loading', 'success', 'error'
 }) {
   const getVariantStyles = () => {
     switch (variant) {
@@ -53,9 +59,67 @@ export default function ConfirmationDialog({
   const styles = getVariantStyles();
   const IconComponent = styles.icon;
 
+  // Show loading/success/error states
+  if (operationStatus === 'loading') {
+    return (
+      <Dialog open={isOpen} onOpenChange={() => {}} hideCloseButton={true}>
+        <DialogContent className="max-w-md w-full bg-white rounded-2xl shadow-2xl p-0" hideCloseButton={true} dir="rtl">
+          <div className="p-6">
+            <LudoraLoadingSpinner
+              message={loadingMessage}
+              status="loading"
+              size="md"
+              theme="educational"
+              showParticles={true}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  if (operationStatus === 'success') {
+    return (
+      <Dialog open={isOpen} onOpenChange={() => {}} hideCloseButton={true}>
+        <DialogContent className="max-w-md w-full bg-white rounded-2xl shadow-2xl p-0" hideCloseButton={true} dir="rtl">
+          <div className="p-6">
+            <LudoraLoadingSpinner
+              message={successMessage || "הפעולה הושלמה בהצלחה"}
+              status="success"
+              size="md"
+              theme="educational"
+              showParticles={true}
+              onAnimationComplete={onClose}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  if (operationStatus === 'error') {
+    return (
+      <Dialog open={isOpen} onOpenChange={() => {}} hideCloseButton={true}>
+        <DialogContent className="max-w-md w-full bg-white rounded-2xl shadow-2xl p-0" hideCloseButton={true} dir="rtl">
+          <div className="p-6">
+            <LudoraLoadingSpinner
+              message={errorMessage || "אירעה שגיאה"}
+              status="error"
+              size="md"
+              theme="educational"
+              showParticles={true}
+              onAnimationComplete={onClose}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Default confirmation state
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md w-full bg-white rounded-2xl shadow-2xl p-0" dir="rtl">
+      <DialogContent className="max-w-md w-full bg-white rounded-2xl shadow-2xl p-0" hideCloseButton={true} dir="rtl">
         <div className="p-6">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
@@ -67,6 +131,7 @@ export default function ConfirmationDialog({
               size="icon"
               onClick={onClose}
               className="hover:bg-gray-100 rounded-full"
+              disabled={isLoading}
             >
               <X className="w-5 h-5" />
             </Button>
@@ -86,17 +151,16 @@ export default function ConfirmationDialog({
               variant="outline"
               onClick={onClose}
               className="px-6"
+              disabled={isLoading}
             >
               {cancelText}
             </Button>
             <Button
-              onClick={() => {
-                onConfirm();
-                onClose();
-              }}
+              onClick={onConfirm}
               className={`px-6 ${styles.confirmButtonClass}`}
+              disabled={isLoading}
             >
-              {confirmText}
+              {isLoading ? "מעבד..." : confirmText}
             </Button>
           </div>
         </div>

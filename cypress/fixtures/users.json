@@ -1,0 +1,62 @@
+{
+  "testUser": {
+    "email": "test@ludora.app",
+    "password": "TestPassword123!",
+    "fullName": "Test User",
+    "role": "user",
+    "phoneNumber": "+972501234567",
+    "address": {
+      "street": "רחוב הבדק 1",
+      "city": "תל אביב",
+      "zipCode": "12345"
+    }
+  },
+  "adminUser": {
+    "email": "admin@ludora.app",
+    "password": "AdminPassword123!",
+    "fullName": "Admin User",
+    "role": "admin",
+    "phoneNumber": "+972501234568",
+    "address": {
+      "street": "רחוב הניצן 2",
+      "city": "ירושלים",
+      "zipCode": "67890"
+    }
+  },
+  "contentCreator": {
+    "email": "creator@ludora.app",
+    "password": "CreatorPassword123!",
+    "fullName": "Content Creator",
+    "role": "content_creator",
+    "phoneNumber": "+972501234569",
+    "address": {
+      "street": "רחוב השלום 3",
+      "city": "חיפה",
+      "zipCode": "54321"
+    }
+  },
+  "teacher": {
+    "email": "teacher@ludora.app",
+    "password": "TeacherPassword123!",
+    "fullName": "Teacher User",
+    "role": "teacher",
+    "phoneNumber": "+972501234570",
+    "school": "בית ספר יסודי",
+    "grade": "כיתה ג",
+    "address": {
+      "street": "רחוב החינוך 4",
+      "city": "באר שבע",
+      "zipCode": "98765"
+    }
+  },
+  "student": {
+    "email": "student@ludora.app",
+    "password": "StudentPassword123!",
+    "fullName": "Student User",
+    "role": "student",
+    "age": 12,
+    "grade": "כיתה ו",
+    "school": "בית ספר יסודי",
+    "parentEmail": "parent@ludora.app"
+  }
+}

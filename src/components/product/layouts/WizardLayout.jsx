@@ -122,7 +122,7 @@ export const WizardLayout = ({
         return true; // Access settings have defaults
       },
       publishing: () => {
-        return validation.isValid; // All validation must pass for publishing
+        return formData.is_published; // Only completed when actually published
       }
     };
 
@@ -151,6 +151,7 @@ export const WizardLayout = ({
     formData.total_duration_minutes,
     formData.file_configs?.files?.length, // For lesson plan file validation
     JSON.stringify(formData.file_configs?.files?.filter(f => f.file_role === 'opening')), // Trigger on opening files change
+    formData.is_published, // For publishing step validation
     hasUploadedFile,
     visibleSections.length // Only depend on length, not the entire array
   ]);
@@ -162,19 +163,23 @@ export const WizardLayout = ({
     }
   }, [visibleSections.length, currentStepIndex]);
 
-  // Check if step is accessible for new products
-  const isStepAccessibleForNewProduct = (stepIndex) => {
-    if (!isNewProduct) return true; // For existing products, all steps are accessible
+  // Check if step is accessible - improved logic for better UX
+  const isStepAccessible = (stepIndex) => {
+    // If we have an editing product with an ID, all tabs should be accessible
+    if (editingProduct?.id) return true;
 
-    // For new products, only first step is accessible until product is saved
+    // If we're not dealing with a new product, all tabs should be accessible
+    if (!isNewProduct) return true;
+
+    // For truly new products (no ID yet), only first step is accessible until product is saved
     return stepIndex === 0;
   };
 
   // Navigation functions
   const goToStep = (stepIndex) => {
     if (stepIndex >= 0 && stepIndex < visibleSections.length) {
-      // Check accessibility for new products
-      if (!isStepAccessibleForNewProduct(stepIndex)) {
+      // Check accessibility
+      if (!isStepAccessible(stepIndex)) {
         return; // Don't allow navigation to locked steps
       }
       setCurrentStepIndex(stepIndex);
@@ -184,7 +189,7 @@ export const WizardLayout = ({
   const goNext = () => {
     if (currentStepIndex < visibleSections.length - 1) {
       const nextStepIndex = currentStepIndex + 1;
-      if (isStepAccessibleForNewProduct(nextStepIndex)) {
+      if (isStepAccessible(nextStepIndex)) {
         setCurrentStepIndex(nextStepIndex);
       }
     }
@@ -193,7 +198,7 @@ export const WizardLayout = ({
   const goPrevious = () => {
     if (currentStepIndex > 0) {
       const prevStepIndex = currentStepIndex - 1;
-      if (isStepAccessibleForNewProduct(prevStepIndex)) {
+      if (isStepAccessible(prevStepIndex)) {
         setCurrentStepIndex(prevStepIndex);
       }
     }
@@ -236,6 +241,15 @@ export const WizardLayout = ({
   const getStepStatus = (sectionId, index) => {
     if (index === currentStepIndex) return 'current';
     if (completedSteps.has(sectionId)) return 'completed';
+
+    // Special handling for publishing section - show "ready" when validation passes but not published
+    if (sectionId === 'publishing') {
+      const validation = validateForm();
+      if (validation.isValid && !formData.is_published) {
+        return 'ready'; // Ready to publish but not yet published
+      }
+    }
+
     if (index < currentStepIndex) return 'visited';
     return 'upcoming';
   };
@@ -246,6 +260,9 @@ export const WizardLayout = ({
 
     if (status === 'completed') {
       return <Check className="w-4 h-4 text-green-600" />;
+    }
+    if (status === 'ready') {
+      return <CheckCircle className="w-4 h-4 text-blue-600" />;
     }
     if (status === 'current') {
       return <div className="w-4 h-4 rounded-full bg-blue-600 border-2 border-white" />;
@@ -309,8 +326,8 @@ export const WizardLayout = ({
             {visibleSections.map((section, index) => {
               const status = getStepStatus(section.id, index);
               const isAvailable = section.access.available;
-              const isStepAccessible = isStepAccessibleForNewProduct(index);
-              const isLocked = !isStepAccessible;
+              const isStepAccessibleNow = isStepAccessible(index);
+              const isLocked = !isStepAccessibleNow;
 
               return (
                 <button
@@ -324,6 +341,8 @@ export const WizardLayout = ({
                       ? 'bg-blue-600 text-white cursor-pointer'
                       : status === 'completed'
                       ? 'bg-green-100 text-green-800 hover:bg-green-200 cursor-pointer'
+                      : status === 'ready'
+                      ? 'bg-blue-100 text-blue-800 hover:bg-blue-200 cursor-pointer'
                       : status === 'visited'
                       ? 'bg-gray-200 text-gray-700 hover:bg-gray-300 cursor-pointer'
                       : !isAvailable
@@ -397,33 +416,55 @@ export const WizardLayout = ({
                   </div>
                 )}
 
-                {currentSection.access.available && stepValidation[currentSection.id] !== false && (
-                  <div className="mt-2 flex items-center gap-2 text-green-600">
-                    <CheckCircle className="w-4 h-4" />
-                    <span className="text-sm">שלב זה הושלם</span>
-                  </div>
-                )}
+                {currentSection.access.available && stepValidation[currentSection.id] !== false && (() => {
+                  const stepStatus = getStepStatus(currentSection.id, currentStepIndex);
+
+                  if (stepStatus === 'ready') {
+                    return (
+                      <div className="mt-2 flex items-center gap-2 text-blue-600">
+                        <CheckCircle className="w-4 h-4" />
+                        <span className="text-sm">מוכן לפרסום</span>
+                      </div>
+                    );
+                  }
+
+                  if (stepStatus === 'completed') {
+                    return (
+                      <div className="mt-2 flex items-center gap-2 text-green-600">
+                        <CheckCircle className="w-4 h-4" />
+                        <span className="text-sm">{currentSection.id === 'publishing' ? 'מוצר פורסם' : 'שלב זה הושלם'}</span>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="mt-2 flex items-center gap-2 text-green-600">
+                      <CheckCircle className="w-4 h-4" />
+                      <span className="text-sm">שלב זה הושלם</span>
+                    </div>
+                  );
+                })()}
               </div>
 
               <div className={
-                isSaving || !currentSection.access.available || !isStepAccessibleForNewProduct(currentStepIndex)
+                isSaving || !currentSection.access.available || !isStepAccessible(currentStepIndex)
                   ? 'pointer-events-none opacity-50'
                   : ''
               }>
                 <currentSection.component
                   {...currentSection.props}
-                  disabled={isSaving || !currentSection.access.available || !isStepAccessibleForNewProduct(currentStepIndex)}
+                  disabled={isSaving || !currentSection.access.available || !isStepAccessible(currentStepIndex)}
                 />
               </div>
 
-              {(!currentSection.access.available || !isStepAccessibleForNewProduct(currentStepIndex)) && (
+              {(!currentSection.access.available || !isStepAccessible(currentStepIndex)) && (
                 <div className="mt-4 p-4 bg-orange-100 border border-orange-200 rounded-lg">
                   <div className="flex items-center gap-2 text-orange-800">
                     <Lock className="w-5 h-5" />
                     <span className="font-medium">השלב נעול</span>
                   </div>
                   <p className="mt-1 text-sm text-orange-700">
-                    {!isStepAccessibleForNewProduct(currentStepIndex)
+                    {!isStepAccessible(currentStepIndex)
                       ? 'יש לשמור את המוצר תחילה כדי לגשת לשלבים הבאים'
                       : currentSection.access.reason || 'השלב הזה אינו זמין כרגע'
                     }
@@ -455,7 +496,7 @@ export const WizardLayout = ({
                 type="button"
                 variant="outline"
                 onClick={goPrevious}
-                disabled={currentStepIndex === 0 || isSaving || !isStepAccessibleForNewProduct(currentStepIndex - 1)}
+                disabled={currentStepIndex === 0 || isSaving || !isStepAccessible(currentStepIndex - 1)}
                 className="flex items-center gap-2"
               >
                 <ChevronRight className="w-4 h-4" />
@@ -466,7 +507,7 @@ export const WizardLayout = ({
                 <Button
                   type="button"
                   onClick={goNext}
-                  disabled={isSaving || !isStepAccessibleForNewProduct(currentStepIndex + 1)}
+                  disabled={isSaving || !isStepAccessible(currentStepIndex + 1)}
                   className="flex items-center gap-2"
                 >
                   הבא

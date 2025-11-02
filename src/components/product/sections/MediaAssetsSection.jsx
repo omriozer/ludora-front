@@ -82,6 +82,42 @@ export const MediaAssetsSection = ({
     setMarketingVideoType('upload');
   };
 
+  // Handle image upload with error handling
+  const handleImageUpload = async (event) => {
+    try {
+      const result = await handleFileUpload(event, 'image');
+      return result;
+    } catch (error) {
+      console.error('Image upload error:', error);
+
+      // Clear the file input on error so user can try again
+      const fileInput = event.target;
+      if (fileInput) {
+        fileInput.value = '';
+      }
+
+      return { success: false, error: error.message };
+    }
+  };
+
+  // Handle video upload with error handling
+  const handleVideoUpload = async (event) => {
+    try {
+      const result = await handleFileUpload(event, 'marketing_video');
+      return result;
+    } catch (error) {
+      console.error('Video upload error:', error);
+
+      // Clear the file input on error so user can try again
+      const fileInput = document.getElementById('marketing-video-upload');
+      if (fileInput) {
+        fileInput.value = '';
+      }
+
+      return { success: false, error: error.message };
+    }
+  };
+
   // Disabled section component
   const DisabledSectionMessage = ({ title, message, icon: Icon }) => (
     <div className="space-y-4">
@@ -136,7 +172,7 @@ export const MediaAssetsSection = ({
                 <Input
                   type="file"
                   accept="image/*"
-                  onChange={(e) => handleFileUpload(e, 'image')}
+                  onChange={handleImageUpload}
                   disabled={isUploading('image')}
                   className="w-full sm:w-auto"
                 />
@@ -264,7 +300,7 @@ export const MediaAssetsSection = ({
                       <input
                         type="file"
                         accept="video/*"
-                        onChange={(e) => handleFileUpload(e, 'marketing_video')}
+                        onChange={handleVideoUpload}
                         className="hidden"
                         id="marketing-video-upload"
                       />

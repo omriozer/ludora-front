@@ -71,6 +71,8 @@ export default function ImageUploadModal({ isOpen, onClose, onImageUploaded, edi
     } catch (error) {
       console.error('Error uploading file:', error);
       alert('שגיאה בהעלאת הקובץ. אנא נסה שנית.');
+      // Reset upload state on error so user can try again
+      setUploadedImage(null);
     } finally {
       setIsUploading(false);
     }

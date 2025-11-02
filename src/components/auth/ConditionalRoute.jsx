@@ -15,11 +15,11 @@ export default function ConditionalRoute({
   visibilityField,
   fallbackRoute
 }) {
-  const { currentUser, settings, isLoading } = useUser();
+  const { currentUser, settings, isLoading, settingsLoading } = useUser();
   const location = useLocation();
 
   // Show loading while user/settings are being fetched
-  if (isLoading) {
+  if (isLoading || settingsLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center" dir="rtl">
         <LudoraLoadingSpinner size="lg" text="טוען הגדרות..." />

@@ -45,6 +45,21 @@ export default function ProductActionBar({
     productType
   } = useProductAccess(product);
 
+  // DEBUG: Log ProductActionBar data
+  console.log('🎯 ProductActionBar Debug:', {
+    productId: product?.id,
+    productTitle: product?.title,
+    embeddedPurchase: product?.purchase,
+    hasAccess,
+    isInCart,
+    isPurchased,
+    canAddToCart,
+    canPurchase,
+    isFree,
+    productType,
+    paymentStatus: product?.purchase?.payment_status
+  });
+
   // If user has access, show the appropriate access button
   if (hasAccess) {
     switch (productType) {

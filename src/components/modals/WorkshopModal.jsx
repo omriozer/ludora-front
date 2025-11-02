@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Workshop, Category, Settings } from "@/services/entities";
 import { apiUploadWithProgress } from "@/services/apiClient";
 import { getProductTypeName } from "@/config/productTypes";
+import { hasVideo, getVideoFilename, getEntityVideoUrl } from "@/utils/videoUtils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,12 +48,20 @@ export default function WorkshopModal({
     meeting_link: "",
     meeting_password: "",
     meeting_platform: "",
-    video_file_url: "",
+    // Standardized video fields (Phase 3 implementation)
+    has_video: false,
+    video_filename: null,
+    // Legacy video field for backward compatibility during transition
+    video_file_url: "", // DEPRECATED: Will be removed in Phase 4
     max_participants: 20,
     duration_minutes: 90,
     price: 0,
     is_published: false,
-    image_url: "",
+    // Standardized image fields (Phase 3 implementation)
+    has_image: false,
+    image_filename: null,
+    // Legacy image field for backward compatibility during transition
+    image_url: "", // DEPRECATED: Will be removed in Phase 4
     tags: [],
     target_audience: "",
     access_days: 30
@@ -126,12 +135,20 @@ export default function WorkshopModal({
       meeting_link: "",
       meeting_password: "",
       meeting_platform: "",
-      video_file_url: "",
+      // Standardized video fields (Phase 3 implementation)
+      has_video: false,
+      video_filename: null,
+      // Legacy video field for backward compatibility during transition
+      video_file_url: "", // DEPRECATED: Will be removed in Phase 4
       max_participants: 20,
       duration_minutes: 90,
       price: 0,
       is_published: false,
-      image_url: "",
+      // Standardized image fields (Phase 3 implementation)
+      has_image: false,
+      image_filename: null,
+      // Legacy image field for backward compatibility during transition
+      image_url: "", // DEPRECATED: Will be removed in Phase 4
       tags: [],
       target_audience: "",
       access_days: 30
@@ -191,8 +208,8 @@ export default function WorkshopModal({
       setUploadStates(prev => ({ ...prev, video: 'uploading' }));
       setUploadProgress(prev => ({ ...prev, video: 0 }));
 
-      const formData = new FormData();
-      formData.append('file', file);
+      const uploadFormData = new FormData();
+      uploadFormData.append('file', file);
 
       // Use centralized apiUploadWithProgress for video uploads
       const workshopId = formData.id || 'temp';
@@ -200,22 +217,34 @@ export default function WorkshopModal({
 
       const response = await apiUploadWithProgress(
         endpoint,
-        formData,
+        uploadFormData,
         (progress) => {
           setUploadProgress(prev => ({ ...prev, video: progress }));
         }
       );
 
-      handleInputChange('video_file_url', response.s3Key || response.url);
+      // Update using standardized fields (Phase 3 implementation)
+      handleInputChange('has_video', true);
+      handleInputChange('video_filename', 'video.mp4'); // Standard filename
+      // Keep legacy field for backward compatibility during transition
+      handleInputChange('video_file_url', response.s3Key || response.url); // DEPRECATED: Will be removed in Phase 4
+
       setUploadStates(prev => ({ ...prev, video: 'success' }));
       setMessage({ type: 'success', text: 'הווידאו הועלה בהצלחה' });
-      
+
     } catch (error) {
       console.error('Error uploading video:', error);
+
+      // Clear the file input on error so user can try again
+      const fileInput = document.getElementById('video-upload');
+      if (fileInput) {
+        fileInput.value = '';
+      }
+
       setUploadStates(prev => ({ ...prev, video: 'error' }));
-      setMessage({ 
-        type: 'error', 
-        text: `שגיאה בהעלאת הווידאו: ${error.message}` 
+      setMessage({
+        type: 'error',
+        text: `שגיאה בהעלאת הווידאו: ${error.message}`
       });
     }
   };

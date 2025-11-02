@@ -34,6 +34,7 @@ import CourseProductSection from './product-specific/CourseProductSection';
 import ToolProductSection from './product-specific/ToolProductSection';
 import GameProductSection from './product-specific/GameProductSection';
 import LessonPlanProductSection from './product-specific/LessonPlanProductSection';
+import PdfFooterPreview from '@/components/pdf/PdfFooterPreview';
 
 /**
  * ProductSpecificSection - Renders product type-specific fields and functionality
@@ -53,6 +54,7 @@ export const ProductSpecificSection = ({
   currentUser,
   showFooterPreview,
   setShowFooterPreview,
+  handleSaveFooterSettings,
   isAccessible = true,
   accessReason = null,
   isFieldValid,
@@ -139,6 +141,7 @@ export const ProductSpecificSection = ({
   };
 
   return (
+    <>
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
@@ -155,6 +158,7 @@ export const ProductSpecificSection = ({
               type="number"
               value={formData.total_duration_minutes}
               onChange={(e) => updateFormData({ total_duration_minutes: parseInt(e.target.value) || 0 })}
+              onWheel={(e) => e.target.blur()} // Prevent scroll from changing value
               placeholder="180"
               className="mt-1"
             />
@@ -396,6 +400,7 @@ export const ProductSpecificSection = ({
                         type="number"
                         value={formData[`attr_${key}`] || ''}
                         onChange={(e) => updateFormData({ [`attr_${key}`]: e.target.value })}
+                        onWheel={(e) => e.target.blur()} // Prevent scroll from changing value
                         placeholder={config.placeholder}
                         className="mt-1"
                         min={config.min}
@@ -419,5 +424,32 @@ export const ProductSpecificSection = ({
         )}
       </CardContent>
     </Card>
+
+    {/* PDF Footer Preview Modal */}
+    {formData.product_type === 'file' && showFooterPreview && (
+      <PdfFooterPreview
+        isOpen={showFooterPreview}
+        onClose={() => setShowFooterPreview(false)}
+        onSave={async (footerConfig) => {
+          try {
+            // Save footer settings using the proper handler
+            if (handleSaveFooterSettings) {
+              await handleSaveFooterSettings(footerConfig);
+            } else {
+              // Fallback to form data update
+              updateFormData({ footer_settings: footerConfig });
+            }
+            setShowFooterPreview(false);
+          } catch (error) {
+            console.error('❌ Error saving footer settings:', error);
+            // Keep modal open on error
+          }
+        }}
+        fileEntityId={editingProduct?.entity_id}
+        userRole={currentUser?.role}
+        initialFooterConfig={editingProduct?.footer_settings || formData.footer_settings}
+      />
+    )}
+  </>
   );
 };

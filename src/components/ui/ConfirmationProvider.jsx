@@ -17,7 +17,12 @@ export function ConfirmationProvider({ children }) {
     confirmText: 'אישור',
     cancelText: 'ביטול',
     variant: 'warning',
-    resolve: null
+    resolve: null,
+    operationStatus: null, // null, 'loading', 'success', 'error'
+    loadingMessage: 'מעבד...',
+    successMessage: '',
+    errorMessage: '',
+    asyncOperation: null
   });
 
   const showConfirmation = (title, message, options = {}) => {
@@ -29,7 +34,12 @@ export function ConfirmationProvider({ children }) {
         confirmText: options.confirmText || 'אישור',
         cancelText: options.cancelText || 'ביטול',
         variant: options.variant || 'warning',
-        resolve
+        resolve,
+        operationStatus: null,
+        loadingMessage: options.loadingMessage || 'מעבד...',
+        successMessage: options.successMessage || 'הפעולה הושלמה בהצלחה',
+        errorMessage: options.errorMessage || 'אירעה שגיאה',
+        asyncOperation: options.asyncOperation || null
       });
     });
   };
@@ -40,10 +50,46 @@ export function ConfirmationProvider({ children }) {
     return () => setGlobalConfirmationHandler(null);
   }, []);
 
-  const handleConfirm = () => {
-    setDialogState(prev => ({ ...prev, isOpen: false }));
-    if (dialogState.resolve) {
-      dialogState.resolve(true);
+  const handleConfirm = async () => {
+    // If there's an async operation, handle it
+    if (dialogState.asyncOperation) {
+      try {
+        // Set loading state
+        setDialogState(prev => ({ ...prev, operationStatus: 'loading' }));
+
+        // Execute the async operation
+        await dialogState.asyncOperation();
+
+        // Set success state
+        setDialogState(prev => ({ ...prev, operationStatus: 'success' }));
+
+        // Resolve the promise with true after success animation
+        if (dialogState.resolve) {
+          // Give time for success animation to show before resolving
+          setTimeout(() => {
+            setDialogState(prev => ({ ...prev, isOpen: false, operationStatus: null }));
+            dialogState.resolve(true);
+          }, 2000);
+        }
+      } catch (error) {
+        // Set error state
+        setDialogState(prev => ({ ...prev, operationStatus: 'error' }));
+
+        // Resolve the promise with false after error animation
+        if (dialogState.resolve) {
+          // Give time for error animation to show before resolving
+          setTimeout(() => {
+            setDialogState(prev => ({ ...prev, isOpen: false, operationStatus: null }));
+            dialogState.resolve(false);
+          }, 2000);
+        }
+      }
+    } else {
+      // Standard immediate confirmation
+      setDialogState(prev => ({ ...prev, isOpen: false }));
+      if (dialogState.resolve) {
+        dialogState.resolve(true);
+      }
     }
   };
 
@@ -66,6 +112,10 @@ export function ConfirmationProvider({ children }) {
         confirmText={dialogState.confirmText}
         cancelText={dialogState.cancelText}
         variant={dialogState.variant}
+        operationStatus={dialogState.operationStatus}
+        loadingMessage={dialogState.loadingMessage}
+        successMessage={dialogState.successMessage}
+        errorMessage={dialogState.errorMessage}
       />
     </ConfirmationContext.Provider>
   );

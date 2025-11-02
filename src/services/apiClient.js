@@ -4,6 +4,7 @@
 import { getApiBase } from '@/utils/api.js';
 import { clog, cerror } from '@/lib/utils';
 import { showError } from '@/utils/messaging';
+import { ApiError } from '@/utils/ApiError.js';
 
 // Use centralized API base configuration
 const API_BASE = getApiBase();
@@ -105,7 +106,7 @@ export async function apiRequest(endpoint, options = {}) {
                         error.message ||
                         JSON.stringify(error) ||
                         `API request failed: ${response.status}`;
-      throw new Error(errorMessage);
+      throw new ApiError(errorMessage, response.status, response);
     }
 
     const data = await response.json();
@@ -163,7 +164,7 @@ export async function apiDownload(endpoint, options = {}) {
                         error.message ||
                         JSON.stringify(error) ||
                         `Download failed: ${response.status}`;
-      throw new Error(errorMessage);
+      throw new ApiError(errorMessage, response.status, response);
     }
 
     const blob = await response.blob();
@@ -223,9 +224,9 @@ export async function apiUploadWithProgress(endpoint, formData, onProgress = nul
         try {
           const errorData = JSON.parse(xhr.responseText);
           const errorMessage = errorData.error || errorData.message || `Upload failed with status: ${xhr.status}`;
-          reject(new Error(errorMessage));
+          reject(new ApiError(errorMessage, xhr.status));
         } catch (e) {
-          reject(new Error(`Upload failed with status: ${xhr.status}`));
+          reject(new ApiError(`Upload failed with status: ${xhr.status}`, xhr.status));
         }
       }
     });

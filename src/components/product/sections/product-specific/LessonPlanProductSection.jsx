@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -28,7 +29,7 @@ import { File, Product, apiUploadWithProgress } from '@/services/apiClient';
 import { getApiBase } from '@/utils/api';
 import { clog, cerror } from '@/lib/utils';
 import { toast } from '@/components/ui/use-toast';
-import { ProductModalV2 } from '@/components/product/ProductModalV2';
+import { showConfirm } from '@/utils/messaging';
 import EntitySelector from '@/components/ui/EntitySelector';
 
 /**
@@ -50,6 +51,7 @@ const LessonPlanProductSection = ({
   isFieldValid,
   getFieldError
 }) => {
+  const navigate = useNavigate();
   const [uploadingFiles, setUploadingFiles] = useState({});
   const [lessonPlanFiles, setLessonPlanFiles] = useState({
     opening: [],
@@ -57,10 +59,6 @@ const LessonPlanProductSection = ({
     audio: [],
     assets: []
   });
-
-  // Product modal state
-  const [showProductModal, setShowProductModal] = useState(false);
-  const [currentFileRole, setCurrentFileRole] = useState(null);
 
   // File product selector state
   const [showFileProductSelector, setShowFileProductSelector] = useState(false);
@@ -350,6 +348,13 @@ const LessonPlanProductSection = ({
 
     } catch (error) {
       cerror('Error uploading files:', error);
+
+      // Clear the file input on error so user can try again
+      const fileInput = document.getElementById(`upload-${fileRole}`);
+      if (fileInput) {
+        fileInput.value = '';
+      }
+
       toast({
         title: "שגיאה בהעלאת קבצים",
         description: error.message || "לא ניתן להעלות את הקבצים. אנא נסה שנית.",
@@ -619,38 +624,15 @@ const LessonPlanProductSection = ({
     }
   };
 
-  // Open product modal to create new File product
-  const createNewFileProduct = (fileRole) => {
-    setCurrentFileRole(fileRole);
-    setShowProductModal(true);
-  };
-
-  // Handle saving new File product from modal
-  const handleProductSave = async (productData, continueEditing) => {
-    try {
-      // The ProductModalV2 will create the product and return the saved data
-      // We need to link this new File product to our lesson plan
-      if (productData.product_type === 'file' && productData.entity_id && currentFileRole) {
-        await linkFileProduct(productData, currentFileRole);
-      }
-
-      setShowProductModal(false);
-      setCurrentFileRole(null);
-
-      if (!continueEditing) {
-        toast({
-          title: "מוצר קובץ נוצר ונקשר בהצלחה",
-          description: `המוצר "${productData.title}" נוצר ונקשר לקטגוריית ${getRoleDisplayName(currentFileRole)}`,
-          variant: "default"
-        });
-      }
-    } catch (error) {
-      cerror('Error handling product save:', error);
-      toast({
-        title: "שגיאה בקישור המוצר",
-        description: "המוצר נוצר אך לא ניתן לקשר אותו לתכנית השיעור",
-        variant: "destructive"
-      });
+  // Navigate to create new File product
+  const createNewFileProduct = async (fileRole) => {
+    const confirmed = await showConfirm(
+      "יצירת מוצר קובץ חדש",
+      `האם ברצונך ליצור מוצר קובץ חדש עבור קטגוריית ${getRoleDisplayName(fileRole)}?\n\nתועבר לעמוד יצירת מוצרים. לאחר יצירת המוצר תוכל לחזור לכאן ולקשר אותו לתכנית השיעור.`,
+      { confirmText: "צור מוצר חדש", cancelText: "ביטול" }
+    );
+    if (confirmed) {
+      navigate(`/products/create?type=file&returnTo=${encodeURIComponent(window.location.pathname)}&lessonPlanRole=${fileRole}`);
     }
   };
 
@@ -1116,34 +1098,6 @@ const LessonPlanProductSection = ({
         </Card>
       </div>
 
-      {/* Product Modal for creating new File products */}
-      <ProductModalV2
-        isOpen={showProductModal}
-        onClose={() => {
-          setShowProductModal(false);
-          setCurrentFileRole(null);
-        }}
-        onSave={handleProductSave}
-        editingProduct={{
-          product_type: 'file', // Pre-select File as the product type
-          title: '',
-          description: '',
-          file_type: 'other',
-          is_asset_only: false,
-          allow_preview: true,
-          add_copyrights_footer: true,
-          price: '',
-          tags: [],
-          category: '',
-          access_days: '',
-          target_audience: '',
-          is_published: false,
-          __isNewWithPresets: true // Flag to indicate this is for new product with presets
-        }}
-        currentUser={null} // The modal will handle getting current user
-        isContentCreatorMode={false}
-        layout="wizard" // Use wizard layout for File product creation
-      />
 
       {/* File Product Selector Modal */}
       {showFileProductSelector && (

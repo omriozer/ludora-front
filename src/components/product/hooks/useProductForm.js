@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
  * Custom hook for managing product form data and form-related state
  * Handles form data, validation, and form submission logic
  */
-export const useProductForm = (editingProduct = null) => {
+export const useProductForm = (editingProduct = null, currentUser = null) => {
   // Initial form data based on editing vs creating
   const getInitialFormData = useCallback(() => {
     if (editingProduct) {
@@ -27,7 +27,9 @@ export const useProductForm = (editingProduct = null) => {
         total_duration_minutes: editingProduct.total_duration_minutes || 0,
         target_audience: editingProduct.target_audience || '',
         // Marketing fields
+        has_image: editingProduct.has_image ?? false,
         image_url: editingProduct.image_url || '',
+        image_filename: editingProduct.image_filename || '',
         marketing_video_type: editingProduct.marketing_video_type || '',
         marketing_video_id: editingProduct.marketing_video_id || '',
         marketing_video_title: editingProduct.marketing_video_title || '',
@@ -81,7 +83,9 @@ export const useProductForm = (editingProduct = null) => {
       total_duration_minutes: 0,
       target_audience: '',
       // Marketing fields
+      has_image: false,
       image_url: '',
+      image_filename: '',
       marketing_video_type: '',
       marketing_video_id: '',
       marketing_video_title: '',
@@ -96,7 +100,7 @@ export const useProductForm = (editingProduct = null) => {
       file_type: 'pdf',
       allow_preview: true,
       add_copyrights_footer: true,
-      creator_user_id: null, // Will be set to current user when creating
+      creator_user_id: (currentUser?.role === 'admin' || currentUser?.role === 'sysadmin') ? null : currentUser?.uid || null, // Default to Ludora for admins, user for others
       image_is_private: false,
       // Lesson plan specific
       file_configs: null,
@@ -113,7 +117,7 @@ export const useProductForm = (editingProduct = null) => {
       tool_description: '',
       tool_category: ''
     };
-  }, [editingProduct]);
+  }, [editingProduct, currentUser]);
 
   const [formData, setFormData] = useState(getInitialFormData);
   const [initialFormData, setInitialFormData] = useState(getInitialFormData);
@@ -129,8 +133,18 @@ export const useProductForm = (editingProduct = null) => {
 
   // Helper function to update form data
   const updateFormData = useCallback((updates) => {
+    // Debug logging for image-related updates
+    if (updates.has_image !== undefined || updates.image_url !== undefined || updates.image_filename !== undefined) {
+      console.log('🔄 FormData image update:', {
+        currentHasImage: formData.has_image,
+        currentImageUrl: formData.image_url,
+        currentImageFilename: formData.image_filename,
+        updates,
+        newHasImage: updates.has_image !== undefined ? updates.has_image : formData.has_image
+      });
+    }
     setFormData(prev => ({ ...prev, ...updates }));
-  }, []);
+  }, [formData.has_image, formData.image_url, formData.image_filename]);
 
   // Helper function to update nested form data (like arrays)
   const updateNestedFormData = useCallback((path, value) => {

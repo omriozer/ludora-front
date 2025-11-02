@@ -46,7 +46,7 @@ import ReturnToSelfButton from "../components/layout/ReturnToSelfButton";
 import LoginModal from "../components/LoginModal";
 import { shouldHideNavigation } from "@/lib/layoutHelpers";
 import MaintenancePage from "@/components/layout/MaintenancePage";
-import { LoginModalProvider, useLoginModal } from "@/hooks/useLoginModal";
+import { useLoginModal } from "@/hooks/useLoginModal";
 import { CartProvider } from "@/contexts/CartContext";
 import LudoraLoadingSpinner from "@/components/ui/LudoraLoadingSpinner";
 
@@ -56,7 +56,7 @@ function LayoutContent({ children }) {
   const { showLoginModal, openLoginModal, closeLoginModal, executeCallback } = useLoginModal();
 
   // Use UserContext instead of local state
-  const { currentUser, settings, isLoading, isAuthenticated, settingsLoadFailed, login, logout } = useUser();
+  const { currentUser, settings, isLoading, isAuthenticated, settingsLoading, settingsLoadFailed, login, logout } = useUser();
 
   // Track screen size for responsive layout
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
@@ -264,8 +264,8 @@ function LayoutContent({ children }) {
     openLoginModal();
   };
 
-  // Handle loading state
-  if (isLoading) {
+  // Handle loading state - wait for both user auth AND settings to load
+  if (isLoading || settingsLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <LudoraLoadingSpinner
@@ -432,9 +432,5 @@ function LayoutContent({ children }) {
 }
 
 export default function Layout({ children }) {
-  return (
-    <LoginModalProvider>
-      <LayoutContent>{children}</LayoutContent>
-    </LoginModalProvider>
-  );
+  return <LayoutContent>{children}</LayoutContent>;
 }

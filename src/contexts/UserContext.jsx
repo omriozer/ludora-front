@@ -19,12 +19,14 @@ export function UserProvider({ children }) {
   const [settings, setSettings] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [settingsLoading, setSettingsLoading] = useState(true);
   const [settingsLoadFailed, setSettingsLoadFailed] = useState(false);
   const [userDataFresh, setUserDataFresh] = useState(false);
 
   // Load settings independently of user authentication
   const loadSettings = useCallback(async () => {
     try {
+      setSettingsLoading(true);
       setSettingsLoadFailed(false);
       const appSettings = await loadSettingsWithRetry(Settings);
       if (appSettings && appSettings.length > 0) {
@@ -36,6 +38,8 @@ export function UserProvider({ children }) {
       cerror('[UserContext] Error loading settings:', error);
       setSettings(null);
       setSettingsLoadFailed(true);
+    } finally {
+      setSettingsLoading(false);
     }
   }, []);
 
@@ -242,21 +246,35 @@ export function UserProvider({ children }) {
         userSource: user.providerData ? 'Firebase' : 'API'
       });
 
-      // Ensure we have complete user data before proceeding
+      // Ensure we have basic user info before proceeding
       if (!user || !user.email) {
         throw new Error('Incomplete user data received from API');
       }
 
-      // User data is already clean from the API - no normalization needed
-      // All user data comes from the database user table
+      // ALWAYS fetch complete user data from database to ensure consistency
+      // This fixes the issue where initial login has incomplete data
+      clog('[UserContext] 🔄 Fetching complete user data from database...');
+      let completeUser;
+      try {
+        completeUser = await User.getCurrentUser();
+        clog('[UserContext] ✅ Complete user data fetched:', {
+          birth_date: completeUser?.birth_date,
+          onboarding_completed: completeUser?.onboarding_completed,
+          user_type: completeUser?.user_type,
+          email: completeUser?.email
+        });
+      } catch (fetchError) {
+        clog('[UserContext] ⚠️ Failed to fetch complete user data, using provided data:', fetchError);
+        completeUser = user; // Fallback to provided data if fetch fails
+      }
 
       // Settings are already loaded independently, so get current settings
       const settingsObj = settings;
-      let finalUser = user;
+      let finalUser = completeUser;
 
       if (settingsObj?.subscription_system_enabled) {
         try {
-          const updatedUser = await checkUserSubscription(user);
+          const updatedUser = await checkUserSubscription(completeUser);
           clog('[UserContext] 💾 Setting updated user in state:', {
             birth_date: updatedUser.birth_date,
             onboarding_completed: updatedUser.onboarding_completed,
@@ -267,26 +285,26 @@ export function UserProvider({ children }) {
         } catch (subscriptionError) {
           clog('[UserContext] Subscription check failed, proceeding without subscription:', subscriptionError);
           // If subscription check fails, proceed without it to allow login
-          clog('[UserContext] 💾 Setting original user in state:', {
-            birth_date: user.birth_date,
-            onboarding_completed: user.onboarding_completed,
-            user_type: user.user_type,
-            email: user.email
+          clog('[UserContext] 💾 Setting complete user in state:', {
+            birth_date: completeUser.birth_date,
+            onboarding_completed: completeUser.onboarding_completed,
+            user_type: completeUser.user_type,
+            email: completeUser.email
           });
-          finalUser = user;
+          finalUser = completeUser;
         }
       } else {
-        clog('[UserContext] 💾 Setting user in state (no subscription system):', {
-          birth_date: user.birth_date,
-          onboarding_completed: user.onboarding_completed,
-          user_type: user.user_type,
-          email: user.email
+        clog('[UserContext] 💾 Setting complete user in state (no subscription system):', {
+          birth_date: completeUser.birth_date,
+          onboarding_completed: completeUser.onboarding_completed,
+          user_type: completeUser.user_type,
+          email: completeUser.email
         });
-        finalUser = user;
+        finalUser = completeUser;
       }
 
       // Ensure the final user object has all required fields
-      const completeUser = {
+      const finalCompleteUser = {
         ...finalUser,
         // Ensure critical fields are preserved
         email: finalUser.email || user.email,
@@ -298,15 +316,15 @@ export function UserProvider({ children }) {
       };
 
       clog('[UserContext] 🔧 Final complete user object being stored:', {
-        email: completeUser.email,
-        birth_date: completeUser.birth_date,
-        onboarding_completed: completeUser.onboarding_completed,
-        user_type: completeUser.user_type,
-        hasAllFields: !!(completeUser.email && (completeUser.onboarding_completed !== undefined))
+        email: finalCompleteUser.email,
+        birth_date: finalCompleteUser.birth_date,
+        onboarding_completed: finalCompleteUser.onboarding_completed,
+        user_type: finalCompleteUser.user_type,
+        hasAllFields: !!(finalCompleteUser.email && (finalCompleteUser.onboarding_completed !== undefined))
       });
 
       // Store the complete user data in React state
-      setCurrentUser(completeUser);
+      setCurrentUser(finalCompleteUser);
       setIsAuthenticated(true);
 
       // Use setTimeout to ensure state update completes before marking data as fresh
@@ -424,6 +442,7 @@ export function UserProvider({ children }) {
     settings,
     isLoading,
     isAuthenticated,
+    settingsLoading,
     settingsLoadFailed,
     userDataFresh,
     login,

@@ -34,6 +34,7 @@ export default function useProductCatalog(productType, filters, activeTab) {
     const serviceMap = {
       'game': 'Game',
       'file': 'File',
+      'lesson_plan': 'LessonPlan', // lesson_plan products use LessonPlan entities
       'workshop': 'Workshop',
       'course': 'Course',
       'tool': 'Tool'
@@ -126,6 +127,12 @@ export default function useProductCatalog(productType, filters, activeTab) {
             });
           }
 
+          console.log('📦 useProductCatalog: Setting userPurchases:', {
+            count: purchasesData.length,
+            cartItems: purchasesData.filter(p => p.payment_status === 'cart').length,
+            paidItems: purchasesData.filter(p => p.payment_status === 'paid').length,
+            completedItems: purchasesData.filter(p => p.payment_status === 'completed').length
+          });
           setUserPurchases(purchasesData);
         } catch (error) {
           cerror("Error loading user purchases:", error);
@@ -359,6 +366,30 @@ export default function useProductCatalog(productType, filters, activeTab) {
     if (!isLoadingUser) {
       loadData();
     }
+  }, [loadData, isLoadingUser]);
+
+  // Listen for cart changes to refresh purchase data
+  useEffect(() => {
+    const handleCartChange = () => {
+      console.log('🎧 useProductCatalog: Received cart change event!');
+      console.log('🎧 useProductCatalog: isLoadingUser =', isLoadingUser);
+      clog('Cart change detected - refreshing product catalog data');
+      if (!isLoadingUser) {
+        console.log('🎧 useProductCatalog: Calling loadData()');
+        loadData();
+      } else {
+        console.log('🎧 useProductCatalog: Skipping loadData - user still loading');
+      }
+    };
+
+    console.log('🎧 useProductCatalog: Setting up cart change listener');
+    // Listen for cart change events
+    window.addEventListener('ludora-cart-changed', handleCartChange);
+
+    return () => {
+      console.log('🎧 useProductCatalog: Removing cart change listener');
+      window.removeEventListener('ludora-cart-changed', handleCartChange);
+    };
   }, [loadData, isLoadingUser]);
 
   return {

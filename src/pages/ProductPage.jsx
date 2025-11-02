@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 
 // Import product modal components and logic
 import { useProductForm } from '@/components/product/hooks/useProductForm';
-import { useProductUploads } from '@/components/product/hooks/useProductUploads';
+import { useProductUploads } from '@/components/product/hooks/useProductUploadsCompat';
 import { useProductAccess } from '@/components/product/hooks/useProductAccess';
 import { WizardLayout } from '@/components/product/layouts/WizardLayout';
 import { BasicInfoSection } from '@/components/product/sections/BasicInfoSection';
@@ -38,6 +38,7 @@ export default function ProductPage() {
   const [isContentCreator, setIsContentCreator] = useState(false);
   const [isContentCreatorModeActive, setIsContentCreatorModeActive] = useState(false);
   const [contentCreatorPermissions, setContentCreatorPermissions] = useState({});
+  const [showFooterPreview, setShowFooterPreview] = useState(false);
 
   // Product form hooks
   const {
@@ -46,7 +47,7 @@ export default function ProductPage() {
     hasChanges,
     resetChanges,
     validateForm: validateFormData
-  } = useProductForm(editingProduct);
+  } = useProductForm(editingProduct, currentUser);
 
   const {
     uploadStates,
@@ -261,17 +262,19 @@ export default function ProductPage() {
 
       if (isNewProduct) {
         // Create new product
-        result = await ProductAPI.create(data);
+        // Transform creator_user_id to is_ludora_creator for backend compatibility
+        const createData = {
+          ...data,
+          is_ludora_creator: data.creator_user_id === null
+        };
+        result = await ProductAPI.create(createData);
         clog('✅ Product created:', result);
 
-        // Update URL to include the new product ID without reload
+        // Update URL to include the new product ID and transition to edit mode
         if (result.id) {
-          window.history.replaceState(
-            {},
-            '',
-            `/products/edit/${result.id}`
-          );
           setEditingProduct(result);
+          // Use navigate replace to update URL and trigger React Router to re-parse params
+          navigate(`/products/edit/${result.id}`, { replace: true });
         }
 
         showMessage('success', continueEditing ?
@@ -280,7 +283,12 @@ export default function ProductPage() {
         );
       } else {
         // Update existing product
-        result = await ProductAPI.update(productId, data);
+        // Transform creator_user_id to is_ludora_creator for backend compatibility
+        const updateData = {
+          ...data,
+          is_ludora_creator: data.creator_user_id === null
+        };
+        result = await ProductAPI.update(productId, updateData);
         clog('✅ Product updated:', result);
         setEditingProduct(result);
 
@@ -309,6 +317,14 @@ export default function ProductPage() {
 
     if (result?.success && result.updateData) {
       updateFormData(result.updateData);
+
+      // Also update the editingProduct object so image preview works immediately
+      if (editingProduct) {
+        setEditingProduct(prev => ({
+          ...prev,
+          ...result.updateData
+        }));
+      }
     }
 
     return result;
@@ -320,9 +336,44 @@ export default function ProductPage() {
 
     if (result?.success && result.updateData) {
       updateFormData(result.updateData);
+
+      // Also update the editingProduct object so UI reflects deletion immediately
+      if (editingProduct) {
+        setEditingProduct(prev => ({
+          ...prev,
+          ...result.updateData
+        }));
+      }
     }
 
     return result;
+  };
+
+  // Footer settings save handler
+  const handleSaveFooterSettings = async (footerConfig) => {
+    try {
+      if (editingProduct?.entity_id && formData.product_type === 'file') {
+        // Update the file entity with footer settings
+        const { File } = await import('@/services/entities');
+        await File.update(editingProduct.entity_id, {
+          footer_settings: footerConfig
+        });
+
+        // Update local state
+        updateFormData({ footer_settings: footerConfig });
+
+        // Update editing product
+        setEditingProduct(prev => ({
+          ...prev,
+          footer_settings: footerConfig
+        }));
+
+        console.log('✅ Footer settings saved successfully:', footerConfig);
+      }
+    } catch (error) {
+      console.error('❌ Error saving footer settings:', error);
+      throw error;
+    }
   };
 
   // Tag management functions
@@ -354,6 +405,37 @@ export default function ProductPage() {
 
     current[pathArray[pathArray.length - 1]] = value;
     updateFormData(newData);
+  };
+
+  // Helper function to get marketing content counter for File products
+  const getMarketingContentCounter = () => {
+    if (formData.product_type !== 'file') {
+      return null; // Only show counter for File products
+    }
+
+    let count = 0;
+    const total = 2; // Image + Marketing Video
+
+    // Check if product has image
+    if (editingProduct?.has_image || formData.has_image) {
+      count++;
+    }
+
+    // Check if product has marketing video
+    if (marketingVideoExists) {
+      count++;
+    }
+
+    return { count, total };
+  };
+
+  // Helper function to get marketing section title with counter
+  const getMarketingSectionTitle = () => {
+    const counter = getMarketingContentCounter();
+    if (counter) {
+      return `חומרי שיווק (${counter.count}/${counter.total})`;
+    }
+    return 'חומרי שיווק';
   };
 
   // Get sections for the wizard with real hook functions
@@ -392,8 +474,9 @@ export default function ProductPage() {
         getUploadProgress,
         uploadedFileInfo,
         currentUser,
-        showFooterPreview: false,
-        setShowFooterPreview: () => {},
+        showFooterPreview,
+        setShowFooterPreview,
+        handleSaveFooterSettings,
         isAccessible: isSectionAccessible('productContent'),
         accessReason: getSectionAccess('productContent').reason,
         isFieldValid,
@@ -404,7 +487,7 @@ export default function ProductPage() {
     },
     {
       id: 'marketing',
-      title: 'חומרי שיווק',
+      title: getMarketingSectionTitle(),
       component: MarketingSection,
       props: {
         formData,

@@ -328,7 +328,7 @@ ${personalMessage ? `הודעה אישית מהמורה:\n${personalMessage}\n\n
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto" hideCloseButton={true}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3 text-xl">
             <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">

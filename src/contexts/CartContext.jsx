@@ -2,6 +2,9 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { getCartPurchases, getUserIdFromToken, isAuthenticated } from '@/utils/purchaseHelpers';
 import { clog, cerror } from '@/lib/utils';
 
+// Custom event for cart changes
+const CART_CHANGE_EVENT = 'ludora-cart-changed';
+
 const CartContext = createContext();
 
 export function CartProvider({ children }) {
@@ -39,9 +42,15 @@ export function CartProvider({ children }) {
     }
   }, []);
 
-  // Refresh cart data
+  // Refresh cart data and notify other components
   const refreshCart = useCallback(() => {
+    console.log('🔄 CartContext: Starting refreshCart()');
     loadCartItems();
+    // Emit custom event to notify other components (like product catalog)
+    console.log('📢 CartContext: Emitting cart change event');
+    window.dispatchEvent(new CustomEvent(CART_CHANGE_EVENT));
+    console.log('✅ CartContext: Cart refreshed and event emitted');
+    clog('Cart refreshed - notified other components');
   }, [loadCartItems]);
 
   // Add item to cart (increment count without refetching)

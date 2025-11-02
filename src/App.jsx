@@ -12,6 +12,7 @@ import ConditionalRoute from '@/components/auth/ConditionalRoute';
 import OnboardingRedirect from '@/components/auth/OnboardingRedirect';
 import TutorialOverlay from '@/components/TutorialOverlay';
 import { ConfirmationProvider } from '@/components/ui/ConfirmationProvider';
+import { AuthErrorProvider } from '@/components/providers/AuthErrorProvider';
 import { PRODUCT_TYPES } from './config/productTypes';
 import OnboardingWizard from '@/components/onboarding/OnboardingWizard';
 import { toast } from '@/components/ui/use-toast';
@@ -51,7 +52,8 @@ function App() {
 
 	return (
 		<ConfirmationProvider>
-			<Layout>
+			<AuthErrorProvider>
+				<Layout>
 				<Routes>
 					<Route
 						path='/'
@@ -557,7 +559,8 @@ function App() {
 				</Routes>
 				<EnhancedToaster />
 				<TutorialOverlay />
-			</Layout>
+				</Layout>
+			</AuthErrorProvider>
 		</ConfirmationProvider>
 	);
 }

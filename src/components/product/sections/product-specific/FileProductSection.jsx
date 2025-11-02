@@ -27,7 +27,7 @@ const FileProductSection = ({
   const getAcceptAttribute = (fileType) => {
     switch (fileType) {
       case 'file':
-        return '.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.zip,.txt';
+        return '.pdf'; // File Products only accept PDF files
       default:
         return '*';
     }
@@ -36,7 +36,7 @@ const FileProductSection = ({
   const getFileTypeConfig = (fileType) => {
     switch (fileType) {
       case 'file':
-        return { displayName: 'PDF, Word, PowerPoint, Excel, ZIP, טקסט' };
+        return { displayName: 'PDF בלבד' };
       default:
         return { displayName: 'קבצים' };
     }
@@ -139,23 +139,25 @@ const FileProductSection = ({
           )}
 
           <div className="text-xs text-gray-500 mt-2">
-            סוגי קבצים נתמכים: {getFileTypeConfig('file')?.displayName || 'PDF'}
+            סוגי קבצים נתמכים: {getFileTypeConfig('file')?.displayName || 'PDF בלבד'}
           </div>
         </div>
 
-        {/* Allow Preview Toggle */}
-        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
-          <div className="space-y-0.5">
-            <Label className="text-sm font-medium text-gray-900">לאפשר תצוגה מקדימה</Label>
-            <p className="text-xs text-gray-500">
-              כאשר מופעל, משתמשים יוכלו לצפות בתצוגה מקדימה של הקובץ לפני הרכישה
-            </p>
+        {/* Allow Preview Toggle - Only for PDF files with uploaded file */}
+        {uploadedFileInfo?.exists && formData.file_type === 'pdf' && (
+          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <div className="space-y-0.5">
+              <Label className="text-sm font-medium text-gray-900">לאפשר תצוגה מקדימה</Label>
+              <p className="text-xs text-gray-500">
+                כאשר מופעל, משתמשים יוכלו לצפות בתצוגה מקדימה של קובץ ה-PDF לפני הרכישה
+              </p>
+            </div>
+            <Switch
+              checked={formData.allow_preview}
+              onCheckedChange={(checked) => updateFormData({ allow_preview: checked })}
+            />
           </div>
-          <Switch
-            checked={formData.allow_preview}
-            onCheckedChange={(checked) => updateFormData({ allow_preview: checked })}
-          />
-        </div>
+        )}
 
         {/* Add Copyrights Footer Toggle - Admin Only */}
         {(currentUser?.role === 'admin' || currentUser?.role === 'sysadmin') && (
@@ -173,8 +175,9 @@ const FileProductSection = ({
           </div>
         )}
 
-        {/* Footer Preview Button - Show if add_copyrights_footer is true and file is PDF */}
+        {/* Footer Preview Button - Show if add_copyrights_footer is true, file is PDF, and file is uploaded */}
         {formData.add_copyrights_footer &&
+         uploadedFileInfo?.exists &&
          formData.file_type === 'pdf' &&
          (currentUser?.role === 'admin' || currentUser?.role === 'sysadmin' || currentUser?.content_creator_agreement_sign_date) && (
           <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
@@ -188,7 +191,7 @@ const FileProductSection = ({
               תצוגה מקדימה של כותרת תחתונה
             </Button>
             <p className="text-xs text-gray-600 mt-2">
-              לחץ לצפייה בתצוגה מקדימה של הקובץ עם כותרת תחתונה של זכויות יוצרים
+              לחץ לצפייה בתצוגה מקדימה של קובץ ה-PDF עם כותרת תחתונה של זכויות יוצרים
             </p>
           </div>
         )}

@@ -72,6 +72,14 @@ export default function AudioLibrary({ showMessage }) {
       }
     } catch (error) {
       console.error('Error uploading audio file:', error);
+
+      // Clear the file input on error so user can try again
+      const fileInput = document.getElementById('file-input');
+      if (fileInput) {
+        fileInput.value = '';
+      }
+      setUploadForm(prev => ({ ...prev, file: null }));
+
       showMessage('error', 'שגיאה בהעלאת קובץ האודיו');
     }
     setIsUploading(false);

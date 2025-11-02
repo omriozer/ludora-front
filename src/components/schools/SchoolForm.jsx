@@ -133,6 +133,10 @@ export default function SchoolForm({ school, onSave, onCancel, title, currentUse
       setErrors(prev => ({ ...prev, logo: undefined }));
     } catch (error) {
       console.error('Error uploading logo:', error);
+
+      // Clear the file input on error so user can try again
+      event.target.value = '';
+
       setErrors(prev => ({ ...prev, logo: 'שגיאה בהעלאת הלוגו' }));
     }
     setIsUploadingLogo(false);

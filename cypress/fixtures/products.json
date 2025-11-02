@@ -1,0 +1,78 @@
+{
+  "fileProduct": {
+    "name": "Test File Product",
+    "type": "file",
+    "description": "Test file product for automation testing",
+    "price": 10.99,
+    "category": "Education",
+    "tags": ["test", "automation", "file"],
+    "isActive": true,
+    "downloadable": true,
+    "fileTypes": ["pdf", "docx", "pptx"]
+  },
+  "lessonPlan": {
+    "name": "Test Lesson Plan",
+    "type": "lesson_plan",
+    "description": "Complete lesson plan for mathematics",
+    "price": 15.99,
+    "category": "Mathematics",
+    "subject": "אלגברה",
+    "grade": "כיתה ח",
+    "duration": 45,
+    "tags": ["math", "lesson", "algebra"],
+    "isActive": true,
+    "includes": ["presentation", "worksheet", "answers"]
+  },
+  "workshop": {
+    "name": "Test Workshop",
+    "type": "workshop",
+    "description": "Interactive workshop on creative writing",
+    "price": 25.99,
+    "category": "Language Arts",
+    "subject": "כתיבה יצירתית",
+    "duration": 90,
+    "maxParticipants": 30,
+    "tags": ["workshop", "writing", "creativity"],
+    "isActive": true,
+    "hasVideo": true,
+    "hasMaterials": true
+  },
+  "course": {
+    "name": "Test Course",
+    "type": "course",
+    "description": "Complete course on digital literacy",
+    "price": 99.99,
+    "category": "Technology",
+    "subject": "אוריינות דיגיטלית",
+    "duration": 480,
+    "modules": 12,
+    "tags": ["course", "technology", "digital"],
+    "isActive": true,
+    "hasVideos": true,
+    "hasQuizzes": true,
+    "hasCertificate": true
+  },
+  "game": {
+    "name": "Test Educational Game",
+    "type": "game",
+    "description": "Interactive math game for primary school",
+    "price": 19.99,
+    "category": "Games",
+    "subject": "מתמטיקה",
+    "grade": "כיתה ד",
+    "tags": ["game", "math", "interactive"],
+    "isActive": true,
+    "platform": "web",
+    "multiPlayer": false
+  },
+  "freeResource": {
+    "name": "Free Test Resource",
+    "type": "resource",
+    "description": "Free educational resource for testing",
+    "price": 0,
+    "category": "Free Resources",
+    "tags": ["free", "resource", "test"],
+    "isActive": true,
+    "downloadable": true
+  }
+}
