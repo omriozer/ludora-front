@@ -25,7 +25,7 @@ import {
   CheckCircle,
   Paperclip
 } from 'lucide-react';
-import { File, Product, apiUploadWithProgress } from '@/services/apiClient';
+import { File, Product, apiUploadWithProgress, apiRequest } from '@/services/apiClient';
 import { getApiBase } from '@/utils/api';
 import { clog, cerror } from '@/lib/utils';
 import { toast } from '@/components/ui/use-toast';
@@ -229,7 +229,10 @@ const LessonPlanProductSection = ({
     }
 
     // Check if section can accept more files
-    if (!canAddMoreFiles(fileRole)) {
+    const isSingleFileSection = fileRole === 'opening' || fileRole === 'body';
+    const isReplacement = editingProduct?.is_published && isSingleFileSection && lessonPlanFiles[fileRole]?.length > 0;
+
+    if (!canAddMoreFiles(fileRole) && !isReplacement) {
       const sectionName = getRoleDisplayName(fileRole);
       toast({
         title: "מגבלת קבצים",
@@ -268,6 +271,7 @@ const LessonPlanProductSection = ({
       clog(`Starting file upload for role: ${fileRole}, files:`, fileArray.map(f => f.name));
 
       const uploadedFiles = [];
+      let lastUploadResult = null; // Store the last upload result for total_slides
 
       for (const file of fileArray) {
         clog(`Uploading file: ${file.name} (${file.type}) for role: ${fileRole}`);
@@ -280,21 +284,8 @@ const LessonPlanProductSection = ({
 
         const endpoint = `/entities/lesson-plan/${editingProduct.entity_id}/upload-file`;
 
-        const response = await fetch(`${getApiBase()}${endpoint}`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-          },
-          body: formData
-        });
-
-        if (!response.ok) {
-          const error = await response.json();
-          cerror('Upload API error:', error);
-          throw new Error(error.details || error.error || 'Upload failed');
-        }
-
-        const result = await response.json();
+        const result = await apiUploadWithProgress(endpoint, formData);
+        lastUploadResult = result; // Store for later use
         clog('Upload API response:', result);
 
         // Create file config from atomic endpoint response
@@ -308,30 +299,69 @@ const LessonPlanProductSection = ({
           s3_key: result.file.s3_key,
           size: result.file.size,
           mime_type: file.type,
-          is_asset_only: true
+          is_asset_only: true,
+          slide_count: result.file_config?.slide_count || 0 // Include slide count from API
         };
 
         uploadedFiles.push(fileConfig);
         clog('File config created:', fileConfig);
       }
 
-      // Update file_configs in formData
+      // Check if this is a replacement scenario (published product + single file section + existing files)
+      const isReplacementScenario = editingProduct?.is_published &&
+                                   isSingleFileSection &&
+                                   lessonPlanFiles[fileRole]?.length > 0;
+
+      // Update file_configs in formData - handle replacement vs addition
       const currentFileConfigs = formData.file_configs || { files: [] };
-      const updatedFiles = [...currentFileConfigs.files, ...uploadedFiles];
+      let updatedFiles;
+
+      if (isReplacementScenario) {
+        // For replacement: remove existing files for this role and add new ones
+        const filesForOtherRoles = currentFileConfigs.files.filter(f => f.file_role !== fileRole);
+        updatedFiles = [...filesForOtherRoles, ...uploadedFiles];
+        clog(`🔄 FormData replacement for ${fileRole} - removed ${currentFileConfigs.files.length - filesForOtherRoles.length} old files, added ${uploadedFiles.length} new files`);
+      } else {
+        // For addition: add new files to existing ones
+        updatedFiles = [...currentFileConfigs.files, ...uploadedFiles];
+        clog(`➕ FormData addition for ${fileRole} - added ${uploadedFiles.length} files to existing ${currentFileConfigs.files.length}`);
+      }
 
       clog('Updating formData with files:', updatedFiles);
-      updateFormData({
+
+      // Prepare formData updates
+      const formDataUpdates = {
         file_configs: {
           ...currentFileConfigs,
           files: updatedFiles
         }
-      });
+      };
 
-      // Update local state
+      // Update total_slides if provided in the last upload API response
+      if (lastUploadResult && lastUploadResult.total_slides !== undefined) {
+        formDataUpdates.total_slides = lastUploadResult.total_slides;
+        clog('Updating total_slides from API response:', lastUploadResult.total_slides);
+      }
+
+      updateFormData(formDataUpdates);
+
+      // Update local state - handle replacement vs addition
       setLessonPlanFiles(prev => {
+        let newFiles;
+
+        if (isReplacementScenario) {
+          // For replacement: replace existing files with new ones
+          newFiles = uploadedFiles;
+          clog(`🔄 Replacement scenario detected for ${fileRole} - replacing existing files`);
+        } else {
+          // For addition: add new files to existing ones
+          newFiles = [...prev[fileRole], ...uploadedFiles];
+          clog(`➕ Addition scenario for ${fileRole} - adding to existing files`);
+        }
+
         const newState = {
           ...prev,
-          [fileRole]: [...prev[fileRole], ...uploadedFiles]
+          [fileRole]: newFiles
         };
         clog('Updated lessonPlanFiles state:', newState);
         return newState;
@@ -368,6 +398,17 @@ const LessonPlanProductSection = ({
   // Remove file (handles File entities properly)
   const removeFile = async (fileConfig, fileRole) => {
     try {
+      // Check if lesson plan product is published - prevent deletion of opening and body files
+      if (editingProduct?.is_published && (fileRole === 'opening' || fileRole === 'body')) {
+        const fileTypeName = fileRole === 'opening' ? 'פתיחה' : 'גוף השיעור';
+        toast({
+          title: `לא ניתן למחוק קובץ ${fileTypeName}`,
+          description: `לא ניתן למחוק קבצי ${fileTypeName} ממוצר תכנית שיעור מפורסם. ניתן להעלות או לקשר קובץ חדש במקום.`,
+          variant: "destructive"
+        });
+        return;
+      }
+
       // If this is an asset-only file, use the lesson plan specific delete endpoint
       if (fileConfig.is_asset_only) {
         if (!editingProduct?.entity_id) {
@@ -382,21 +423,9 @@ const LessonPlanProductSection = ({
         // Use the lesson plan specific delete endpoint
         const endpoint = `/entities/lesson-plan/${editingProduct.entity_id}/file/${fileConfig.file_id}`;
 
-        const response = await fetch(`${getApiBase()}${endpoint}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-            'Content-Type': 'application/json'
-          }
+        const result = await apiRequest(endpoint, {
+          method: 'DELETE'
         });
-
-        if (!response.ok) {
-          const error = await response.json();
-          cerror('Delete API error:', error);
-          throw new Error(error.details || error.error || 'Delete failed');
-        }
-
-        const result = await response.json();
         clog('Delete API response:', result);
       } else {
         // If it's a File product, call the unlink endpoint (don't delete the product)
@@ -413,21 +442,9 @@ const LessonPlanProductSection = ({
         // Use the lesson plan specific unlink endpoint
         const endpoint = `/entities/lesson-plan/${editingProduct.entity_id}/unlink-file-product/${fileConfig.file_id}`;
 
-        const response = await fetch(`${getApiBase()}${endpoint}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-            'Content-Type': 'application/json'
-          }
+        const result = await apiRequest(endpoint, {
+          method: 'DELETE'
         });
-
-        if (!response.ok) {
-          const error = await response.json();
-          cerror('Unlink API error:', error);
-          throw new Error(error.details || error.error || 'Unlink failed');
-        }
-
-        const result = await response.json();
         clog('Unlink API response:', result);
       }
 
@@ -547,12 +564,8 @@ const LessonPlanProductSection = ({
       // Call the new backend endpoint to link the File product
       const endpoint = `/entities/lesson-plan/${editingProduct.entity_id}/link-file-product`;
 
-      const response = await fetch(`${getApiBase()}${endpoint}`, {
+      const result = await apiRequest(endpoint, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify({
           product_id: fileProduct.id,
           file_role: fileRole,
@@ -560,14 +573,6 @@ const LessonPlanProductSection = ({
           file_type: fileProduct.file?.file_type || 'other'
         })
       });
-
-      if (!response.ok) {
-        const error = await response.json();
-        cerror('Link API error:', error);
-        throw new Error(error.details || error.error || 'Linking failed');
-      }
-
-      const result = await response.json();
       clog('Link API response:', result);
 
       // Create file config from API response
@@ -579,15 +584,34 @@ const LessonPlanProductSection = ({
         upload_date: new Date().toISOString(),
         description: fileProduct.title,
         is_asset_only: false, // This is a File product, not just an asset
-        product_id: fileProduct.id // Store the Product ID for reference
+        product_id: fileProduct.id, // Store the Product ID for reference
+        slide_count: result.file_config?.slide_count || 0 // Include slide count from API
       };
 
+      // Check if this is a replacement scenario for linking
+      const isSingleFileSection = fileRole === 'opening' || fileRole === 'body';
+      const isLinkingReplacementScenario = editingProduct?.is_published &&
+                                          isSingleFileSection &&
+                                          lessonPlanFiles[fileRole]?.length > 0;
+
       // Update local state FIRST to ensure immediate UI update
-      clog('🔗 Updating local state - adding file:', fileConfig.file_id, 'to role:', fileRole);
+      clog('🔗 Updating local state - linking file:', fileConfig.file_id, 'to role:', fileRole);
       setLessonPlanFiles(prev => {
+        let newFiles;
+
+        if (isLinkingReplacementScenario) {
+          // For replacement: replace existing files with new one
+          newFiles = [fileConfig];
+          clog(`🔄 Link replacement scenario detected for ${fileRole} - replacing existing files`);
+        } else {
+          // For addition: add new file to existing ones
+          newFiles = [...prev[fileRole], fileConfig];
+          clog(`➕ Link addition scenario for ${fileRole} - adding to existing files`);
+        }
+
         const newState = {
           ...prev,
-          [fileRole]: [...prev[fileRole], fileConfig]
+          [fileRole]: newFiles
         };
         clog('🔗 New lessonPlanFiles state after linking:', newState);
         return newState;
@@ -596,17 +620,38 @@ const LessonPlanProductSection = ({
       // Mark that we have local changes to prevent useEffect override
       setHasLocalChanges(true);
 
-      // Then update formData
+      // Then update formData - handle replacement vs addition
       const currentFileConfigs = formData.file_configs || { files: [] };
-      const updatedFiles = [...currentFileConfigs.files, fileConfig];
+      let updatedFiles;
+
+      if (isLinkingReplacementScenario) {
+        // For replacement: remove existing files for this role and add new one
+        const filesForOtherRoles = currentFileConfigs.files.filter(f => f.file_role !== fileRole);
+        updatedFiles = [...filesForOtherRoles, fileConfig];
+        clog(`🔄 FormData link replacement for ${fileRole} - removed ${currentFileConfigs.files.length - filesForOtherRoles.length} old files, added 1 new file`);
+      } else {
+        // For addition: add new file to existing ones
+        updatedFiles = [...currentFileConfigs.files, fileConfig];
+        clog(`➕ FormData link addition for ${fileRole} - added 1 file to existing ${currentFileConfigs.files.length}`);
+      }
 
       clog('🔗 Updating formData - old files count:', currentFileConfigs.files.length, 'new count:', updatedFiles.length);
-      updateFormData({
+
+      // Prepare formData updates
+      const formDataUpdates = {
         file_configs: {
           ...currentFileConfigs,
           files: updatedFiles
         }
-      });
+      };
+
+      // Update total_slides if provided in the API response
+      if (result.total_slides !== undefined) {
+        formDataUpdates.total_slides = result.total_slides;
+        clog('🔗 Updating total_slides from link API response:', result.total_slides);
+      }
+
+      updateFormData(formDataUpdates);
 
       toast({
         title: "קובץ מוצר קושר בהצלחה",
@@ -732,6 +777,10 @@ const LessonPlanProductSection = ({
     const isSingleFileSection = fileRole === 'opening' || fileRole === 'body';
     const isPdfOnlySection = fileRole === 'opening' || fileRole === 'body';
 
+    // For published products with single-file sections, allow replacement even when "full"
+    const showUploadOptions = canAddFiles ||
+      (editingProduct?.is_published && isSingleFileSection && files.length > 0);
+
     return (
       <Card className="p-4">
         <div className="flex items-center justify-between mb-3">
@@ -770,14 +819,17 @@ const LessonPlanProductSection = ({
               <div className="flex items-center gap-2 text-yellow-800">
                 <AlertCircle className="w-4 h-4" />
                 <span className="text-sm font-medium">
-                  הקטגוריה מלאה - מחק את הקובץ הקיים להוספת קובץ חדש
+                  {editingProduct?.is_published && (fileRole === 'opening' || fileRole === 'body')
+                    ? "הקטגוריה מלאה - ניתן להחליף את הקובץ הקיים בקובץ חדש"
+                    : "הקטגוריה מלאה - מחק את הקובץ הקיים להוספת קובץ חדש"
+                  }
                 </span>
               </div>
             </div>
           )}
 
-          {/* Three Options for Adding Files - only show if can add files */}
-          {canAddFiles && (
+          {/* Three Options for Adding Files - show if can add files OR if can replace files */}
+          {showUploadOptions && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {/* Option 1: Upload New File (Asset Only) */}
           <div className="border border-gray-200 rounded-lg p-3 text-center">
@@ -796,7 +848,7 @@ const LessonPlanProductSection = ({
               }}
               className="hidden"
               id={`upload-${fileRole}`}
-              disabled={uploadingFiles[fileRole] || !canAddFiles}
+              disabled={uploadingFiles[fileRole] || (!canAddFiles && !showUploadOptions)}
             />
 
             <Button
@@ -804,7 +856,7 @@ const LessonPlanProductSection = ({
               variant="outline"
               size="sm"
               onClick={() => document.getElementById(`upload-${fileRole}`).click()}
-              disabled={uploadingFiles[fileRole] || !canAddFiles}
+              disabled={uploadingFiles[fileRole] || (!canAddFiles && !showUploadOptions)}
               className="w-full"
             >
               {uploadingFiles[fileRole] ? 'מעלה...' : 'העלה קובץ'}
@@ -823,7 +875,7 @@ const LessonPlanProductSection = ({
               size="sm"
               onClick={() => createNewFileProduct(fileRole)}
               className="w-full"
-              disabled={!canAddFiles}
+              disabled={!canAddFiles && !showUploadOptions}
             >
               צור מוצר חדש
             </Button>
@@ -841,7 +893,7 @@ const LessonPlanProductSection = ({
               size="sm"
               onClick={() => selectExistingFileProduct(fileRole)}
               className="w-full"
-              disabled={!canAddFiles}
+              disabled={!canAddFiles && !showUploadOptions}
             >
               בחר מוצר
             </Button>
@@ -863,6 +915,13 @@ const LessonPlanProductSection = ({
                   )}
                   <span className="text-sm font-medium">{fileConfig.filename}</span>
                   <span className="text-xs text-gray-500">({fileConfig.file_type})</span>
+                  {/* Show slide count for PowerPoint files in opening and body sections */}
+                  {(fileRole === 'opening' || fileRole === 'body') && fileConfig.slide_count && (
+                    <span className="text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded flex items-center gap-1">
+                      <BookOpen className="w-3 h-3" />
+                      {fileConfig.slide_count} שקפים
+                    </span>
+                  )}
                   {!fileConfig.is_asset_only && (
                     <span className="text-xs bg-green-100 text-green-800 px-1 rounded">מוצר</span>
                   )}
@@ -881,15 +940,18 @@ const LessonPlanProductSection = ({
                   >
                     <Download className="w-4 h-4" />
                   </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeFile(fileConfig, fileRole)}
-                    title={fileConfig.is_asset_only ? "מחק קובץ" : "הסר קישור"}
-                  >
-                    <Trash2 className="w-4 h-4 text-red-500" />
-                  </Button>
+                  {/* Hide delete button for opening and body files in published lesson plan products */}
+                  {!(editingProduct?.is_published && (fileRole === 'opening' || fileRole === 'body')) && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeFile(fileConfig, fileRole)}
+                      title={fileConfig.is_asset_only ? "מחק קובץ" : "הסר קישור"}
+                    >
+                      <Trash2 className="w-4 h-4 text-red-500" />
+                    </Button>
+                  )}
                 </div>
               </div>
             ))}
@@ -1060,6 +1122,59 @@ const LessonPlanProductSection = ({
         ))}
       </div>
 
+      {/* Slide Count Summary */}
+      {(lessonPlanFiles.opening.some(f => f.slide_count) || lessonPlanFiles.body.some(f => f.slide_count)) && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-indigo-900">סיכום שקפים</h3>
+          <Card className="p-4">
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <div className="flex items-center justify-center gap-2 mb-1">
+                    <FileText className="w-4 h-4 text-blue-600" />
+                    <span className="text-sm font-medium text-blue-900">פתיחה</span>
+                  </div>
+                  <div className="text-2xl font-bold text-blue-700">
+                    {lessonPlanFiles.opening.reduce((sum, f) => sum + (f.slide_count || 0), 0)}
+                  </div>
+                  <div className="text-xs text-blue-600">שקפים</div>
+                </div>
+
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                  <div className="flex items-center justify-center gap-2 mb-1">
+                    <Play className="w-4 h-4 text-green-600" />
+                    <span className="text-sm font-medium text-green-900">גוף השיעור</span>
+                  </div>
+                  <div className="text-2xl font-bold text-green-700">
+                    {lessonPlanFiles.body.reduce((sum, f) => sum + (f.slide_count || 0), 0)}
+                  </div>
+                  <div className="text-xs text-green-600">שקפים</div>
+                </div>
+
+                <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3">
+                  <div className="flex items-center justify-center gap-2 mb-1">
+                    <BookOpen className="w-4 h-4 text-indigo-600" />
+                    <span className="text-sm font-medium text-indigo-900">סה״כ</span>
+                  </div>
+                  <div className="text-2xl font-bold text-indigo-700">
+                    {formData.total_slides || 0}
+                  </div>
+                  <div className="text-xs text-indigo-600">שקפים</div>
+                </div>
+              </div>
+
+              {formData.total_slides > 0 && (
+                <div className="text-center">
+                  <p className="text-sm text-gray-600">
+                    📊 מספר השקפים מתעדכן אוטומטית בעת העלאת קבצי PowerPoint
+                  </p>
+                </div>
+              )}
+            </div>
+          </Card>
+        </div>
+      )}
+
       {/* General Lesson Settings */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-indigo-900">הגדרות כלליות</h3>
@@ -1076,13 +1191,23 @@ const LessonPlanProductSection = ({
                 />
               </div>
               <div>
-                <Label>מספר שקפים כולל</Label>
+                <Label className="flex items-center gap-2">
+                  <span>מספר שקפים כולל</span>
+                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                    מחושב אוטומטית
+                  </span>
+                </Label>
                 <Input
                   type="number"
                   placeholder="0"
                   value={formData.total_slides || ''}
-                  onChange={(e) => updateFormData({ total_slides: parseInt(e.target.value) || 0 })}
+                  readOnly
+                  className="bg-gray-50"
+                  title="מספר השקפים מחושב אוטומטית מקבצי הפתיחה והגוף"
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  מחושב מקבצי PowerPoint בפתיחה וגוף השיעור
+                </p>
               </div>
             </div>
             <div>

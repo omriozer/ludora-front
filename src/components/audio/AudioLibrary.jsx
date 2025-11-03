@@ -45,30 +45,54 @@ export default function AudioLibrary({ showMessage }) {
 
     setIsUploading(true);
     try {
-      const { UploadFile } = await import('@/services/integrations');
-      const result = await UploadFile({ file: uploadForm.file });
+      // Get audio duration first (before any API calls)
+      let audioDuration = null;
+      try {
+        const audio = new Audio();
+        const audioUrl = URL.createObjectURL(uploadForm.file);
+        audio.src = audioUrl;
 
-      if (result && result.file_url) {
-        // Get audio duration
-        const audio = new Audio(result.file_url);
-        await new Promise((resolve) => {
+        await new Promise((resolve, reject) => {
           audio.addEventListener('loadedmetadata', resolve);
+          audio.addEventListener('error', reject);
+          setTimeout(reject, 5000); // 5 second timeout
         });
 
-        await AudioFile.create({
-          name: uploadForm.name.trim(),
-          file_url: result.file_url,
-          duration: audio.duration,
-          volume: uploadForm.volume,
-          file_size: uploadForm.file.size,
-          file_type: uploadForm.file.type,
-          is_default_for: []
-        });
+        audioDuration = audio.duration;
+        URL.revokeObjectURL(audioUrl);
+      } catch (durationError) {
+        console.warn('Could not get audio duration:', durationError);
+        // Continue anyway - duration is optional
+      }
 
+      // Use the integration endpoint with proper transaction handling
+      // This endpoint handles BOTH file upload AND database creation atomically
+      const { apiUploadWithProgress } = await import('@/services/apiClient');
+
+      const formData = new FormData();
+      formData.append('file', uploadForm.file);
+
+      // Add metadata for the AudioFile record creation
+      formData.append('name', uploadForm.name.trim());
+      formData.append('volume', uploadForm.volume.toString());
+      formData.append('duration', audioDuration ? audioDuration.toString() : '');
+      formData.append('is_default_for', JSON.stringify([]));
+
+      const uploadResult = await apiUploadWithProgress(
+        `/integrations/uploadFile`,
+        formData,
+        (progress) => {
+          console.log(`Upload progress: ${progress}%`);
+        }
+      );
+
+      if (uploadResult.success && uploadResult.data) {
         showMessage('success', 'קובץ האודיו הועלה בהצלחה');
         setShowUploadForm(false);
         setUploadForm({ name: '', volume: 1, file: null });
         loadAudioFiles();
+      } else {
+        throw new Error(uploadResult.error || 'Upload failed - no data returned');
       }
     } catch (error) {
       console.error('Error uploading audio file:', error);
@@ -257,7 +281,8 @@ export default function AudioLibrary({ showMessage }) {
                       )}
                     </div>
                     <AudioPlayer
-                      src={file.file_url}
+                      audioFileId={file.has_file ? file.id : null}
+                      src={!file.has_file ? file.file_url : null}
                       volume={file.volume}
                       className="mb-2"
                     />
@@ -318,7 +343,8 @@ export default function AudioLibrary({ showMessage }) {
                 />
               </div>
               <AudioPlayer
-                src={editingFile.file_url}
+                audioFileId={editingFile.has_file ? editingFile.id : null}
+                src={!editingFile.has_file ? editingFile.file_url : null}
                 volume={editingFile.volume}
               />
               <div className="flex gap-3">

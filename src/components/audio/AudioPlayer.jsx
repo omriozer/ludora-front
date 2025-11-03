@@ -1,12 +1,40 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Play, Pause, Square, Volume2 } from 'lucide-react';
+import { Play, Pause, Square, Volume2, Loader2 } from 'lucide-react';
+import { useAudioCache } from '@/contexts/AudioCacheContext';
 
-export default function AudioPlayer({ src, volume = 1, className = "" }) {
+export default function AudioPlayer({ src, audioFileId, volume = 1, className = "" }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [downloadError, setDownloadError] = useState(null);
   const audioRef = useRef(null);
+
+  // Use audio cache for AudioFile entities
+  const { isCached, getCachedUrl, isLoading, downloadAndCache } = useAudioCache();
+
+  // Determine the actual audio source to use
+  const [audioSrc, setAudioSrc] = useState(null);
+
+  // Check if this is a cached audio file or direct src
+  const useCache = audioFileId && !src;
+
+  // Handle audio source determination
+  useEffect(() => {
+    if (useCache) {
+      // Using cache system - check if already cached
+      if (isCached(audioFileId)) {
+        const cachedUrl = getCachedUrl(audioFileId);
+        setAudioSrc(cachedUrl);
+      } else {
+        // Not cached yet - will download on first play
+        setAudioSrc(null);
+      }
+    } else {
+      // Using direct src
+      setAudioSrc(src);
+    }
+  }, [useCache, audioFileId, src, isCached, getCachedUrl]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -36,16 +64,54 @@ export default function AudioPlayer({ src, volume = 1, className = "" }) {
     }
   }, [volume]);
 
-  const togglePlayPause = () => {
+  const togglePlayPause = async () => {
     const audio = audioRef.current;
     if (!audio) return;
 
     if (isPlaying) {
+      // Currently playing - just pause
       audio.pause();
-    } else {
-      audio.play();
+      setIsPlaying(false);
+      return;
     }
-    setIsPlaying(!isPlaying);
+
+    // Trying to play
+    if (useCache && !audioSrc) {
+      // Need to download the audio file first
+      try {
+        setDownloadError(null);
+        console.log(`🎵 Downloading audio file for playback: ${audioFileId}`);
+
+        const cachedUrl = await downloadAndCache(audioFileId);
+        setAudioSrc(cachedUrl);
+
+        // Wait for audio to load, then play
+        setTimeout(() => {
+          const audioEl = audioRef.current;
+          if (audioEl) {
+            audioEl.play().then(() => {
+              setIsPlaying(true);
+            }).catch(error => {
+              console.error('❌ Audio playback failed:', error);
+              setDownloadError('Playback failed');
+            });
+          }
+        }, 100);
+
+      } catch (error) {
+        console.error('❌ Audio download failed:', error);
+        setDownloadError(error.message || 'Download failed');
+      }
+    } else if (audioSrc) {
+      // Audio source is ready - play immediately
+      try {
+        await audio.play();
+        setIsPlaying(true);
+      } catch (error) {
+        console.error('❌ Audio playback failed:', error);
+        setDownloadError('Playback failed');
+      }
+    }
   };
 
   const handleStop = () => {
@@ -78,22 +144,33 @@ export default function AudioPlayer({ src, volume = 1, className = "" }) {
   };
 
   const showStopButton = isPlaying || currentTime > 0;
+  const isDownloading = useCache && isLoading(audioFileId);
+  const isReady = audioSrc || (!useCache && src);
 
   return (
     <div className={`flex items-center gap-3 ${className}`}>
-      <audio ref={audioRef} src={src} />
-      
+      <audio ref={audioRef} src={audioSrc || src} />
+
       <div className="flex items-center gap-1">
         <Button
           variant="ghost"
           size="sm"
           onClick={togglePlayPause}
+          disabled={isDownloading}
           className="h-8 w-8 p-0"
+          title={
+            downloadError ? `Error: ${downloadError}` :
+            isDownloading ? 'Downloading audio...' :
+            !isReady ? 'Click to load audio' :
+            isPlaying ? 'Pause' : 'Play'
+          }
         >
-          {isPlaying ? (
+          {isDownloading ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : isPlaying ? (
             <Pause className="w-4 h-4" />
           ) : (
-            <Play className="w-4 h-4" />
+            <Play className={`w-4 h-4 ${downloadError ? 'text-red-500' : ''}`} />
           )}
         </Button>
 
@@ -130,6 +207,23 @@ export default function AudioPlayer({ src, volume = 1, className = "" }) {
       </div>
 
       <Volume2 className="w-4 h-4 text-gray-400" />
+
+      {/* Status indicator */}
+      {downloadError && (
+        <span className="text-xs text-red-500 ml-2" title={downloadError}>
+          Error
+        </span>
+      )}
+      {isDownloading && (
+        <span className="text-xs text-blue-500 ml-2">
+          Loading...
+        </span>
+      )}
+      {useCache && !isReady && !isDownloading && !downloadError && (
+        <span className="text-xs text-gray-400 ml-2">
+          Click play to load
+        </span>
+      )}
     </div>
   );
 }

@@ -13,6 +13,7 @@ import OnboardingRedirect from '@/components/auth/OnboardingRedirect';
 import TutorialOverlay from '@/components/TutorialOverlay';
 import { ConfirmationProvider } from '@/components/ui/ConfirmationProvider';
 import { AuthErrorProvider } from '@/components/providers/AuthErrorProvider';
+import { AudioCacheProvider } from '@/contexts/AudioCacheContext';
 import { PRODUCT_TYPES } from './config/productTypes';
 import OnboardingWizard from '@/components/onboarding/OnboardingWizard';
 import { toast } from '@/components/ui/use-toast';
@@ -51,10 +52,11 @@ function App() {
 	}, [location.search]);
 
 	return (
-		<ConfirmationProvider>
-			<AuthErrorProvider>
-				<Layout>
-				<Routes>
+		<AudioCacheProvider>
+			<ConfirmationProvider>
+				<AuthErrorProvider>
+					<Layout>
+					<Routes>
 					<Route
 						path='/'
 						element={
@@ -557,11 +559,12 @@ function App() {
 						element={<Pages.NotFound />}
 					/>
 				</Routes>
-				<EnhancedToaster />
-				<TutorialOverlay />
-				</Layout>
-			</AuthErrorProvider>
-		</ConfirmationProvider>
+					<EnhancedToaster />
+					<TutorialOverlay />
+					</Layout>
+				</AuthErrorProvider>
+			</ConfirmationProvider>
+		</AudioCacheProvider>
 	);
 }
 
