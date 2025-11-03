@@ -4,10 +4,7 @@ import {
   InvokeLLM,
   SendEmail,
   UploadFile,
-  GenerateImage,
-  ExtractDataFromUploadedFile,
-  CreateFileSignedUrl,
-  UploadPrivateFile
+  ExtractDataFromUploadedFile
 } from './apiClient.js';
 
 // Re-export all integrations
@@ -16,10 +13,7 @@ export {
   InvokeLLM,
   SendEmail,
   UploadFile,
-  GenerateImage,
-  ExtractDataFromUploadedFile,
-  CreateFileSignedUrl,
-  UploadPrivateFile
+  ExtractDataFromUploadedFile
 };
 
 

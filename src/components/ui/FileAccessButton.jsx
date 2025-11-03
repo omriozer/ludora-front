@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Eye, Download } from 'lucide-react';
 import { useProductAccess } from '@/hooks/useProductAccess';
-import { getApiBase } from '@/utils/api';
+import { apiDownload } from '@/services/apiClient';
 
 /**
  * File Access Button - Handles file viewing/downloading for users with access
@@ -60,18 +60,8 @@ export default function FileAccessButton({
 
   const handleDefaultFileAccess = async () => {
     try {
-      // Use fetch with auth headers to get blob
-      const response = await fetch(`${getApiBase()}/assets/download/file/${product.entity_id || product.id}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to download file');
-      }
-
-      const blob = await response.blob();
+      // Use apiDownload with proper authentication
+      const blob = await apiDownload(`/assets/download/file/${product.entity_id || product.id}`);
 
       // Create blob URL and open/download
       const blobUrl = URL.createObjectURL(blob);

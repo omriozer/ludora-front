@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, Play, Settings, Save, Eye } from "lucide-react";
 import { toast } from '@/components/ui/use-toast';
 import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
-import { getApiBase } from '@/utils/api.js';
+import { apiRequest } from '@/services/apiClient';
 
 export default function GameSettings() {
   const { gameId } = useParams();
@@ -23,18 +23,7 @@ export default function GameSettings() {
   const loadGameData = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(`${getApiBase()}/entities/product/${gameId}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to load game data');
-      }
-
-      const data = await response.json();
+      const data = await apiRequest(`/entities/product/${gameId}`);
       setGameData(data);
     } catch (err) {
       setError(err.message);

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { getApiBase } from "@/utils/api";
+import { apiRequest } from '@/services/apiClient';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -119,27 +119,13 @@ export default function GameModal({
         return;
       }
 
-      const apiUrl = game
-        ? `${getApiBase()}/games/${game.id}`
-        : `${getApiBase()}/games`;
-
+      const endpoint = game ? `/games/${game.id}` : '/games';
       const method = game ? 'PUT' : 'POST';
 
-      const response = await fetch(apiUrl, {
+      const result = await apiRequest(endpoint, {
         method,
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify(gameData)
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
 
       setMessage({ type: 'success', text: 'המשחק נשמר בהצלחה' });
 

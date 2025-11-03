@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useUser } from "@/contexts/UserContext";
-import { getApiBase } from "@/utils/api";
+import { apiRequest } from '@/services/apiClient';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -77,45 +77,12 @@ export default function CouponForm() {
     try {
 
       // Load products for targeting options
-      const [workshopsResponse, coursesResponse, filesResponse, toolsResponse, gamesResponse] = await Promise.all([
-        fetch(`${getApiBase()}/entities/workshop`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-            'Content-Type': 'application/json'
-          }
-        }),
-        fetch(`${getApiBase()}/entities/course`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-            'Content-Type': 'application/json'
-          }
-        }),
-        fetch(`${getApiBase()}/entities/file`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-            'Content-Type': 'application/json'
-          }
-        }),
-        fetch(`${getApiBase()}/entities/tool`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-            'Content-Type': 'application/json'
-          }
-        }),
-        fetch(`${getApiBase()}/entities/game`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-            'Content-Type': 'application/json'
-          }
-        })
-      ]);
-
       const [workshopsData, coursesData, filesData, toolsData, gamesData] = await Promise.all([
-        workshopsResponse.json(),
-        coursesResponse.json(),
-        filesResponse.json(),
-        toolsResponse.json(),
-        gamesResponse.json()
+        apiRequest('/entities/workshop'),
+        apiRequest('/entities/course'),
+        apiRequest('/entities/file'),
+        apiRequest('/entities/tool'),
+        apiRequest('/entities/game')
       ]);
 
       const allProducts = [
@@ -129,13 +96,7 @@ export default function CouponForm() {
 
       // Load existing coupon if editing
       if (isEditing) {
-        const couponResponse = await fetch(`${getApiBase()}/entities/coupon/${id}`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        const coupon = await couponResponse.json();
+        const coupon = await apiRequest(`/entities/coupon/${id}`);
         if (coupon) {
           setFormData({
             code: coupon.code || '',
@@ -256,12 +217,8 @@ export default function CouponForm() {
       };
 
       if (isEditing) {
-        await fetch(`${getApiBase()}/entities/coupon/${id}`, {
+        await apiRequest(`/entities/coupon/${id}`, {
           method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-            'Content-Type': 'application/json'
-          },
           body: JSON.stringify(couponData)
         });
         toast({
@@ -270,12 +227,8 @@ export default function CouponForm() {
           variant: "default"
         });
       } else {
-        await fetch(`${getApiBase()}/entities/coupon`, {
+        await apiRequest('/entities/coupon', {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-            'Content-Type': 'application/json'
-          },
           body: JSON.stringify(couponData)
         });
         toast({

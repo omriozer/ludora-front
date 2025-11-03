@@ -40,12 +40,11 @@ import {
   findProductForEntity
 } from "@/utils/purchaseHelpers";
 import paymentClient from "@/services/paymentClient";
-import { createPayplusPaymentPage } from "@/services/apiClient";
+import { createPayplusPaymentPage, apiRequest } from "@/services/apiClient";
 import { toast } from "@/components/ui/use-toast";
 import { useCart } from "@/contexts/CartContext";
 import CouponInput from "@/components/CouponInput";
 import couponClient from "@/services/couponClient";
-import { getApiBase } from "@/utils/api";
 import PayPlusEnvironmentSelector from "@/components/PayPlusEnvironmentSelector";
 
 
@@ -225,19 +224,11 @@ export default function Checkout() {
               try {
                 console.log('📤 Checkout: Confirming payment submission to API for transaction:', currentTransactionId);
 
-                const confirmResponse = await fetch(`${getApiBase()}/payments/confirm/${currentTransactionId}`, {
-                  method: 'POST',
-                  headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-                    'Content-Type': 'application/json'
-                  }
+                await apiRequest(`/payments/confirm/${currentTransactionId}`, {
+                  method: 'POST'
                 });
 
-                if (confirmResponse.ok) {
-                  console.log('✅ Checkout: Payment confirmation sent to API successfully');
-                } else {
-                  console.warn('⚠️ Checkout: Payment confirmation failed but continuing with flow');
-                }
+                console.log('✅ Checkout: Payment confirmation sent to API successfully');
 
               } catch (confirmError) {
                 console.error('❌ Checkout: Error sending payment confirmation to API:', confirmError);

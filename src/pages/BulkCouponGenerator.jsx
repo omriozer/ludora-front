@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { getApiBase } from "@/utils/api";
+import { apiRequest } from '@/services/apiClient';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -105,20 +105,14 @@ export default function BulkCouponGenerator() {
     }
 
     try {
-      const token = localStorage.getItem('authToken');
-      const response = await fetch(`${getApiBase()}/functions/validateCouponPattern`, {
+      const data = await apiRequest('/functions/validateCouponPattern', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
         body: JSON.stringify({
           pattern: patternSettings.pattern
-        }),
+        })
       });
 
-      const data = await response.json();
-      if (response.ok) {
+      if (data.validation) {
         setPatternValidation(data.validation);
       }
     } catch (error) {
@@ -130,30 +124,21 @@ export default function BulkCouponGenerator() {
     if (!patternValidation?.isValid) return;
 
     try {
-      const token = localStorage.getItem('authToken');
-      const response = await fetch(`${getApiBase()}/functions/getCouponPresetPatterns`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      await apiRequest('/functions/getCouponPresetPatterns');
 
-      if (response.ok) {
-        // Generate a few sample codes for preview
-        const sampleCodes = [];
-        for (let i = 0; i < Math.min(5, patternSettings.count); i++) {
-          let code = patternSettings.pattern;
+      // Generate a few sample codes for preview
+      const sampleCodes = [];
+      for (let i = 0; i < Math.min(5, patternSettings.count); i++) {
+        let code = patternSettings.pattern;
 
-          // Replace # with random numbers
-          code = code.replace(/#/g, () => Math.floor(Math.random() * 10));
-          // Replace @ with random letters
-          code = code.replace(/@/g, () => String.fromCharCode(65 + Math.floor(Math.random() * 26)));
+        // Replace # with random numbers
+        code = code.replace(/#/g, () => Math.floor(Math.random() * 10));
+        // Replace @ with random letters
+        code = code.replace(/@/g, () => String.fromCharCode(65 + Math.floor(Math.random() * 26)));
 
-          sampleCodes.push(code);
-        }
-        setPreviewCodes(sampleCodes);
+        sampleCodes.push(code);
       }
+      setPreviewCodes(sampleCodes);
     } catch (error) {
       cerror('Error generating preview:', error);
     }
@@ -185,8 +170,6 @@ export default function BulkCouponGenerator() {
     setGeneratedCoupons([]);
 
     try {
-      const token = localStorage.getItem('authToken');
-
       // Prepare coupon data
       const couponData = {
         ...couponSettings,
@@ -199,23 +182,17 @@ export default function BulkCouponGenerator() {
         valid_until: couponSettings.valid_until || null
       };
 
-      const response = await fetch(`${getApiBase()}/functions/generateCouponCodes`, {
+      const data = await apiRequest('/functions/generateCouponCodes', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
         body: JSON.stringify({
           pattern: patternSettings.pattern,
           count: patternSettings.count,
           charSet: patternSettings.charSet,
           couponData
-        }),
+        })
       });
 
-      const data = await response.json();
-
-      if (response.ok && data.success) {
+      if (data.success) {
         setGeneratedCoupons(data.data.generated_coupons);
         setGenerationProgress(100);
 

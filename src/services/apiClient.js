@@ -414,7 +414,6 @@ export const Purchase = new EntityAPI('purchase');
 export const EmailLog = new EntityAPI('emaillog');
 export const Game = new EntityAPI('game');
 export const AudioFile = new EntityAPI('audiofile');
-export const GameAudioSettings = new EntityAPI('gameaudiosettings');
 export const Word = new EntityAPI('word');
 export const WordEN = new EntityAPI('worden');
 export const Image = new EntityAPI('image');
@@ -735,10 +734,6 @@ export const Core = {
       headers: {} // Remove Content-Type header to let browser set multipart boundary
     });
   },
-  GenerateImage: async (data) => apiRequest('/integrations/generateImage', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  }),
   ExtractDataFromUploadedFile: async (data) => {
     const formData = new FormData();
     
@@ -758,38 +753,12 @@ export const Core = {
       headers: {}
     });
   },
-  CreateFileSignedUrl: async (data) => apiRequest('/integrations/createFileSignedUrl', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  }),
-  UploadPrivateFile: async (data) => {
-    const formData = new FormData();
-    
-    if (data.file) {
-      formData.append('file', data.file);
-    }
-    
-    Object.keys(data).forEach(key => {
-      if (key !== 'file') {
-        formData.append(key, data[key]);
-      }
-    });
-    
-    return apiRequest('/integrations/uploadPrivateFile', {
-      method: 'POST',
-      body: formData,
-      headers: {}
-    });
-  }
 };
 
 export const InvokeLLM = Core.InvokeLLM;
 export const SendEmail = Core.SendEmail;
 export const UploadFile = Core.UploadFile;
-export const GenerateImage = Core.GenerateImage;
 export const ExtractDataFromUploadedFile = Core.ExtractDataFromUploadedFile;
-export const CreateFileSignedUrl = Core.CreateFileSignedUrl;
-export const UploadPrivateFile = Core.UploadPrivateFile;
 
 // Add more user-related API calls as needed
 

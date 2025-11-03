@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { clog } from '@/lib/utils';
 import { getApiBase } from '@/utils/api.js';
+import { apiRequest } from '@/services/apiClient';
 
 // Helper function to get appropriate emoji for each subject
 function getSubjectEmoji(key) {
@@ -125,21 +126,10 @@ export default function TeacherSetup({ onComplete, onBack, onboardingData, curre
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const response = await fetch(`${getApiBase()}/entities/settings`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-            'Content-Type': 'application/json'
-          }
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          const settingsRecord = data[0]; // Get the first settings record
-          clog('[TeacherSetup] Settings loaded:', settingsRecord);
-          setSettingsData(settingsRecord);
-        } else {
-          clog('[TeacherSetup] Failed to fetch settings, using fallback data');
-        }
+        const data = await apiRequest('/entities/settings');
+        const settingsRecord = data[0]; // Get the first settings record
+        clog('[TeacherSetup] Settings loaded:', settingsRecord);
+        setSettingsData(settingsRecord);
       } catch (error) {
         clog('[TeacherSetup] Error fetching settings:', error);
       } finally {

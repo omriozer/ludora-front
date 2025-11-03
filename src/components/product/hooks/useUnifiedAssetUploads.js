@@ -394,9 +394,8 @@ export const useUnifiedAssetUploads = (editingProduct = null) => {
       console.log(`🎯 UPLOAD: Final entity info for API call:`, { entityType, entityId, fileType });
 
       // Validate business rules
-      if (fileType === 'file' && editingProduct.is_published && assetInfo.document?.exists) {
-        throw new Error('לא ניתן להחליף קובץ במוצר מפורסם');
-      }
+      // Note: File replacement should always be allowed, even for published products
+      // Only deletion is restricted for published products (handled in handleAssetDelete)
 
       setUploadState(assetKey, true);
       setUploadProgressValue(assetKey, 0);

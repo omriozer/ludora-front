@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { User } from "@/services/entities";
 import { getApiBase } from "@/utils/api.js";
+import { apiRequest } from "@/services/apiClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -173,17 +174,7 @@ export default function Dashboard() {
   const loadAvailableWidgets = useCallback(async () => {
     try {
       clog('[Dashboard] Loading available widgets...');
-      const response = await fetch(`${getApiBase()}/dashboard/widgets`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
+      const data = await apiRequest('/dashboard/widgets');
       clog('[Dashboard] Available widgets loaded:', data);
 
       if (data.success) {
@@ -203,17 +194,7 @@ export default function Dashboard() {
   const loadDashboardConfig = useCallback(async () => {
     try {
       clog('[Dashboard] Loading user dashboard config...');
-      const response = await fetch(`${getApiBase()}/dashboard/config`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
+      const data = await apiRequest('/dashboard/config');
       clog('[Dashboard] Dashboard config loaded:', data);
 
       if (data.success) {
@@ -236,20 +217,10 @@ export default function Dashboard() {
   const saveDashboardConfig = useCallback(async (widgets) => {
     try {
       clog('[Dashboard] Saving dashboard config:', widgets);
-      const response = await fetch(`${getApiBase()}/dashboard/config`, {
+      const data = await apiRequest('/dashboard/config', {
         method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify({ widgets })
       });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
       clog('[Dashboard] Dashboard config saved:', data);
 
       if (!data.success) {
@@ -304,20 +275,10 @@ export default function Dashboard() {
   const handleAddWidget = async (widgetType) => {
     try {
       clog('[Dashboard] Adding widget:', widgetType);
-      const response = await fetch(`${getApiBase()}/dashboard/widgets`, {
+      const data = await apiRequest('/dashboard/widgets', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify({ type: widgetType })
       });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
       clog('[Dashboard] Widget added:', data);
 
       if (data.success) {
@@ -345,18 +306,9 @@ export default function Dashboard() {
   const handleRemoveWidget = async (widgetId) => {
     try {
       clog('[Dashboard] Removing widget:', widgetId);
-      const response = await fetch(`${getApiBase()}/dashboard/widgets/${widgetId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-        }
+      const data = await apiRequest(`/dashboard/widgets/${widgetId}`, {
+        method: 'DELETE'
       });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
       clog('[Dashboard] Widget removed:', data);
 
       if (data.success) {

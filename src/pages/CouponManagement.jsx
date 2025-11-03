@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { getApiBase } from "@/utils/api";
+import { apiRequest } from '@/services/apiClient';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -69,13 +69,7 @@ export default function CouponManagement() {
     setIsLoading(true);
     try {
       // Get all coupons
-      const couponsResponse = await fetch(`${getApiBase()}/entities/coupon`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      const couponsData = await couponsResponse.json();
+      const couponsData = await apiRequest('/entities/coupon');
       setCoupons(couponsData);
     } catch (error) {
       cerror("Error loading coupon data:", error);
@@ -150,12 +144,8 @@ export default function CouponManagement() {
     }
 
     try {
-      await fetch(`${getApiBase()}/entities/coupon/${couponId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-          'Content-Type': 'application/json'
-        }
+      await apiRequest(`/entities/coupon/${couponId}`, {
+        method: 'DELETE'
       });
       setMessage({ type: 'success', text: 'הקופון נמחק בהצלחה' });
       toast({
@@ -179,12 +169,8 @@ export default function CouponManagement() {
   const handleToggleStatus = async (coupon) => {
     try {
       const newStatus = !coupon.is_active;
-      await fetch(`${getApiBase()}/entities/coupon/${coupon.id}`, {
+      await apiRequest(`/entities/coupon/${coupon.id}`, {
         method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify({ is_active: newStatus })
       });
       setMessage({
@@ -216,12 +202,8 @@ export default function CouponManagement() {
       delete duplicatedCoupon.updated_at;
       delete duplicatedCoupon.usage_count;
 
-      await fetch(`${getApiBase()}/entities/coupon`, {
+      await apiRequest('/entities/coupon', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify(duplicatedCoupon)
       });
       setMessage({ type: 'success', text: 'הקופון שוכפל בהצלחה' });

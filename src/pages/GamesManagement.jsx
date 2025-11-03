@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { getApiBase } from "@/utils/api";
 import { showConfirm } from "@/utils/messaging";
+import { apiRequest } from '@/services/apiClient';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -73,18 +73,7 @@ export default function GamesManagement() {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${getApiBase()}/games`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const gamesData = await response.json();
+      const gamesData = await apiRequest('/games');
       clog('Games loaded:', gamesData);
       setGames(gamesData);
     } catch (error) {
@@ -163,17 +152,9 @@ export default function GamesManagement() {
     }
 
     try {
-      const response = await fetch(`${getApiBase()}/games/${gameId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        }
+      await apiRequest(`/games/${gameId}`, {
+        method: 'DELETE'
       });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
 
       setMessage({ type: 'success', text: 'המשחק נמחק בהצלחה' });
       toast({

@@ -8,6 +8,7 @@ import EntitySelector from "@/components/ui/EntitySelector";
 import { Product } from "@/services/entities";
 import { getApiBase } from "@/utils/api";
 import { toast } from "@/components/ui/use-toast";
+import { apiRequest } from "@/services/apiClient";
 import LudoraLoadingSpinner from "@/components/ui/LudoraLoadingSpinner";
 
 /**
@@ -195,20 +196,12 @@ export default function ProductAssociationManager({
     setIsSubmitting(true);
     try {
       // Update associations via API
-      const response = await fetch(`${getApiBase()}/entities/${entityType}/${entityId}/products`, {
+      await apiRequest(`/entities/${entityType}/${entityId}/products`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
         body: JSON.stringify({
           product_ids: selectedProductIds
         })
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to update product associations');
-      }
 
       const updatedProducts = await Product.list();
       const newAssociatedProducts = updatedProducts.filter(p => selectedProductIds.includes(p.id));

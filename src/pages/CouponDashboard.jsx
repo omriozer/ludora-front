@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useUser } from "@/contexts/UserContext";
-import { getApiBase } from "@/utils/api";
+import { apiRequest } from '@/services/apiClient';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -42,13 +42,7 @@ export default function CouponDashboard() {
     setIsLoading(true);
     try {
       // Get coupon statistics
-      const couponsResponse = await fetch(`${getApiBase()}/entities/coupon`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      const coupons = await couponsResponse.json();
+      const coupons = await apiRequest('/entities/coupon');
 
       // Calculate statistics
       const now = new Date();

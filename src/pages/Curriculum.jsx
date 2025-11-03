@@ -37,7 +37,8 @@ import {
   Link,
   Users,
   Copy,
-  X
+  X,
+  AlertCircle
 } from "lucide-react";
 
 
@@ -87,12 +88,12 @@ export default function Curriculum() {
   const isAdmin = currentUser?.role === 'admin';
   const isTeacher = currentUser?.role === 'teacher' || isAdmin;
 
-  // Load available combinations for non-admin users when settings are available
+  // Load available combinations for all users when settings are available
   useEffect(() => {
-    if (!isAdmin && settings) {
+    if (settings) {
       loadAvailableCombinations();
     }
-  }, [isAdmin, settings]);
+  }, [settings]);
 
   // Note: Removed automatic loading of all item counts for performance
 
@@ -859,32 +860,38 @@ export default function Curriculum() {
     return `תכנית לכיתה ספציפית: ${gradeName}`;
   };
 
+  // Check if a combination has curriculum items (used for both disable logic and admin indicators)
+  const hasCurriculumItems = (subjectKey, gradeKey = null) => {
+    // If still loading combinations, assume has items to avoid blocking
+    if (combinationsLoading) return true;
+
+    if (gradeKey) {
+      // Check specific subject-grade combination
+      return availableCombinations.has(`${subjectKey}-${gradeKey}`);
+    } else {
+      // Check if subject has any grades with curriculum items
+      if (!settings?.school_grades) return true;
+
+      for (const gKey of Object.keys(settings.school_grades)) {
+        if (availableCombinations.has(`${subjectKey}-${gKey}`)) {
+          return true; // Subject has at least one grade with items
+        }
+      }
+      return false; // Subject has no grades with curriculum items
+    }
+  };
+
   // Disable logic for non-admin users based on available curriculum items
   const isSubjectDisabled = (subjectKey) => {
     // Admin users can access everything
     if (isAdmin) return false;
 
-    // If still loading combinations, don't disable to avoid blocking
-    if (combinationsLoading) return false;
-
-    // Check if this subject has any grades with curriculum items
-    if (!settings?.school_grades) return false;
-
-    for (const gradeKey of Object.keys(settings.school_grades)) {
-      if (availableCombinations.has(`${subjectKey}-${gradeKey}`)) {
-        return false; // Subject has at least one grade with items
-      }
-    }
-
-    return true; // Subject has no grades with curriculum items
+    return !hasCurriculumItems(subjectKey);
   };
 
   const isGradeDisabled = (gradeKey) => {
     // Admin users can access everything
     if (isAdmin) return false;
-
-    // If still loading combinations, don't disable to avoid blocking
-    if (combinationsLoading) return false;
 
     // If no subject is selected, check if grade has any subjects with items
     if (!selectedSubject) {
@@ -940,7 +947,7 @@ export default function Curriculum() {
 
 
   // Show loading spinner while essential data is being loaded
-  if (settingsLoading || (!isAdmin && combinationsLoading)) {
+  if (settingsLoading || combinationsLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50" dir="rtl">
         <div className="container mx-auto px-4 py-8">
@@ -1032,12 +1039,12 @@ export default function Curriculum() {
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                       {settings?.study_subjects && Object.entries(settings.study_subjects)
                         .sort(([keyA, labelA], [keyB, labelB]) => {
-                          const disabledA = isSubjectDisabled(keyA);
-                          const disabledB = isSubjectDisabled(keyB);
+                          const hasItemsA = hasCurriculumItems(keyA);
+                          const hasItemsB = hasCurriculumItems(keyB);
 
-                          // First sort by enabled/disabled status (enabled first)
-                          if (disabledA !== disabledB) {
-                            return disabledA ? 1 : -1;
+                          // First sort by availability (items available first)
+                          if (hasItemsA !== hasItemsB) {
+                            return hasItemsA ? -1 : 1;
                           }
 
                           // Then sort alphabetically by Hebrew label
@@ -1045,6 +1052,9 @@ export default function Curriculum() {
                         })
                         .map(([key, label]) => {
                         const disabled = isSubjectDisabled(key);
+                        const hasItems = hasCurriculumItems(key);
+                        const showEmptyIndicator = isAdmin && !hasItems;
+
                         return (
                           <Card
                             key={key}
@@ -1061,7 +1071,7 @@ export default function Curriculum() {
                           >
                             <CardContent className="p-4 text-center relative z-10">
                               <div className="space-y-2">
-                                <div className={`w-12 h-12 mx-auto rounded-full flex items-center justify-center ${
+                                <div className={`w-12 h-12 mx-auto rounded-full flex items-center justify-center relative ${
                                   selectedSubject === key
                                     ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg'
                                     : disabled
@@ -1071,12 +1081,22 @@ export default function Curriculum() {
                                   <BookOpen className={`w-6 h-6 ${
                                     selectedSubject === key ? 'text-white' : disabled ? 'text-gray-400' : 'text-gray-600 group-hover:text-blue-600'
                                   }`} />
+                                  {showEmptyIndicator && (
+                                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center shadow-lg">
+                                      <AlertCircle className="w-3 h-3 text-white" />
+                                    </div>
+                                  )}
                                 </div>
                                 <p className={`font-semibold text-sm leading-tight ${
                                   disabled ? 'text-gray-400' : selectedSubject === key ? 'text-blue-700' : 'text-gray-700'
                                 }`}>
                                   {label}
                                 </p>
+                                {showEmptyIndicator && (
+                                  <p className="text-xs text-orange-600 font-medium">
+                                    ללא תכנית
+                                  </p>
+                                )}
                               </div>
                             </CardContent>
                             {selectedSubject === key && (
@@ -1102,12 +1122,20 @@ export default function Curriculum() {
                     <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3">
                       {settings?.school_grades && Object.entries(settings.school_grades)
                         .sort(([keyA, labelA], [keyB, labelB]) => {
-                          const disabledA = isGradeDisabled(keyA);
-                          const disabledB = isGradeDisabled(keyB);
+                          const hasItemsA = selectedSubject
+                            ? hasCurriculumItems(selectedSubject, keyA)
+                            : Object.keys(settings?.study_subjects || {}).some(subjectKey =>
+                                hasCurriculumItems(subjectKey, keyA)
+                              );
+                          const hasItemsB = selectedSubject
+                            ? hasCurriculumItems(selectedSubject, keyB)
+                            : Object.keys(settings?.study_subjects || {}).some(subjectKey =>
+                                hasCurriculumItems(subjectKey, keyB)
+                              );
 
-                          // First sort by enabled/disabled status (enabled first)
-                          if (disabledA !== disabledB) {
-                            return disabledA ? 1 : -1;
+                          // First sort by availability (items available first)
+                          if (hasItemsA !== hasItemsB) {
+                            return hasItemsA ? -1 : 1;
                           }
 
                           // Then sort alphabetically by Hebrew label
@@ -1115,6 +1143,13 @@ export default function Curriculum() {
                         })
                         .map(([key, label]) => {
                         const disabled = isGradeDisabled(key);
+                        const hasItems = selectedSubject
+                          ? hasCurriculumItems(selectedSubject, key)
+                          : Object.keys(settings?.study_subjects || {}).some(subjectKey =>
+                              hasCurriculumItems(subjectKey, key)
+                            );
+                        const showEmptyIndicator = isAdmin && !hasItems;
+
                         return (
                           <Card
                             key={key}
@@ -1131,20 +1166,25 @@ export default function Curriculum() {
                           >
                             <CardContent className="p-3 flex items-center justify-center h-full relative z-10">
                               <div className="space-y-1 text-center">
-                                <div className={`w-8 h-8 mx-auto rounded-full flex items-center justify-center text-xs font-bold ${
+                                <div className={`w-8 h-8 mx-auto rounded-full flex items-center justify-center text-xs font-bold relative ${
                                   selectedGrade === key
                                     ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg'
                                     : disabled
                                       ? 'bg-gray-300 text-gray-500'
                                       : 'bg-gradient-to-r from-gray-100 to-gray-200 text-gray-600 group-hover:from-purple-100 group-hover:to-indigo-100 group-hover:text-purple-600'
                                 }`}>
-                                  {key}
+                                  {label.replace('כיתה ', '').replace(/^\d+\s*/, '')}
+                                  {showEmptyIndicator && (
+                                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 rounded-full flex items-center justify-center shadow-lg">
+                                      <AlertCircle className="w-2.5 h-2.5 text-white" />
+                                    </div>
+                                  )}
                                 </div>
-                                <p className={`font-medium text-xs leading-tight ${
-                                  disabled ? 'text-gray-400' : selectedGrade === key ? 'text-purple-700' : 'text-gray-700'
-                                }`}>
-                                  {label.replace('כיתה ', '')}
-                                </p>
+                                {showEmptyIndicator && (
+                                  <p className="text-xs text-orange-600 font-medium">
+                                    ללא תכנית
+                                  </p>
+                                )}
                               </div>
                             </CardContent>
                             {selectedGrade === key && (
