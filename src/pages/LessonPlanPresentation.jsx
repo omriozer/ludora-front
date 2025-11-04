@@ -14,9 +14,11 @@ import {
 	SkipForward,
 	Timer,
 	Clock,
+	Sparkles,
 } from 'lucide-react';
 import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
 import TimerComponent from '@/components/ui/Timer';
+import ClassroomEffectMenu from '@/components/ui/ClassroomEffectMenu';
 import { getApiBase } from '@/utils/api.js';
 import { apiRequest } from '@/services/apiClient';
 import { clog, cerror } from '@/lib/utils';
@@ -66,6 +68,9 @@ export default function LessonPlanPresentation() {
 	});
 	const [isTimerRunning, setIsTimerRunning] = useState(false);
 	const [timerTime, setTimerTime] = useState(300); // 5 minutes default
+
+	// Classroom effects state (always visible in embedded mode)
+	const [isEffectsEnabled, setIsEffectsEnabled] = useState(true);
 
 	// Refs
 	const presentationRef = useRef(null);
@@ -517,7 +522,7 @@ export default function LessonPlanPresentation() {
 			className='fixed inset-0 bg-black z-50 flex flex-col'
 		>
 			{/* Main Presentation Area */}
-			<div className='flex-1 relative overflow-hidden'>
+			<div className='flex-1 relative overflow-hidden' data-presentation-area>
 				{(isRenderingSlides || isLoading) && (
 					<div className='absolute inset-0 bg-black/80 flex items-center justify-center z-10'>
 						<LudoraLoadingSpinner
@@ -606,6 +611,7 @@ export default function LessonPlanPresentation() {
 						}}
 					/>
 				)}
+
 			</div>
 
 			{/* Control Bar */}
@@ -669,6 +675,7 @@ export default function LessonPlanPresentation() {
 
 						{/* Right Section - Controls */}
 						<div className='flex items-center gap-3'>
+							{/* Timer and System Controls */}
 							<div className='flex items-center bg-black/40 backdrop-blur-sm rounded-lg p-1 border border-gray-600/30 shadow-lg'>
 								<Button
 									onClick={toggleTimer}
@@ -713,6 +720,16 @@ export default function LessonPlanPresentation() {
 									<Maximize className='w-4 h-4' />
 								</Button>
 							</div>
+
+							{/* Embedded Classroom Effects Menu */}
+							{isEffectsEnabled && (
+								<ClassroomEffectMenu
+									display={true}
+									effectsToExclude={[]}
+									layout="vertical"
+									mode="embedded"
+								/>
+							)}
 						</div>
 					</div>
 				</div>
