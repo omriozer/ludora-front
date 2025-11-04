@@ -1,0 +1,197 @@
+/* PowerPoint Presentation Styling */
+
+.slide-content {
+  /* Ensure slides scale properly to fit the container */
+  transform-origin: center center;
+  overflow: hidden;
+  background: transparent !important;
+}
+
+/* Debug class with minimal interference */
+.slide-content-debug {
+  all: unset !important;
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  position: relative !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  border: 2px solid red !important;
+  overflow: visible !important;
+}
+
+.slide-content-debug * {
+  all: unset;
+  display: revert !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: relative !important;
+}
+
+/* Force all images, canvases, and SVGs to be visible */
+.slide-content-debug img,
+.slide-content-debug canvas,
+.slide-content-debug svg {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  border: 1px solid green !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+/* Special SVG rendering fixes */
+.slide-content-debug svg {
+  width: auto !important;
+  height: auto !important;
+  min-width: 100px !important;
+  min-height: 100px !important;
+  background: rgba(255, 255, 255, 0.1) !important; /* Slight background to see SVG boundaries */
+}
+
+/* Remove white backgrounds from slide containers, but preserve content visibility */
+.slide-content > div[style*="background: white"],
+.slide-content > div[style*="background-color: white"],
+.slide-content > div[style*="background: #fff"],
+.slide-content > div[style*="background-color: #fff"],
+.slide-content > div[style*="background: rgb(255, 255, 255)"],
+.slide-content > div[style*="background-color: rgb(255, 255, 255)"] {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+.slide-content .slide {
+  /* Style for individual slides rendered by pptx-preview */
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  position: relative;
+}
+
+/* Full-screen slide containers */
+.slide-content > div,
+.slide-content > svg,
+.slide-content > canvas {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100vw !important;
+  max-height: 100vh !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  object-fit: contain;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.slide-content svg,
+.slide-content img,
+.slide-content canvas {
+  /* Ensure images, SVGs, and canvas scale properly */
+  max-width: 100vw !important;
+  max-height: 100vh !important;
+  width: auto !important;
+  height: auto !important;
+  object-fit: contain;
+  display: block !important;
+  margin: 0 auto !important;
+}
+
+/* Override any white backgrounds in nested elements */
+.slide-content div[style*="background: white"],
+.slide-content div[style*="background-color: white"],
+.slide-content div[style*="background: #fff"],
+.slide-content div[style*="background-color: #fff"],
+.slide-content div[style*="background: rgb(255, 255, 255)"],
+.slide-content div[style*="background-color: rgb(255, 255, 255)"] {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+.slide-content text,
+.slide-content div {
+  /* Ensure text is readable */
+  font-family: inherit;
+  color: inherit;
+}
+
+/* Isolated slide container styling */
+.isolated-slide-container {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 100vh !important;
+  background: transparent !important;
+  position: relative !important;
+  overflow: visible !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Only target specific white background elements in isolated containers */
+.isolated-slide-container div[style*="background: white"],
+.isolated-slide-container div[style*="background-color: white"],
+.isolated-slide-container div[style*="background: #fff"],
+.isolated-slide-container div[style*="background-color: #fff"],
+.isolated-slide-container div[style*="background: rgb(255, 255, 255)"],
+.isolated-slide-container div[style*="background-color: rgb(255, 255, 255)"] {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+.isolated-slide-container > * {
+  max-width: 100% !important;
+  max-height: 100% !important;
+  width: auto !important;
+  height: auto !important;
+  object-fit: contain !important;
+}
+
+/* Ensure text and elements are visible */
+.isolated-slide-container text,
+.isolated-slide-container tspan,
+.isolated-slide-container p,
+.isolated-slide-container span,
+.isolated-slide-container div {
+  color: inherit !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Ensure SVG content is visible */
+.isolated-slide-container svg {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Animation support for PowerPoint transitions */
+.slide-content .animation {
+  transition: all 0.3s ease-in-out;
+}
+
+/* Error slide styling */
+.error-slide {
+  background: #f3f4f6 !important;
+  color: #dc2626 !important;
+  font-family: system-ui, -apple-system, sans-serif !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 100% !important;
+  text-align: center !important;
+}
+
+/* Loading overlay styling */
+.presentation-loading {
+  background: rgba(0, 0, 0, 0.8) !important;
+  backdrop-filter: blur(4px) !important;
+}

@@ -188,7 +188,19 @@ export async function apiDownload(endpoint, options = {}) {
 
 // File/video upload with progress tracking
 export async function apiUploadWithProgress(endpoint, formData, onProgress = null, options = {}) {
-  const url = `${API_BASE}${endpoint}`;
+  // IMPORTANT: Bypass Vite proxy for uploads in development to avoid content-type corruption
+  // In development, Vite proxy can corrupt multipart/form-data, so we go directly to API server
+  let url;
+  if (import.meta.env.DEV) {
+    // In development, bypass the Vite proxy and go directly to the API server
+    const apiPort = import.meta.env.VITE_API_PORT || '3003';
+    url = `http://localhost:${apiPort}/api${endpoint}`;
+    clog('📤 Development upload: Bypassing Vite proxy, direct to API server:', url);
+  } else {
+    // In production, use the normal API base
+    url = `${API_BASE}${endpoint}`;
+  }
+
   const currentToken = getCurrentAuthToken();
 
   clog(`📤 API Upload with progress: POST ${url}`);

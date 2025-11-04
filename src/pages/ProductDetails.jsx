@@ -24,7 +24,11 @@ import {
   Tag,
   ArrowLeft,
   Info,
-  GraduationCap
+  GraduationCap,
+  FolderOpen,
+  StickyNote,
+  Volume2,
+  PaperclipIcon
 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
@@ -152,6 +156,11 @@ export default function ProductDetails() {
     }
   };
 
+  // Handle lesson plan access
+  const handleLessonPlanAccess = (product) => {
+    navigate(`/lesson-plan-presentation?id=${product.entity_id || product.id}`);
+  };
+
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -226,6 +235,7 @@ export default function ProductDetails() {
       setItem(productDetails);
       setSettings(settingsData.length > 0 ? settingsData[0] : {});
 
+
       // Use embedded purchase data from API response
       // The API returns purchase information directly in productDetails.purchase
       const userPurchase = productDetails.purchase || null;
@@ -292,9 +302,66 @@ export default function ProductDetails() {
         return <BookOpen className="w-6 h-6" />;
       case 'file':
         return <FileText className="w-6 h-6" />;
+      case 'lesson_plan':
+        return <GraduationCap className="w-6 h-6" />;
       default:
         return <Package className="w-6 h-6" />;
     }
+  };
+
+  // Helper functions for lesson plan data formatting
+  const getLessonPlanGradeRange = (typeAttributes) => {
+    if (!typeAttributes || !typeAttributes.grade_min || !typeAttributes.grade_max) {
+      return null;
+    }
+    return formatGradeRange(typeAttributes.grade_min, typeAttributes.grade_max);
+  };
+
+  const formatLessonPlanDuration = (estimatedDuration) => {
+    if (!estimatedDuration) return null;
+    return `${estimatedDuration} דקות`;
+  };
+
+  const getFileRoleDisplayName = (role) => {
+    switch (role) {
+      case 'opening':
+        return 'פתיחה';
+      case 'body':
+        return 'תוכן עיקרי';
+      case 'audio':
+        return 'קבצי שמע';
+      case 'assets':
+        return 'חומרי עזר';
+      default:
+        return role;
+    }
+  };
+
+  const formatLessonPlanFilesSummary = (fileConfigs) => {
+    if (!fileConfigs || !fileConfigs.files || !Array.isArray(fileConfigs.files)) {
+      return null;
+    }
+
+    const summary = {
+      opening: [],
+      body: [],
+      audio: [],
+      assets: [],
+      totalSlides: 0
+    };
+
+    fileConfigs.files.forEach(file => {
+      if (file.file_role && summary[file.file_role] !== undefined) {
+        summary[file.file_role].push(file);
+
+        // Add slides for opening and body files
+        if ((file.file_role === 'opening' || file.file_role === 'body') && file.slide_count) {
+          summary.totalSlides += file.slide_count;
+        }
+      }
+    });
+
+    return summary;
   };
 
 
@@ -426,6 +493,9 @@ export default function ProductDetails() {
                     showCartButton={false}
                     onFileAccess={handleFileAccess}
                     onPdfPreview={handlePdfPreview}
+                    onCourseAccess={handleCourseAccess}
+                    onWorkshopAccess={handleWorkshopAccess}
+                    onLessonPlanAccess={handleLessonPlanAccess}
                   />
                   {/* DEBUG: Log what we're passing to ProductActionBar */}
                   {console.log('🚀 ProductDetails passing to ProductActionBar:', {
@@ -491,7 +561,7 @@ export default function ProductDetails() {
                 </h1>
 
                 {/* Access Status */}
-                {(itemType === 'file' || item.product_type === 'file') ? (
+                {(itemType === 'file' || item.product_type === 'file' || item.product_type === 'lesson_plan') ? (
                   <div className="mb-4 sm:mb-6">
                     <ProductAccessStatus
                       product={item}
@@ -539,6 +609,7 @@ export default function ProductDetails() {
                     onPdfPreview={handlePdfPreview}
                     onCourseAccess={handleCourseAccess}
                     onWorkshopAccess={handleWorkshopAccess}
+                    onLessonPlanAccess={handleLessonPlanAccess}
                   />
                 </div>
               </div>
@@ -573,7 +644,7 @@ export default function ProductDetails() {
                 </h1>
 
                 {/* Access Status */}
-                {(itemType === 'file' || item.product_type === 'file') ? (
+                {(itemType === 'file' || item.product_type === 'file' || item.product_type === 'lesson_plan') ? (
                   <div className="mb-4 sm:mb-6">
                     <ProductAccessStatus
                       product={item}
@@ -620,6 +691,7 @@ export default function ProductDetails() {
                     onPdfPreview={handlePdfPreview}
                     onCourseAccess={handleCourseAccess}
                     onWorkshopAccess={handleWorkshopAccess}
+                    onLessonPlanAccess={handleLessonPlanAccess}
                   />
                 </div>
               </div>
@@ -690,7 +762,11 @@ export default function ProductDetails() {
                     className="py-3 px-6 sm:py-4 sm:px-12 text-base sm:text-lg font-semibold rounded-xl sm:rounded-2xl shadow-xl"
                     size="lg"
                     showCartButton={false}
+                    onFileAccess={handleFileAccess}
+                    onPdfPreview={handlePdfPreview}
+                    onCourseAccess={handleCourseAccess}
                     onWorkshopAccess={handleWorkshopAccess}
+                    onLessonPlanAccess={handleLessonPlanAccess}
                   />
                 </div>
               )}
@@ -807,14 +883,14 @@ export default function ProductDetails() {
             )}
 
             {item.product_type === 'file' && (
-              <Card className="shadow-xl bg-white/90 backdrop-blur-xl border-0 rounded-2xl sm:rounded-3xl w-full max-w-full overflow-hidden">
-                <CardHeader className="bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-t-2xl sm:rounded-t-3xl">
-                  <CardTitle className="flex items-center gap-2 sm:gap-3 text-lg sm:text-xl">
+              <div className="bg-white shadow-xl rounded-2xl sm:rounded-3xl w-full max-w-full overflow-hidden">
+                <div className="bg-gradient-to-r from-purple-500 to-pink-600 text-white p-4 sm:p-6">
+                  <h3 className="flex items-center gap-2 sm:gap-3 text-lg sm:text-xl font-semibold">
                     <FileText className="w-5 h-5 sm:w-6 sm:h-6" />
                     פרטי ה{getProductTypeName('file', 'singular')}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-4 sm:p-6 md:p-8">
+                  </h3>
+                </div>
+                <div className="p-4 sm:p-6 md:p-8">
                   <div className="grid grid-cols-1 gap-4 sm:gap-6 overflow-hidden">
                     {/* File Type */}
                     {item.file_type && (
@@ -905,8 +981,272 @@ export default function ProductDetails() {
                       </div>
                     )}
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
+            )}
+
+            {/* Lesson Plan Details Section */}
+            {item.product_type === 'lesson_plan' && (
+              <div className="bg-white shadow-xl rounded-2xl sm:rounded-3xl w-full max-w-full overflow-hidden">
+                <div className="bg-gradient-to-r from-blue-500 to-green-600 text-white p-4 sm:p-6">
+                  <h3 className="flex items-center gap-2 sm:gap-3 text-lg sm:text-xl font-semibold">
+                    <GraduationCap className="w-5 h-5 sm:w-6 sm:h-6" />
+                    פרטי ה{getProductTypeName('lesson_plan', 'singular')}
+                  </h3>
+                </div>
+                <div className="p-4 sm:p-6 md:p-8">
+                  <div className="grid grid-cols-1 gap-4 sm:gap-6 overflow-hidden">
+                    {/* Grade Range */}
+                    {item.type_attributes && getLessonPlanGradeRange(item.type_attributes) && (
+                      <div className="flex items-center gap-3 p-4 sm:p-6 bg-orange-50 rounded-xl sm:rounded-2xl overflow-hidden">
+                        <div className="w-12 h-12 sm:w-14 sm:h-14 bg-orange-100 rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0">
+                          <GraduationCap className="w-6 h-6 sm:w-7 sm:h-7 text-orange-600" />
+                        </div>
+                        <div className="text-right min-w-0 flex-1">
+                          <p className="text-xs sm:text-sm text-gray-600 font-medium">כיתות יעד</p>
+                          <p className="font-bold text-gray-900 text-sm sm:text-lg break-words">
+                            {getLessonPlanGradeRange(item.type_attributes)}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Subject */}
+                    {item.type_attributes && item.type_attributes.subject && (
+                      <div className="flex items-center gap-3 p-4 sm:p-6 bg-cyan-50 rounded-xl sm:rounded-2xl overflow-hidden">
+                        <div className="w-12 h-12 sm:w-14 sm:h-14 bg-cyan-100 rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0">
+                          <BookOpen className="w-6 h-6 sm:w-7 sm:h-7 text-cyan-600" />
+                        </div>
+                        <div className="text-right min-w-0 flex-1">
+                          <p className="text-xs sm:text-sm text-gray-600 font-medium">מקצוע</p>
+                          <p className="font-bold text-gray-900 text-sm sm:text-lg break-words">
+                            {item.type_attributes.subject}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Context/Theme */}
+                    {(item.context || (item.type_attributes && item.type_attributes.context)) && (
+                      <div className="flex items-center gap-3 p-4 sm:p-6 bg-purple-50 rounded-xl sm:rounded-2xl overflow-hidden">
+                        <div className="w-12 h-12 sm:w-14 sm:h-14 bg-purple-100 rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0">
+                          <Tag className="w-6 h-6 sm:w-7 sm:h-7 text-purple-600" />
+                        </div>
+                        <div className="text-right min-w-0 flex-1">
+                          <p className="text-xs sm:text-sm text-gray-600 font-medium">הקשר/נושא</p>
+                          <p className="font-bold text-gray-900 text-sm sm:text-lg break-words">
+                            {item.context || item.type_attributes?.context}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Estimated Duration */}
+                    {(item.estimated_duration || (item.type_attributes && item.type_attributes.estimated_duration)) && (
+                      <div className="flex items-center gap-3 p-4 sm:p-6 bg-green-50 rounded-xl sm:rounded-2xl overflow-hidden">
+                        <div className="w-12 h-12 sm:w-14 sm:h-14 bg-green-100 rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0">
+                          <Clock className="w-6 h-6 sm:w-7 sm:h-7 text-green-600" />
+                        </div>
+                        <div className="text-right min-w-0 flex-1">
+                          <p className="text-xs sm:text-sm text-gray-600 font-medium">משך שיעור משוער</p>
+                          <p className="font-bold text-gray-900 text-sm sm:text-lg break-words">
+                            {formatLessonPlanDuration(item.estimated_duration || item.type_attributes?.estimated_duration)}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Total Slides */}
+                    {item.total_slides && (
+                      <div className="flex items-center gap-3 p-4 sm:p-6 bg-indigo-50 rounded-xl sm:rounded-2xl overflow-hidden">
+                        <div className="w-12 h-12 sm:w-14 sm:h-14 bg-indigo-100 rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0">
+                          <FileText className="w-6 h-6 sm:w-7 sm:h-7 text-indigo-600" />
+                        </div>
+                        <div className="text-right min-w-0 flex-1">
+                          <p className="text-xs sm:text-sm text-gray-600 font-medium">סה״כ שקפים</p>
+                          <p className="font-bold text-gray-900 text-sm sm:text-lg break-words">
+                            {item.total_slides} שקפים
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Creator */}
+                    {item.creator && (
+                      <div className="flex items-center gap-3 p-4 sm:p-6 bg-blue-50 rounded-xl sm:rounded-2xl overflow-hidden">
+                        <div className="w-12 h-12 sm:w-14 sm:h-14 bg-blue-100 rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0">
+                          <Users className="w-6 h-6 sm:w-7 sm:h-7 text-blue-600" />
+                        </div>
+                        <div className="text-right min-w-0 flex-1">
+                          <p className="text-xs sm:text-sm text-gray-600 font-medium">יוצר התוכן</p>
+                          <p className="font-bold text-gray-900 text-sm sm:text-lg break-words">{item.creator.full_name}</p>
+                          {item.creator.is_content_creator && (
+                            <Badge className="mt-1 bg-blue-600 text-white text-xs">יוצר תוכן</Badge>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Last Updated */}
+                    {item.updated_at && (
+                      <div className="flex items-center gap-3 p-4 sm:p-6 bg-gray-50 rounded-xl sm:rounded-2xl overflow-hidden">
+                        <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gray-100 rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0">
+                          <Calendar className="w-6 h-6 sm:w-7 sm:h-7 text-gray-600" />
+                        </div>
+                        <div className="text-right min-w-0 flex-1">
+                          <p className="text-xs sm:text-sm text-gray-600 font-medium">עודכן לאחרונה</p>
+                          <p className="font-bold text-gray-900 text-sm sm:text-lg break-words">
+                            {format(new Date(item.updated_at), 'dd/MM/yyyy', { locale: he })}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Lesson Plan Files Summary Section */}
+            {item.product_type === 'lesson_plan' && item.file_configs && formatLessonPlanFilesSummary(item.file_configs) && (
+              <div className="bg-white shadow-xl rounded-2xl sm:rounded-3xl w-full max-w-full overflow-hidden">
+                <div className="bg-gradient-to-r from-indigo-500 to-blue-600 text-white p-4 sm:p-6">
+                  <h3 className="flex items-center gap-2 sm:gap-3 text-lg sm:text-xl font-semibold">
+                    <FolderOpen className="w-5 h-5 sm:w-6 sm:h-6" />
+                    קבצי השיעור
+                  </h3>
+                </div>
+                <div className="p-4 sm:p-6 md:p-8">
+                  <div className="grid grid-cols-1 gap-4 sm:gap-6 overflow-hidden">
+                    {(() => {
+                      const filesSummary = formatLessonPlanFilesSummary(item.file_configs);
+
+                      return (
+                        <>
+                          {/* Opening Files */}
+                          {filesSummary.opening && filesSummary.opening.length > 0 && (
+                            <div className="flex items-center gap-3 p-4 sm:p-6 bg-emerald-50 rounded-xl sm:rounded-2xl overflow-hidden">
+                              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-emerald-100 rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0">
+                                <Play className="w-6 h-6 sm:w-7 sm:h-7 text-emerald-600" />
+                              </div>
+                              <div className="text-right min-w-0 flex-1">
+                                <p className="text-xs sm:text-sm text-gray-600 font-medium">{getFileRoleDisplayName('opening')}</p>
+                                <div className="space-y-1">
+                                  {filesSummary.opening.map((file, index) => (
+                                    <p key={index} className="font-bold text-gray-900 text-sm sm:text-base break-words">
+                                      {file.filename} {file.slide_count && `(${file.slide_count} שקפים)`}
+                                    </p>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Body Files */}
+                          {filesSummary.body && filesSummary.body.length > 0 && (
+                            <div className="flex items-center gap-3 p-4 sm:p-6 bg-blue-50 rounded-xl sm:rounded-2xl overflow-hidden">
+                              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-blue-100 rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0">
+                                <BookOpen className="w-6 h-6 sm:w-7 sm:h-7 text-blue-600" />
+                              </div>
+                              <div className="text-right min-w-0 flex-1">
+                                <p className="text-xs sm:text-sm text-gray-600 font-medium">{getFileRoleDisplayName('body')}</p>
+                                <div className="space-y-1">
+                                  {filesSummary.body.map((file, index) => (
+                                    <p key={index} className="font-bold text-gray-900 text-sm sm:text-base break-words">
+                                      {file.filename} {file.slide_count && `(${file.slide_count} שקפים)`}
+                                    </p>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Audio Files */}
+                          {filesSummary.audio && filesSummary.audio.length > 0 && (
+                            <div className="flex items-center gap-3 p-4 sm:p-6 bg-amber-50 rounded-xl sm:rounded-2xl overflow-hidden">
+                              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-amber-100 rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0">
+                                <Volume2 className="w-6 h-6 sm:w-7 sm:h-7 text-amber-600" />
+                              </div>
+                              <div className="text-right min-w-0 flex-1">
+                                <p className="text-xs sm:text-sm text-gray-600 font-medium">{getFileRoleDisplayName('audio')}</p>
+                                <p className="font-bold text-gray-900 text-sm sm:text-lg break-words">
+                                  {filesSummary.audio.length} קבצי שמע
+                                </p>
+                                {filesSummary.audio.length <= 3 && (
+                                  <div className="space-y-1 mt-1">
+                                    {filesSummary.audio.map((file, index) => (
+                                      <p key={index} className="text-xs sm:text-sm text-gray-600 break-words">
+                                        {file.filename}
+                                      </p>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Asset Files */}
+                          {filesSummary.assets && filesSummary.assets.length > 0 && (
+                            <div className="flex items-center gap-3 p-4 sm:p-6 bg-purple-50 rounded-xl sm:rounded-2xl overflow-hidden">
+                              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-purple-100 rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0">
+                                <PaperclipIcon className="w-6 h-6 sm:w-7 sm:h-7 text-purple-600" />
+                              </div>
+                              <div className="text-right min-w-0 flex-1">
+                                <p className="text-xs sm:text-sm text-gray-600 font-medium">{getFileRoleDisplayName('assets')}</p>
+                                <p className="font-bold text-gray-900 text-sm sm:text-lg break-words">
+                                  {filesSummary.assets.length} קבצי עזר
+                                </p>
+                                {filesSummary.assets.length <= 3 && (
+                                  <div className="space-y-1 mt-1">
+                                    {filesSummary.assets.map((file, index) => (
+                                      <p key={index} className="text-xs sm:text-sm text-gray-600 break-words">
+                                        {file.filename}
+                                      </p>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Total Slides Summary */}
+                          {filesSummary.totalSlides > 0 && (
+                            <div className="flex items-center gap-3 p-4 sm:p-6 bg-gradient-to-r from-cyan-50 to-blue-50 rounded-xl sm:rounded-2xl overflow-hidden border-2 border-cyan-200">
+                              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-r from-cyan-100 to-blue-100 rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0">
+                                <FileText className="w-6 h-6 sm:w-7 sm:h-7 text-cyan-600" />
+                              </div>
+                              <div className="text-right min-w-0 flex-1">
+                                <p className="text-xs sm:text-sm text-cyan-700 font-medium">סה״כ שקפים מקובצי פתיחה ותוכן</p>
+                                <p className="font-bold text-cyan-900 text-lg sm:text-xl break-words">
+                                  {filesSummary.totalSlides} שקפים
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Teacher Notes Section */}
+            {item.product_type === 'lesson_plan' && item.teacher_notes && item.teacher_notes.trim() && (
+              <div className="bg-white shadow-xl rounded-2xl sm:rounded-3xl w-full max-w-full overflow-hidden">
+                <div className="bg-gradient-to-r from-amber-500 to-yellow-600 text-white p-4 sm:p-6">
+                  <h3 className="flex items-center gap-2 sm:gap-3 text-lg sm:text-xl font-semibold">
+                    <StickyNote className="w-5 h-5 sm:w-6 sm:h-6" />
+                    הנחיות למורה
+                  </h3>
+                </div>
+                <div className="p-4 sm:p-6 md:p-8 bg-amber-50/30">
+                  <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-sm border-l-4 border-amber-400">
+                    <div className="text-right whitespace-pre-wrap text-gray-800 text-sm sm:text-base leading-relaxed">
+                      {item.teacher_notes}
+                    </div>
+                  </div>
+                </div>
+              </div>
             )}
 
             {/* Course Modules */}
@@ -1036,14 +1376,14 @@ export default function ProductDetails() {
             )}
 
             {/* What's Included */}
-            <Card className="shadow-xl bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-100 rounded-2xl sm:rounded-3xl overflow-hidden w-full max-w-full">
-              <CardHeader className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-t-2xl sm:rounded-t-3xl overflow-hidden">
-                <CardTitle className="flex items-center gap-2 sm:gap-3 text-blue-100 text-lg sm:text-xl min-w-0">
+            <div className="bg-white shadow-xl rounded-2xl sm:rounded-3xl overflow-hidden w-full max-w-full">
+              <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-4 sm:p-6">
+                <h3 className="flex items-center gap-2 sm:gap-3 text-white text-lg sm:text-xl min-w-0 font-semibold">
                   <Zap className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
                   <span className="truncate">{detailsTexts.whatsIncluded}</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 sm:p-6 overflow-hidden">
+                </h3>
+              </div>
+              <div className="p-4 sm:p-6 bg-blue-50/30 overflow-hidden">
                 <div className="space-y-3 sm:space-y-4 overflow-hidden">
                   {item.product_type === 'file' && (
                     <>
@@ -1084,13 +1424,34 @@ export default function ProductDetails() {
                     </>
                   )}
 
+                  {item.product_type === 'lesson_plan' && (
+                    <>
+                      <div className="flex items-center gap-2 sm:gap-3 overflow-hidden">
+                        <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-500 flex-shrink-0" />
+                        <span className="text-xs sm:text-sm font-medium text-gray-800 break-words min-w-0">גישה לכל קבצי ה{getProductTypeName('lesson_plan', 'singular')}</span>
+                      </div>
+                      <div className="flex items-center gap-2 sm:gap-3 overflow-hidden">
+                        <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-500 flex-shrink-0" />
+                        <span className="text-xs sm:text-sm font-medium text-gray-800 break-words min-w-0">מצגות פתיחה ותוכן עיקרי</span>
+                      </div>
+                      <div className="flex items-center gap-2 sm:gap-3 overflow-hidden">
+                        <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-500 flex-shrink-0" />
+                        <span className="text-xs sm:text-sm font-medium text-gray-800 break-words min-w-0">קבצי שמע וחומרי עזר</span>
+                      </div>
+                      <div className="flex items-center gap-2 sm:gap-3 overflow-hidden">
+                        <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-500 flex-shrink-0" />
+                        <span className="text-xs sm:text-sm font-medium text-gray-800 break-words min-w-0">הנחיות הוראה מפורטות</span>
+                      </div>
+                    </>
+                  )}
+
                   <div className="flex items-center gap-2 sm:gap-3 overflow-hidden">
                     <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-500 flex-shrink-0" />
                     <span className="text-xs sm:text-sm font-medium text-gray-800 break-words min-w-0">תמיכה טכנית</span>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
         </div>
       </div>

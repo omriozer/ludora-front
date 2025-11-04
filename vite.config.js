@@ -12,7 +12,16 @@ export default defineConfig({
       '/api': {
         target: `http://localhost:${process.env.VITE_API_PORT || '3003'}`,
         changeOrigin: true,
-        secure: false
+        secure: false,
+        // Preserve original request body and headers for multipart uploads
+        configure: (proxy, options) => {
+          proxy.on('proxyReq', (proxyReq, req, res) => {
+            // Don't modify the body for multipart uploads
+            if (req.headers['content-type'] && req.headers['content-type'].includes('multipart/form-data')) {
+              console.log('📤 Vite proxy: Preserving multipart/form-data upload');
+            }
+          });
+        }
       }
     }
   },

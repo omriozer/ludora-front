@@ -15,6 +15,7 @@ import PaymentSuccess from './PaymentSuccess';
 import PaymentResult from './PaymentResult';
 import PaymentResultIframe from './PaymentResultIframe';
 import VideoViewer from './VideoViewer';
+import LessonPlanPresentation from './LessonPlanPresentation';
 import Checkout from './Checkout';
 import CourseViewer from './CourseViewer';
 import Products from './Products';
@@ -52,6 +53,7 @@ import ClassCurriculum from './ClassCurriculum';
 import GamesManagement from './GamesManagement';
 import GameSettings from './GameSettings';
 import ProductCatalog from '../components/catalog/ProductCatalog';
+import Demo from './Demo';
 
 // Create Games component using ProductCatalog
 const Games = () => <ProductCatalog productType="game" />;
@@ -74,6 +76,7 @@ export {
   PaymentResult,
   PaymentResultIframe,
   VideoViewer,
+  LessonPlanPresentation,
   Checkout,
   CourseViewer,
   Products,
@@ -111,5 +114,6 @@ export {
   GamesManagement,
   GameSettings,
   ProductCatalog,
-  Games
+  Games,
+  Demo
 };

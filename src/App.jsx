@@ -163,6 +163,16 @@ function App() {
 						}
 					/>
 					<Route
+						path='/lesson-plan-presentation'
+						element={
+							<ProtectedRoute>
+								<OnboardingRedirect>
+									<Pages.LessonPlanPresentation />
+								</OnboardingRedirect>
+							</ProtectedRoute>
+						}
+					/>
+					<Route
 						path='/checkout'
 						element={
 							<ProtectedRoute>
@@ -550,6 +560,16 @@ function App() {
 						element={
 							<AdminRoute>
 								<Pages.BulkCouponGenerator />
+							</AdminRoute>
+						}
+					/>
+
+					{/* Demo page */}
+					<Route
+						path='/demo'
+						element={
+							<AdminRoute>
+								<Pages.Demo />
 							</AdminRoute>
 						}
 					/>

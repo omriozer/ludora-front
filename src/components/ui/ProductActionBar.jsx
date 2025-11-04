@@ -5,6 +5,7 @@ import { useProductAccess } from '@/hooks/useProductAccess';
 import BuyProductButton from '@/components/ui/BuyProductButton';
 import AddToCartButton from '@/components/ui/AddToCartButton';
 import FileAccessButton from '@/components/ui/FileAccessButton';
+import LessonPlanAccessButton from '@/components/ui/LessonPlanAccessButton';
 import CourseAccessButton from '@/components/ui/CourseAccessButton';
 import WorkshopAccessButton from '@/components/ui/WorkshopAccessButton';
 
@@ -17,6 +18,7 @@ import WorkshopAccessButton from '@/components/ui/WorkshopAccessButton';
  * @param {boolean} showCartButton - Whether to show add to cart button alongside buy button
  * @param {function} onFileAccess - Callback for file access
  * @param {function} onPdfPreview - Callback for PDF preview
+ * @param {function} onLessonPlanAccess - Callback for lesson plan access
  * @param {function} onCourseAccess - Callback for course access
  * @param {function} onWorkshopAccess - Callback for workshop access
  * @param {function} onPurchaseSuccess - Callback for successful purchase
@@ -29,6 +31,7 @@ export default function ProductActionBar({
   showCartButton = true,
   onFileAccess,
   onPdfPreview,
+  onLessonPlanAccess,
   onCourseAccess,
   onWorkshopAccess,
   onPurchaseSuccess
@@ -72,6 +75,16 @@ export default function ProductActionBar({
             fullWidth={fullWidth}
             onFileAccess={onFileAccess}
             onPdfPreview={onPdfPreview}
+          />
+        );
+      case 'lesson_plan':
+        return (
+          <LessonPlanAccessButton
+            product={product}
+            className={className}
+            size={size}
+            fullWidth={fullWidth}
+            onLessonPlanAccess={onLessonPlanAccess}
           />
         );
       case 'course':

@@ -31,13 +31,13 @@ import { clog, cerror } from '@/lib/utils';
 import { toast } from '@/components/ui/use-toast';
 import { showConfirm } from '@/utils/messaging';
 import EntitySelector from '@/components/ui/EntitySelector';
+import SVGSlideManager from '../SVGSlideManager';
 
 /**
  * LessonPlanProductSection - Handles lesson plan specific settings and file uploads
  *
  * Lesson plans consist of:
- * - Opening files (PPT presentations for lesson introduction)
- * - Body files (Main lesson content PPT presentations)
+ * - Presentation files (SVG slides for the main presentation)
  * - Audio files (Background music, sound effects)
  * - Asset files (Supporting materials, handouts, resources)
  *
@@ -54,8 +54,7 @@ const LessonPlanProductSection = ({
   const navigate = useNavigate();
   const [uploadingFiles, setUploadingFiles] = useState({});
   const [lessonPlanFiles, setLessonPlanFiles] = useState({
-    opening: [],
-    body: [],
+    presentation: [],
     audio: [],
     assets: []
   });
@@ -63,6 +62,9 @@ const LessonPlanProductSection = ({
   // File product selector state
   const [showFileProductSelector, setShowFileProductSelector] = useState(false);
   const [currentSelectionFileRole, setCurrentSelectionFileRole] = useState(null);
+
+  // SVG slides state
+  const [svgSlides, setSvgSlides] = useState([]);
 
   // Initialize file configs from formData
   const initializeFileConfigs = () => {
@@ -116,15 +118,21 @@ const LessonPlanProductSection = ({
       clog('Loading existing files from file_configs:', fileConfigsSource.files);
 
       const filesByRole = {
-        opening: [],
-        body: [],
+        presentation: [],
         audio: [],
         assets: []
       };
 
-      // Group files by role
+      // Group files by role - handle legacy roles gracefully
       fileConfigsSource.files.forEach(fileConfig => {
         const role = fileConfig.file_role;
+
+        // Handle legacy roles from PPTX system
+        if (role === 'opening' || role === 'body') {
+          clog(`Legacy file role detected: ${role} for file ${fileConfig.filename} - skipping (use SVG presentation files instead)`);
+          return; // Skip legacy files
+        }
+
         if (filesByRole[role]) {
           filesByRole[role].push(fileConfig);
           clog(`Added file ${fileConfig.filename} to role ${role}`);
@@ -970,23 +978,14 @@ const LessonPlanProductSection = ({
           <h3 className="text-lg font-semibold text-indigo-900">קבצי מערך השיעור</h3>
         </div>
 
-        <Tabs defaultValue="opening" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="opening" className="flex items-center gap-2">
+        <Tabs defaultValue="presentation" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="presentation" className="flex items-center gap-2">
               <FileText className="w-4 h-4" />
-              <span>פתיחה</span>
-              {lessonPlanFiles.opening.length > 0 && (
-                <span className="bg-blue-100 text-blue-800 text-xs px-1.5 py-0.5 rounded-full">
-                  {lessonPlanFiles.opening.length}
-                </span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="body" className="flex items-center gap-2">
-              <Play className="w-4 h-4" />
-              <span>גוף השיעור</span>
-              {lessonPlanFiles.body.length > 0 && (
-                <span className="bg-green-100 text-green-800 text-xs px-1.5 py-0.5 rounded-full">
-                  {lessonPlanFiles.body.length}
+              <span>מצגת</span>
+              {svgSlides.length > 0 && (
+                <span className="bg-indigo-100 text-indigo-800 text-xs px-1.5 py-0.5 rounded-full">
+                  {svgSlides.length}
                 </span>
               )}
             </TabsTrigger>
@@ -1010,25 +1009,12 @@ const LessonPlanProductSection = ({
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="opening">
-            <FileUploadSection
-              title="מצגות פתיחה"
-              fileRole="opening"
-              icon={FileText}
-              files={lessonPlanFiles.opening}
-              description="העלאה: קבצי PowerPoint (.ppt, .pptx) | קישור מוצרים: קבצי PDF בלבד | קובץ אחד בלבד"
-              acceptedTypes=".ppt,.pptx"
-            />
-          </TabsContent>
-
-          <TabsContent value="body">
-            <FileUploadSection
-              title="מצגות גוף השיעור"
-              fileRole="body"
-              icon={Play}
-              files={lessonPlanFiles.body}
-              description="העלאה: קבצי PowerPoint (.ppt, .pptx) | קישור מוצרים: קבצי PDF בלבד | קובץ אחד בלבד"
-              acceptedTypes=".ppt,.pptx"
+          <TabsContent value="presentation">
+            <SVGSlideManager
+              lessonPlanId={editingProduct?.entity_id}
+              slides={svgSlides}
+              onSlidesChange={setSvgSlides}
+              isReadOnly={false}
             />
           </TabsContent>
 
@@ -1123,53 +1109,42 @@ const LessonPlanProductSection = ({
       </div>
 
       {/* Slide Count Summary */}
-      {(lessonPlanFiles.opening.some(f => f.slide_count) || lessonPlanFiles.body.some(f => f.slide_count)) && (
+      {svgSlides.length > 0 && (
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-indigo-900">סיכום שקפים</h3>
           <Card className="p-4">
             <div className="space-y-3">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-center">
+                <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3">
                   <div className="flex items-center justify-center gap-2 mb-1">
-                    <FileText className="w-4 h-4 text-blue-600" />
-                    <span className="text-sm font-medium text-blue-900">פתיחה</span>
+                    <FileText className="w-4 h-4 text-indigo-600" />
+                    <span className="text-sm font-medium text-indigo-900">שקפי SVG</span>
                   </div>
-                  <div className="text-2xl font-bold text-blue-700">
-                    {lessonPlanFiles.opening.reduce((sum, f) => sum + (f.slide_count || 0), 0)}
+                  <div className="text-2xl font-bold text-indigo-700">
+                    {svgSlides.length}
                   </div>
-                  <div className="text-xs text-blue-600">שקפים</div>
+                  <div className="text-xs text-indigo-600">שקפים</div>
                 </div>
 
                 <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                   <div className="flex items-center justify-center gap-2 mb-1">
-                    <Play className="w-4 h-4 text-green-600" />
-                    <span className="text-sm font-medium text-green-900">גוף השיעור</span>
+                    <CheckCircle className="w-4 h-4 text-green-600" />
+                    <span className="text-sm font-medium text-green-900">סטטוס</span>
                   </div>
-                  <div className="text-2xl font-bold text-green-700">
-                    {lessonPlanFiles.body.reduce((sum, f) => sum + (f.slide_count || 0), 0)}
+                  <div className="text-sm font-bold text-green-700">
+                    {svgSlides.length >= 1 ? 'מוכן לפרסום' : 'דרוש שקף נוסף'}
                   </div>
-                  <div className="text-xs text-green-600">שקפים</div>
-                </div>
-
-                <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3">
-                  <div className="flex items-center justify-center gap-2 mb-1">
-                    <BookOpen className="w-4 h-4 text-indigo-600" />
-                    <span className="text-sm font-medium text-indigo-900">סה״כ</span>
+                  <div className="text-xs text-green-600">
+                    {svgSlides.length >= 1 ? 'עומד בדרישות' : 'לפחות שקף אחד'}
                   </div>
-                  <div className="text-2xl font-bold text-indigo-700">
-                    {formData.total_slides || 0}
-                  </div>
-                  <div className="text-xs text-indigo-600">שקפים</div>
                 </div>
               </div>
 
-              {formData.total_slides > 0 && (
-                <div className="text-center">
-                  <p className="text-sm text-gray-600">
-                    📊 מספר השקפים מתעדכן אוטומטית בעת העלאת קבצי PowerPoint
-                  </p>
-                </div>
-              )}
+              <div className="text-center">
+                <p className="text-sm text-gray-600">
+                  📊 כל קובץ SVG הוא שקף אחד במצגת
+                </p>
+              </div>
             </div>
           </Card>
         </div>
@@ -1193,20 +1168,20 @@ const LessonPlanProductSection = ({
               <div>
                 <Label className="flex items-center gap-2">
                   <span>מספר שקפים כולל</span>
-                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                  <span className="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded">
                     מחושב אוטומטית
                   </span>
                 </Label>
                 <Input
                   type="number"
                   placeholder="0"
-                  value={formData.total_slides || ''}
+                  value={svgSlides.length || '0'}
                   readOnly
                   className="bg-gray-50"
-                  title="מספר השקפים מחושב אוטומטית מקבצי הפתיחה והגוף"
+                  title="מספר השקפים מחושב אוטומטית מקבצי SVG במצגת"
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  מחושב מקבצי PowerPoint בפתיחה וגוף השיעור
+                  מחושב מקבצי SVG במצגת (כל קובץ SVG = שקף אחד)
                 </p>
               </div>
             </div>
