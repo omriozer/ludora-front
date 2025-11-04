@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Sparkles, HandMetal, GripHorizontal } from 'lucide-react';
+import { Sparkles, HandMetal, GripHorizontal, MicOff } from 'lucide-react';
 
 // Import sound files
 import clappingSound from '@/assets/sounds/effects/clapping.mp3';
 import fireworksSound from '@/assets/sounds/effects/fireworks.mp3';
+import shhhSound from '@/assets/sounds/effects/shhhh.mp3';
 
 const ClassroomEffectMenu = ({
 	display = false,
@@ -71,6 +72,12 @@ const ClassroomEffectMenu = ({
 			name: 'זיקוקים',
 			icon: Sparkles,
 			action: () => handleEffectAction('fireworks')
+		},
+		{
+			id: 'shhhh',
+			name: 'שקט בבקשה',
+			icon: MicOff,
+			action: () => handleEffectAction('shhhh')
 		}
 	];
 
@@ -90,6 +97,8 @@ const ClassroomEffectMenu = ({
 			triggerClappingEffect();
 		} else if (effectId === 'fireworks') {
 			triggerFireworksEffect();
+		} else if (effectId === 'shhhh') {
+			triggerShhhhEffect();
 		}
 	};
 
@@ -207,10 +216,46 @@ const ClassroomEffectMenu = ({
 			}
 		);
 
-		// Store animation elements for cleanup
-		currentAnimationElementsRef.current = animationElements;
-	};
-
+		        // Store animation elements for cleanup
+				currentAnimationElementsRef.current = animationElements;
+			};
+		
+			const triggerShhhhEffect = () => {
+				console.log('🤫 Triggering shhhh effect!');
+				setActiveEffect('shhhh');
+		
+				// Create shhhh visual effect
+				const animationElements = createShhhhVisualEffect();
+		
+				// Play shhh sound with proper event handling
+				const audio = playSound(
+					shhhSound,
+					// onLoadedMetadata: Use actual audio duration
+					function() {
+						const duration = this.duration * 1000; // Convert to milliseconds
+						console.log(`Shhh audio duration: ${duration}ms`);
+		
+						// Clear any existing timeout
+						if (effectTimeoutRef.current) {
+							clearTimeout(effectTimeoutRef.current);
+						}
+		
+						// Set timeout based on actual audio duration
+						effectTimeoutRef.current = setTimeout(() => {
+							stopCurrentEffect();
+						}, duration);
+					},
+					// onEnded: Clean up when audio ends
+					() => {
+						console.log('Shhh audio ended');
+						stopCurrentEffect();
+					}
+				);
+		
+				// Store animation elements for cleanup
+				currentAnimationElementsRef.current = animationElements;
+			};
+		
 	const triggerFireworksEffect = () => {
 		console.log('🎆 Triggering fireworks effect!');
 		setActiveEffect('fireworks');
@@ -379,6 +424,49 @@ const ClassroomEffectMenu = ({
 		return animationElements;
 	};
 
+	const createShhhhVisualEffect = () => {
+		const presentationArea = document.querySelector('[data-presentation-area]') || document.body;
+		const animationElements = [];
+
+		const container = document.createElement('div');
+		container.classList.add('classroom-effect-element');
+		container.style.cssText = `
+			position: fixed;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			z-index: 9999;
+			animation: shhhFadeInOut 3s ease-in-out forwards;
+		`;
+
+		const emoji = document.createElement('div');
+		emoji.textContent = '🤫';
+		emoji.style.cssText = `
+			font-size: 180px; /* Made bigger */
+			text-shadow: 4px 4px 8px rgba(0,0,0,0.7);
+		`;
+
+		const text = document.createElement('div');
+		text.textContent = 'שקט בבקשה!';
+		text.style.cssText = `
+			font-size: 60px; /* Made bigger */
+			font-weight: bold; /* Made bolder */
+			color: white;
+			text-shadow: 4px 4px 8px rgba(0,0,0,0.7); /* Enhanced shadow */
+			margin-top: 20px;
+		`;
+
+		container.appendChild(emoji);
+		container.appendChild(text);
+		presentationArea.appendChild(container);
+		animationElements.push(container);
+
+		return animationElements;
+	};
+
 	const createCelebrationEffect = (emoji, effectType) => {
 		// Create multiple emoji elements for the effect
 		const numberOfEmojis = effectType === 'fireworks' ? 15 : 20;
@@ -537,6 +625,21 @@ const ClassroomEffectMenu = ({
 					100% {
 						opacity: 0;
 						transform: scale(2);
+					}
+				}
+
+				@keyframes shhhFadeInOut {
+					0% {
+						opacity: 0;
+					}
+					20% {
+						opacity: 1;
+					}
+					80% {
+						opacity: 1;
+					}
+					100% {
+						opacity: 0;
 					}
 				}
 			`;

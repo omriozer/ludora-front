@@ -726,7 +726,7 @@ export default function LessonPlanPresentation() {
 								<ClassroomEffectMenu
 									display={true}
 									effectsToExclude={[]}
-									layout="vertical"
+									layout="horizontal"
 									mode="embedded"
 								/>
 							)}
