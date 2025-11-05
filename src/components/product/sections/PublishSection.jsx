@@ -234,7 +234,7 @@ export const PublishSection = ({
                           grade_max: 'כיתה מקסימלית',
                           subject: 'מקצוע',
                           game_type: 'סוג משחק',
-                          device_compatibility: 'תאימות מכשירים'
+                          digital: 'סוג הגרסה'
                         };
                         const fieldName = fieldNames[field] || field;
                         return `${fieldName}: ${error}`;

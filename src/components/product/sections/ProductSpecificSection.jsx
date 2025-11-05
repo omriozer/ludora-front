@@ -353,7 +353,7 @@ export const ProductSpecificSection = ({
                     return false;
                   }
                   if (formData.product_type === 'game' &&
-                      (key === 'game_type' || key === 'device_compatibility')) {
+                      (key === 'game_type' || key === 'digital')) {
                     return false;
                   }
                   if (formData.product_type === 'workshop' && key === 'duration_minutes') {

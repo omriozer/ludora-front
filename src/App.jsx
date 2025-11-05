@@ -333,16 +333,6 @@ function App() {
 							</ProtectedRoute>
 						}
 					/>
-					<Route
-						path='/games-management'
-						element={
-							<ProtectedRoute>
-								<OnboardingRedirect>
-									<Pages.GamesManagement />
-								</OnboardingRedirect>
-							</ProtectedRoute>
-						}
-					/>
 
 					{/* Admin-only routes */}
 					<Route

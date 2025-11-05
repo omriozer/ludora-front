@@ -247,12 +247,6 @@ export default function FloatingAdminMenu({ currentUser }) {
       color: "from-blue-500 to-indigo-600",
       items: [
         {
-          title: `ניהול ${getProductTypeName('game', 'plural')}`,
-          url: "/games",
-          icon: <Play className="w-4 h-4" />,
-          description: `יצירה ועריכה של ${getProductTypeName('game', 'plural')} דיגיטליים`
-        },
-        {
           title: "ניהול מוצרים",
           url: "/products?context=admin",
           icon: <FileText className="w-4 h-4" />,
@@ -266,7 +260,7 @@ export default function FloatingAdminMenu({ currentUser }) {
         },
         {
           title: `תכנים ל${getProductTypeName('game', 'plural')}`,
-          url: "/game-content",
+          url: "/game-contents",
           icon: <FileText className="w-4 h-4" />,
           description: `מילים, תמונות ושאלות ל${getProductTypeName('game', 'plural')}`
         }

@@ -85,7 +85,6 @@ function LayoutContent({ children }) {
   useEffect(() => {
     const handleResize = () => {
       const newIsDesktop = window.innerWidth >= 1024;
-      console.log('Layout resize detected:', window.innerWidth, 'isDesktop:', newIsDesktop);
       setIsDesktop(newIsDesktop);
     };
 

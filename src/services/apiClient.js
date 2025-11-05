@@ -425,6 +425,7 @@ export const LessonPlan = new EntityAPI('lessonplan');
 export const Purchase = new EntityAPI('purchase');
 export const EmailLog = new EntityAPI('emaillog');
 export const Game = new EntityAPI('game');
+export const GameContent = new EntityAPI('gamecontent');
 export const AudioFile = new EntityAPI('audiofile');
 export const Word = new EntityAPI('word');
 export const WordEN = new EntityAPI('worden');

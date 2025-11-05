@@ -12,7 +12,6 @@ A temporary debug feature to compare the old ProductModal with the new ProductMo
 
 ### 1. Pages with Debug Toggle
 - **Products.jsx** (`/products`) - Toggle between old and new modals
-- **GamesManagement.jsx** (`/games`) - Toggle for product creation modals
 
 ### 2. Using the Toggle
 1. Navigate to `/products` or `/games` in development mode
@@ -23,7 +22,6 @@ A temporary debug feature to compare the old ProductModal with the new ProductMo
 
 ### 3. Default Settings
 - **Products.jsx**: Defaults to NEW modal (ProductModalV2)
-- **GamesManagement.jsx**: Defaults to OLD modal (ProductModal)
 
 ## Files Modified
 
@@ -46,14 +44,6 @@ const [useOldModal, setUseOldModal] = useState(false);
 {useOldModal ? <ProductModal .../> : <ProductModalV2 .../>}
 ```
 
-### GamesManagement.jsx
-```javascript
-// DEBUG: Import new modal for comparison
-import ProductModalV2 from '@/components/product/ProductModalV2';
-
-// Similar debug patterns as above
-```
-
 ## How to Remove (When Debugging Complete)
 
 ### 1. Search and Remove
@@ -70,12 +60,6 @@ Search for these patterns and remove all related code:
 2. Remove state: `const [useOldModal, setUseOldModal] = useState(false);`
 3. Remove debug toggle UI (lines with red background)
 4. Replace conditional modal with: `<ProductModalV2 .../>`
-
-**GamesManagement.jsx:**
-1. Remove import: `import ProductModalV2 from '@/components/product/ProductModalV2';`
-2. Remove state: `const [useOldModal, setUseOldModal] = useState(true);`
-3. Remove debug toggle UI
-4. Keep: `<ProductModal .../>` (games still use old modal)
 
 ### 3. Files to Delete
 After removal, delete this file:

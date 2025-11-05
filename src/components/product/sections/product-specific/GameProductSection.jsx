@@ -1,71 +1,55 @@
 import React from 'react';
-import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { GAME_TYPES } from '@/config/gameTypes';
+import { useNavigate } from 'react-router-dom';
+import { useUser } from '@/contexts/UserContext';
+import { Settings } from 'lucide-react';
+import GameTypeDisplay from '@/components/game/GameTypeDisplay';
 
 /**
- * GameProductSection - Handles game-specific settings
- * Game type, device compatibility, and game-specific attributes
+ * GameProductSection - Shows read-only game information and navigation
+ * Displays selected game type (if any) and provides access to game settings
  */
-const GameProductSection = ({
-  formData,
-  updateFormData,
-  globalSettings
-}) => {
-  return (
-    <div className="space-y-4">
-      <h3 className="text-lg font-semibold text-indigo-900">הגדרות משחק</h3>
+const GameProductSection = ({ formData, editingProduct }) => {
+	const { settings } = useUser();
+	const navigate = useNavigate();
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <Label className="text-sm font-medium">סוג משחק</Label>
-          <Select
-            value={formData.type_attributes?.game_type || ''}
-            onValueChange={(value) => updateFormData({
-              type_attributes: {
-                ...formData.type_attributes,
-                game_type: value
-              }
-            })}
-          >
-            <SelectTrigger className="mt-1">
-              <SelectValue placeholder="בחר סוג משחק" />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.values(GAME_TYPES).map((gameType) => (
-                <SelectItem key={gameType.key} value={gameType.key}>
-                  {gameType.singular}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+	// Get the selected game type details
+	const selectedGameType = formData.type_attributes?.game_type;
 
-        <div>
-          <Label className="text-sm font-medium">תאימות מכשירים</Label>
-          <Select
-            value={formData.type_attributes?.device_compatibility || 'both'}
-            onValueChange={(value) => updateFormData({
-              type_attributes: {
-                ...formData.type_attributes,
-                device_compatibility: value
-              }
-            })}
-          >
-            <SelectTrigger className="mt-1">
-              <SelectValue placeholder="בחר תאימות מכשירים" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="both">שניהם</SelectItem>
-              <SelectItem value="desktop_only">מחשב בלבד</SelectItem>
-              <SelectItem value="mobile_only">נייד בלבד</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-    </div>
-  );
+	const handleGameSettings = () => {
+		if (editingProduct?.id) {
+			navigate(`/game-settings/${editingProduct.id}`);
+		}
+	};
+
+	return (
+		<div className='space-y-4'>
+			<div className='flex items-center justify-between'>
+				<h3 className='text-lg font-semibold text-indigo-900'>הגדרות משחק</h3>
+				<Button
+					onClick={handleGameSettings}
+					variant='outline'
+					size='sm'
+					className='flex items-center gap-2'
+					disabled={!editingProduct?.id}
+				>
+					<Settings className='w-4 h-4' />
+					הגדרות משחק
+				</Button>
+			</div>
+
+			{selectedGameType && (
+				<GameTypeDisplay
+					gameTypeKey={selectedGameType}
+					showEditButton={false}
+					size='small'
+					variant='badge'
+					className='max-w-2xl mx-auto'
+				/>
+			)}
+		</div>
+	);
 };
 
 export default GameProductSection;

@@ -8,7 +8,6 @@
  */
 
 import { Calendar, BookOpen, FileText, Play } from "lucide-react";
-import { GAME_TYPES } from './gameTypes.js';
 
 // Product Types Configuration with Catalog Settings
 export const PRODUCT_TYPES = {
@@ -526,20 +525,16 @@ export const TYPE_ATTRIBUTE_SCHEMAS = {
       label: 'סוג משחק',
       description: 'סוג המשחק הספציפי',
       placeholder: 'בחר סוג משחק',
-      options: Object.values(GAME_TYPES).map(gameType => ({
-        value: gameType.key,
-        label: gameType.singular
-      }))
+      options: [] // Populated dynamically from settings
     },
-    device_compatibility: {
+    digital: {
       type: 'select',
-      label: 'תאימות מכשירים',
-      description: 'באילו מכשירים ניתן לשחק במשחק',
-      placeholder: 'בחר תאימות מכשירים',
+      label: 'סוג הגרסה',
+      description: 'האם המשחק זמין בגרסה דיגיטלית או גרסה להדפסה',
+      placeholder: 'בחר סוג גרסה',
       options: [
-        { value: 'both', label: 'הכל' },
-        { value: 'desktop_only', label: 'מחשב בלבד' },
-        { value: 'mobile_only', label: 'מכשירי טאץ בלבד' }
+        { value: true, label: 'דיגיטלי' },
+        { value: false, label: 'גרסה להדפסה' }
       ]
     }
   },
