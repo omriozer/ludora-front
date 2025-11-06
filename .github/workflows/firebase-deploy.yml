@@ -4,22 +4,15 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
-    types:
-      - closed
 
 jobs:
-  build-and-deploy:
-    name: Build and Deploy Frontend to Firebase
+  deploy:
+    name: Deploy to Firebase
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
 
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
-
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -27,82 +20,27 @@ jobs:
           node-version: '20'
           cache: 'yarn'
 
-      - name: Configure Git to use HTTPS instead of SSH
-        run: |
-          git config --global url."https://github.com/".insteadOf "git@github.com:"
-          git config --global url."https://".insteadOf "git://"
-
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 
-      - name: Check for dependency changes
-        id: deps-check
+      - name: Build
         run: |
-          git diff HEAD~1 HEAD -- package.json yarn.lock > /dev/null 2>&1
-          if [ $? -eq 0 ]; then
-            echo "changes=true" >> $GITHUB_OUTPUT
-          else
-            echo "changes=false" >> $GITHUB_OUTPUT
-          fi
-        continue-on-error: true
-
-      - name: Create environment file
-        run: |
-          echo "Creating .env.production file..."
-          echo "VITE_API_BASE=${{ secrets.VITE_API_BASE }}" > .env.production
-          echo "VITE_FIREBASE_API_KEY=${{ secrets.VITE_FIREBASE_API_KEY }}" >> .env.production
-          echo "VITE_FIREBASE_AUTH_DOMAIN=${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}" >> .env.production
-          echo "VITE_FIREBASE_PROJECT_ID=${{ secrets.VITE_FIREBASE_PROJECT_ID }}" >> .env.production
-          echo "VITE_FIREBASE_STORAGE_BUCKET=${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}" >> .env.production
-          echo "VITE_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}" >> .env.production
-          echo "VITE_FIREBASE_APP_ID=${{ secrets.VITE_FIREBASE_APP_ID }}" >> .env.production
-          echo "VITE_FIREBASE_MEASUREMENT_ID=${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}" >> .env.production
-          echo "✅ Environment file created"
-          echo "Environment variables:"
-          cat .env.production
-
-      - name: Build application
-        run: |
-          echo "Starting build process..."
+          echo "VITE_API_BASE=https://api.ludora.app/api" > .env.production
+          echo "VITE_FIREBASE_API_KEY=AIzaSyCvc0KGxsYCu61pOwBSJ3tzdCs7lUT28JI" >> .env.production
+          echo "VITE_FIREBASE_AUTH_DOMAIN=ludora-af706.firebaseapp.com" >> .env.production
+          echo "VITE_FIREBASE_PROJECT_ID=ludora-af706" >> .env.production
+          echo "VITE_FIREBASE_STORAGE_BUCKET=ludora-af706.firebasestorage.app" >> .env.production
+          echo "VITE_FIREBASE_MESSAGING_SENDER_ID=985814078486" >> .env.production
+          echo "VITE_FIREBASE_APP_ID=1:985814078486:web:45bbbd97327171c94ad137" >> .env.production
+          echo "VITE_FIREBASE_MEASUREMENT_ID=G-THZ32X92VY" >> .env.production
           yarn build
-          echo "✅ Build completed"
-          ls -la dist/
 
-      - name: Install Firebase CLI
-        run: |
-          npm install -g firebase-tools
-          firebase --version
+      - name: Deploy to Firebase
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_LUDORA_AF706 }}'
+          projectId: ludora-af706
 
-      - name: Verify Firebase token
-        run: |
-          if [ -z "${{ secrets.FIREBASE_TOKEN }}" ]; then
-            echo "❌ FIREBASE_TOKEN secret is not set"
-            exit 1
-          else
-            echo "✅ FIREBASE_TOKEN secret is available"
-          fi
-
-      - name: Deploy to Firebase Hosting
-        run: |
-          echo "Starting Firebase deployment..."
-          firebase deploy --only hosting --project ludora-af706 --debug
-        env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
-
-      - name: Handle dependency changes
-        if: steps.deps-check.outputs.changes == 'true'
-        run: |
-          echo "⚠️ Package.json/yarn.lock changes detected - dependencies updated in this build"
-
-      - name: Health check
-        run: |
-          echo "Waiting for deployment to be ready..."
-          sleep 30
-          curl -f https://ludora.app/ || exit 1
-          echo "✅ Frontend deployment successful and accessible!"
-
-      - name: Deployment summary
-        run: |
-          echo "🚀 Firebase deployment completed successfully!"
-          echo "Frontend URL: https://ludora.app"
-          echo "Firebase Console: https://console.firebase.google.com/project/ludora-af706/hosting"
+      - name: Success message
+        run: echo "🚀 Firebase deployment completed!"
