@@ -1,0 +1,34 @@
+{
+  "framework": "vite",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
+  "env": {
+    "VITE_API_BASE": "https://ludora-api-v2.onrender.com/api",
+    "VITE_FIREBASE_API_KEY": "AIzaSyCvc0KGxsYCu61pOwBSJ3tzdCs7lUT28JI",
+    "VITE_FIREBASE_AUTH_DOMAIN": "ludora.app",
+    "VITE_FIREBASE_PROJECT_ID": "ludora-af706",
+    "VITE_FIREBASE_STORAGE_BUCKET": "ludora-af706.firebasestorage.app",
+    "VITE_FIREBASE_MESSAGING_SENDER_ID": "985814078486",
+    "VITE_FIREBASE_APP_ID": "1:985814078486:web:45bbbd97327171c94ad137",
+    "VITE_FIREBASE_MEASUREMENT_ID": "G-THZ32X92VY"
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/service-worker.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    }
+  ]
+}
