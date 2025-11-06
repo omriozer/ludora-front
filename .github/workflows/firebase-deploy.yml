@@ -14,6 +14,23 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get commit message
+        id: commit
+        run: |
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          echo "message=$COMMIT_MSG" >> $GITHUB_OUTPUT
+
+      - name: Notify deployment started
+        uses: ./.github/actions/telegram-notify
+        with:
+          bot-token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          chat-id: ${{ secrets.TELEGRAM_CHAT_ID }}
+          status: 'started'
+          service: 'Frontend (Firebase)'
+          commit-message: ${{ steps.commit.outputs.message }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -82,3 +99,30 @@ jobs:
           echo "🚀 Frontend deployment completed successfully!"
           echo "Live URL: https://ludora.app"
           echo "Firebase Console: https://console.firebase.google.com/project/ludora-af706"
+
+      - name: Notify deployment success
+        if: success()
+        uses: ./.github/actions/telegram-notify
+        with:
+          bot-token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          chat-id: ${{ secrets.TELEGRAM_CHAT_ID }}
+          status: 'success'
+          service: 'Frontend (Firebase)'
+          commit-message: ${{ steps.commit.outputs.message }}
+          details: |
+            🌐 Live URL: https://ludora.app
+            🔗 Firebase Console: https://console.firebase.google.com/project/ludora-af706
+            📦 Firebase Hosting: https://ludora-af706.web.app
+
+      - name: Notify deployment failure
+        if: failure()
+        uses: ./.github/actions/telegram-notify
+        with:
+          bot-token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          chat-id: ${{ secrets.TELEGRAM_CHAT_ID }}
+          status: 'failed'
+          service: 'Frontend (Firebase)'
+          commit-message: ${{ steps.commit.outputs.message }}
+          details: |
+            ⚠️ שלב כושל: ${{ job.status }}
+            🔍 בדוק את הלוגים לפרטים נוספים
