@@ -1,4 +1,4 @@
-name: Deploy to Firebase Hosting
+name: Test Build Only
 
 on:
   push:
@@ -6,8 +6,8 @@ on:
       - main
 
 jobs:
-  deploy:
-    name: Deploy to Firebase
+  test-build:
+    name: Test Build Process
     runs-on: ubuntu-latest
 
     steps:
@@ -20,11 +20,20 @@ jobs:
           node-version: '20'
           cache: 'yarn'
 
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile
-
-      - name: Build
+      - name: Configure Git for SSH dependencies
         run: |
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+          git config --global url."https://".insteadOf "git://"
+
+      - name: Install dependencies
+        run: |
+          echo "Installing dependencies..."
+          yarn install --frozen-lockfile
+          echo "✅ Dependencies installed"
+
+      - name: Create environment file
+        run: |
+          echo "Creating environment file..."
           echo "VITE_API_BASE=https://api.ludora.app/api" > .env.production
           echo "VITE_FIREBASE_API_KEY=AIzaSyCvc0KGxsYCu61pOwBSJ3tzdCs7lUT28JI" >> .env.production
           echo "VITE_FIREBASE_AUTH_DOMAIN=ludora-af706.firebaseapp.com" >> .env.production
@@ -33,16 +42,22 @@ jobs:
           echo "VITE_FIREBASE_MESSAGING_SENDER_ID=985814078486" >> .env.production
           echo "VITE_FIREBASE_APP_ID=1:985814078486:web:45bbbd97327171c94ad137" >> .env.production
           echo "VITE_FIREBASE_MEASUREMENT_ID=G-THZ32X92VY" >> .env.production
-          yarn build
+          echo "✅ Environment file created"
+          echo "Contents:"
+          cat .env.production
 
-      - name: Install Firebase CLI
-        run: npm install -g firebase-tools
-
-      - name: Deploy to Firebase
+      - name: Build application
         run: |
-          firebase deploy --only hosting --project ludora-af706 --token "$FIREBASE_TOKEN"
-        env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+          echo "Building application..."
+          yarn build
+          echo "✅ Build completed successfully!"
+          echo "Build output:"
+          ls -la dist/
+          echo "Index file size:"
+          du -h dist/index.html
 
-      - name: Success message
-        run: echo "🚀 Firebase deployment completed!"
+      - name: Test completed
+        run: |
+          echo "🎉 Build test completed successfully!"
+          echo "The application builds without errors."
+          echo "Next step: Add Firebase deployment once build is verified."
