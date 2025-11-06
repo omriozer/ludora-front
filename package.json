@@ -13,7 +13,13 @@
     "cy:run:chrome": "cypress run --browser chrome",
     "cy:run:firefox": "cypress run --browser firefox",
     "test:e2e": "cypress run",
-    "test:e2e:dev": "cypress open --config baseUrl=http://localhost:5173"
+    "test:e2e:dev": "cypress open --config baseUrl=http://localhost:5173",
+    "deploy": "../ludora-utils/scripts/deploy-frontend.sh",
+    "deploy:staging": "../ludora-utils/scripts/deploy-frontend.sh --staging",
+    "deploy:skip-build": "../ludora-utils/scripts/deploy-frontend.sh --skip-build",
+    "deploy:firebase": "firebase deploy --only hosting",
+    "deploy:firebase:staging": "firebase hosting:channel:deploy staging",
+    "deploy:firebase:project": "firebase deploy --only hosting --project"
   },
   "dependencies": {
     "@cyntler/react-doc-viewer": "^1.17.1",
