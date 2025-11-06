@@ -48,6 +48,7 @@ jobs:
 
       - name: Create environment file
         run: |
+          echo "Creating .env.production file..."
           echo "VITE_API_BASE=${{ secrets.VITE_API_BASE }}" > .env.production
           echo "VITE_FIREBASE_API_KEY=${{ secrets.VITE_FIREBASE_API_KEY }}" >> .env.production
           echo "VITE_FIREBASE_AUTH_DOMAIN=${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}" >> .env.production
@@ -56,15 +57,35 @@ jobs:
           echo "VITE_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}" >> .env.production
           echo "VITE_FIREBASE_APP_ID=${{ secrets.VITE_FIREBASE_APP_ID }}" >> .env.production
           echo "VITE_FIREBASE_MEASUREMENT_ID=${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}" >> .env.production
+          echo "✅ Environment file created"
+          echo "Environment variables:"
+          cat .env.production
 
       - name: Build application
-        run: yarn build
+        run: |
+          echo "Starting build process..."
+          yarn build
+          echo "✅ Build completed"
+          ls -la dist/
 
       - name: Install Firebase CLI
-        run: npm install -g firebase-tools
+        run: |
+          npm install -g firebase-tools
+          firebase --version
+
+      - name: Verify Firebase token
+        run: |
+          if [ -z "${{ secrets.FIREBASE_TOKEN }}" ]; then
+            echo "❌ FIREBASE_TOKEN secret is not set"
+            exit 1
+          else
+            echo "✅ FIREBASE_TOKEN secret is available"
+          fi
 
       - name: Deploy to Firebase Hosting
-        run: firebase deploy --only hosting --project ludora-af706
+        run: |
+          echo "Starting Firebase deployment..."
+          firebase deploy --only hosting --project ludora-af706 --debug
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
 
