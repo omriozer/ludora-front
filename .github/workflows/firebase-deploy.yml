@@ -1,4 +1,4 @@
-name: Test Build Only
+name: Build and Deploy Frontend to Firebase
 
 on:
   push:
@@ -6,8 +6,8 @@ on:
       - main
 
 jobs:
-  test-build:
-    name: Test Build Process
+  build-and-deploy:
+    name: Build and Deploy to Firebase
     runs-on: ubuntu-latest
 
     steps:
@@ -56,8 +56,23 @@ jobs:
           echo "Index file size:"
           du -h dist/index.html
 
-      - name: Test completed
+      - name: Install Firebase CLI
         run: |
-          echo "🎉 Build test completed successfully!"
-          echo "The application builds without errors."
-          echo "Next step: Add Firebase deployment once build is verified."
+          echo "Installing Firebase CLI..."
+          npm install -g firebase-tools
+          echo "✅ Firebase CLI installed"
+
+      - name: Deploy to Firebase
+        run: |
+          echo "Deploying to Firebase..."
+          firebase deploy --only hosting --project ludora-af706
+          echo "✅ Deployment completed successfully!"
+          echo "Frontend deployed to: https://ludora.app"
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+
+      - name: Deployment summary
+        run: |
+          echo "🚀 Frontend deployment completed successfully!"
+          echo "Live URL: https://ludora.app"
+          echo "Firebase Console: https://console.firebase.google.com/project/ludora-af706"
