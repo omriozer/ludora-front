@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ShieldAlert, ArrowLeft } from "lucide-react";
+import { ShieldAlert, ArrowLeft, CheckCircle, XCircle } from "lucide-react";
 import Footer from "./Footer";
+import { riddles } from "@/assets/riddles";
 
 export default function MaintenancePage({
   showReturnButton,
@@ -15,8 +16,91 @@ export default function MaintenancePage({
   handleLogin,
   isTemporaryIssue = false
 }) {
+  // Riddles game state
+  const [currentRiddle, setCurrentRiddle] = useState(null);
+  const [gameState, setGameState] = useState('waiting'); // 'waiting', 'answered', 'showing-result'
+  const [userAnswer, setUserAnswer] = useState(null); // true or false
+  const [isCorrect, setIsCorrect] = useState(null);
+  const [showGame, setShowGame] = useState(false);
+  const [selectedCard, setSelectedCard] = useState(null); // 'truth' or 'lie'
+  const [flipCard, setFlipCard] = useState(false);
+
+  // Initialize game when component mounts
+  useEffect(() => {
+    if(riddles.filter(r => r.approved).length === 0) return;
+    const timer = setTimeout(() => {
+      setShowGame(true);
+      selectRandomRiddle();
+    }, 2000); // Show game after 2 seconds
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  const selectRandomRiddle = () => {
+    const filteredRiddles = riddles.filter(r => r.approved);
+    if(filteredRiddles.length === 0) return;
+    const randomIndex = Math.floor(Math.random() * filteredRiddles.length);
+    setCurrentRiddle(filteredRiddles[randomIndex]);
+    setGameState('waiting');
+    setUserAnswer(null);
+    setIsCorrect(null);
+    setSelectedCard(null);
+    setFlipCard(false);
+  };
+
+  const handleAnswer = (answer) => {
+    if (gameState !== 'waiting') return;
+
+    setUserAnswer(answer);
+    setSelectedCard(answer ? 'truth' : 'lie');
+    setGameState('answered');
+    setIsCorrect(answer === currentRiddle.isTrue);
+
+    // Start flip animation
+    setTimeout(() => {
+      setFlipCard(true);
+      setGameState('showing-result');
+    }, 1000);
+
+    // Reset and show new riddle after delay
+    setTimeout(() => {
+      selectRandomRiddle();
+    }, 8000);
+  };
+
+  const getResultMessage = () => {
+    if (isCorrect) {
+      return "כל הכבוד! 🎉";
+    } else {
+      const messages = ["האמת...", "למעשה..."];
+      return messages[Math.floor(Math.random() * messages.length)];
+    }
+  };
+
+  const getAnswerText = () => {
+    if (currentRiddle.isTrue) {
+      return currentRiddle.explanation || "זה נכון!";
+    } else {
+      return currentRiddle.correctAnswer || "זה לא נכון.";
+    }
+  };
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex flex-col" dir="rtl">
+    <div className="min-h-screen relative overflow-hidden flex flex-col" dir="rtl">
+      {/* Light Background matching site theme */}
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-purple-50"></div>
+      <div className="absolute inset-0 bg-gradient-to-tr from-purple-100/30 via-transparent to-blue-100/30"></div>
+
+      {/* Animated Background Elements */}
+      <div className="absolute inset-0">
+        {/* Large floating circles */}
+        <div className="absolute top-10 left-10 w-72 h-72 bg-purple-200/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-10 right-10 w-96 h-96 bg-blue-200/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-pink-200/20 rounded-full blur-3xl animate-pulse delay-500"></div>
+
+        {/* Grid pattern */}
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-gray-200/10 to-transparent bg-[length:100px_100px] opacity-40"></div>
+      </div>
+
       {/* Draggable Return Button - show when impersonating even in maintenance mode */}
       {showReturnButton && (
         <div
@@ -45,63 +129,205 @@ export default function MaintenancePage({
         </div>
       )}
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col items-center justify-center p-4">
-        {/* Icon - CLICKABLE FOR ADMIN LOGIN */}
-        <div className="relative z-10 text-center max-w-md mx-auto">
-        <div className="mb-8">
-          <div
-            className="mx-auto w-24 h-24 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl flex items-center justify-center shadow-2xl transform rotate-3"
-            onClick={handleLogin}
-          >
-            <ShieldAlert className="w-12 h-12 text-white" />
+      {/* Main Content with better spacing */}
+      <div className="flex-1 flex flex-col items-center justify-center p-8 relative z-10 min-h-[80vh]">
+        <div className="text-center max-w-4xl mx-auto">
+          {/* Enhanced Icon with glow effect */}
+          <div className="mb-8 relative">
+            <div className="relative mx-auto w-24 h-24 group">
+              {/* Glow effect */}
+              <div className="absolute inset-0 bg-gradient-to-r from-purple-400 to-blue-500 rounded-3xl blur-xl opacity-75 group-hover:opacity-100 transition-opacity duration-300 animate-pulse"></div>
+              {/* Main icon */}
+              <div
+                className="relative w-full h-full bg-gradient-to-br from-purple-500 to-blue-600 rounded-3xl flex items-center justify-center shadow-2xl transform hover:scale-105 transition-all duration-300 cursor-pointer hover:rotate-6"
+                onClick={handleLogin}
+              >
+                <ShieldAlert className="w-12 h-12 text-white drop-shadow-lg" />
+              </div>
+              {/* Floating particles around icon */}
+              <div className="absolute -top-2 -right-2 w-3 h-3 bg-purple-300 rounded-full animate-ping"></div>
+              <div className="absolute -bottom-2 -left-2 w-2 h-2 bg-blue-300 rounded-full animate-ping delay-300"></div>
+            </div>
           </div>
-        </div>
 
-        {/* Main Content */}
-        <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-2xl border border-white/20">
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-800 mb-4 leading-tight">
-            {isTemporaryIssue ? "בעיה זמנית במערכת" : "האתר בתחזוקה"}
-          </h1>
-          <p className="text-gray-600 text-lg leading-relaxed mb-8">
-            {isTemporaryIssue ? (
-              <>
-                יש בעיה זמנית שאנחנו מתקנים והאתר יחזור לעבוד בקרוב.
-                <br />
-                תודה על הסבלנות 🙏
-              </>
-            ) : (
-              <>
-                אנחנו מבצעים שדרוגים ושיפורים כדי להעניק לכם חוויה טובה יותר.
-                <br />
-                נשוב בקרוב! תודה על הסבלנות 🙏
-              </>
-            )}
-          </p>
+          {/* Maintenance Message */}
+          <div className="mb-8">
+            <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent mb-4 leading-tight">
+              {isTemporaryIssue ? "בעיה זמנית במערכת" : "האתר בתחזוקה"}
+            </h1>
+            <p className="text-gray-600 text-lg leading-relaxed mb-6">
+              {isTemporaryIssue ? (
+                <>
+                  יש בעיה זמנית שאנחנו מתקנים והאתר יחזור לעבוד בקרוב.
+                  <br />
+                  <span className="text-xl">תודה על הסבלנות 🙏</span>
+                </>
+              ) : (
+                <>
+                  אנחנו מבצעים שדרוגים ושיפורים כדי להעניק לכם חוויה טובה יותר.
+                  <br />
+                  <span className="text-xl">נשוב בקרוב! תודה על הסבלנות 🙏</span>
+                </>
+              )}
+            </p>
 
-          {/* Progress Indicator */}
-          <div className="bg-gray-200 rounded-full h-2 mb-4 overflow-hidden">
-            <div className="bg-gradient-to-r from-blue-500 to-purple-500 h-full rounded-full animate-pulse w-3/4"></div>
+            {/* Enhanced Progress Indicator */}
+            <div className="relative mb-8 max-w-md mx-auto">
+              <div className="bg-gray-200 rounded-full h-2 overflow-hidden shadow-inner">
+                <div className="bg-gradient-to-r from-purple-500 via-blue-500 to-indigo-500 h-full rounded-full animate-pulse w-3/4 relative">
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"></div>
+                </div>
+              </div>
+              <div className="absolute -right-2 top-1/2 transform -translate-y-1/2 w-5 h-5 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full shadow-lg animate-bounce"></div>
+            </div>
+
+            <p className="text-md text-gray-600 font-medium">
+              {isTemporaryIssue ? "מתקנים את הבעיה..." : "משדרגים את המערכת..."}
+            </p>
           </div>
-          <p className="text-sm text-gray-500">
-            {isTemporaryIssue ? "מתקנים את הבעיה..." : "משדרגים את המערכת..."}
-          </p>
-        </div>
+
+          {/* Riddles Game */}
+          {showGame && currentRiddle && (
+            <div className="bg-white/95 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-white/30 relative overflow-hidden">
+              {/* Card background pattern */}
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 via-transparent to-purple-50/50"></div>
+
+              <div className="relative z-10">
+                {/* Game Title */}
+                <h2 className="text-2xl md:text-3xl font-bold text-purple-600 mb-6">
+                  בנתיים, יש לנו שאלה בשבילך... 🤔
+                </h2>
+
+                {/* Riddle Statement */}
+                <div className="bg-gray-50 rounded-2xl p-6 mb-6 border-2 border-purple-100">
+                  <p className="text-xl md:text-2xl font-semibold text-gray-800 leading-relaxed">
+                    "{currentRiddle.statement}"
+                  </p>
+                </div>
+
+                {/* Question */}
+                <p className="text-xl font-bold text-gray-700 mb-8">
+                  האם זה... 🤷‍♂️
+                </p>
+
+                {/* Result Message */}
+                {gameState === 'showing-result' && (
+                  <div className={`mb-6 p-4 rounded-2xl ${isCorrect ? 'bg-green-100 border-green-300' : 'bg-red-100 border-red-300'} border-2 animate-bounce`}>
+                    <p className={`text-2xl font-bold ${isCorrect ? 'text-green-700' : 'text-red-700'}`}>
+                      {getResultMessage()}
+                    </p>
+                  </div>
+                )}
+
+                {/* Answer Cards */}
+                <div className="flex gap-6 justify-center items-center">
+                  {/* Truth Card */}
+                  <div className="relative">
+                    <div
+                      className={`
+                        w-48 h-32 cursor-pointer transition-all duration-700 transform-style-preserve-3d
+                        ${selectedCard === 'truth' && flipCard ? 'rotate-y-180' : ''}
+                        ${gameState === 'waiting' ? 'hover:scale-105 hover:shadow-2xl' : ''}
+                      `}
+                      onClick={() => handleAnswer(true)}
+                    >
+                      {/* Front of card */}
+                      <div className={`
+                        absolute inset-0 bg-gradient-to-br from-green-400 to-emerald-500 rounded-2xl
+                        flex items-center justify-center shadow-xl backface-hidden
+                        ${selectedCard === 'truth' && gameState !== 'waiting' ? 'ring-4 ring-green-300' : ''}
+                      `}>
+                        <div className="text-center">
+                          <CheckCircle className="w-8 h-8 text-white mx-auto mb-2" />
+                          <span className="text-2xl font-bold text-white">אמת</span>
+                        </div>
+                      </div>
+
+                      {/* Back of card */}
+                      <div className="absolute inset-0 bg-white rounded-2xl flex items-center justify-center shadow-xl rotate-y-180 backface-hidden border-4 border-green-300">
+                        <div className="text-center p-4">
+                          <p className="text-lg font-semibold text-gray-800 leading-tight">
+                            {flipCard && selectedCard === 'truth' ? getAnswerText() : ""}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* VS Text */}
+                  <div className="text-3xl font-bold text-gray-400">VS</div>
+
+                  {/* Lie Card */}
+                  <div className="relative">
+                    <div
+                      className={`
+                        w-48 h-32 cursor-pointer transition-all duration-700 transform-style-preserve-3d
+                        ${selectedCard === 'lie' && flipCard ? 'rotate-y-180' : ''}
+                        ${gameState === 'waiting' ? 'hover:scale-105 hover:shadow-2xl' : ''}
+                      `}
+                      onClick={() => handleAnswer(false)}
+                    >
+                      {/* Front of card */}
+                      <div className={`
+                        absolute inset-0 bg-gradient-to-br from-red-400 to-pink-500 rounded-2xl
+                        flex items-center justify-center shadow-xl backface-hidden
+                        ${selectedCard === 'lie' && gameState !== 'waiting' ? 'ring-4 ring-red-300' : ''}
+                      `}>
+                        <div className="text-center">
+                          <XCircle className="w-8 h-8 text-white mx-auto mb-2" />
+                          <span className="text-2xl font-bold text-white">שקר</span>
+                        </div>
+                      </div>
+
+                      {/* Back of card */}
+                      <div className="absolute inset-0 bg-white rounded-2xl flex items-center justify-center shadow-xl rotate-y-180 backface-hidden border-4 border-red-300">
+                        <div className="text-center p-4">
+                          <p className="text-lg font-semibold text-gray-800 leading-tight">
+                            {flipCard && selectedCard === 'lie' ? getAnswerText() : ""}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Instructions */}
+                {gameState === 'waiting' && (
+                  <p className="text-gray-500 text-sm mt-6">
+                    לחץ על הכרטיס שלדעתך נכון 👆
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Footer */}
-      <Footer isMaintenanceMode={true} />
+      {/* Footer with more spacing */}
+      <div className="mt-auto relative z-10">
+        <Footer isMaintenanceMode={true} />
+      </div>
 
-      {/* Floating Elements */}
-      <div className="absolute top-16 right-16 opacity-20">
-        <div className="w-6 h-6 bg-blue-400 rounded-full animate-bounce"></div>
+      {/* Enhanced Floating Elements - adjusted for light theme */}
+      <div className="absolute top-20 right-20 opacity-80">
+        <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full animate-bounce shadow-lg"></div>
       </div>
-      <div className="absolute bottom-32 left-16 opacity-20">
-        <div className="w-4 h-4 bg-purple-400 rounded-full animate-bounce delay-700"></div>
+      <div className="absolute bottom-48 left-20 opacity-80">
+        <div className="w-6 h-6 bg-gradient-to-r from-pink-500 to-purple-500 rounded-full animate-bounce delay-700 shadow-lg"></div>
       </div>
-      <div className="absolute top-1/3 right-1/4 opacity-20">
-        <div className="w-3 h-3 bg-yellow-400 rounded-full animate-bounce delay-1000"></div>
+      <div className="absolute top-1/3 right-1/4 opacity-80">
+        <div className="w-4 h-4 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full animate-bounce delay-1000 shadow-lg"></div>
+      </div>
+      <div className="absolute top-2/3 left-1/4 opacity-80">
+        <div className="w-5 h-5 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full animate-bounce delay-500 shadow-lg"></div>
+      </div>
+
+      {/* Additional sparkles */}
+      <div className="absolute top-1/4 left-1/3 opacity-60">
+        <div className="w-2 h-2 bg-purple-400 rounded-full animate-ping shadow-md"></div>
+      </div>
+      <div className="absolute bottom-1/3 right-1/3 opacity-60">
+        <div className="w-3 h-3 bg-blue-400 rounded-full animate-ping delay-1000 shadow-md"></div>
       </div>
     </div>
   );

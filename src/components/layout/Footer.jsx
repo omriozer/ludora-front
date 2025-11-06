@@ -90,7 +90,7 @@ export default function Footer({ isMaintenanceMode = false }) {
               {settings?.site_description || `פלטפורמה מתקדמת ל${getProductTypeName('game', 'plural')} חינוכיים ו${getProductTypeName('tool', 'plural')} דיגיטליים שהופכים את הלמידה למהנה ואפקטיבית`}
             </p>
           </div>
-          
+
           <div>
             <h4 className="font-semibold mb-4">{footerTexts.importantLinks}</h4>
             <ul className="space-y-2">
@@ -99,7 +99,7 @@ export default function Footer({ isMaintenanceMode = false }) {
               <li><Link to="/accessibility" className="text-gray-400 hover:text-white transition-colors">{footerTexts.accessibility}</Link></li>
             </ul>
           </div>
-          
+
           <div>
             <h4 className="font-semibold mb-4">{footerTexts.contactUs}</h4>
             <p className="text-gray-400 mb-4">{footerTexts.contactDescription}</p>
@@ -139,7 +139,7 @@ export default function Footer({ isMaintenanceMode = false }) {
             </div>
           </div>
         </div>
-        
+
         <div className="border-t border-gray-800 mt-8 pt-8 text-center">
           <p className="text-gray-500">{footerTexts.copyright}</p>
         </div>
