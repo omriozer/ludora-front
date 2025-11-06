@@ -10,9 +10,10 @@ import { useUser } from '@/contexts/UserContext';
 import { clog, cerror } from '@/lib/utils';
 import { ContentSelector } from '@/components/content';
 import { GameContent } from '@/services/entities';
-import { api } from '@/utils/api';
+import { api, getApiBase } from '@/utils/api';
 import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
 import { toast } from '@/components/ui/use-toast';
+import BackgroundImageSelector from '@/components/ui/BackgroundImageSelector';
 
 /**
  * MemoryGameSettingsDigital - Digital version settings for memory games
@@ -38,6 +39,13 @@ const MemoryGameSettingsDigital = ({
   const [memoryPairs, setMemoryPairs] = useState([]); // Array of memory pair relations
   const [contentCache, setContentCache] = useState({}); // Cache for content objects by ID
   const [isLoadingPairs, setIsLoadingPairs] = useState(false);
+
+  // Background image state
+  const [backgroundImagesSetA, setBackgroundImagesSetA] = useState([]);
+  const [backgroundImagesSetB, setBackgroundImagesSetB] = useState([]);
+
+  // Card rendering mode state
+  const [cardRenderingMode, setCardRenderingMode] = useState('complete'); // 'composite' or 'complete'
 
   // Auto-save state
   const [isAutoSaving, setIsAutoSaving] = useState(false);
@@ -126,6 +134,70 @@ const MemoryGameSettingsDigital = ({
       loadMemoryPairs();
     }
   }, [gameEntity?.id]);
+
+  // Load background images from game settings
+  useEffect(() => {
+    const loadBackgroundImages = async () => {
+      const currentSettings = gameEntity?.game_settings || {};
+
+      // Load background images for Set A
+      if (currentSettings.backgroundImagesSetA && Array.isArray(currentSettings.backgroundImagesSetA)) {
+        try {
+          const imagesA = await Promise.all(
+            currentSettings.backgroundImagesSetA.map(async (imageId) => {
+              try {
+                return await GameContent.findById(imageId);
+              } catch (error) {
+                cerror(`Failed to load background image ${imageId}:`, error);
+                return null;
+              }
+            })
+          );
+          setBackgroundImagesSetA(imagesA.filter(Boolean));
+        } catch (error) {
+          cerror('Error loading background images for Set A:', error);
+        }
+      }
+
+      // Load background images for Set B
+      if (currentSettings.backgroundImagesSetB && Array.isArray(currentSettings.backgroundImagesSetB)) {
+        try {
+          const imagesB = await Promise.all(
+            currentSettings.backgroundImagesSetB.map(async (imageId) => {
+              try {
+                return await GameContent.findById(imageId);
+              } catch (error) {
+                cerror(`Failed to load background image ${imageId}:`, error);
+                return null;
+              }
+            })
+          );
+          setBackgroundImagesSetB(imagesB.filter(Boolean));
+        } catch (error) {
+          cerror('Error loading background images for Set B:', error);
+        }
+      }
+    };
+
+    if (gameEntity?.id && gameEntity?.game_settings) {
+      loadBackgroundImages();
+    }
+  }, [gameEntity?.id, gameEntity?.game_settings]);
+
+  // Load card rendering mode from game settings
+  useEffect(() => {
+    const loadCardRenderingSettings = async () => {
+      const currentSettings = gameEntity?.game_settings || {};
+
+      // Load card rendering mode
+      const renderingMode = currentSettings.cardRenderingMode || 'complete';
+      setCardRenderingMode(renderingMode);
+    };
+
+    if (gameEntity?.id && gameEntity?.game_settings) {
+      loadCardRenderingSettings();
+    }
+  }, [gameEntity?.id, gameEntity?.game_settings]);
 
   // Load memory pairs from API
   const loadMemoryPairs = async () => {
@@ -579,6 +651,52 @@ const MemoryGameSettingsDigital = ({
     return item?.content_id ? getContentById(item.content_id) : null;
   };
 
+  // Handle background image selection for card type sets
+  const handleBackgroundImagesChange = async (setType, selectedImages) => {
+    const fieldName = `backgroundImages${setType}`;
+
+    // Update local state
+    if (setType === 'SetA') {
+      setBackgroundImagesSetA(selectedImages);
+    } else if (setType === 'SetB') {
+      setBackgroundImagesSetB(selectedImages);
+    }
+
+    // Update form data and trigger auto-save
+    const newFormData = {
+      ...formData,
+      [fieldName]: selectedImages.map(img => img.id) // Store only IDs
+    };
+
+    setFormData(newFormData);
+    setHasChanges(true);
+
+    // Auto-save the background image selection
+    debouncedAutoSave(newFormData);
+
+    clog(`🎨 Background images updated for ${setType}:`, selectedImages);
+  };
+
+  // Handle card rendering mode change
+  const handleCardRenderingModeChange = async (newMode) => {
+    setCardRenderingMode(newMode);
+
+    // Update form data and trigger auto-save
+    const newFormData = {
+      ...formData,
+      cardRenderingMode: newMode
+    };
+
+    setFormData(newFormData);
+    setHasChanges(true);
+
+    // Auto-save the rendering mode change
+    debouncedAutoSave(newFormData);
+
+    clog(`🎭 Card rendering mode changed to:`, newMode);
+  };
+
+
   // Handle relation type change for a specific pair
   const handleRelationTypeChange = async (pairIndex, newRelationType) => {
     const pair = memoryPairs[pairIndex];
@@ -753,14 +871,178 @@ const MemoryGameSettingsDigital = ({
                 {renderField('time_limit', settingsConfig.time_limit)}
               </div>
 
-              {/* Semantic Types Row */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {renderField('semanticTypeSetA', settingsConfig.semanticTypeSetA)}
-                {renderField('semanticTypeSetB', settingsConfig.semanticTypeSetB)}
+              {/* Card Rendering Mode Selector */}
+              <div className="space-y-4">
+                <div className="border-t border-gray-200 pt-4">
+                  <Label className="text-sm font-medium text-gray-700 mb-3 block">
+                    מצב עיצוב קלפים
+                  </Label>
+                  <p className="text-xs text-gray-500 mb-4">
+                    בחר כיצד יעוצבו קלפי המשחק
+                  </p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Composite Cards Option */}
+                    <div
+                      className={`
+                        p-4 border-2 rounded-lg cursor-pointer transition-all
+                        ${cardRenderingMode === 'composite'
+                          ? 'border-purple-500 bg-purple-50'
+                          : 'border-gray-200 hover:border-purple-300'
+                        }
+                      `}
+                      onClick={() => handleCardRenderingModeChange('composite')}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`
+                          w-4 h-4 rounded-full border-2 transition-all
+                          ${cardRenderingMode === 'composite'
+                            ? 'border-purple-500 bg-purple-500'
+                            : 'border-gray-300'
+                          }
+                        `}>
+                          {cardRenderingMode === 'composite' && (
+                            <div className="w-full h-full rounded-full bg-white scale-50"></div>
+                          )}
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-gray-800">קלפים מורכבים</h4>
+                          <p className="text-xs text-gray-500">תמונת רקע + תוכן מעל</p>
+                        </div>
+                      </div>
+                      <div className="mt-2 text-xs text-gray-600">
+                        המערכת תציג תמונת רקע עם התוכן הנבחר מעליה (מצב נוכחי)
+                      </div>
+                    </div>
+
+                    {/* Complete Cards Option */}
+                    <div
+                      className={`
+                        p-4 border-2 rounded-lg cursor-pointer transition-all
+                        ${cardRenderingMode === 'complete'
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 hover:border-blue-300'
+                        }
+                      `}
+                      onClick={() => handleCardRenderingModeChange('complete')}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`
+                          w-4 h-4 rounded-full border-2 transition-all
+                          ${cardRenderingMode === 'complete'
+                            ? 'border-blue-500 bg-blue-500'
+                            : 'border-gray-300'
+                          }
+                        `}>
+                          {cardRenderingMode === 'complete' && (
+                            <div className="w-full h-full rounded-full bg-white scale-50"></div>
+                          )}
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-gray-800">קלפים שלמים</h4>
+                          <p className="text-xs text-gray-500">תמונות מוכנות ומעוצבות</p>
+                        </div>
+                      </div>
+                      <div className="mt-2 text-xs text-gray-600">
+                        השתמש בתמונות קלפים מוכנות עם כל העיצוב והתוכן (מצב חדש)
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
+              {/* Semantic Types Row - Only show for composite mode */}
+              {cardRenderingMode === 'composite' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {renderField('semanticTypeSetA', settingsConfig.semanticTypeSetA)}
+                  {renderField('semanticTypeSetB', settingsConfig.semanticTypeSetB)}
+                </div>
+              )}
+
+              {/* Background Images Selection - Only for composite mode */}
+              {cardRenderingMode === 'composite' && formData.semanticTypeSetA && formData.semanticTypeSetB && (
+                <div className="space-y-4">
+                  <div className="border-t border-gray-200 pt-4">
+                    <h4 className="text-sm font-medium text-gray-700 mb-4">
+                      בחירת תמונות רקע לקלפים
+                    </h4>
+                    <p className="text-xs text-gray-500 mb-4">
+                      בחר תמונות רקע עבור כל סוג קלף. ניתן לבחור 1-10 תמונות לכל סוג.
+                    </p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Background Images for Set A */}
+                      <div className="space-y-3">
+                        <Label className="text-sm font-medium flex items-center gap-2">
+                          <span className="w-3 h-3 bg-blue-500 rounded-full"></span>
+                          רקעי קלפים עבור צד א' ({settingsConfig.semanticTypeSetA?.options?.find(opt => opt.value === formData.semanticTypeSetA)?.label || formData.semanticTypeSetA})
+                        </Label>
+                        <BackgroundImageSelector
+                          selectedImages={backgroundImagesSetA}
+                          onImagesSelected={(images) => handleBackgroundImagesChange('SetA', images)}
+                          minSelection={1}
+                          maxSelection={10}
+                          disabled={isAutoSaving || isUpdating}
+                          variant="outline"
+                          size="md"
+                          className="w-full"
+                        />
+                      </div>
+
+                      {/* Background Images for Set B */}
+                      <div className="space-y-3">
+                        <Label className="text-sm font-medium flex items-center gap-2">
+                          <span className="w-3 h-3 bg-green-500 rounded-full"></span>
+                          רקעי קלפים עבור צד ב' ({settingsConfig.semanticTypeSetB?.options?.find(opt => opt.value === formData.semanticTypeSetB)?.label || formData.semanticTypeSetB})
+                        </Label>
+                        <BackgroundImageSelector
+                          selectedImages={backgroundImagesSetB}
+                          onImagesSelected={(images) => handleBackgroundImagesChange('SetB', images)}
+                          minSelection={1}
+                          maxSelection={10}
+                          disabled={isAutoSaving || isUpdating}
+                          variant="outline"
+                          size="md"
+                          className="w-full"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Option to use same backgrounds for both sets */}
+                    {backgroundImagesSetA.length > 0 && (
+                      <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-blue-700">
+                              השתמש באותן תמונות רקע עבור שני סוגי הקלפים?
+                            </p>
+                            <p className="text-xs text-blue-600">
+                              פעולה זו תעתיק את תמונות הרקע מצד א' לצד ב'
+                            </p>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleBackgroundImagesChange('SetB', backgroundImagesSetA)}
+                            disabled={isAutoSaving || isUpdating}
+                            className="text-blue-700 border-blue-300 hover:bg-blue-100"
+                          >
+                            העתק לצד ב'
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+
               {/* Memory Pairs Management */}
-              {formData.semanticTypeSetA && formData.semanticTypeSetB && (
+              {(
+                (cardRenderingMode === 'composite' && formData.semanticTypeSetA && formData.semanticTypeSetB) ||
+                (cardRenderingMode === 'complete') || // Always show for complete mode - no pools needed
+                (memoryPairs.length > 0) // Always show if there are existing pairs
+              ) && (
                 <div className="space-y-4">
                   <div className="border-t border-gray-200 pt-4">
                     <div className="flex items-center justify-between mb-3">
@@ -833,33 +1115,155 @@ const MemoryGameSettingsDigital = ({
                               {/* Set A Content Selector */}
                               <div className="flex flex-col items-center gap-1">
                                 <span className="text-xs text-gray-500">צד א'</span>
-                                <ContentSelector
-                                  semanticType={formData.semanticTypeSetA}
-                                  variant="outline"
-                                  size="sm"
-                                  selectedContent={contentA}
-                                  onContentSelected={(content) => handleContentSelection('A', index, content)}
-                                  onContentCleared={() => handleContentCleared('A', index)}
-                                  disabled={isUpdating || isLoadingPairs || isAutoSaving}
-                                  className="min-w-32"
-                                />
+                                {cardRenderingMode === 'composite' ? (
+                                  <ContentSelector
+                                    semanticType={formData.semanticTypeSetA}
+                                    variant="outline"
+                                    size="sm"
+                                    selectedContent={contentA}
+                                    onContentSelected={(content) => handleContentSelection('A', index, content)}
+                                    onContentCleared={() => handleContentCleared('A', index)}
+                                    disabled={isUpdating || isLoadingPairs || isAutoSaving}
+                                    className="min-w-32"
+                                  />
+                                ) : (
+                                  <ContentSelector
+                                    semanticType="complete_card"
+                                    selectedContent={contentA}
+                                    onContentSelected={(card) => handleContentSelection('A', index, card)}
+                                    onContentCleared={() => handleContentCleared('A', index)}
+                                    disabled={isUpdating || isLoadingPairs || isAutoSaving}
+                                    variant="outline"
+                                    size="sm"
+                                    className="min-w-32"
+                                  />
+                                )}
                               </div>
 
                               {/* Set B Content Selector */}
                               <div className="flex flex-col items-center gap-1">
                                 <span className="text-xs text-gray-500">צד ב'</span>
-                                <ContentSelector
-                                  semanticType={formData.semanticTypeSetB}
-                                  variant="outline"
-                                  size="sm"
-                                  selectedContent={contentB}
-                                  onContentSelected={(content) => handleContentSelection('B', index, content)}
-                                  onContentCleared={() => handleContentCleared('B', index)}
-                                  disabled={isUpdating || isLoadingPairs || isAutoSaving}
-                                  className="min-w-32"
-                                />
+                                {cardRenderingMode === 'composite' ? (
+                                  <ContentSelector
+                                    semanticType={formData.semanticTypeSetB}
+                                    variant="outline"
+                                    size="sm"
+                                    selectedContent={contentB}
+                                    onContentSelected={(content) => handleContentSelection('B', index, content)}
+                                    onContentCleared={() => handleContentCleared('B', index)}
+                                    disabled={isUpdating || isLoadingPairs || isAutoSaving}
+                                    className="min-w-32"
+                                  />
+                                ) : (
+                                  <ContentSelector
+                                    semanticType="complete_card"
+                                    selectedContent={contentB}
+                                    onContentSelected={(card) => handleContentSelection('B', index, card)}
+                                    onContentCleared={() => handleContentCleared('B', index)}
+                                    disabled={isUpdating || isLoadingPairs || isAutoSaving}
+                                    variant="outline"
+                                    size="sm"
+                                    className="min-w-32"
+                                  />
+                                )}
                               </div>
                             </div>
+
+                            {/* Card Image Preview Section */}
+                            {cardRenderingMode === 'complete' && (contentA || contentB) && (
+                              <div className="mt-3 pt-3 border-t border-gray-200">
+                                <div className="flex gap-3 justify-center">
+                                  {/* Content A Preview */}
+                                  <div className="flex flex-col items-center gap-2">
+                                    <span className="text-xs text-gray-500">תצוגה מקדימה - צד א'</span>
+                                    {contentA ? (
+                                      <div className="relative">
+                                        <img
+                                          src={(() => {
+                                            if (!contentA?.value) return null;
+                                            const imageValue = contentA.value;
+                                            // If it's already an absolute URL, return as-is
+                                            if (imageValue.startsWith('http://') || imageValue.startsWith('https://')) {
+                                              return imageValue;
+                                            }
+                                            // If it starts with /api/, prepend the API base URL (removing /api from base)
+                                            if (imageValue.startsWith('/api/')) {
+                                              const apiBase = getApiBase();
+                                              const baseWithoutApi = apiBase.replace(/\/api$/, '');
+                                              return `${baseWithoutApi}${imageValue}`;
+                                            }
+                                            // Otherwise, treat as a relative path and prepend full API base
+                                            return `${getApiBase()}${imageValue.startsWith('/') ? '' : '/'}${imageValue}`;
+                                          })()}
+                                          alt={contentA.metadata?.description || contentA.name || 'קלף א\''}
+                                          className="w-16 h-16 object-cover rounded border-2 border-blue-200"
+                                          onError={(e) => {
+                                            cerror('❌ Failed to load preview image A:', contentA);
+                                            e.target.style.display = 'none';
+                                            e.target.nextElementSibling.style.display = 'flex';
+                                          }}
+                                        />
+                                        <div className="w-16 h-16 bg-gray-100 rounded border-2 border-blue-200 flex items-center justify-center" style={{display: 'none'}}>
+                                          <span className="text-xs text-gray-500">תמונה</span>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="w-16 h-16 bg-gray-100 rounded border-2 border-dashed border-gray-300 flex items-center justify-center">
+                                        <span className="text-xs text-gray-400">ריק</span>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* VS indicator */}
+                                  <div className="flex items-center justify-center">
+                                    <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                                      <span className="text-xs font-bold text-gray-600">VS</span>
+                                    </div>
+                                  </div>
+
+                                  {/* Content B Preview */}
+                                  <div className="flex flex-col items-center gap-2">
+                                    <span className="text-xs text-gray-500">תצוגה מקדימה - צד ב'</span>
+                                    {contentB ? (
+                                      <div className="relative">
+                                        <img
+                                          src={(() => {
+                                            if (!contentB?.value) return null;
+                                            const imageValue = contentB.value;
+                                            // If it's already an absolute URL, return as-is
+                                            if (imageValue.startsWith('http://') || imageValue.startsWith('https://')) {
+                                              return imageValue;
+                                            }
+                                            // If it starts with /api/, prepend the API base URL (removing /api from base)
+                                            if (imageValue.startsWith('/api/')) {
+                                              const apiBase = getApiBase();
+                                              const baseWithoutApi = apiBase.replace(/\/api$/, '');
+                                              return `${baseWithoutApi}${imageValue}`;
+                                            }
+                                            // Otherwise, treat as a relative path and prepend full API base
+                                            return `${getApiBase()}${imageValue.startsWith('/') ? '' : '/'}${imageValue}`;
+                                          })()}
+                                          alt={contentB.metadata?.description || contentB.name || 'קלף ב\''}
+                                          className="w-16 h-16 object-cover rounded border-2 border-green-200"
+                                          onError={(e) => {
+                                            cerror('❌ Failed to load preview image B:', contentB);
+                                            e.target.style.display = 'none';
+                                            e.target.nextElementSibling.style.display = 'flex';
+                                          }}
+                                        />
+                                        <div className="w-16 h-16 bg-gray-100 rounded border-2 border-green-200 flex items-center justify-center" style={{display: 'none'}}>
+                                          <span className="text-xs text-gray-500">תמונה</span>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="w-16 h-16 bg-gray-100 rounded border-2 border-dashed border-gray-300 flex items-center justify-center">
+                                        <span className="text-xs text-gray-400">ריק</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
 
                             {/* Pair Status */}
                             {pair.id && !pair.id.startsWith('temp-') && (

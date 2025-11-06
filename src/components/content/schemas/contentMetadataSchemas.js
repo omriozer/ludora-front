@@ -389,6 +389,201 @@ export const CONTENT_METADATA_SCHEMAS = {
         defaultValue: false
       }
     }
+  },
+
+  game_card_bg: {
+    label: 'רקע קלף',
+    searchFields: ['metadata.description', 'metadata.theme'],
+    metadata: {
+      description: {
+        type: 'textarea',
+        label: 'תיאור רקע הקלף',
+        required: true,
+        maxLength: 300,
+        placeholder: 'תאר את עיצוב הרקע, הצבעים והמוטיבים...'
+      },
+      theme: {
+        type: 'select',
+        label: 'נושא הרקע',
+        required: true,
+        defaultValue: 'abstract',
+        options: [
+          { value: 'abstract', label: 'מופשט' },
+          { value: 'nature', label: 'טבע' },
+          { value: 'animals', label: 'חיות' },
+          { value: 'holidays', label: 'חגים' },
+          { value: 'seasons', label: 'עונות השנה' },
+          { value: 'geometric', label: 'גיאומטרי' },
+          { value: 'educational', label: 'חינוכי' },
+          { value: 'fantasy', label: 'פנטזיה' },
+          { value: 'sports', label: 'ספורט' },
+          { value: 'music', label: 'מוזיקה' }
+        ]
+      },
+      color_scheme: {
+        type: 'select',
+        label: 'סכמת צבעים',
+        required: true,
+        defaultValue: 'colorful',
+        options: [
+          { value: 'colorful', label: 'צבעוני' },
+          { value: 'monochrome', label: 'חד גוני' },
+          { value: 'warm', label: 'צבעים חמים' },
+          { value: 'cool', label: 'צבעים קרים' },
+          { value: 'pastel', label: 'פסטל' },
+          { value: 'high_contrast', label: 'ניגודיות גבוהה' }
+        ]
+      },
+      style: {
+        type: 'select',
+        label: 'סגנון עיצוב',
+        required: true,
+        defaultValue: 'illustration',
+        options: [
+          { value: 'illustration', label: 'איור' },
+          { value: 'pattern', label: 'דוגמה' },
+          { value: 'texture', label: 'מרקם' },
+          { value: 'gradient', label: 'מעבר צבעים' },
+          { value: 'minimalist', label: 'מינימליסטי' },
+          { value: 'ornamental', label: 'דקורטיבי' }
+        ]
+      },
+      age_group: {
+        type: 'select',
+        label: 'קבוצת גיל מתאימה',
+        required: false,
+        options: [
+          { value: 'preschool', label: 'גן (3-6)' },
+          { value: 'elementary', label: 'יסודי (6-12)' },
+          { value: 'middle_school', label: 'חטיבה (12-15)' },
+          { value: 'high_school', label: 'תיכון (15-18)' },
+          { value: 'adult', label: 'מבוגרים' },
+          { value: 'all_ages', label: 'כל הגילאים' }
+        ]
+      },
+      complexity: {
+        type: 'select',
+        label: 'מורכבות עיצוב',
+        required: false,
+        options: [
+          { value: 'simple', label: 'פשוט' },
+          { value: 'moderate', label: 'בינוני' },
+          { value: 'complex', label: 'מורכב' }
+        ]
+      },
+      usage_rights: {
+        type: 'select',
+        label: 'זכויות שימוש',
+        required: true,
+        defaultValue: 'owned',
+        options: [
+          { value: 'free', label: 'חופשי לשימוש' },
+          { value: 'licensed', label: 'ברישיון' },
+          { value: 'owned', label: 'בבעלות' }
+        ]
+      },
+      originalName: {
+        type: 'text',
+        label: 'שם הקובץ המקורי',
+        required: false,
+        maxLength: 100,
+        readonly: true
+      }
+    }
+  },
+
+  complete_card: {
+    label: 'קלף שלם',
+    searchFields: ['metadata.name', 'metadata.description', 'metadata.card_content_type', 'metadata.content'],
+    metadata: {
+      name: {
+        type: 'text',
+        label: 'שם הקלף',
+        required: true,
+        maxLength: 100,
+        placeholder: 'שם תיאורי לקלף...'
+      },
+      description: {
+        type: 'textarea',
+        label: 'תיאור הקלף',
+        required: true,
+        maxLength: 300,
+        placeholder: 'תאר בקצרה את התוכן והעיצוב של הקלף...'
+      },
+      card_content_type: {
+        type: 'select',
+        label: 'סוג תוכן הקלף',
+        required: true,
+        defaultValue: 'word',
+        options: [
+          { value: 'word', label: 'מילה' },
+          { value: 'question', label: 'שאלה' },
+          { value: 'answer', label: 'תשובה' },
+          { value: 'image', label: 'תמונה' },
+          { value: 'symbol', label: 'סמל' },
+          { value: 'number', label: 'מספר' },
+          { value: 'shape', label: 'צורה' }
+        ]
+      },
+      content: {
+        type: 'textarea',
+        label: 'תוכן הקלף',
+        required: false,
+        maxLength: 150,
+        placeholder: 'התוכן הטקסטואלי הנוסף בקלף (אופציונלי)'
+      },
+      game_purpose: {
+        type: 'select',
+        label: 'מטרת המשחק',
+        required: false,
+        options: [
+          { value: 'memory', label: 'זיכרון' },
+          { value: 'matching', label: 'התאמה' },
+          { value: 'vocabulary', label: 'אוצר מילים' },
+          { value: 'comprehension', label: 'הבנה' },
+          { value: 'recognition', label: 'זיהוי' },
+          { value: 'categorization', label: 'סיווג' }
+        ]
+      },
+      age_group: {
+        type: 'select',
+        label: 'קבוצת גיל מתאימה',
+        required: false,
+        options: [
+          { value: 'preschool', label: 'גן (3-6)' },
+          { value: 'elementary', label: 'יסודי (6-12)' },
+          { value: 'middle_school', label: 'חטיבה (12-15)' },
+          { value: 'high_school', label: 'תיכון (15-18)' },
+          { value: 'adult', label: 'מבוגרים' },
+          { value: 'all_ages', label: 'כל הגילאים' }
+        ]
+      },
+      theme: {
+        type: 'select',
+        label: 'נושא ועיצוב',
+        required: false,
+        options: [
+          { value: 'animals', label: 'חיות' },
+          { value: 'nature', label: 'טבע' },
+          { value: 'people', label: 'אנשים' },
+          { value: 'objects', label: 'חפצים' },
+          { value: 'food', label: 'אוכל' },
+          { value: 'transportation', label: 'תחבורה' },
+          { value: 'holidays', label: 'חגים' },
+          { value: 'seasons', label: 'עונות השנה' },
+          { value: 'emotions', label: 'רגשות' },
+          { value: 'professions', label: 'מקצועות' },
+          { value: 'school', label: 'בית ספר' },
+          { value: 'family', label: 'משפחה' },
+          { value: 'sports', label: 'ספורט' },
+          { value: 'music', label: 'מוזיקה' },
+          { value: 'colorful', label: 'צבעוני' },
+          { value: 'minimalist', label: 'מינימליסטי' },
+          { value: 'illustration', label: 'איור' },
+          { value: 'realistic', label: 'ריאליסטי' }
+        ]
+      }
+    }
   }
 };
 

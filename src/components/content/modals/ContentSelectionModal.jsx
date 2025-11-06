@@ -33,7 +33,7 @@ const ContentSelectionModal = ({
   const schema = getContentSchema(semanticType);
 
   // Determine if this is a file-based semantic type
-  const isFileType = ['image', 'audio', 'video'].includes(semanticType);
+  const isFileType = ['image', 'audio', 'video', 'complete_card'].includes(semanticType);
 
   // Reset state when modal opens/closes
   useEffect(() => {
@@ -86,7 +86,13 @@ const ContentSelectionModal = ({
   // Handle new content creation success
   const handleContentCreated = (newContent) => {
     clog('✅ New content created:', newContent);
-    onContentSelected(newContent);
+
+    // Add a small delay to ensure the toast is shown and the parent component
+    // has time to properly process the selection before the modal closes
+    setTimeout(() => {
+      clog('🎯 Selecting newly created content:', newContent);
+      onContentSelected(newContent);
+    }, 100);
   };
 
   // Handle creating new content with search value
@@ -323,11 +329,17 @@ const ContentSearchResult = ({ content, onSelect, isSelected, semanticType }) =>
   const schema = getContentSchema(semanticType);
 
   const getDisplayValue = () => {
-    // For image content, show the filename or description instead of URL
+    // For image and complete_card content, show the filename or description instead of URL
     if (content.semantic_type === 'image') {
       if (content.metadata?.name) return content.metadata.name;
       if (content.metadata?.description) return content.metadata.description;
       return 'תמונה ללא שם';
+    }
+
+    if (content.semantic_type === 'complete_card') {
+      if (content.metadata?.name) return content.metadata.name;
+      if (content.metadata?.description) return content.metadata.description;
+      return 'קלף שלם ללא שם';
     }
 
     if (content.value) return content.value;
@@ -365,8 +377,8 @@ const ContentSearchResult = ({ content, onSelect, isSelected, semanticType }) =>
       onClick={() => onSelect(content)}
     >
       <div className="flex items-start justify-between">
-        {/* Image preview for image content */}
-        {content.semantic_type === 'image' && content.value && (
+        {/* Image preview for image and complete_card content */}
+        {(content.semantic_type === 'image' || content.semantic_type === 'complete_card') && content.value && (
           <div className="flex-shrink-0 ml-4 mb-2">
             <div className="w-20 h-20 rounded-lg overflow-hidden bg-gray-100 border border-gray-200">
               <img

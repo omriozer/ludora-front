@@ -43,6 +43,7 @@ import { purchaseUtils } from "@/utils/api.js";
 import PriceDisplayTag from "@/components/ui/PriceDisplayTag";
 import ProductActionBar from "@/components/ui/ProductActionBar";
 import PdfViewer from "@/components/pdf/PdfViewer";
+import GameDetailsSection from "@/components/game/details/GameDetailsSection";
 
 export default function ProductDetails() {
   const navigate = useNavigate();
@@ -221,8 +222,12 @@ export default function ProductDetails() {
       // Use the new product details endpoint that returns Product + Entity + Creator
       const { apiRequest } = await import('@/services/apiClient');
 
+      // Build the API URL - always include game details for performance optimization
+      // The API will only calculate game details if the product is actually a game
+      const productDetailsUrl = `/entities/product/${entityId}/details?includeGameDetails=true`;
+
       const [productDetails, settingsData] = await Promise.all([
-        apiRequest(`/entities/product/${entityId}/details`),
+        apiRequest(productDetailsUrl),
         Settings.find()
       ]);
 
@@ -806,6 +811,11 @@ export default function ProductDetails() {
                   </div>
                 </CardContent>
               </Card>
+            )}
+
+            {/* Game Details Section - Show game-specific information */}
+            {item.product_type === 'game' && item.game_details && (
+              <GameDetailsSection gameDetails={item.game_details} />
             )}
 
             {/* Product-specific content */}

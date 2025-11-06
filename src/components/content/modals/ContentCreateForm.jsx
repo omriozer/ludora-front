@@ -42,7 +42,7 @@ const ContentCreateForm = ({
   const schema = getContentSchema(semanticType);
 
   // Determine if this is a file-based semantic type
-  const isFileType = ['image', 'audio', 'video'].includes(semanticType);
+  const isFileType = ['image', 'audio', 'video', 'complete_card'].includes(semanticType);
 
   // Initialize form data
   useEffect(() => {
@@ -194,7 +194,7 @@ const ContentCreateForm = ({
     setSelectedFile(file);
 
     // Create image preview for image files
-    if (semanticType === 'image' && file.type.startsWith('image/')) {
+    if ((semanticType === 'image' || semanticType === 'complete_card') && file.type.startsWith('image/')) {
       const previewUrl = URL.createObjectURL(file);
       setImagePreviewUrl(previewUrl);
     }
@@ -213,6 +213,7 @@ const ContentCreateForm = ({
       case 'image': return ['image/'];
       case 'audio': return ['audio/'];
       case 'video': return ['video/'];
+      case 'complete_card': return ['image/'];
       default: return [];
     }
   };
@@ -657,7 +658,7 @@ const ContentCreateForm = ({
                   /* Selected File Display */
                   <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
                     {/* Image Preview */}
-                    {imagePreviewUrl && semanticType === 'image' && (
+                    {imagePreviewUrl && (semanticType === 'image' || semanticType === 'complete_card') && (
                       <div className="mb-4">
                         <div className="bg-white rounded-lg p-3 border border-blue-200">
                           <img
