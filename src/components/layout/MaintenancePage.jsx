@@ -45,13 +45,6 @@ export default function MaintenancePage({
         </div>
       )}
 
-      {/* Background Pattern */}
-      <div className="absolute inset-0 opacity-5">
-        <div className="absolute top-20 left-20 w-32 h-32 bg-blue-500 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-20 right-20 w-40 h-40 bg-purple-500 rounded-full blur-3xl"></div>
-        <div className="absolute top-1/2 left-1/3 w-24 h-24 bg-yellow-500 rounded-full blur-2xl"></div>
-      </div>
-
       {/* Main Content */}
       <div className="flex-1 flex flex-col items-center justify-center p-4">
         {/* Icon - CLICKABLE FOR ADMIN LOGIN */}
