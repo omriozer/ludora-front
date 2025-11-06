@@ -447,6 +447,11 @@ const PublicNav = ({ currentUser, handleLogout, handleLogin, settings }) => {
                       : 'hover:bg-gradient-to-r hover:from-gray-100 hover:to-gray-200 text-gray-700 hover:text-gray-900 hover:shadow-lg'
                   } ${isCollapsed ? 'justify-center' : ''}`}
                   title={isCollapsed ? item.title : undefined}
+                  onClick={() => {
+                    if (isMobile) {
+                      setIsCollapsed(true);
+                    }
+                  }}
                 >
                   <item.icon className="w-5 h-5 flex-shrink-0" />
                   {!isCollapsed && (
