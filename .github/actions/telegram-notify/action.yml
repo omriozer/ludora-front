@@ -70,8 +70,8 @@ runs:
         MESSAGE="$EMOJI *$TITLE*
 
 🔧 *שירות:* ${{ inputs.service }}
-📝 *Commit:* \`${COMMIT_MSG}\`
-🔗 *SHA:* \`${{ inputs.commit-sha }}\`"
+📝 *Commit:* \${COMMIT_MSG}
+🔗 *SHA:* ${{ inputs.commit-sha }}"
 
         # Add details if provided
         if [ -n "${{ inputs.details }}" ]; then
