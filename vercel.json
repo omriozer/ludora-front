@@ -5,9 +5,9 @@
   "devCommand": "npm run dev",
   "installCommand": "npm install",
   "env": {
-    "VITE_API_BASE": "https://ludora-api-v2.onrender.com/api",
+    "VITE_API_BASE": "https://api.ludora.app/api",
     "VITE_FIREBASE_API_KEY": "AIzaSyCvc0KGxsYCu61pOwBSJ3tzdCs7lUT28JI",
-    "VITE_FIREBASE_AUTH_DOMAIN": "ludora.app",
+    "VITE_FIREBASE_AUTH_DOMAIN": "ludora-af706.firebaseapp.com",
     "VITE_FIREBASE_PROJECT_ID": "ludora-af706",
     "VITE_FIREBASE_STORAGE_BUCKET": "ludora-af706.firebasestorage.app",
     "VITE_FIREBASE_MESSAGING_SENDER_ID": "985814078486",
