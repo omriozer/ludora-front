@@ -93,9 +93,9 @@ export default function MaintenancePage({
       {/* Animated Background Elements */}
       <div className="absolute inset-0">
         {/* Large floating circles */}
-        <div className="absolute top-10 left-10 w-72 h-72 bg-purple-200/20 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-10 right-10 w-96 h-96 bg-blue-200/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-pink-200/20 rounded-full blur-3xl animate-pulse delay-500"></div>
+        <div className="absolute top-4 left-4 sm:top-10 sm:left-10 w-48 h-48 sm:w-72 sm:h-72 max-w-[40vw] max-h-[40vh] bg-purple-200/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-4 right-4 sm:bottom-10 sm:right-10 w-56 h-56 sm:w-96 sm:h-96 max-w-[45vw] max-h-[45vh] bg-blue-200/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-40 h-40 sm:w-64 sm:h-64 max-w-[35vw] max-h-[35vh] bg-pink-200/20 rounded-full blur-3xl animate-pulse delay-500"></div>
 
         {/* Grid pattern */}
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-gray-200/10 to-transparent bg-[length:100px_100px] opacity-40"></div>
@@ -106,8 +106,8 @@ export default function MaintenancePage({
         <div
           className={`fixed z-[9997] ${isDraggingReturn ? 'cursor-grabbing' : 'cursor-grab'} select-none group`}
           style={{
-            left: `${returnButtonPosition.x}px`,
-            top: `${returnButtonPosition.y}px`,
+            left: `${Math.max(10, Math.min(returnButtonPosition.x, window.innerWidth - 70))}px`,
+            top: `${Math.max(10, Math.min(returnButtonPosition.y, window.innerHeight - 70))}px`,
             touchAction: 'none'
           }}
           onMouseDown={handleReturnDrag}
@@ -117,10 +117,10 @@ export default function MaintenancePage({
         >
           <Button
             onClick={handleReturnToSelf}
-            className="w-14 h-14 rounded-full shadow-2xl border-4 border-white bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white transition-all duration-300 transform hover:scale-105"
+            className="w-12 h-12 sm:w-14 sm:h-14 rounded-full shadow-2xl border-2 sm:border-4 border-white bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white transition-all duration-300 transform hover:scale-105"
             aria-label="חזור למנהל"
           >
-            <ArrowLeft className="w-6 h-6" />
+            <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6" />
           </Button>
           {/* Tooltip */}
           <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 bg-black/80 text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
@@ -130,11 +130,11 @@ export default function MaintenancePage({
       )}
 
       {/* Main Content with better spacing */}
-      <div className="flex-1 flex flex-col items-center justify-center p-8 relative z-10 min-h-[80vh]">
+      <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 relative z-10 min-h-[80vh]">
         <div className="text-center max-w-4xl mx-auto">
           {/* Enhanced Icon with glow effect */}
-          <div className="mb-8 relative">
-            <div className="relative mx-auto w-24 h-24 group">
+          <div className="mb-6 sm:mb-8 relative">
+            <div className="relative mx-auto w-20 h-20 md:w-24 md:h-24 group">
               {/* Glow effect */}
               <div className="absolute inset-0 bg-gradient-to-r from-purple-400 to-blue-500 rounded-3xl blur-xl opacity-75 group-hover:opacity-100 transition-opacity duration-300 animate-pulse"></div>
               {/* Main icon */}
@@ -188,25 +188,25 @@ export default function MaintenancePage({
 
           {/* Riddles Game */}
           {showGame && currentRiddle && (
-            <div className="bg-white/95 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-white/30 relative overflow-hidden">
+            <div className="bg-white/95 backdrop-blur-xl rounded-3xl p-4 sm:p-6 md:p-8 shadow-2xl border border-white/30 relative overflow-hidden">
               {/* Card background pattern */}
               <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 via-transparent to-purple-50/50"></div>
 
               <div className="relative z-10">
                 {/* Game Title */}
-                <h2 className="text-2xl md:text-3xl font-bold text-purple-600 mb-6">
+                <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-purple-600 mb-4 sm:mb-6">
                   בנתיים, יש לנו שאלה בשבילך... 🤔
                 </h2>
 
                 {/* Riddle Statement */}
-                <div className="bg-gray-50 rounded-2xl p-6 mb-6 border-2 border-purple-100">
-                  <p className="text-xl md:text-2xl font-semibold text-gray-800 leading-relaxed">
+                <div className="bg-gray-50 rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6 border-2 border-purple-100">
+                  <p className="text-lg sm:text-xl md:text-2xl font-semibold text-gray-800 leading-relaxed">
                     "{currentRiddle.statement}"
                   </p>
                 </div>
 
                 {/* Question */}
-                <p className="text-xl font-bold text-gray-700 mb-8">
+                <p className="text-lg sm:text-xl font-bold text-gray-700 mb-6 sm:mb-8">
                   האם זה... 🤷‍♂️
                 </p>
 
@@ -220,12 +220,12 @@ export default function MaintenancePage({
                 )}
 
                 {/* Answer Cards */}
-                <div className="flex gap-6 justify-center items-center">
+                <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center items-center">
                   {/* Truth Card */}
                   <div className="relative">
                     <div
                       className={`
-                        w-48 h-32 cursor-pointer transition-all duration-700 transform-style-preserve-3d
+                        w-40 h-28 sm:w-44 sm:h-30 md:w-48 md:h-32 cursor-pointer transition-all duration-700 transform-style-preserve-3d
                         ${selectedCard === 'truth' && flipCard ? 'rotate-y-180' : ''}
                         ${gameState === 'waiting' ? 'hover:scale-105 hover:shadow-2xl' : ''}
                       `}
@@ -255,13 +255,13 @@ export default function MaintenancePage({
                   </div>
 
                   {/* VS Text */}
-                  <div className="text-3xl font-bold text-gray-400">VS</div>
+                  <div className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-400 my-2 sm:my-0">VS</div>
 
                   {/* Lie Card */}
                   <div className="relative">
                     <div
                       className={`
-                        w-48 h-32 cursor-pointer transition-all duration-700 transform-style-preserve-3d
+                        w-40 h-28 sm:w-44 sm:h-30 md:w-48 md:h-32 cursor-pointer transition-all duration-700 transform-style-preserve-3d
                         ${selectedCard === 'lie' && flipCard ? 'rotate-y-180' : ''}
                         ${gameState === 'waiting' ? 'hover:scale-105 hover:shadow-2xl' : ''}
                       `}
@@ -309,24 +309,24 @@ export default function MaintenancePage({
       </div>
 
       {/* Enhanced Floating Elements - adjusted for light theme */}
-      <div className="absolute top-20 right-20 opacity-80">
-        <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full animate-bounce shadow-lg"></div>
+      <div className="absolute top-12 right-4 sm:top-20 sm:right-20 opacity-80">
+        <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full animate-bounce shadow-lg"></div>
       </div>
-      <div className="absolute bottom-48 left-20 opacity-80">
-        <div className="w-6 h-6 bg-gradient-to-r from-pink-500 to-purple-500 rounded-full animate-bounce delay-700 shadow-lg"></div>
+      <div className="absolute bottom-32 left-4 sm:bottom-48 sm:left-20 opacity-80">
+        <div className="w-4 h-4 sm:w-6 sm:h-6 bg-gradient-to-r from-pink-500 to-purple-500 rounded-full animate-bounce delay-700 shadow-lg"></div>
       </div>
-      <div className="absolute top-1/3 right-1/4 opacity-80">
-        <div className="w-4 h-4 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full animate-bounce delay-1000 shadow-lg"></div>
+      <div className="absolute top-1/3 right-1/4 opacity-80 hidden sm:block">
+        <div className="w-3 h-3 sm:w-4 sm:h-4 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full animate-bounce delay-1000 shadow-lg"></div>
       </div>
-      <div className="absolute top-2/3 left-1/4 opacity-80">
-        <div className="w-5 h-5 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full animate-bounce delay-500 shadow-lg"></div>
+      <div className="absolute top-2/3 left-1/4 opacity-80 hidden sm:block">
+        <div className="w-4 h-4 sm:w-5 sm:h-5 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full animate-bounce delay-500 shadow-lg"></div>
       </div>
 
       {/* Additional sparkles */}
-      <div className="absolute top-1/4 left-1/3 opacity-60">
+      <div className="absolute top-1/4 left-1/3 opacity-60 hidden md:block">
         <div className="w-2 h-2 bg-purple-400 rounded-full animate-ping shadow-md"></div>
       </div>
-      <div className="absolute bottom-1/3 right-1/3 opacity-60">
+      <div className="absolute bottom-1/3 right-1/3 opacity-60 hidden md:block">
         <div className="w-3 h-3 bg-blue-400 rounded-full animate-ping delay-1000 shadow-md"></div>
       </div>
     </div>
