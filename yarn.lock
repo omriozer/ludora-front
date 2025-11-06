@@ -3048,7 +3048,7 @@ diff@^7.0.0:
 
 "dimple@git+https://github.com/PMSI-AlignAlytics/dimple.git#2.3.0":
   version "2.3.0"
-  resolved "git+ssh://git@github.com/PMSI-AlignAlytics/dimple.git#65f69857f5e64f3a49f0898fa00799a530607a41"
+  resolved "git+https://github.com/PMSI-AlignAlytics/dimple.git#65f69857f5e64f3a49f0898fa00799a530607a41"
 
 dir-glob@^3.0.1:
   version "3.0.1"
