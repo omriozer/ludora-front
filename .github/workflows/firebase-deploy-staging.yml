@@ -42,8 +42,13 @@ jobs:
 
       - name: Configure Git for SSH dependencies
         run: |
+          echo "🔧 Configuring Git to use HTTPS instead of SSH..."
           git config --global url."https://github.com/".insteadOf "git@github.com:"
           git config --global url."https://".insteadOf "git://"
+          git config --global url."https://github.com/".insteadOf "ssh://git@github.com/"
+          echo "📋 Current Git URL configuration:"
+          git config --global --list | grep url || true
+          echo "✅ Git configuration complete"
 
       - name: Install dependencies
         run: |
