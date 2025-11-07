@@ -59,11 +59,21 @@ jobs:
       - name: Setup dynamic environment variables
         run: |
           echo "Setting up dynamic environment variables for production..."
-          chmod +x ./.github/scripts/sync-env-variables.js
-          echo "🔧 Generating production environment variables..."
-          node ./.github/scripts/sync-env-variables.js --branch main --output-format env-file > .env.production.temp
-          mv .env.production.temp .env.production
-          echo "✅ Dynamic environment file created using .env.production template"
+          echo "🔧 Creating .env.production file for production deployment from GitHub Secrets..."
+          cat > .env.production << EOF
+          # Generated .env file for production environment
+          # Generated at: $(date -u +"%Y-%m-%dT%H:%M:%S.%3NZ")
+
+          VITE_API_BASE=${{ secrets.VITE_API_BASE }}
+          VITE_FIREBASE_API_KEY=${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN=${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID=${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET=${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID=${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_FIREBASE_MEASUREMENT_ID=${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
+          EOF
+          echo "✅ Dynamic environment file created for production deployment"
           echo "📄 Environment file contents (sensitive values hidden):"
           cat .env.production | sed 's/=.*/=***/' | head -10
 
