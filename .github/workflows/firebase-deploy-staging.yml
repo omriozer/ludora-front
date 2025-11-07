@@ -55,16 +55,14 @@ jobs:
         run: |
           echo "Creating staging environment file..."
           echo "VITE_API_BASE=https://api-staging.ludora.app/api" > .env.production
-          echo "VITE_FIREBASE_API_KEY=AIzaSyD7zFi5zYgy-JUaaSYrhytljGZpGPfkBeU" >> .env.production
+          echo "VITE_FIREBASE_API_KEY=${{ secrets.VITE_FIREBASE_API_KEY_STAGING }}" >> .env.production
           echo "VITE_FIREBASE_AUTH_DOMAIN=staging.ludora.app" >> .env.production
           echo "VITE_FIREBASE_PROJECT_ID=ludora-staging" >> .env.production
           echo "VITE_FIREBASE_STORAGE_BUCKET=ludora-staging.firebasestorage.app" >> .env.production
-          echo "VITE_FIREBASE_MESSAGING_SENDER_ID=40992747906" >> .env.production
-          echo "VITE_FIREBASE_APP_ID=1:40992747906:web:2b0105ff214fa220d2df9b" >> .env.production
-          echo "VITE_FIREBASE_MEASUREMENT_ID=G-MP4QNVM26V" >> .env.production
+          echo "VITE_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID_STAGING }}" >> .env.production
+          echo "VITE_FIREBASE_APP_ID=${{ secrets.VITE_FIREBASE_APP_ID_STAGING }}" >> .env.production
+          echo "VITE_FIREBASE_MEASUREMENT_ID=${{ secrets.VITE_FIREBASE_MEASUREMENT_ID_STAGING }}" >> .env.production
           echo "✅ Staging environment file created"
-          echo "Contents:"
-          cat .env.production
 
       - name: Build application
         run: |
