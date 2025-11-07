@@ -91,7 +91,6 @@ jobs:
       - name: Deploy to Firebase Staging
         run: |
           echo "Deploying to Firebase Staging..."
-          firebase use ludora-staging
           firebase deploy --only hosting --project ludora-staging
           echo "✅ Deployment completed successfully!"
           echo "Frontend staging deployed to: https://staging.ludora.app"
