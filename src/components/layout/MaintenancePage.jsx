@@ -255,7 +255,7 @@ export default function MaintenancePage({
                   </div>
 
                   {/* VS Text */}
-                  <div className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-400 my-2 sm:my-0">VS</div>
+                  <div className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-400 my-2 sm:my-0">או</div>
 
                   {/* Lie Card */}
                   <div className="relative">
