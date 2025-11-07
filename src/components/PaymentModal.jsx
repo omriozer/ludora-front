@@ -214,7 +214,7 @@ export default function PaymentModal({ product, user, settings, isTestMode = (im
                 const { Purchase } = await import('@/services/entities');
 
                 // Get the cart purchases that are currently in payment
-                const cartPurchases = await import('@/utils/purchaseHelpers').then(m => m.getCartPurchases(user.id));
+                const cartPurchases = await getCartPurchases(user.id);
                 const purchasesToUpdate = cartPurchases.filter(p => p.metadata?.payment_in_progress === true);
 
                 // Update them to pending status (waiting for webhook confirmation)
@@ -237,7 +237,7 @@ export default function PaymentModal({ product, user, settings, isTestMode = (im
               // Payment failed/cancelled - reset payment_in_progress flag
               try {
                 const { Purchase } = await import('@/services/entities');
-                const cartPurchases = await import('@/utils/purchaseHelpers').then(m => m.getCartPurchases(user.id));
+                const cartPurchases = await getCartPurchases(user.id);
                 const purchasesToReset = cartPurchases.filter(p => p.metadata?.payment_in_progress === true);
 
                 for (const purchase of purchasesToReset) {
@@ -291,7 +291,6 @@ export default function PaymentModal({ product, user, settings, isTestMode = (im
                 const resetPaymentFlags = async () => {
                   try {
                     const { Purchase } = await import('@/services/entities');
-                    const { getCartPurchases } = await import('@/utils/purchaseHelpers');
                     const cartPurchases = await getCartPurchases(user.id);
                     const purchasesToReset = cartPurchases.filter(p => p.metadata?.payment_in_progress === true);
 

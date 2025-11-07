@@ -38,5 +38,112 @@ export default defineConfig({
         '.js': 'jsx',
       },
     },
+    include: [
+      // Pre-bundle heavy dependencies
+      'firebase/app',
+      'firebase/auth',
+      'firebase/firestore',
+      'react-pdf',
+      'framer-motion',
+      'recharts',
+      'react-quill'
+    ]
   },
+  build: {
+    // Increase chunk size warning limit
+    chunkSizeWarningLimit: 1000,
+
+    // Enable sourcemaps for debugging (optional in production)
+    sourcemap: false,
+
+    // Optimize build performance
+    target: 'esnext',
+    minify: 'esbuild',
+
+    rollupOptions: {
+      output: {
+        // Manual chunk splitting for better caching and performance
+        manualChunks: {
+          // Core React ecosystem
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+
+          // UI Components - Radix UI
+          'ui-vendor': [
+            '@radix-ui/react-dialog',
+            '@radix-ui/react-dropdown-menu',
+            '@radix-ui/react-select',
+            '@radix-ui/react-tabs',
+            '@radix-ui/react-tooltip',
+            '@radix-ui/react-popover',
+            '@radix-ui/react-accordion',
+            '@radix-ui/react-checkbox',
+            '@radix-ui/react-switch'
+          ],
+
+          // Firebase ecosystem
+          'firebase-vendor': ['firebase/app', 'firebase/auth', 'firebase/firestore'],
+
+          // Heavy utilities and animations
+          'utils-vendor': [
+            'framer-motion',
+            'date-fns',
+            'zod',
+            'class-variance-authority',
+            'clsx',
+            'tailwind-merge'
+          ],
+
+          // Charts and data visualization
+          'charts-vendor': ['recharts'],
+
+          // Document processing
+          'document-vendor': ['react-pdf', 'react-quill', 'pptx-preview'],
+
+          // Icons and assets
+          'icons-vendor': ['lucide-react'],
+
+          // Admin-only features (lazy loaded)
+          'admin-features': [
+            './src/pages/AdminPanel',
+            './src/pages/Users',
+            './src/pages/CategoryManagement',
+            './src/pages/BrandSettings',
+            './src/pages/EmailAutomations',
+            './src/pages/FeatureControl',
+            './src/pages/SupportMessages'
+          ]
+        },
+
+        // Optimize chunk file names for better caching
+        chunkFileNames: (chunkInfo) => {
+          const facadeModuleId = chunkInfo.facadeModuleId ?
+            chunkInfo.facadeModuleId.split('/').pop().replace('.jsx', '').replace('.js', '') :
+            'chunk';
+          return `assets/[name]-[hash].js`;
+        },
+
+        // Optimize asset file names
+        assetFileNames: (assetInfo) => {
+          const info = assetInfo.name.split('.');
+          let extType = info[info.length - 1];
+
+          if (/\.(mp3|wav|ogg)$/.test(assetInfo.name)) {
+            extType = 'audio';
+          } else if (/\.(png|jpe?g|gif|svg|webp|ico)$/.test(assetInfo.name)) {
+            extType = 'images';
+          } else if (/\.(woff2?|eot|ttf|otf)$/.test(assetInfo.name)) {
+            extType = 'fonts';
+          }
+
+          return `assets/${extType}/[name]-[hash][extname]`;
+        }
+      }
+    },
+
+    // Optimize for production
+    cssCodeSplit: true,
+
+    // Compress assets
+    assetsInlineLimit: 4096, // 4kb threshold for inlining assets
+  }
 }) 

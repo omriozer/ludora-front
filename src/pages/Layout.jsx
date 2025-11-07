@@ -37,7 +37,7 @@ import Footer from "../components/layout/Footer";
 import NotificationBell from "../components/NotificationBell";
 import FloatingAdminMenu from "../components/FloatingAdminMenu";
 import SubscriptionModal from "../components/SubscriptionModal";
-import ParentConsent from "./ParentConsent";
+import { ParentConsent } from "./lazy.jsx";
 import { loginWithFirebase } from "@/services/apiClient";
 import { firebaseAuth } from "@/lib/firebase";
 import PublicNav from "../components/layout/PublicNav";
@@ -311,7 +311,20 @@ function LayoutContent({ children }) {
 
   // Handle ParentConsent page specially
   if (location.pathname.startsWith('/parent-consent')) {
-    return <ParentConsent />;
+    return (
+      <Suspense fallback={
+        <div className="flex items-center justify-center min-h-screen">
+          <LudoraLoadingSpinner
+            message="טוען עמוד..."
+            size="lg"
+            theme="educational"
+            showLogo={true}
+          />
+        </div>
+      }>
+        <ParentConsent />
+      </Suspense>
+    );
   }
 
   // Main layout

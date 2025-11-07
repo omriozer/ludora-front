@@ -23,6 +23,14 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
+import {
+  requireAuthentication,
+  getUserIdFromToken,
+  findProductForEntity,
+  createPendingPurchase,
+  showPurchaseSuccessToast,
+  showPurchaseErrorToast
+} from '@/utils/purchaseHelpers';
 
 export default function VideoViewer() {
   const navigate = useNavigate();
@@ -344,15 +352,6 @@ export default function VideoViewer() {
                 <Button
                   onClick={async () => {
                     try {
-                      const {
-                        requireAuthentication,
-                        getUserIdFromToken,
-                        findProductForEntity,
-                        createPendingPurchase,
-                        showPurchaseSuccessToast,
-                        showPurchaseErrorToast
-                      } = await import('@/utils/purchaseHelpers');
-
                       if (!requireAuthentication(navigate, '/checkout')) {
                         return;
                       }
@@ -390,7 +389,6 @@ export default function VideoViewer() {
                       navigate('/checkout');
 
                     } catch (error) {
-                      const { showPurchaseErrorToast } = await import('@/utils/purchaseHelpers');
                       showPurchaseErrorToast(error, 'בהוספה לעגלה');
                     }
                   }}

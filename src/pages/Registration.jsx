@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
+import { createPayplusPaymentPage } from '@/services/functions';
 
 export default function Registration() {
   const navigate = useNavigate();
@@ -176,8 +177,6 @@ export default function Registration() {
       console.log('✅ Purchase created:', newPurchase.id);
 
       // Create payment page
-      const { createPayplusPaymentPage } = await import('@/services/functions');
-      
       console.log('🔄 Creating PayPlus payment page...');
       const { data: paymentData, error: paymentError } = await createPayplusPaymentPage({
         registrationId: newRegistration.id,
@@ -218,7 +217,6 @@ export default function Registration() {
     setMessage(null);
 
     try {
-      const { createPayplusPaymentPage } = await import('@/services/functions');
       const { data: paymentData, error: paymentError } = await createPayplusPaymentPage({
         registrationId: existingRegistration.id,
         environment: isTestMode ? 'test' : 'production',
