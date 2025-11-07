@@ -12,7 +12,7 @@ export const getApiBase = () => {
   if (!apiBase) {
     console.error('❌ VITE_API_BASE environment variable is not set');
     if (import.meta.env.PROD) {
-      return 'https://ludora-api.fly.dev/api';
+      return 'https://api.ludora.app/api';
     } else {
       // Use environment variable for port, fallback to 3003 for development
       const port = import.meta.env.VITE_API_PORT || '3003';

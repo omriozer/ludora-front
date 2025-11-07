@@ -217,11 +217,6 @@ export default function FloatingAdminMenu({ currentUser }) {
     setIsUpdatingMaintenance(false);
   };
 
-  // Check if we're in production environment
-  const isProduction = import.meta.env.PROD;
-
-
-
   if (!isAdmin) return null;
 
   const menuCategories = [
