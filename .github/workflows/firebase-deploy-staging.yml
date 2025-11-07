@@ -103,7 +103,16 @@ jobs:
       - name: Deploy to Firebase Staging
         run: |
           echo "Deploying to Firebase Staging..."
-          firebase deploy --only hosting --project ludora-staging
+          echo "🔐 Authenticating with Firebase using service account..."
+          export GOOGLE_APPLICATION_CREDENTIALS=$HOME/firebase-service-account.json
+          echo "📋 Verifying service account file exists:"
+          ls -la $HOME/firebase-service-account.json
+          echo "🔧 Setting Firebase project..."
+          firebase use ludora-staging
+          echo "📋 Current Firebase project:"
+          firebase projects:list
+          echo "🚀 Starting deployment..."
+          firebase deploy --only hosting --project ludora-staging --non-interactive
           echo "✅ Deployment completed successfully!"
           echo "Frontend staging deployed to: https://staging.ludora.app"
           echo "Also available at: https://ludora-staging.web.app"
