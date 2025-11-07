@@ -54,7 +54,7 @@ jobs:
       - name: Create environment file
         run: |
           echo "Creating staging environment file..."
-          echo "VITE_API_BASE=https://ludora-api-staging-9195d79ec928.herokuapp.com/api" > .env.production
+          echo "VITE_API_BASE=https://api-staging.ludora.app/api" > .env.production
           echo "VITE_FIREBASE_API_KEY=${{ secrets.VITE_FIREBASE_API_KEY_STAGING }}" >> .env.production
           echo "VITE_FIREBASE_AUTH_DOMAIN=ludora-staging.firebaseapp.com" >> .env.production
           echo "VITE_FIREBASE_PROJECT_ID=ludora-staging" >> .env.production
@@ -83,7 +83,7 @@ jobs:
       - name: Setup Firebase Service Account
         run: |
           echo "Setting up Firebase service account..."
-          echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}" | base64 --decode > $HOME/firebase-service-account.json
+          echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY_STAGING }}" | base64 --decode > $HOME/firebase-service-account.json
           echo "GOOGLE_APPLICATION_CREDENTIALS=$HOME/firebase-service-account.json" >> $GITHUB_ENV
           echo "✅ Service account configured"
 
