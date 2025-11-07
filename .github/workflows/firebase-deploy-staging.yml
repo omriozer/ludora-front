@@ -51,18 +51,15 @@ jobs:
           yarn install --frozen-lockfile
           echo "✅ Dependencies installed"
 
-      - name: Create environment file
+      - name: Setup dynamic environment variables
         run: |
-          echo "Creating staging environment file..."
-          echo "VITE_API_BASE=https://api-staging.ludora.app/api" > .env.production
-          echo "VITE_FIREBASE_API_KEY=${{ secrets.VITE_FIREBASE_API_KEY_STAGING }}" >> .env.production
-          echo "VITE_FIREBASE_AUTH_DOMAIN=ludora-staging.firebaseapp.com" >> .env.production
-          echo "VITE_FIREBASE_PROJECT_ID=ludora-staging" >> .env.production
-          echo "VITE_FIREBASE_STORAGE_BUCKET=ludora-staging.firebasestorage.app" >> .env.production
-          echo "VITE_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID_STAGING }}" >> .env.production
-          echo "VITE_FIREBASE_APP_ID=${{ secrets.VITE_FIREBASE_APP_ID_STAGING }}" >> .env.production
-          echo "VITE_FIREBASE_MEASUREMENT_ID=${{ secrets.VITE_FIREBASE_MEASUREMENT_ID_STAGING }}" >> .env.production
-          echo "✅ Staging environment file created"
+          echo "Setting up dynamic environment variables for staging..."
+          chmod +x ./.github/scripts/sync-env-variables.js
+          echo "🔧 Generating staging environment variables..."
+          node ./.github/scripts/sync-env-variables.js --branch staging --output-format env-file --clean > .env.production
+          echo "✅ Dynamic environment file created using .env.staging template"
+          echo "📄 Environment file contents (sensitive values hidden):"
+          cat .env.production | sed 's/=.*/=***/' | head -10
 
       - name: Build application
         run: |

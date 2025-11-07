@@ -252,7 +252,8 @@ async function main() {
     environment: null,
     dryRun: false,
     interactive: false,
-    outputFormat: 'github-actions' // 'github-actions' or 'env-file'
+    outputFormat: 'github-actions', // 'github-actions' or 'env-file'
+    clean: false // Clean output with no logging for CI/CD
   };
 
   // Parse command line arguments
@@ -273,6 +274,9 @@ async function main() {
       case '--output-format':
         options.outputFormat = args[++i];
         break;
+      case '--clean':
+        options.clean = true;
+        break;
       case '--help':
         console.log(`
 Usage: sync-env-variables.js [options]
@@ -283,6 +287,7 @@ Options:
   --dry-run               Show what would be done without making changes
   --interactive           Prompt for confirmation on changes
   --output-format <fmt>   Output format: github-actions (default) or env-file
+  --clean                 Clean output with no logging (for CI/CD)
   --help                  Show this help message
 
 Examples:
@@ -300,26 +305,40 @@ Examples:
     }
   }
 
-  console.log(`🔧 Environment Variable Synchronization`);
-  console.log(`Branch: ${options.branch}`);
-  console.log(`Mode: ${options.dryRun ? 'DRY RUN' : 'LIVE'}`);
-  console.log('');
-
   // Get environment configuration
   const config = getEnvironmentConfig(options.branch, options.environment);
-  console.log(`📁 Environment: ${config.environment}`);
-  console.log(`📄 Env File: ${config.envFile}`);
-  console.log(`🔐 Secret Prefix: ${config.secretPrefix}`);
-  console.log('');
 
   // Parse environment file
   const envFilePath = path.resolve(process.cwd(), config.envFile);
   const envVars = parseEnvFile(envFilePath);
 
   if (Object.keys(envVars).length === 0) {
-    console.log(`❌ No environment variables found in ${config.envFile}`);
+    if (!options.clean) {
+      console.log(`❌ No environment variables found in ${config.envFile}`);
+    }
     process.exit(1);
   }
+
+  // Clean output mode - just output the content
+  if (options.clean) {
+    if (options.outputFormat === 'env-file') {
+      console.log(generateEnvFileContent(envVars, config));
+    } else {
+      console.log(generateGitHubActionsEnv(envVars, config));
+    }
+    return;
+  }
+
+  // Normal logging mode
+  console.log(`🔧 Environment Variable Synchronization`);
+  console.log(`Branch: ${options.branch}`);
+  console.log(`Mode: ${options.dryRun ? 'DRY RUN' : 'LIVE'}`);
+  console.log('');
+
+  console.log(`📁 Environment: ${config.environment}`);
+  console.log(`📄 Env File: ${config.envFile}`);
+  console.log(`🔐 Secret Prefix: ${config.secretPrefix}`);
+  console.log('');
 
   console.log(`✅ Found ${Object.keys(envVars).length} environment variables`);
 
