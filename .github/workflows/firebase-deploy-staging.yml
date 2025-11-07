@@ -84,10 +84,9 @@ jobs:
         run: |
           echo "Setting up Firebase service account..."
           echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY_STAGING }}" | base64 --decode > $HOME/firebase-service-account.json
+          chmod 600 $HOME/firebase-service-account.json
           echo "GOOGLE_APPLICATION_CREDENTIALS=$HOME/firebase-service-account.json" >> $GITHUB_ENV
-          export GOOGLE_APPLICATION_CREDENTIALS=$HOME/firebase-service-account.json
-          gcloud auth activate-service-account --key-file=$HOME/firebase-service-account.json
-          echo "✅ Service account configured and activated"
+          echo "✅ Service account configured"
 
       - name: Deploy to Firebase Staging
         run: |
