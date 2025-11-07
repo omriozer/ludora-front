@@ -54,10 +54,30 @@ export default function ProductCard({
   // Use centralized product access logic
   const { hasAccess, isInCart, purchase } = useProductAccess(product, userPurchases);
 
-  // Detect if device is mobile/touch
+  // Detect if device is mobile/touch with improved logic
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth <= 768 || 'ontouchstart' in window);
+      // More accurate mobile detection
+      const width = window.innerWidth <= 768;
+      const touchDevice = 'ontouchstart' in window &&
+        (navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0);
+      const mobileUserAgent = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+      const isMobileDevice = width || (touchDevice && mobileUserAgent);
+
+      // Debug logging to understand what's happening in production
+      if (process.env.NODE_ENV === 'development' || window.location.hostname.includes('ludora.app')) {
+        console.log('🔍 Mobile Detection Debug:', {
+          width,
+          touchDevice,
+          mobileUserAgent,
+          maxTouchPoints: navigator.maxTouchPoints,
+          userAgent: navigator.userAgent.substring(0, 50),
+          finalResult: isMobileDevice
+        });
+      }
+
+      setIsMobile(isMobileDevice);
     };
 
     checkMobile();
@@ -211,8 +231,18 @@ export default function ProductCard({
   return (
     <div
       className="group transition-all duration-300 hover:scale-[1.02] break-inside-avoid mb-4 cursor-pointer"
-      onMouseEnter={() => !isMobile && setIsHovered(true)}
-      onMouseLeave={() => !isMobile && setIsHovered(false)}
+      onMouseEnter={() => {
+        if (process.env.NODE_ENV === 'development' || window.location.hostname.includes('ludora.app')) {
+          console.log('🖱️ Mouse Enter - isMobile:', isMobile, 'Product:', product.title.substring(0, 20));
+        }
+        !isMobile && setIsHovered(true);
+      }}
+      onMouseLeave={() => {
+        if (process.env.NODE_ENV === 'development' || window.location.hostname.includes('ludora.app')) {
+          console.log('🖱️ Mouse Leave - isMobile:', isMobile, 'Product:', product.title.substring(0, 20));
+        }
+        !isMobile && setIsHovered(false);
+      }}
       onClick={handleCardClick}
     >
       {/* 100% Image Card with Overlays */}
