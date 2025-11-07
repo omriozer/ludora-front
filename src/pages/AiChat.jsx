@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { User, Purchase, Settings, Category, Workshop, Course, File, Tool } from "@/services/entities";
+import { User, Purchase, Category, Workshop, Course, File, Tool } from "@/services/entities";
+import { useUser } from "@/contexts/UserContext";
 import { InvokeLLM } from "@/services/integrations";
 import { getProductTypeName } from "@/config/productTypes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,7 +21,7 @@ import {
 } from "lucide-react";
 
 export default function AiChat() {
-  const [currentUser, setCurrentUser] = useState(null);
+  const { currentUser, settings, isLoading: userLoading } = useUser();
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [message, setMessage] = useState(null);
@@ -37,8 +38,10 @@ export default function AiChat() {
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (currentUser && !userLoading) {
+      loadData();
+    }
+  }, [currentUser, userLoading]);
 
   useEffect(() => {
     scrollToBottom();
@@ -47,11 +50,9 @@ export default function AiChat() {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const user = await User.me();
-      setCurrentUser(user);
-      setIsAdmin(user.role === 'admin');
+      setIsAdmin(currentUser.role === 'admin');
 
-      if (user.role === 'admin') {
+      if (currentUser.role === 'admin') {
         // Load system context
         await loadSystemContext();
         
@@ -81,7 +82,6 @@ export default function AiChat() {
         tools,
         purchases,
         users,
-        settings,
         categories
       ] = await Promise.all([
         Workshop.find({}, '-created_date'),
@@ -90,9 +90,11 @@ export default function AiChat() {
         Tool.find({}, '-created_date'),
         Purchase.find(),
         User.find(),
-        Settings.find(),
         Category.find({})
       ]);
+
+      // Use global settings instead of making API call
+      const settingsData = settings;
 
       const allEntities = [...workshops, ...courses, ...files, ...tools];
       const publishedEntities = allEntities.filter(e => e.is_published !== false);
@@ -144,11 +146,11 @@ ${publishedEntities.slice(0, 5).map(e => `- ${e.title} (${e.category || 'ללא 
 - תמיכה בעברית מלאה
 
 הגדרות מערכת נוכחיות:
-${settings.length > 0 ? `
-- גישה ל${getProductTypeName('workshop', 'plural')}: ${settings[0].nav_workshops_visibility || 'public'}
-- גישה ל${getProductTypeName('course', 'plural')}: ${settings[0].nav_courses_visibility || 'public'}
-- גישה ל${getProductTypeName('file', 'plural')}: ${settings[0].nav_files_visibility || 'public'}
-- מצב תחזוקה: ${settings[0].maintenance_mode ? 'פעיל' : 'כבוי'}
+${settingsData ? `
+- גישה ל${getProductTypeName('workshop', 'plural')}: ${settingsData.nav_workshops_visibility || 'public'}
+- גישה ל${getProductTypeName('course', 'plural')}: ${settingsData.nav_courses_visibility || 'public'}
+- גישה ל${getProductTypeName('file', 'plural')}: ${settingsData.nav_files_visibility || 'public'}
+- מצב תחזוקה: ${settingsData.maintenance_mode ? 'פעיל' : 'כבוי'}
 ` : 'אין הגדרות מיוחדות'}
 
 זהו המידע העדכני על המערכת. אתה יכול לעזור with שאלות על ניהול המערכת, אנליזה של נתונים, הצעות לשיפור, ועוד.
@@ -287,7 +289,7 @@ ${conversationContext}שאלה נוכחית: ${userMessage.content}
 
   const activeConversation = conversations.find(conv => conv.id === activeConversationId);
 
-  if (isLoading) {
+  if (userLoading || isLoading) {
     return (
       <div className="p-4 bg-gray-50 min-h-screen flex items-center justify-center">
         <div className="text-center">

@@ -7,7 +7,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PRODUCT_TYPES, getCatalogConfig } from '@/config/productTypes';
-import { Product, Settings } from '@/services/apiClient';
+import { Product } from '@/services/apiClient';
 import { toast } from '@/components/ui/use-toast';
 import { clog, cerror } from '@/lib/utils';
 import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
@@ -34,7 +34,7 @@ export default function AssociateProductDialog({
   loading = false,
   errors = {}
 }) {
-  const { currentUser } = useUser();
+  const { currentUser, settings } = useUser();
 
   // Step 1: Product type selection, Step 2: Product selection
   const [step, setStep] = useState(1);
@@ -42,7 +42,6 @@ export default function AssociateProductDialog({
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [settings, setSettings] = useState(null);
   const [productLoading, setProductLoading] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
@@ -89,21 +88,6 @@ export default function AssociateProductDialog({
     }
   }, [open]);
 
-  // Load settings when component mounts
-  useEffect(() => {
-    const loadSettings = async () => {
-      try {
-        const settingsArray = await Settings.find();
-        const appSettings = settingsArray.length > 0 ? settingsArray[0] : null;
-        setSettings(appSettings);
-      } catch (error) {
-        cerror('Error loading application settings:', error);
-        setSettings(null);
-      }
-    };
-
-    loadSettings();
-  }, []);
 
   // Load products when product type is selected
   useEffect(() => {

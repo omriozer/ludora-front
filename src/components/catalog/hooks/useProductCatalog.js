@@ -1,8 +1,30 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Settings } from '@/services/entities';
 import { getProductTypeName } from '@/config/productTypes';
 import { clog, cerror } from '@/lib/utils';
 import { useUser } from '@/contexts/UserContext';
+
+// Global cache for user data to prevent repeated API calls during navigation
+let usersCache = null;
+let usersCacheTimestamp = null;
+const USERS_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+// Global cache for purchases data per user to prevent repeated API calls
+let purchasesCache = new Map(); // Map: userId -> { purchases, timestamp }
+const PURCHASES_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes (same as users cache)
+
+// Helper functions to manage caches
+export const clearUsersCache = () => {
+  usersCache = null;
+  usersCacheTimestamp = null;
+};
+
+export const clearPurchasesCache = (userId = null) => {
+  if (userId) {
+    purchasesCache.delete(userId);
+  } else {
+    purchasesCache.clear();
+  }
+};
 
 /**
  * Unified Product Catalog Hook
@@ -10,15 +32,14 @@ import { useUser } from '@/contexts/UserContext';
  * (games, files, workshops, courses, tools)
  */
 export default function useProductCatalog(productType, filters, activeTab) {
-  // Get user from UserContext instead of loading independently
-  const { currentUser, isLoading: isLoadingUser } = useUser();
+  // Get user and settings from UserContext instead of loading independently
+  const { currentUser, settings: globalSettings, isLoading: isLoadingUser } = useUser();
 
   // State management
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [userPurchases, setUserPurchases] = useState([]);
-  const [settings, setSettings] = useState(null);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const [error, setError] = useState(null);
 
@@ -51,6 +72,12 @@ export default function useProductCatalog(productType, filters, activeTab) {
 
   // Main data loading function
   const loadData = useCallback(async () => {
+    clog('🚀 useProductCatalog.loadData() called for productType:', productType, {
+      timestamp: new Date().toISOString(),
+      userId: currentUser?.id || 'no user',
+      stackTrace: new Error().stack?.split('\n').slice(1, 4).join('\n')
+    });
+
     setIsLoadingProducts(true);
     setError(null);
 
@@ -70,50 +97,79 @@ export default function useProductCatalog(productType, filters, activeTab) {
       });
 
 
-      // 2. Load all users for display names (needed for creator attribution)
+      // 2. Load users for display names (with caching to prevent navigation delays)
       try {
-        const { User } = await import('@/services/entities');
-        usersData = await User.find();
+        // Check if we have cached users data that's still fresh
+        const now = Date.now();
+        const isCacheValid = usersCache && usersCacheTimestamp && (now - usersCacheTimestamp < USERS_CACHE_DURATION);
+
+        if (isCacheValid) {
+          clog('✅ Using cached users data for creator attribution');
+          usersData = usersCache;
+        } else {
+          clog('🔄 Loading users data for creator attribution (cache miss/expired)');
+          const { User } = await import('@/services/entities');
+          usersData = await User.find();
+
+          // Update cache
+          usersCache = usersData;
+          usersCacheTimestamp = now;
+          clog('✅ Users data cached for future navigation');
+        }
       } catch (error) {
         cerror("Error loading users for display names:", error);
         usersData = [];
       }
 
-      // 3. Load settings
-      try {
-        const settingsArray = await Settings.find();
-        appSettings = settingsArray.length > 0 ? settingsArray[0] : null;
-        setSettings(appSettings);
-      } catch (error) {
-        cerror("Error loading application settings:", error);
-        setSettings(null);
-      }
+      // 3. Use global settings from UserContext
+      appSettings = globalSettings;
 
-      // 4. Load user purchases if logged in
+      // 4. Load user purchases if logged in (with caching to prevent navigation delays)
       if (currentUser) {
         try {
-          const { Purchase } = await import('@/services/entities');
-          // Load purchases with 'paid', 'completed', and 'cart' statuses
-          const [paidPurchases, completedPurchases, cartPurchases] = await Promise.all([
-            Purchase.filter({
-              buyer_user_id: currentUser.id,
-              payment_status: 'paid'
-            }),
-            Purchase.filter({
-              buyer_user_id: currentUser.id,
-              payment_status: 'completed'
-            }),
-            Purchase.filter({
-              buyer_user_id: currentUser.id,
-              payment_status: 'cart'
-            })
-          ]);
-          // Combine and deduplicate purchases
-          const allPurchases = [...paidPurchases, ...completedPurchases, ...cartPurchases];
-          const uniquePurchases = allPurchases.filter((purchase, index, self) =>
-            index === self.findIndex(p => p.id === purchase.id)
-          );
-          purchasesData = uniquePurchases;
+          // Check if we have cached purchases data for this user
+          const userId = currentUser.id;
+          const now = Date.now();
+          const userCacheEntry = purchasesCache.get(userId);
+          const isCacheValid = userCacheEntry && (now - userCacheEntry.timestamp < PURCHASES_CACHE_DURATION);
+
+          clog('🔍 Purchase cache check:', {
+            userId,
+            hasCacheEntry: !!userCacheEntry,
+            cacheAge: userCacheEntry ? (now - userCacheEntry.timestamp) / 1000 : 'N/A',
+            cacheDurationSeconds: PURCHASES_CACHE_DURATION / 1000,
+            isCacheValid,
+            totalCacheEntries: purchasesCache.size
+          });
+
+          if (isCacheValid) {
+            clog('✅ Using cached purchases data for user', userId);
+            purchasesData = userCacheEntry.purchases;
+          } else {
+            const reason = !userCacheEntry ? 'no cache entry' : 'cache expired';
+            clog('🔄 Loading purchases data for user (cache miss/expired):', userId, `(${reason})`);
+            const { Purchase } = await import('@/services/entities');
+
+            // Single API call for all user purchases (instead of 3 separate calls)
+            const allUserPurchases = await Purchase.filter({
+              buyer_user_id: currentUser.id
+            });
+
+            // Filter by payment status client-side (replaces 3 API calls)
+            const paidPurchases = allUserPurchases.filter(p => p.payment_status === 'paid');
+            const completedPurchases = allUserPurchases.filter(p => p.payment_status === 'completed');
+            const cartPurchases = allUserPurchases.filter(p => p.payment_status === 'cart');
+
+            // Combine (no need to deduplicate since we filtered from same dataset)
+            purchasesData = [...paidPurchases, ...completedPurchases, ...cartPurchases];
+
+            // Update cache
+            purchasesCache.set(userId, {
+              purchases: purchasesData,
+              timestamp: now
+            });
+            clog('✅ Purchases data cached for user', userId);
+          }
 
           // Debug logging for purchase data
           console.log('🔍 Loaded user purchases:', purchasesData);
@@ -373,7 +429,20 @@ export default function useProductCatalog(productType, filters, activeTab) {
     const handleCartChange = () => {
       console.log('🎧 useProductCatalog: Received cart change event!');
       console.log('🎧 useProductCatalog: isLoadingUser =', isLoadingUser);
-      clog('Cart change detected - refreshing product catalog data');
+      clog('Cart change detected - clearing purchase cache and refreshing data');
+
+      // Clear purchases cache for current user when cart changes
+      if (currentUser?.id) {
+        clog('🗑️ Clearing purchases cache for user (cart change event):', currentUser.id, {
+          cacheEntriesBeforeClearing: purchasesCache.size,
+          timestamp: new Date().toISOString()
+        });
+        clearPurchasesCache(currentUser.id);
+        clog('🗑️ Cleared purchases cache for user', currentUser.id, {
+          cacheEntriesAfterClearing: purchasesCache.size
+        });
+      }
+
       if (!isLoadingUser) {
         console.log('🎧 useProductCatalog: Calling loadData()');
         loadData();
@@ -390,7 +459,7 @@ export default function useProductCatalog(productType, filters, activeTab) {
       console.log('🎧 useProductCatalog: Removing cart change listener');
       window.removeEventListener('ludora-cart-changed', handleCartChange);
     };
-  }, [loadData, isLoadingUser]);
+  }, [loadData, isLoadingUser, currentUser?.id]);
 
   return {
     products,
@@ -398,7 +467,7 @@ export default function useProductCatalog(productType, filters, activeTab) {
     categories,
     currentUser,
     userPurchases,
-    settings,
+    settings: globalSettings,
     isLoading: isLoadingUser || isLoadingProducts,
     error,
     loadData

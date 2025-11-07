@@ -1,9 +1,8 @@
-import React, { useCallback, useEffect } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { GraduationCap, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { loadSettingsWithRetry } from '@/lib/appUser';
-import { Settings } from '@/services/entities';
+import { useUser } from '@/contexts/UserContext';
 import logo from '../../assets/images/logo.png';
 import { getProductTypeName } from '@/config/productTypes';
 import {
@@ -26,9 +25,11 @@ const WhatsAppIcon = ({ className = "w-4 h-4" }) => (
 );
 
 export default function Footer({ isMaintenanceMode = false }) {
+  const { settings } = useUser();
+
   // Static footer texts - converted from dynamic getText
   const footerTexts = {
-    description: `פלטפורמה מתקדמת ל${getProductTypeName('game', 'plural')} חינוכיים ו${getProductTypeName('tool', 'plural')} דיגיטליים`, // This specific text is no longer used for the main description, but kept for consistency if other parts might reference it.
+    description: `בית ללמידה אחרת`,
     importantLinks: "קישורים חשובים",
     contactUs: "יצירת קשר",
     contactDescription: "לשאלות, תמיכה או כל דבר אחר.",
@@ -40,27 +41,6 @@ export default function Footer({ isMaintenanceMode = false }) {
     terms: "תנאי שימוש",
     accessibility: "הצהרת נגישות"
   };
-
-  const [settings, setSettings] = React.useState(null);
-
-  // Add retry logic for settings loading
-  // Use shared loadSettingsWithRetry from lib/appUser
-
-  const loadSettings = useCallback(async () => {
-    try {
-      const settingsData = await loadSettingsWithRetry(Settings);
-      if (settingsData && settingsData.length > 0) {
-        setSettings(settingsData[0]);
-      }
-    } catch (error) {
-      console.error('Error loading settings in footer:', error);
-      // Use fallback settings if needed
-    }
-  }, []);
-
-  useEffect(() => {
-    loadSettings();
-  }, [loadSettings]);
 
   return (
     <footer className="bg-gray-900 text-white py-8" role="contentinfo">
@@ -86,8 +66,8 @@ export default function Footer({ isMaintenanceMode = false }) {
                 </>
               )}
             </div>
-            <p className="text-gray-600 text-sm leading-relaxed">
-              {settings?.site_description || `פלטפורמה מתקדמת ל${getProductTypeName('game', 'plural')} חינוכיים ו${getProductTypeName('tool', 'plural')} דיגיטליים שהופכים את הלמידה למהנה ואפקטיבית`}
+            <p className="font-semibold text-sm leading-relaxed">
+              {settings?.site_description || 'בית ללמידה אחרת'}
             </p>
           </div>
 
@@ -141,7 +121,7 @@ export default function Footer({ isMaintenanceMode = false }) {
         </div>
 
         <div className="border-t border-gray-800 mt-8 pt-8 text-center">
-          <p className="text-gray-500">{footerTexts.copyright}</p>
+          <p className="font-semibold">{footerTexts.copyright}</p>
         </div>
       </div>
     </footer>

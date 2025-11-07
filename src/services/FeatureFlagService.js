@@ -1,55 +1,20 @@
-import { Settings } from './entities';
 import { NAV_ITEM_KEYS } from '@/config/productTypes';
-import { cerror } from '@/lib/utils';
 
 class FeatureFlagService {
-  constructor() {
-    this.cache = null;
-    this.cacheExpiry = null;
-    this.cacheDuration = 5 * 60 * 1000; // 5 minutes
-  }
-
-  async getSettings() {
-    const now = Date.now();
-
-    if (this.cache && this.cacheExpiry && now < this.cacheExpiry) {
-      return this.cache;
-    }
-
-    try {
-      const settingsData = await Settings.find();
-
-      let settings = {};
-      if (settingsData && settingsData.length > 0) {
-        settings = settingsData[0];
-      }
-
-      this.cache = settings;
-      this.cacheExpiry = now + this.cacheDuration;
-
-      return settings;
-    } catch (error) {
-      cerror('Error fetching feature flags:', error);
-      return {};
-    }
-  }
-
-  async isFeatureEnabled(featureKey) {
-    const settings = await this.getSettings();
+  isFeatureEnabled(settings, featureKey) {
+    if (!settings) return true; // Default to enabled if no settings
     const enabledKey = `nav_${featureKey}_enabled`;
-
     return settings[enabledKey] !== false;
   }
 
-  async getFeatureVisibility(featureKey) {
-    const settings = await this.getSettings();
+  getFeatureVisibility(settings, featureKey) {
+    if (!settings) return 'public'; // Default to public if no settings
     const visibilityKey = `nav_${featureKey}_visibility`;
-
     return settings[visibilityKey] || 'public';
   }
 
-  async getEnabledFeatures() {
-    const settings = await this.getSettings();
+  getEnabledFeatures(settings) {
+    if (!settings) return []; // Return empty array if no settings
     const enabledFeatures = [];
 
     for (const key of NAV_ITEM_KEYS) {
@@ -71,13 +36,13 @@ class FeatureFlagService {
     return enabledFeatures;
   }
 
-  async getPublicFeatures() {
-    const enabledFeatures = await this.getEnabledFeatures();
+  getPublicFeatures(settings) {
+    const enabledFeatures = this.getEnabledFeatures(settings);
     return enabledFeatures.filter(feature => feature.visibility === 'public');
   }
 
-  async getAllFeaturesForAdmin() {
-    const settings = await this.getSettings();
+  getAllFeaturesForAdmin(settings) {
+    if (!settings) return []; // Return empty array if no settings
     const allFeatures = [];
 
     for (const key of NAV_ITEM_KEYS) {
@@ -95,11 +60,6 @@ class FeatureFlagService {
     }
 
     return allFeatures;
-  }
-
-  clearCache() {
-    this.cache = null;
-    this.cacheExpiry = null;
   }
 }
 

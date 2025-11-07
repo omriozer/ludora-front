@@ -25,12 +25,13 @@ import {
   Lock
 } from "lucide-react";
 import { triggerEmailAutomation } from "@/services/functions";
+import { useUser } from "@/contexts/UserContext";
+import { cerror, clog } from "@/lib/utils";
 
 export default function ParentConsent() {
   const navigate = useNavigate();
+  const { currentUser, isLoading: userLoading } = useUser();
 
-  const [currentUser, setCurrentUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -52,21 +53,6 @@ export default function ParentConsent() {
     agreeToDataCollection: false
   });
 
-  useEffect(() => {
-    checkUserAuth();
-  }, []);
-
-  const checkUserAuth = async () => {
-    try {
-      const user = await User.me();
-      setCurrentUser(user);
-      setIsLoading(false);
-    } catch (error) {
-      setCurrentUser(null);
-      setIsLoading(false);
-    }
-  };
-
   const handleLogin = async () => {
     try {
       await User.loginWithRedirect(window.location.href);
@@ -78,7 +64,6 @@ export default function ParentConsent() {
   const handleLogout = async () => {
     try {
       await User.logout();
-      setCurrentUser(null);
       resetForm();
     } catch (error) {
       setError("שגיאה בהתנתקות");
@@ -285,7 +270,7 @@ export default function ParentConsent() {
         const users = await User.filter({ email: formData.studentEmail });
         studentUser = users.length > 0 ? users[0] : null;
       } catch (error) {
-        console.log("No existing user found for student email", error);
+        clog("No existing user found for student email", error);
       }
 
       // Create consent record
@@ -328,11 +313,11 @@ export default function ParentConsent() {
           // Get teacher and classroom details for emails
           const [teacher, classroom] = await Promise.all([
             User.get(invitation.teacher_id).catch((err) => {
-              console.error("Error fetching teacher:", err);
+              cerror("Error fetching teacher:", err);
               return null;
             }),
             invitation.classroom_id ? Classroom.get(invitation.classroom_id).catch((err) => {
-              console.error("Error fetching classroom:", err);
+              cerror("Error fetching classroom:", err);
               return null;
             }) : null
           ]);
@@ -372,7 +357,7 @@ export default function ParentConsent() {
           });
 
         } catch (emailError) {
-          console.error("Error sending emails:", emailError);
+          cerror("Error sending emails:", emailError);
           // Don't fail the whole process if emails fail
         }
       }
@@ -406,7 +391,7 @@ export default function ParentConsent() {
     return gradeMap[gradeLevel] || gradeLevel;
   };
 
-  if (isLoading) {
+  if (userLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50">
         <div className="text-center">

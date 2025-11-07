@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { getProductTypeName } from "@/config/productTypes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
-import { Settings, User } from "@/services/entities";
+import { Settings } from "@/services/entities";
+import { useUser } from "@/contexts/UserContext";
 import LudoraLoadingSpinner from "@/components/ui/LudoraLoadingSpinner";
 import {
   Package,
@@ -26,9 +26,8 @@ import {
 
 export default function ProductSettings() {
   const navigate = useNavigate();
+  const { currentUser, settings, isLoading: userLoading } = useUser();
 
-  const [currentUser, setCurrentUser] = useState(null);
-  const [settings, setSettings] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState("idle"); // 'idle', 'saving', 'success', 'error'
@@ -71,45 +70,42 @@ export default function ProductSettings() {
   });
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (currentUser && !userLoading) {
+      loadData();
+    }
+  }, [currentUser, userLoading]);
 
   const loadData = async () => {
     try {
       // Check if user is admin
-      const user = await User.me();
-      if (user.role !== 'admin') {
+      if (currentUser.role !== 'admin') {
         navigate('/');
         return;
       }
-      setCurrentUser(user);
 
-      // Load current settings
-      const settingsData = await Settings.find();
-      const currentSettings = settingsData.length > 0 ? settingsData[0] : {};
-      setSettings(currentSettings);
+      // Use global settings
 
       // Initialize form with current values or defaults
       const newFormData = {
-        default_course_access_days: currentSettings.default_course_access_days || 365,
-        course_lifetime_access: currentSettings.course_lifetime_access || false,
-        default_file_access_days: currentSettings.default_file_access_days || 365,
-        file_lifetime_access: currentSettings.file_lifetime_access || false,
-        default_workshop_access_days: currentSettings.default_workshop_access_days || 365,
-        workshop_lifetime_access: currentSettings.workshop_lifetime_access || false,
-        default_game_access_days: currentSettings.default_game_access_days || 365,
-        game_lifetime_access: currentSettings.game_lifetime_access ?? true,
-        default_lesson_plan_access_days: currentSettings.default_lesson_plan_access_days || 365,
-        lesson_plan_lifetime_access: currentSettings.lesson_plan_lifetime_access || false,
-        default_tool_access_days: currentSettings.default_tool_access_days || 365,
-        tool_lifetime_access: currentSettings.tool_lifetime_access || false,
-        nav_content_creators_enabled: currentSettings.nav_content_creators_enabled ?? true,
-        allow_content_creator_workshops: currentSettings.allow_content_creator_workshops ?? true,
-        allow_content_creator_courses: currentSettings.allow_content_creator_courses ?? true,
-        allow_content_creator_files: currentSettings.allow_content_creator_files ?? true,
-        allow_content_creator_games: currentSettings.allow_content_creator_games ?? true,
-        allow_content_creator_tools: currentSettings.allow_content_creator_tools ?? true,
-        allow_content_creator_lesson_plans: currentSettings.allow_content_creator_lesson_plans ?? true
+        default_course_access_days: settings?.default_course_access_days || 365,
+        course_lifetime_access: settings?.course_lifetime_access || false,
+        default_file_access_days: settings?.default_file_access_days || 365,
+        file_lifetime_access: settings?.file_lifetime_access || false,
+        default_workshop_access_days: settings?.default_workshop_access_days || 365,
+        workshop_lifetime_access: settings?.workshop_lifetime_access || false,
+        default_game_access_days: settings?.default_game_access_days || 365,
+        game_lifetime_access: settings?.game_lifetime_access ?? true,
+        default_lesson_plan_access_days: settings?.default_lesson_plan_access_days || 365,
+        lesson_plan_lifetime_access: settings?.lesson_plan_lifetime_access || false,
+        default_tool_access_days: settings?.default_tool_access_days || 365,
+        tool_lifetime_access: settings?.tool_lifetime_access || false,
+        nav_content_creators_enabled: settings?.nav_content_creators_enabled ?? true,
+        allow_content_creator_workshops: settings?.allow_content_creator_workshops ?? true,
+        allow_content_creator_courses: settings?.allow_content_creator_courses ?? true,
+        allow_content_creator_files: settings?.allow_content_creator_files ?? true,
+        allow_content_creator_games: settings?.allow_content_creator_games ?? true,
+        allow_content_creator_tools: settings?.allow_content_creator_tools ?? true,
+        allow_content_creator_lesson_plans: settings?.allow_content_creator_lesson_plans ?? true
       };
 
       setFormData(newFormData);
@@ -180,7 +176,7 @@ export default function ProductSettings() {
     setIsSaving(false);
   };
 
-  if (isLoading) {
+  if (userLoading || isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <LudoraLoadingSpinner

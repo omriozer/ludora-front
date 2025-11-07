@@ -19,15 +19,17 @@ import {
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { PRODUCT_TYPES, getProductTypeName } from "@/config/productTypes";
+import { useUser } from "@/contexts/UserContext";
+import { cerror, clog } from "@/lib/utils";
 
 export default function PaymentResult() {
   const navigate = useNavigate();
+  const { currentUser } = useUser();
 
   const [status, setStatus] = useState(null);
   const [purchase, setPurchase] = useState(null);
   const [item, setItem] = useState(null); // Changed from 'product' to 'item'
   const [itemType, setItemType] = useState('product'); // 'product' or 'game'
-  const [currentUser, setCurrentUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isFree, setIsFree] = useState(false);
@@ -166,13 +168,7 @@ export default function PaymentResult() {
       setItemType(type === 'game' ? 'game' : 'product');
       setIsFree(freeParam === 'true');
 
-      // Get current user
-      try {
-        const user = await User.me();
-        setCurrentUser(user);
-      } catch (e) {
-        console.log('User not authenticated');
-      }
+      // Current user is already available from global state via useUser()
 
       if (finalOrderNumber) {
         // Find purchase by transaction_uid or purchase ID
@@ -229,8 +225,8 @@ export default function PaymentResult() {
                 // Find the corresponding Product ID
                 await findProductId(entityType, entityId);
               } catch (itemError) {
-                console.error('❌ Error loading item:', itemError);
-                setMessage({ type: 'error', text: 'לא ניתן לטעון את פרטי הפריט שנרכש' });
+                cerror('❌ Error loading item:', itemError);
+                setError('לא ניתן לטעון את פרטי הפריט שנרכש');
               }
             } else if (purchaseData.product_id) {
               // Legacy structure - try different entities
@@ -249,7 +245,7 @@ export default function PaymentResult() {
                 }
                 setItem(itemData);
               } catch (itemError) {
-                console.error('❌ Error loading item:', itemError);
+                cerror('❌ Error loading item:', itemError);
                 // Try Game as fallback for legacy data
                 try {
                   console.log('🔄 Fallback: trying Game for legacy product ID');
@@ -258,23 +254,23 @@ export default function PaymentResult() {
                   setItemType('game');
                   console.log('✅ Fallback game loaded:', fallbackItem.title);
                 } catch (fallbackError) {
-                  console.error('❌ Fallback also failed:', fallbackError);
+                  cerror('❌ Fallback also failed:', fallbackError);
                   setError('לא ניתן לטעון את פרטי המוצר');
                 }
               }
             }
           } else {
-            console.error('❌ Purchase not found for order:', finalOrderNumber);
+            cerror('❌ Purchase not found for order:', finalOrderNumber);
             setError('רכישה לא נמצאה');
           }
         } catch (purchaseError) {
-          console.error('❌ Error finding purchase:', purchaseError);
+          cerror('❌ Error finding purchase:', purchaseError);
           setError('שגיאה בחיפוש הרכישה');
         }
       }
 
     } catch (error) {
-      console.error('Error loading payment result:', error);
+      cerror('Error loading payment result:', error);
       setError('שגיאה בטעינת תוצאות התשלום');
     }
     

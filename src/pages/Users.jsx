@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, SubscriptionPlan, SubscriptionHistory, PendingSubscription, Purchase } from '@/services/entities';
+import { useUser } from '@/contexts/UserContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -431,8 +432,8 @@ function SubscriptionManagementModal({
 
 export default function UsersPage() {
 	const navigate = useNavigate();
+	const { currentUser, isLoading: userLoading } = useUser();
 
-	const [currentUser, setCurrentUser] = useState(null);
 	const [users, setUsers] = useState([]);
 	const [subscriptionPlans, setSubscriptionPlans] = useState([]);
 	const [isLoading, setLoading] = useState(true);
@@ -458,11 +459,10 @@ export default function UsersPage() {
 	const fetchAdminDashboardData = useCallback(async () => {
 		setLoading(true);
 		try {
-			const user = await User.me();
-			setCurrentUser(user);
-			setIsAdmin(user.role === 'admin' || user.role === 'sysadmin');
+			// User data is now available from global UserContext
+			setIsAdmin(currentUser.role === 'admin' || currentUser.role === 'sysadmin');
 
-			if (user.role === 'admin' || user.role === 'sysadmin') {
+			if (currentUser.role === 'admin' || currentUser.role === 'sysadmin') {
 				const [allUsersData, plansData] = await Promise.all([
 					User.filter({}, { order: [['created_at', 'DESC']] }),
 					SubscriptionPlan.filter({}, { order: [['sort_order', 'ASC']] }),
@@ -477,11 +477,13 @@ export default function UsersPage() {
 			setMessage({ type: 'error', text: 'שגיאה בטעינת נתונים' });
 		}
 		setLoading(false);
-	}, []);
+	}, [currentUser]);
 
 	useEffect(() => {
-		fetchAdminDashboardData();
-	}, [fetchAdminDashboardData]);
+		if (!userLoading && currentUser) {
+			fetchAdminDashboardData();
+		}
+	}, [fetchAdminDashboardData, userLoading, currentUser]);
 
 	useEffect(() => {
 		if (!searchTerm) {
@@ -847,7 +849,7 @@ export default function UsersPage() {
 		}
 	};
 
-	if (isLoading) {
+	if (userLoading || isLoading) {
 		return (
 			<div className='flex items-center justify-center min-h-screen bg-gray-50 p-4'>
 				<LudoraLoadingSpinner

@@ -1,7 +1,30 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Purchase, Workshop, Course, File, Tool } from "@/services/entities";
 import { getProductTypeName } from "@/config/productTypes";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+// Global cache for purchases data per user (shared with useProductCatalog)
+let purchasesCache = new Map(); // Map: userId -> { purchases, timestamp }
+const PURCHASES_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+// Global cache for entity data to prevent duplicate API calls
+let entitiesCache = new Map(); // Map: "type:id" -> { entity, timestamp }
+const ENTITIES_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+// Helper function to clear purchases cache
+export const clearPurchaseHistoryCache = (userId = null) => {
+  if (userId) {
+    purchasesCache.delete(userId);
+  } else {
+    purchasesCache.clear();
+  }
+};
+
+// Helper function to clear entities cache
+export const clearEntitiesCache = () => {
+  entitiesCache.clear();
+};
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -61,9 +84,21 @@ const PurchaseHistory = ({
   const finalHandleWorkshopAccess = onWorkshopAccess || defaultHandleWorkshopAccess;
   const finalHandleViewDetails = onViewDetails || defaultHandleViewDetails;
 
-  // Helper function to load entity by type and id
+  // Helper function to load entity by type and id with caching
   const loadEntityById = async (type, id) => {
     try {
+      const cacheKey = `${type}:${id}`;
+      const now = Date.now();
+      const cachedEntry = entitiesCache.get(cacheKey);
+      const isCacheValid = cachedEntry && (now - cachedEntry.timestamp < ENTITIES_CACHE_DURATION);
+
+      if (isCacheValid) {
+        clog('✅ Using cached entity data:', cacheKey);
+        return cachedEntry.entity;
+      }
+
+      clog('🔄 Loading entity from API (cache miss/expired):', cacheKey);
+
       let entity;
       switch (type) {
         case 'workshop':
@@ -85,10 +120,19 @@ const PurchaseHistory = ({
         default:
           entity = null;
       }
+
       // Add entity type for UI rendering
       if (entity) {
         entity.entity_type = type;
+
+        // Cache the entity
+        entitiesCache.set(cacheKey, {
+          entity,
+          timestamp: now
+        });
+        clog('✅ Entity data cached:', cacheKey);
       }
+
       return entity;
     } catch (error) {
       cerror(`Error loading ${type} ${id}:`, error);
@@ -103,8 +147,40 @@ const PurchaseHistory = ({
     try {
       clog('[PurchaseHistory] Loading purchases for user:', user.id);
 
-      // Load purchases using buyer_user_id
-      const userPurchases = await Purchase.filter({ buyer_user_id: user.id }, { order: [['created_at', 'DESC']] });
+      // Check if we have cached purchases data for this user
+      const userId = user.id;
+      const now = Date.now();
+      const userCacheEntry = purchasesCache.get(userId);
+      const isCacheValid = userCacheEntry && (now - userCacheEntry.timestamp < PURCHASES_CACHE_DURATION);
+
+      let userPurchases;
+
+      clog('🔍 PurchaseHistory cache check:', {
+        userId,
+        hasCacheEntry: !!userCacheEntry,
+        cacheAge: userCacheEntry ? (now - userCacheEntry.timestamp) / 1000 : 'N/A',
+        cacheDurationSeconds: PURCHASES_CACHE_DURATION / 1000,
+        isCacheValid,
+        totalCacheEntries: purchasesCache.size
+      });
+
+      if (isCacheValid) {
+        clog('✅ Using cached purchases data for PurchaseHistory user', userId);
+        userPurchases = userCacheEntry.purchases;
+      } else {
+        const reason = !userCacheEntry ? 'no cache entry' : 'cache expired';
+        clog('🔄 Loading purchases data for PurchaseHistory user (cache miss/expired):', userId, `(${reason})`);
+
+        // Load purchases using buyer_user_id with ordered results
+        userPurchases = await Purchase.filter({ buyer_user_id: user.id }, { order: [['created_at', 'DESC']] });
+
+        // Update cache
+        purchasesCache.set(userId, {
+          purchases: userPurchases,
+          timestamp: now
+        });
+        clog('✅ PurchaseHistory purchases data cached for user', userId);
+      }
       setPurchases(userPurchases);
 
       // Load entities for the purchases (handle both new polymorphic and legacy structures)

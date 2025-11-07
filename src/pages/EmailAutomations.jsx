@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from "react";
 import { EmailTemplate, User } from "@/services/entities";
+import { useUser } from "@/contexts/UserContext";
 import { getProductTypeName } from "@/config/productTypes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,8 +33,8 @@ import AdvancedEmailEditor from "../components/email/AdvancedEmailEditor";
 import { Link } from "react-router-dom"; // Import Link for navigation
 
 export default function EmailAutomations() {
+  const { currentUser, isLoading: userLoading } = useUser();
   const [templates, setTemplates] = useState([]);
-  const [currentUser, setCurrentUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -70,17 +71,17 @@ export default function EmailAutomations() {
   ];
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (!userLoading && currentUser) {
+      loadData();
+    }
+  }, [userLoading, currentUser]);
 
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const user = await User.me();
-      setCurrentUser(user);
-      setIsAdmin(user.role === 'admin');
+      setIsAdmin(currentUser.role === 'admin');
 
-      if (user.role === 'admin') {
+      if (currentUser.role === 'admin') {
         const templatesData = await EmailTemplate.list('-created_date');
         setTemplates(templatesData);
       }
@@ -179,7 +180,7 @@ export default function EmailAutomations() {
     resetForm();
   };
 
-  if (isLoading) {
+  if (userLoading || isLoading) {
     return (
       <div className="p-4 bg-gray-50 min-h-screen flex items-center justify-center">
         <div className="text-center">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,8 +17,7 @@ import {
   Crown,
   BarChart3 // Added for the new section
 } from "lucide-react";
-import { loadSettingsWithRetry } from "@/lib/appUser";
-import { Settings, User } from "@/services/entities";
+import { useUser } from "@/contexts/UserContext";
 import logo from "../assets/images/logo.png";
 import { getProductTypeName, NAV_ITEMS, PRODUCT_TYPES } from '@/config/productTypes';
 
@@ -26,7 +25,7 @@ export default function Home() {
 
   // Dynamic texts using centralized config
   const homeTexts = {
-    title: "בית מתקדם לחינוך ולמידה",
+    title: "בית ללמידה אחרת",
     subtitle: `מערכת תוכן לאנשי הוראה עם ${getProductTypeName('game', 'plural')} דיגיטליים ולמידה מותאמת לתוכנית הלימודים, ${getProductTypeName('course', 'plural')} ו${getProductTypeName('workshop', 'plural')} למורים`,
     viewWorkshops: NAV_ITEMS.workshops.text,
     viewCourses: NAV_ITEMS.courses.text, 
@@ -56,58 +55,9 @@ export default function Home() {
     creatorPortal: "כניסה לפורטל יוצרים"
   };
 
-  const [settings, setSettings] = useState(null);
-  const [currentUser, setCurrentUser] = useState(null);
+  // Use global state from UserContext instead of direct API calls
+  const { currentUser, settings, isLoading } = useUser();
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
-
-  // Add retry logic for settings loading
-  // Use shared loadSettingsWithRetry from lib/appUser
-
-  const loadSettings = useCallback(async () => {
-    try {
-      const settingsData = await loadSettingsWithRetry(Settings);
-      if (settingsData.length > 0) {
-        setSettings(settingsData[0]);
-      }
-    } catch (error) {
-      console.error('Error loading settings:', error);
-      // Continue without settings if they fail to load
-    }
-  }, []);
-
-  const loadCurrentUser = useCallback(async () => {
-    try {
-      const impersonatingUserId = localStorage.getItem('impersonating_user_id');
-      const impersonatingAdminId = localStorage.getItem('impersonating_admin_id');
-
-      let user;
-      if (impersonatingUserId && impersonatingAdminId) {
-        // Use filter instead of get to avoid the error
-        const impersonatedUsers = await User.filter({ id: impersonatingUserId });
-        if (impersonatedUsers && impersonatedUsers.length > 0) {
-          user = impersonatedUsers[0];
-          user._isImpersonated = true;
-          user._originalAdminId = impersonatingAdminId;
-        } else {
-          // If impersonated user not found, clear impersonation and use normal auth
-          localStorage.removeItem('impersonating_user_id');
-          localStorage.removeItem('impersonating_admin_id');
-          user = await User.getCurrentUser();
-        }
-      } else {
-        user = await User.getCurrentUser();
-      }
-
-      setCurrentUser(user);
-    } catch (error) {
-      setCurrentUser(null);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadSettings();
-    loadCurrentUser();
-  }, [loadSettings, loadCurrentUser]);
 
   // Helper function to check visibility for Home page items
   const shouldShowItemByVisibility = (visibility) => {
@@ -221,6 +171,18 @@ export default function Home() {
     
     return true;
   };
+
+  // Show loading state while global data is being fetched
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 text-lg">טוען את המערכת...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white">

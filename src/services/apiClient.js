@@ -237,7 +237,7 @@ export async function apiUploadWithProgress(endpoint, formData, onProgress = nul
           const errorData = JSON.parse(xhr.responseText);
           const errorMessage = errorData.error || errorData.message || `Upload failed with status: ${xhr.status}`;
           reject(new ApiError(errorMessage, xhr.status));
-        } catch (e) {
+        } catch {
           reject(new ApiError(`Upload failed with status: ${xhr.status}`, xhr.status));
         }
       }

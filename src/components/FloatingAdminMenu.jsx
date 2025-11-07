@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { Settings } from "@/services/entities";
-import { PRODUCT_TYPES, getProductTypeName } from "@/config/productTypes";
+import { useUser } from "@/contexts/UserContext";
+import { getProductTypeName } from "@/config/productTypes";
 import {
   Crown,
   Settings as SettingsIcon, // Renamed to avoid conflict with Settings entity
@@ -35,10 +36,10 @@ import {
 import { showSuccess, showError } from '@/utils/messaging';
 
 export default function FloatingAdminMenu({ currentUser }) {
+  const { settings } = useUser();
   const [isOpen, setIsOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isImpersonating, setIsImpersonating] = useState(false);
-  const [settings, setSettings] = useState(null); // State for global settings, including maintenance mode
   const [isUpdatingMaintenance, setIsUpdatingMaintenance] = useState(false); // State for loading indicator
 
   // Draggable functionality states
@@ -47,30 +48,13 @@ export default function FloatingAdminMenu({ currentUser }) {
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [isDragModeEnabled, setIsDragModeEnabled] = useState(false); // New drag mode state
 
-  // Load settings for maintenance mode
-  const loadSettings = useCallback(async () => {
-    try {
-      const settingsData = await Settings.find();
-      if (settingsData.length > 0) {
-        setSettings(settingsData[0]);
-      }
-    } catch (error) {
-      console.error('Error loading settings for admin menu:', error);
-    }
-  }, []);
-
   useEffect(() => {
     if (currentUser) {
       const hasAdminPrivileges = (currentUser.role === 'admin' || currentUser.role === 'sysadmin') && !currentUser._isImpersonated;
       setIsAdmin(hasAdminPrivileges);
       setIsImpersonating(currentUser._isImpersonated);
-      
-      // Load settings for maintenance mode if user is admin
-      if (hasAdminPrivileges) {
-        loadSettings();
-      }
     }
-  }, [currentUser, loadSettings]);
+  }, [currentUser]);
 
   // Load saved position from localStorage
   useEffect(() => {

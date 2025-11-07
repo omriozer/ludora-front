@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { User } from "@/services/entities";
+import { useUser } from "@/contexts/UserContext";
+import { cerror } from "@/lib/utils";
 import { testPayplusConnection } from "@/services/functions";
 import {
   Wrench,
@@ -23,9 +24,8 @@ import {
 
 export default function DevelopmentTools() {
   const navigate = useNavigate();
+  const { currentUser, isLoading: userLoading } = useUser();
 
-  const [currentUser, setCurrentUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [testResults, setTestResults] = useState({
     test: null,
     production: null
@@ -40,24 +40,13 @@ export default function DevelopmentTools() {
   const [message, setMessage] = useState(null); // For general success/error messages
 
   useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    try {
+    if (!userLoading && currentUser) {
       // Check if user is admin
-      const user = await User.me();
-      if (user.role !== 'admin') {
+      if (currentUser.role !== 'admin') {
         navigate('/');
-        return;
       }
-      setCurrentUser(user);
-    } catch (error) {
-      console.error('Error loading data:', error);
-      setMessage({ type: 'error', text: 'שגיאה בטעינת נתוני המשתמש.' });
     }
-    setIsLoading(false);
-  };
+  }, [userLoading, currentUser, navigate]);
 
   const testPaymentConnection = async (environment) => {
     setTesting(prev => ({ ...prev, [environment]: true }));
@@ -73,7 +62,7 @@ export default function DevelopmentTools() {
         setMessage({ type: 'error', text: `בדיקת חיבור כללי (${environment}) נכשלה.` });
       }
     } catch (error) {
-      console.error(`Error testing ${environment}:`, error);
+      cerror(`Error testing ${environment}:`, error);
       setTestResults(prev => ({
         ...prev,
         [environment]: {
@@ -97,8 +86,6 @@ export default function DevelopmentTools() {
     try {
       // Use the already imported testPayplusConnection function
       const result = await testPayplusConnection({ environment });
-
-      console.log('PayPlus test result:', result);
       setPayplusTestResults(result.data || result); // Assuming the function returns { data: { ... } } or { ... } directly
 
       if (result.data?.success || result.success) { // Check both result.data.success and result.success
@@ -108,7 +95,7 @@ export default function DevelopmentTools() {
       }
 
     } catch (error) {
-      console.error('Error testing PayPlus:', error);
+      cerror('Error testing PayPlus:', error);
       setPayplusTestResults({
         success: false,
         error: 'שגיאה בקריאה לפונקציה',
@@ -138,7 +125,7 @@ export default function DevelopmentTools() {
     );
   };
 
-  if (isLoading) {
+  if (userLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">

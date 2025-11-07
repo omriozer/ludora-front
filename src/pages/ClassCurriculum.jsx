@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useUser } from "@/contexts/UserContext";
-import { Settings, Curriculum as CurriculumAPI, CurriculumItem, Classroom, apiRequest } from "@/services/apiClient";
+import { Curriculum as CurriculumAPI, CurriculumItem, Classroom, apiRequest } from "@/services/apiClient";
 import { toast } from "@/components/ui/use-toast";
 import { clog, cerror } from "@/lib/utils";
 import LudoraLoadingSpinner from "@/components/ui/LudoraLoadingSpinner";
@@ -29,12 +29,11 @@ import {
 } from "lucide-react";
 
 export default function ClassCurriculum() {
-  const { currentUser } = useUser();
+  const { currentUser, settings } = useUser();
   const { classId } = useParams();
   const navigate = useNavigate();
 
   // State management
-  const [settings, setSettings] = useState(null);
   const [classroom, setClassroom] = useState(null);
   const [classCurriculum, setClassCurriculum] = useState(null);
   const [curriculumItems, setCurriculumItems] = useState([]);
@@ -65,15 +64,7 @@ export default function ClassCurriculum() {
   const loadInitialData = async () => {
     setLoading(true);
     try {
-      const [settingsData, classroomData] = await Promise.all([
-        Settings.find(),
-        Classroom.findById(classId)
-      ]);
-
-      if (settingsData.length > 0) {
-        setSettings(settingsData[0]);
-      }
-
+      const classroomData = await Classroom.findById(classId);
       setClassroom(classroomData);
 
       // Verify user has access to this classroom

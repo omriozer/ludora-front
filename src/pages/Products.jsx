@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { useLocation, useSearchParams, useNavigate } from "react-router-dom";
-import { Workshop, Course, File, Tool, Product, Category, User, Settings, Game, LessonPlan } from "@/services/entities";
+import { useState, useEffect, useCallback } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { Workshop, Course, File, Tool, Product, Category, Game, LessonPlan } from "@/services/entities";
+import { useUser } from "@/contexts/UserContext";
 import { deleteFile } from "@/services/apiClient";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -13,7 +13,6 @@ import {
   Edit,
   Trash2,
   FileText,
-  BookOpen,
   Play,
   Package,
   User as UserIcon,
@@ -22,9 +21,7 @@ import {
   Image,
   Video,
   AlignLeft,
-  Gamepad2,
-  RefreshCw,
-  AlertCircle
+  RefreshCw
 } from "lucide-react";
 import { getProductTypeName, PRODUCT_TYPES } from '@/config/productTypes';
 import { formatPriceSimple } from '@/lib/utils';
@@ -33,19 +30,17 @@ import { getProductTypeIconByType } from '@/lib/layoutUtils';
 import { toast } from '@/components/ui/use-toast';
 
 export default function Products() {
-  const location = useLocation();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { currentUser, settings, isLoading: userLoading } = useUser();
 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [currentUser, setCurrentUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isContentCreator, setIsContentCreator] = useState(false);
   const [showAllContent, setShowAllContent] = useState(true);
   const [visibleProductTypes, setVisibleProductTypes] = useState([]);
-  const [globalSettings, setGlobalSettings] = useState({});
 
   // Access context and permissions
   const [isContentCreatorMode, setIsContentCreatorMode] = useState(false);
@@ -65,12 +60,9 @@ export default function Products() {
   const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const user = await User.me();
-      setCurrentUser(user);
-
       // Check access permissions
-      const hasAdminAccess = user.role === 'admin' || user.role === 'sysadmin';
-      const hasContentCreatorAccess = user.content_creator_agreement_sign_date;
+      const hasAdminAccess = currentUser.role === 'admin' || currentUser.role === 'sysadmin';
+      const hasContentCreatorAccess = currentUser.content_creator_agreement_sign_date;
 
       setIsAdmin(hasAdminAccess);
       setIsContentCreator(hasContentCreatorAccess);
@@ -105,25 +97,16 @@ export default function Products() {
       const isInContentCreatorMode = contextParam === 'creator' && hasContentCreatorAccess;
       setIsContentCreatorMode(isInContentCreatorMode);
 
-      // Load settings and content creator permissions
-      try {
-        const settingsData = await Settings.find();
-        const settings = settingsData.length > 0 ? settingsData[0] : {};
-        setGlobalSettings(settings);
-
-        if (isInContentCreatorMode) {
-          setContentCreatorPermissions({
-            workshops: settings.allow_content_creator_workshops !== false,
-            courses: settings.allow_content_creator_courses !== false,
-            files: settings.allow_content_creator_files !== false,
-            tools: settings.allow_content_creator_tools !== false,
-            games: settings.allow_content_creator_games !== false,
-            lesson_plans: settings.allow_content_creator_lesson_plans !== false
-          });
-        }
-      } catch (error) {
-        console.warn('Failed to load settings:', error);
-        // Use defaults if settings can't be loaded
+      // Load content creator permissions from global settings
+      if (isInContentCreatorMode) {
+        setContentCreatorPermissions({
+          workshops: settings?.allow_content_creator_workshops !== false,
+          courses: settings?.allow_content_creator_courses !== false,
+          files: settings?.allow_content_creator_files !== false,
+          tools: settings?.allow_content_creator_tools !== false,
+          games: settings?.allow_content_creator_games !== false,
+          lesson_plans: settings?.allow_content_creator_lesson_plans !== false
+        });
       }
 
       if (hasAdminAccess || hasContentCreatorAccess) {
@@ -131,10 +114,10 @@ export default function Products() {
         let productsQuery = {};
         if (!hasAdminAccess && hasContentCreatorAccess) {
           // Content creators see only their own content
-          productsQuery = { creator_user_id: user.id };
+          productsQuery = { creator_user_id: currentUser.id };
         } else if (hasAdminAccess && !showAllContent) {
           // Admins/sysadmins can choose to see only their own content
-          productsQuery = { creator_user_id: user.id };
+          productsQuery = { creator_user_id: currentUser.id };
         }
         // If hasAdminAccess && showAllContent, load all products (empty query)
 
@@ -162,7 +145,7 @@ export default function Products() {
       console.error("Error loading data:", error);
     }
     setIsLoading(false);
-  }, [showAllContent, selectedTab]);
+  }, [currentUser, settings, showAllContent, selectedTab]);
 
   // Helper function to check if a product type can be created
   const canCreateProductType = useCallback((productType) => {
@@ -194,8 +177,10 @@ export default function Products() {
   }, [isContentCreatorMode, contentCreatorPermissions]);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (currentUser && !userLoading) {
+      loadData();
+    }
+  }, [currentUser, userLoading, loadData]);
 
   // Separate useEffect to handle edit parameter after products are loaded
   useEffect(() => {
@@ -386,7 +371,7 @@ export default function Products() {
   };
 
   const getProductTypeIcon = (type) => {
-    return getProductTypeIconByType(globalSettings, type);
+    return getProductTypeIconByType(settings, type);
   };
 
   const getProductTypeBadgeColor = (type) => {
@@ -442,7 +427,7 @@ export default function Products() {
 
   // Handle unauthorized access with toast and redirect
   useEffect(() => {
-    if (!isLoading && !isAdmin && !isContentCreator) {
+    if (!userLoading && !isLoading && !isAdmin && !isContentCreator) {
       toast({
         title: "אין הרשאות גישה",
         description: "רק מנהלים ויוצרי תוכן יכולים לגשת לדף ניהול המוצרים",
@@ -451,7 +436,7 @@ export default function Products() {
       navigate('/');
       return;
     }
-  }, [isLoading, isAdmin, isContentCreator, navigate, toast]);
+  }, [userLoading, isLoading, isAdmin, isContentCreator, navigate, toast]);
 
   if (!isAdmin && !isContentCreator) {
     return null; // Component will redirect before rendering

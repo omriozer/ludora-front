@@ -1,36 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { SupportMessage, User } from '@/services/entities';
+import { SupportMessage } from '@/services/entities';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Trash2, Inbox, AlertCircle, Mail, Phone, Calendar, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
+import { useUser } from '@/contexts/UserContext';
+import { cerror } from '@/lib/utils';
 
 export default function SupportMessages() {
+  const { currentUser, isLoading: userLoading } = useUser();
   const [messages, setMessages] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [feedback, setFeedback] = useState(null);
 
+  const isAdmin = currentUser?.role === 'admin';
+
   useEffect(() => {
-    const checkAdminAndLoad = async () => {
-      try {
-        const user = await User.me();
-        if (user.role === 'admin') {
-          setIsAdmin(true);
-          loadMessages();
-        } else {
-          setIsAdmin(false);
-          setIsLoading(false);
-        }
-      } catch (error) {
-        setIsAdmin(false);
-        setIsLoading(false);
-      }
-    };
-    checkAdminAndLoad();
-  }, []);
+    if (!userLoading && isAdmin) {
+      loadMessages();
+    } else if (!userLoading && !isAdmin) {
+      setIsLoading(false);
+    }
+  }, [userLoading, isAdmin]);
 
   const loadMessages = async () => {
     setIsLoading(true);
@@ -38,7 +31,7 @@ export default function SupportMessages() {
       const data = await SupportMessage.list('-created_date');
       setMessages(data);
     } catch (error) {
-      console.error("Failed to load messages:", error);
+      cerror("Failed to load messages:", error);
     }
     setIsLoading(false);
   };
@@ -56,7 +49,7 @@ export default function SupportMessages() {
     setTimeout(() => setFeedback(null), 3000);
   };
 
-  if (isLoading) {
+  if (userLoading || isLoading) {
     return <div className="p-8">טוען הודעות...</div>;
   }
 

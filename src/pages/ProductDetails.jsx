@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Purchase, Settings } from "@/services/entities";
+import { Purchase } from "@/services/entities";
+import { useUser } from "@/contexts/UserContext";
 import { apiDownload } from "@/services/apiClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,7 @@ import GameDetailsSection from "@/components/game/details/GameDetailsSection";
 
 export default function ProductDetails() {
   const navigate = useNavigate();
+  const { currentUser, settings, isLoading: userLoading } = useUser();
 
   const [item, setItem] = useState(null); // Renamed from product to item for generic use
   const [itemType, setItemType] = useState(null); // Track what type of entity we're viewing
@@ -57,8 +59,6 @@ export default function ProductDetails() {
   const [error, setError] = useState(null);
   const [detailsTexts, setDetailsTexts] = useState({});
   const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null);
-  const [settings, setSettings] = useState({});
 
   useEffect(() => {
     loadTexts();
@@ -192,22 +192,18 @@ export default function ProductDetails() {
 
       setItemType(entityType);
 
-      let user = null;
       let purchases = [];
       try {
-        user = await User.me();
-        setCurrentUser(user);
-        
-        if (user) {
+        if (currentUser) {
           // Try new schema first, then fallback to legacy
           purchases = await Purchase.filter({
-            buyer_user_id: user.id
+            buyer_user_id: currentUser.id
           });
 
           // If no purchases found with new schema, try legacy email-based lookup
           if (purchases.length === 0) {
             purchases = await Purchase.filter({
-              buyer_user_id: user.id,
+              buyer_user_id: currentUser.id,
               payment_status: 'paid' // Legacy status check
             });
           }
@@ -226,10 +222,7 @@ export default function ProductDetails() {
       // The API will only calculate game details if the product is actually a game
       const productDetailsUrl = `/entities/product/${entityId}/details?includeGameDetails=true`;
 
-      const [productDetails, settingsData] = await Promise.all([
-        apiRequest(productDetailsUrl),
-        Settings.find()
-      ]);
+      const productDetails = await apiRequest(productDetailsUrl);
 
       if (!productDetails) {
         setError("מוצר לא נמצא");
@@ -238,7 +231,6 @@ export default function ProductDetails() {
       }
 
       setItem(productDetails);
-      setSettings(settingsData.length > 0 ? settingsData[0] : {});
 
 
       // Use embedded purchase data from API response
@@ -273,8 +265,10 @@ export default function ProductDetails() {
   }, []);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (currentUser && !userLoading) {
+      loadData();
+    }
+  }, [currentUser, userLoading, loadData]);
 
   // Listen for cart changes to refresh purchase data
   useEffect(() => {

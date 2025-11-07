@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Workshop, Category, Settings } from "@/services/entities";
+import { useUser } from "@/contexts/UserContext";
 import { apiUploadWithProgress } from "@/services/apiClient";
 import { getProductTypeName } from "@/config/productTypes";
 import { hasVideo, getVideoFilename, getEntityVideoUrl } from "@/utils/videoUtils";
@@ -24,15 +25,15 @@ import {
   Play
 } from "lucide-react";
 
-export default function WorkshopModal({ 
+export default function WorkshopModal({
   isOpen,
   onClose,
   editingWorkshop = null,
   onSave,
   currentUser
 }) {
+  const { settings: globalSettings } = useUser();
   const [categories, setCategories] = useState([]);
-  const [globalSettings, setGlobalSettings] = useState({});
   const [message, setMessage] = useState(null);
   const [uploadStates, setUploadStates] = useState({});
   const [uploadProgress, setUploadProgress] = useState({});
@@ -90,23 +91,14 @@ export default function WorkshopModal({
 
   const loadInitialData = async () => {
     try {
-      const [categoriesData, settingsData] = await Promise.all([
-        Category.find({}),
-        Settings.find()
-      ]);
-      
+      const categoriesData = await Category.find({});
       setCategories(categoriesData);
-      
-      if (settingsData.length > 0) {
-        const settings = settingsData[0];
-        setGlobalSettings(settings);
-        
-        if (!editingWorkshop) {
-          setFormData(prev => ({
-            ...prev,
-            access_days: settings.workshop_default_lifetime_access ? null : (settings.workshop_default_access_days || 30)
-          }));
-        }
+
+      if (globalSettings && !editingWorkshop) {
+        setFormData(prev => ({
+          ...prev,
+          access_days: globalSettings.workshop_default_lifetime_access ? null : (globalSettings.workshop_default_access_days || 30)
+        }));
       }
     } catch (error) {
       console.error("Error loading initial data:", error);

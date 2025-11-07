@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Settings, User } from "@/services/entities";
+import { Settings } from "@/services/entities";
+import { useUser } from "@/contexts/UserContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -48,8 +49,7 @@ const ICON_OPTIONS = [
 ];
 
 export default function FeatureControl() {
-  const [currentUser, setCurrentUser] = useState(null);
-  const [settings, setSettings] = useState(null);
+  const { currentUser, settings, isLoading: userLoading } = useUser();
   const [navItems, setNavItems] = useState([]);
   const [message, setMessage] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -63,18 +63,8 @@ export default function FeatureControl() {
   const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [userData, settingsData] = await Promise.all([
-        User.me(),
-        Settings.find()
-      ]);
-
-      setCurrentUser(userData);
-
-      let currentSettings = {};
-      if (settingsData && settingsData.length > 0) {
-        currentSettings = settingsData[0];
-        setSettings(currentSettings);
-      }
+      // Use global settings
+      const currentSettings = settings || {};
 
       // Initialize navigation items
       const order = currentSettings.nav_order || NAV_ITEM_KEYS;
@@ -98,11 +88,13 @@ export default function FeatureControl() {
       showMessage('error', 'שגיאה בטעינת הנתונים');
     }
     setIsLoading(false);
-  }, []);
+  }, [settings]);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (currentUser && !userLoading) {
+      loadData();
+    }
+  }, [currentUser, userLoading, loadData]);
 
   const saveSettings = async () => {
     setIsSaving(true);
@@ -118,16 +110,14 @@ export default function FeatureControl() {
         newSettings[`nav_${item.key}_enabled`] = item.enabled;
       });
 
-      let savedSettings;
       if (settings && settings.id) {
-        savedSettings = await Settings.update(settings.id, newSettings);
+        await Settings.update(settings.id, newSettings);
       } else {
-        savedSettings = await Settings.create(newSettings);
+        await Settings.create(newSettings);
       }
 
-      setSettings(savedSettings);
       showMessage('success', 'ההגדרות נשמרו בהצלחה');
-      
+
       setTimeout(() => {
         loadData();
       }, 500);
@@ -230,7 +220,7 @@ export default function FeatureControl() {
     );
   }
 
-  if (isLoading) {
+  if (userLoading || isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center p-4" dir="rtl">
         <div className="text-center max-w-sm mx-auto">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Purchase, User, Workshop, Course, File, Tool, Game } from "@/services/entities";
+import { Purchase, Workshop, Course, File, Tool, Game } from "@/services/entities";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -24,17 +24,20 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
+import { useUser } from "@/contexts/UserContext";
+import { cerror } from "@/lib/utils";
 
 const ITEMS_PER_PAGE = 20;
 
 export default function Purchases() {
+  const { currentUser, isLoading: userLoading } = useUser();
   const [purchases, setPurchases] = useState([]);
   const [products, setProducts] = useState([]);
   const [filteredPurchases, setFilteredPurchases] = useState([]);
-  const [currentUser, setCurrentUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState(null);
+
+  const isAdmin = currentUser?.role === 'admin';
   
   // Filters and search
   const [searchTerm, setSearchTerm] = useState("");
@@ -50,8 +53,10 @@ export default function Purchases() {
   const currentPurchases = filteredPurchases.slice(startIndex, endIndex);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (!userLoading && currentUser && isAdmin) {
+      loadData();
+    }
+  }, [userLoading, currentUser, isAdmin]);
 
   useEffect(() => {
     filterAndSortPurchases();
@@ -60,11 +65,7 @@ export default function Purchases() {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const user = await User.me();
-      setCurrentUser(user);
-      setIsAdmin(user.role === 'admin');
-
-      if (user.role === 'admin') {
+      if (isAdmin) {
         const [purchasesData, workshopsData, coursesData, filesData, toolsData, gamesData] = await Promise.all([
           Purchase.list("-created_date", { includes: ['buyer'] }), // Include buyer user info
           Workshop.find({}, '-created_date'),
@@ -86,7 +87,7 @@ export default function Purchases() {
         setProducts(allEntities);
       }
     } catch (error) {
-      console.error("Error loading data:", error);
+      cerror("Error loading data:", error);
       setMessage({ type: 'error', text: 'שגיאה בטעינת הנתונים' });
     }
     setIsLoading(false);
@@ -158,7 +159,7 @@ export default function Purchases() {
     return <Badge className={config.className}>{config.label}</Badge>;
   };
 
-  if (isLoading) {
+  if (userLoading || isLoading) {
     return (
       <div className="p-4 bg-gray-50 min-h-screen flex items-center justify-center">
         <div className="text-center">

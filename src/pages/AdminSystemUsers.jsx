@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { User } from "@/services/entities";
+import { useUser } from "@/contexts/UserContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,24 +13,26 @@ import { Users, Search, Crown, User as UserIcon, Mail, Calendar, AlertTriangle, 
 
 export default function AdminSystemUsers() {
   const navigate = useNavigate();
-  const [currentUser, setCurrentUser] = useState(null);
+  const { currentUser, isLoading: userLoading } = useUser();
+
   const [users, setUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [message, setMessage] = useState(null);
 
   useEffect(() => {
-    checkAdminAccess();
-  }, []);
+    if (!userLoading && currentUser) {
+      checkAdminAccess();
+    }
+  }, [userLoading, currentUser]);
 
   const checkAdminAccess = async () => {
     try {
-      const user = await User.me();
-      if (user.role !== 'admin') {
+      // User data is now available from global UserContext
+      if (currentUser.role !== 'admin') {
         navigate('/');
         return;
       }
-      setCurrentUser(user);
       await loadUsers();
     } catch (error) {
       navigate('/');
@@ -88,7 +91,7 @@ export default function AdminSystemUsers() {
     );
   });
 
-  if (isLoading) {
+  if (userLoading || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">

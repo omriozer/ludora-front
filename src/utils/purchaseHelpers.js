@@ -2,7 +2,7 @@
 // Reusable functions for purchase creation and management
 
 import { apiRequest } from '@/services/apiClient';
-import { showInfo, showSuccess, showError } from '@/utils/messaging';
+import { showSuccess, showError } from '@/utils/messaging';
 import { clog, cerror } from '@/lib/utils';
 import { Product } from '@/services/entities';
 
@@ -307,7 +307,7 @@ export async function clearPendingPurchases(userId) {
  * @param {string} redirectTo - Where to redirect after login (unused but kept for compatibility)
  * @returns {boolean} False (indicating user is not authenticated)
  */
-export function requireAuthentication(navigate, redirectTo = '/checkout') {
+export function requireAuthentication(navigate, redirectTo = '/checkout') { // eslint-disable-line no-unused-vars
   if (!isAuthenticated()) {
     showError(
       "נדרשת התחברות",
@@ -324,15 +324,14 @@ export function requireAuthentication(navigate, redirectTo = '/checkout') {
  * @param {function} setCallbackAction - Function to set action to perform after login
  * @returns {boolean} False (indicating user is not authenticated)
  */
-export function requireAuthenticationWithModal(showLoginModal, setCallbackAction = null) {
+export function requireAuthenticationWithModal(showLoginModal, setCallbackAction = null) { // eslint-disable-line no-unused-vars
   if (!isAuthenticated()) {
     if (typeof showLoginModal === 'function') {
       showLoginModal();
       return false;
     }
 
-    // Fallback to console warning if modal function not available
-    console.warn('Login modal function not available');
+    // Fallback if modal function not available
     return false;
   }
   return true;

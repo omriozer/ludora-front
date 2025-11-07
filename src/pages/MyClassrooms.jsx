@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Settings, SubscriptionPlan, Classroom, ClassroomMembership, StudentInvitation } from "@/services/entities";
+import { SubscriptionPlan, Classroom, ClassroomMembership, StudentInvitation } from "@/services/entities";
+import { useUser } from "@/contexts/UserContext";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,8 +28,8 @@ import StudentsListModal from "../components/classrooms/StudentsListModal";
 
 export default function MyClassrooms() {
   const navigate = useNavigate();
-  const [currentUser, setCurrentUser] = useState(null);
-  const [settings, setSettings] = useState(null);
+  const { currentUser, settings, isLoading: userLoading } = useUser();
+
   const [subscriptionPlans, setSubscriptionPlans] = useState([]);
   const [userPlan, setUserPlan] = useState(null);
   const [classrooms, setClassrooms] = useState([]);
@@ -48,32 +49,24 @@ export default function MyClassrooms() {
   const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [userData, settingsData] = await Promise.all([
-        User.me(),
-        Settings.find()
-      ]);
-
-      setCurrentUser(userData);
-      if (settingsData && settingsData.length > 0) {
-        setSettings(settingsData[0]);
-      }
+      // User data and settings are now available from global UserContext
 
       // Load subscription plans and user plan
-      if (settingsData[0]?.subscription_system_enabled) {
+      if (settings?.subscription_system_enabled) {
         const plans = await SubscriptionPlan.filter({ is_active: true }, "sort_order");
         setSubscriptionPlans(plans);
 
-        if (userData.current_subscription_plan_id) {
-          const userPlanData = plans.find(plan => plan.id === userData.current_subscription_plan_id);
+        if (currentUser.current_subscription_plan_id) {
+          const userPlanData = plans.find(plan => plan.id === currentUser.current_subscription_plan_id);
           setUserPlan(userPlanData);
         }
       }
 
       // Load user's classrooms
-      if (userData.id) {
-        const userClassrooms = await Classroom.filter({ teacher_id: userData.id });
+      if (currentUser.id) {
+        const userClassrooms = await Classroom.filter({ teacher_id: currentUser.id });
         setClassrooms(userClassrooms);
-        
+
         // Load student counts for each classroom
         await loadStudentCounts(userClassrooms);
       }
@@ -83,7 +76,7 @@ export default function MyClassrooms() {
       setMessage({ type: 'error', text: 'שגיאה בטעינת הנתונים' });
     }
     setIsLoading(false);
-  }, []);
+  }, [currentUser, settings]);
 
   // New function to load student counts
   const loadStudentCounts = async (classrooms) => {
@@ -117,8 +110,10 @@ export default function MyClassrooms() {
   };
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (!userLoading && currentUser && settings) {
+      loadData();
+    }
+  }, [loadData, userLoading, currentUser, settings]);
 
   const checkClassroomLimits = () => {
     // Check if user has classroom management enabled
@@ -252,7 +247,7 @@ export default function MyClassrooms() {
     return gradeMap[gradeLevel] || gradeLevel;
   };
 
-  if (isLoading) {
+  if (userLoading || isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">

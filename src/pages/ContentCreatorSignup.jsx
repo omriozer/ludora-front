@@ -9,12 +9,13 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Users, GraduationCap, Phone, User as UserIcon, CheckCircle, AlertTriangle } from "lucide-react";
+import { useUser } from "@/contexts/UserContext";
+import { cerror } from "@/lib/utils";
 
 export default function ContentCreatorSignup() {
   const navigate = useNavigate();
+  const { currentUser, isLoading: userLoading } = useUser();
 
-  const [currentUser, setCurrentUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState(null);
   const [formData, setFormData] = useState({
@@ -24,34 +25,24 @@ export default function ContentCreatorSignup() {
   });
 
   useEffect(() => {
-    loadUser();
-  }, []);
-
-  const loadUser = async () => {
-    setIsLoading(true);
-    try {
-      const user = await User.me();
-      setCurrentUser(user);
-      
+    if (!userLoading && currentUser) {
       // Check if already a content creator
-      if (user.content_creator_agreement_sign_date) {
+      if (currentUser.content_creator_agreement_sign_date) {
         navigate("/creator-portal");
         return;
       }
 
       // Pre-fill form with existing user data
       setFormData({
-        phone: user.phone || "",
-        full_name: user.full_name || "",
-        education_level: user.education_level || ""
+        phone: currentUser.phone || "",
+        full_name: currentUser.full_name || "",
+        education_level: currentUser.education_level || ""
       });
-    } catch (error) {
-      console.error("Error loading user:", error);
-      // Redirect to login
-      await User.login();
+    } else if (!userLoading && !currentUser) {
+      // Redirect to login if not logged in
+      User.login();
     }
-    setIsLoading(false);
-  };
+  }, [userLoading, currentUser, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -80,7 +71,7 @@ export default function ContentCreatorSignup() {
       }, 2000);
 
     } catch (error) {
-      console.error("Error signing up:", error);
+      cerror("Error signing up:", error);
       setMessage({ type: 'error', text: 'שגיאה בהרשמה. אנא נסו שוב.' });
     }
     
@@ -94,7 +85,7 @@ export default function ContentCreatorSignup() {
     }));
   };
 
-  if (isLoading) {
+  if (userLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">

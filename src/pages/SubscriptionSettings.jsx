@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { SubscriptionPlan, User, Settings } from "@/services/entities";
+import { SubscriptionPlan, Settings } from "@/services/entities";
+import { useUser } from "@/contexts/UserContext";
 import { showConfirm } from '@/utils/messaging';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,9 +30,10 @@ import {
 } from "lucide-react";
 
 export default function SubscriptionSettings() {
-  const [currentUser, setCurrentUser] = useState(null);
+  // Use global state from UserContext instead of direct API calls
+  const { currentUser, settings, isLoading: userLoading } = useUser();
+
   const [subscriptionPlans, setSubscriptionPlans] = useState([]);
-  const [settings, setSettings] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [message, setMessage] = useState(null);
@@ -77,24 +79,21 @@ export default function SubscriptionSettings() {
   });
 
   useEffect(() => {
-    loadData();
-  }, []);
+    // Only load data when currentUser is available (not loading)
+    if (currentUser && !userLoading) {
+      loadData();
+    }
+  }, [currentUser, userLoading]);
 
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const user = await User.me();
-      setCurrentUser(user);
-      setIsAdmin(user.role === 'admin');
+      // User and settings come from global state, no API calls needed
+      setIsAdmin(currentUser?.role === 'admin');
 
-      if (user.role === 'admin') {
+      if (currentUser?.role === 'admin') {
         const plans = await SubscriptionPlan.list('sort_order');
         setSubscriptionPlans(plans);
-
-        // Load settings
-        const settingsData = await Settings.find();
-        const currentSettings = settingsData.length > 0 ? settingsData[0] : {};
-        setSettings(currentSettings);
       }
     } catch (error) {
       console.error("Error loading data:", error);
@@ -116,11 +115,10 @@ export default function SubscriptionSettings() {
       if (settings && settings.id) {
         await Settings.update(settings.id, updatedSettings);
       } else {
-        const createdSettings = await Settings.create(updatedSettings);
-        setSettings(createdSettings);
+        await Settings.create(updatedSettings);
       }
 
-      setSettings(updatedSettings);
+      // Settings are updated on the server - no need to update local state
       showMessage('success', enabled ? 'תוכנית המנויים הופעלה' : 'תוכנית המנויים הושבתה');
     } catch (error) {
       console.error("Error updating subscription system setting:", error);
@@ -403,7 +401,8 @@ export default function SubscriptionSettings() {
     }
   };
 
-  if (isLoading) {
+  // Show loading while either global user data is loading OR local plans data is loading
+  if (userLoading || isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 flex items-center justify-center">
         <div className="text-center">

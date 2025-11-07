@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { useUser } from "@/contexts/UserContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,8 +29,7 @@ import SchoolModal from "../components/schools/SchoolModal";
 
 export default function SchoolManagement() {
   const navigate = useNavigate();
-
-  const [currentUser, setCurrentUser] = useState(null);
+  const { currentUser, isLoading: userLoading } = useUser();
   const [schools, setSchools] = useState([]);
   const [filteredSchools, setFilteredSchools] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -47,12 +47,10 @@ export default function SchoolManagement() {
   const loadData = useCallback(async () => {
     try {
       // Check if user is admin
-      const user = await User.me();
-      if (user.role !== 'admin') {
+      if (currentUser.role !== 'admin') {
         navigate('/');
         return;
       }
-      setCurrentUser(user);
 
       // Load schools and cities in parallel
       const [schoolsData] = await Promise.all([
@@ -66,7 +64,7 @@ export default function SchoolManagement() {
       showMessage('error', 'שגיאה בטעינת הנתונים');
     }
     setIsLoading(false);
-  }, [showMessage]);
+  }, [showMessage, navigate, currentUser]);
 
   const filterSchools = useCallback(() => {
     let filtered = schools;
@@ -84,8 +82,10 @@ export default function SchoolManagement() {
   }, [schools, searchTerm]);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (!userLoading && currentUser) {
+      loadData();
+    }
+  }, [userLoading, currentUser, loadData]);
 
   useEffect(() => {
     filterSchools();
@@ -386,7 +386,7 @@ export default function SchoolManagement() {
   };
 
 
-  if (isLoading) {
+  if (userLoading || isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">

@@ -113,10 +113,9 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
           setPaymentInProgress(false);
           setPendingMessage('');
 
-          // Reload user data
-          const updatedUser = await User.me();
+          // Reload user data using the callback
           if (onSubscriptionChange) {
-            onSubscriptionChange(updatedUser);
+            onSubscriptionChange(); // Let parent handle user refresh
           }
 
           // No need to clear interval, as it wouldn't have been set for an expired pending sub
@@ -136,9 +135,9 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
           try {
             console.log('[SUBSCRIPTION_MODAL] Checking for processed subscription...');
 
-            // Check if subscription was processed
-            const updatedUser = await User.me();
-            if (updatedUser.subscription_status === 'active') {
+            // Check if subscription was processed via callback
+            // Note: This should ideally be handled by webhook, but keeping for backwards compatibility
+            if (currentUser?.subscription_status === 'active') {
               console.log('[SUBSCRIPTION_MODAL] Subscription processed successfully!');
 
               // Payment was processed!
@@ -151,7 +150,7 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
 
               // Update parent component
               if (onSubscriptionChange) {
-                onSubscriptionChange(updatedUser);
+                onSubscriptionChange();
               }
 
               // Close modal
@@ -165,10 +164,8 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
               });
               setTimeout(() => window.location.reload() /* TODO: Consider if this reload is necessary */, 1000); // Reload page to reflect changes
             } else {
-              // Update elapsed time message
-              // Re-fetch user to ensure we get the absolute latest status_updated_at for message
-              const currentPendingUser = await User.me();
-              const newLastUpdate = currentPendingUser.subscription_status_updated_at ? new Date(currentPendingUser.subscription_status_updated_at) : lastUpdate;
+              // Update elapsed time message using current user state
+              const newLastUpdate = currentUser?.subscription_status_updated_at ? new Date(currentUser.subscription_status_updated_at) : lastUpdate;
               const newMinutesElapsed = Math.floor((new Date().getTime() - newLastUpdate.getTime()) / 60000);
               setPendingMessage(`התשלום שלך נמצא בתהליך עיבוד (${newMinutesElapsed} דקות)...`);
               console.log('[SUBSCRIPTION_MODAL] Subscription still pending...');
@@ -197,7 +194,7 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
               }
             }
           } catch (error) {
-            console.error('Error processing subscription in interval:', error);
+            cerror('Error processing subscription in interval:', error);
             toast({
               variant: "destructive",
               title: "שגיאה בבדיקת סטטוס תשלום",
@@ -219,7 +216,7 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
         console.log('No active pending subscriptions found on user object.');
       }
     } catch (error) {
-      console.error('Error checking payment status:', error);
+      cerror('Error checking payment status:', error);
       toast({
         variant: "destructive",
         title: "שגיאה בבדיקת סטטוס תשלום",
@@ -548,12 +545,9 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
           subscription_status_updated_at: new Date().toISOString()
         });
 
-        // Update current plan display but keep the paid plan active
-        const updatedUser = await User.me();
-
-        // Notify parent component
+        // Notify parent component to refresh user data
         if (onSubscriptionChange) {
-          onSubscriptionChange(updatedUser);
+          onSubscriptionChange();
         }
 
         // Show success message explaining the cancellation behavior
@@ -635,14 +629,13 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
           await checkPendingSubscription();
 
           // Refresh user data to reflect changes
-          const updatedUser = await User.me();
           if (onSubscriptionChange) {
-            onSubscriptionChange(updatedUser);
+            onSubscriptionChange();
           }
 
           console.log('🎯 SubscriptionModal: Background subscription processing completed');
         } catch (error) {
-          console.error('Error in background subscription processing:', error);
+          cerror('Error in background subscription processing:', error);
           // Show another toast for backend issues, but don't block user
           toast({
             variant: "destructive",

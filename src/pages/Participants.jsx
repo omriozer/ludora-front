@@ -1,6 +1,8 @@
 
 import React, { useState, useEffect } from "react";
-import { User, Purchase, Workshop, Course, File, Tool } from "@/services/entities";
+import { Purchase, Workshop, Course, File, Tool } from "@/services/entities";
+import { useUser } from "@/contexts/UserContext";
+import { cerror } from "@/lib/utils";
 import { getProductTypeName } from "@/config/productTypes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -19,26 +21,26 @@ import { format } from "date-fns";
 import { he } from "date-fns/locale";
 
 export default function Participants() {
+  const { currentUser, isLoading: userLoading } = useUser();
   const [registrations, setRegistrations] = useState([]);
   // 'workshops' state variable will now store ALL Product entities, not just 'workshop' type.
   const [workshops, setWorkshops] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [currentUser, setCurrentUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (!userLoading && currentUser) {
+      loadData();
+    }
+  }, [userLoading, currentUser]);
 
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const user = await User.me();
-      setCurrentUser(user);
-      setIsAdmin(user.role === 'admin');
+      setIsAdmin(currentUser.role === 'admin');
 
-      if (user.role === 'admin') {
+      if (currentUser.role === 'admin') {
         // Get all entities and purchases
         const [workshopsData, coursesData, filesData, toolsData, purchasesData] = await Promise.all([
           Workshop.find({}, '-created_date'),
@@ -73,12 +75,12 @@ export default function Participants() {
         setRegistrations(participants);
       }
     } catch (error) {
-      console.error("Error loading data:", error);
+      cerror("Error loading data:", error);
     }
     setIsLoading(false);
   };
 
-  if (isLoading) {
+  if (userLoading || isLoading) {
     return (
       <div className="p-4 bg-gray-50 min-h-screen flex justify-center items-center">
         <p>טוען נתונים...</p>

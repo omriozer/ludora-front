@@ -1,7 +1,7 @@
 // Enhanced API utility with comprehensive error handling
 // Re-exports apiRequest from centralized apiClient to avoid duplication
 
-import { clog, cerror } from '@/lib/utils';
+import { cerror } from '@/lib/utils';
 // Import and re-export apiRequest from centralized apiClient
 import { apiRequest as apiClientRequest } from '@/services/apiClient';
 

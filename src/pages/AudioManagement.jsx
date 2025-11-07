@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { User } from "@/services/entities";
+import { useUser } from "@/contexts/UserContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, CheckCircle, Volume2 } from "lucide-react";
 
@@ -7,34 +8,29 @@ import { AlertCircle, CheckCircle, Volume2 } from "lucide-react";
 import AudioLibrary from "../components/audio/AudioLibrary";
 
 export default function AudioManagement() {
-  const [currentUser, setCurrentUser] = useState(null);
+  const { currentUser, isLoading: userLoading } = useUser();
   const [isLoading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [message, setMessage] = useState(null);
 
   useEffect(() => {
-    const checkUser = async () => {
-      setLoading(true);
+    if (!userLoading && currentUser) {
       try {
-        const user = await User.me();
-        setCurrentUser(user);
-        setIsAdmin(user.role === 'admin');
+        setIsAdmin(currentUser.role === 'admin');
       } catch (error) {
         console.error("Error loading user:", error);
         setMessage({ type: 'error', text: 'שגיאה בטעינת נתונים' });
       }
       setLoading(false);
-    };
-
-    checkUser();
-  }, []);
+    }
+  }, [userLoading, currentUser]);
 
   const showMessage = (type, text) => {
     setMessage({ type, text });
     setTimeout(() => setMessage(null), 3000);
   };
 
-  if (isLoading) {
+  if (userLoading || isLoading) {
     return (
       <div className="p-4 bg-gray-50 min-h-screen flex items-center justify-center">
         <div className="text-center">

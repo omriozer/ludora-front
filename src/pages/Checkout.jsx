@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Settings, Purchase } from "@/services/entities";
+import { Purchase } from "@/services/entities";
+import { useUser } from "@/contexts/UserContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -51,11 +52,10 @@ import PayPlusEnvironmentSelector from "@/components/PayPlusEnvironmentSelector"
 export default function Checkout() {
   const navigate = useNavigate();
   const { removeFromCart } = useCart();
+  const { currentUser, settings, isLoading: userLoading } = useUser();
 
   const [cartItems, setCartItems] = useState([]);
   const [cartItemProducts, setCartItemProducts] = useState({}); // Map of purchase.id -> Product
-  const [currentUser, setCurrentUser] = useState(null);
-  const [settings, setSettings] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
@@ -143,13 +143,7 @@ export default function Checkout() {
         return;
       }
 
-      // Load user data
-      const user = await User.me();
-      setCurrentUser(user);
-
-      // Load settings
-      const settingsData = await Settings.find();
-      setSettings(settingsData.length > 0 ? settingsData[0] : {});
+      // User data and settings are now available from global UserContext
 
       // Load cart purchases (cart items)
       const cartPurchases = await getCartPurchases(userId);
@@ -191,8 +185,10 @@ export default function Checkout() {
   };
 
   useEffect(() => {
-    loadCheckoutData();
-  }, [loadCheckoutData]);
+    if (!userLoading && currentUser) {
+      loadCheckoutData();
+    }
+  }, [loadCheckoutData, userLoading, currentUser]);
 
   // REMOVED: Polling cleanup - no longer needed with immediate confirmation
 
@@ -442,7 +438,7 @@ export default function Checkout() {
     }
   };
 
-  if (isLoading) {
+  if (userLoading || isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
         <LudoraLoadingSpinner

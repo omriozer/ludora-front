@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useUser } from "@/contexts/UserContext";
 import { getProductTypeName } from "@/config/productTypes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Settings, User } from "@/services/entities";
+import { Settings } from "@/services/entities";
 import { UploadFile } from "@/services/integrations";
 import { showConfirm } from '@/utils/messaging';
 import {
@@ -27,9 +27,7 @@ import {
 
 export default function BrandSettings() {
   const navigate = useNavigate();
-
-  const [currentUser, setCurrentUser] = useState(null);
-  const [settings, setSettings] = useState(null);
+  const { currentUser, settings, isLoading: userLoading } = useUser();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState(null);
@@ -44,25 +42,21 @@ export default function BrandSettings() {
   });
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (!userLoading && currentUser && settings) {
+      loadData();
+    }
+  }, [userLoading, currentUser, settings]);
 
   const loadData = async () => {
     try {
       // Check if user is admin
-      const user = await User.me();
-      if (user.role !== 'admin') {
+      if (currentUser.role !== 'admin') {
         navigate('/');
         return;
       }
-      setCurrentUser(user);
 
-      // Load current settings
-      const settingsData = await Settings.find();
-      const currentSettings = settingsData.length > 0 ? settingsData[0] : {};
-      setSettings(currentSettings);
-
-      // Initialize form with current values
+      // Initialize form with current values from global settings
+      const currentSettings = settings || {};
       setFormData({
         site_name: currentSettings.site_name || '',
         site_description: currentSettings.site_description || '',
@@ -141,7 +135,7 @@ export default function BrandSettings() {
     setIsSaving(false);
   };
 
-  if (isLoading) {
+  if (userLoading || isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">

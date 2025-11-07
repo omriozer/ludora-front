@@ -4,6 +4,26 @@ import SubscriptionBusinessLogic from '@/services/SubscriptionBusinessLogic';
 import { clog, cerror } from '@/lib/utils';
 import { toast } from '@/components/ui/use-toast';
 
+// Global cache for subscription data to prevent duplicate API calls
+let subscriptionCache = {
+  plans: { data: null, timestamp: null },
+  purchases: new Map(), // userId -> { data, timestamp }
+  subscriptions: new Map() // userId -> { data, timestamp }
+};
+const CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
+
+// Helper function to clear subscription caches
+export const clearSubscriptionCache = (userId = null) => {
+  subscriptionCache.plans = { data: null, timestamp: null };
+  if (userId) {
+    subscriptionCache.purchases.delete(userId);
+    subscriptionCache.subscriptions.delete(userId);
+  } else {
+    subscriptionCache.purchases.clear();
+    subscriptionCache.subscriptions.clear();
+  }
+};
+
 /**
  * useSubscriptionState - React hook for managing subscription state and actions
  * Integrates with SubscriptionBusinessLogic for business decisions
@@ -25,16 +45,33 @@ export function useSubscriptionState(user) {
   });
 
   /**
-   * Load subscription plans from dedicated subscription API
+   * Load subscription plans from dedicated subscription API (with caching)
    */
   const loadPlans = useCallback(async () => {
     try {
-      clog('Loading subscription plans...');
+      // Check cache first
+      const now = Date.now();
+      const plansCache = subscriptionCache.plans;
+      const isCacheValid = plansCache.data && plansCache.timestamp && (now - plansCache.timestamp < CACHE_DURATION);
+
+      if (isCacheValid) {
+        clog('✅ Using cached subscription plans');
+        return plansCache.data;
+      }
+
+      clog('🔄 Loading subscription plans from API...');
       const response = await apiRequest('/subscriptions/plans');
 
       if (response && response.success && response.data) {
         const activePlans = response.data;
-        clog('Loaded subscription plans:', activePlans.length);
+
+        // Update cache
+        subscriptionCache.plans = {
+          data: activePlans,
+          timestamp: now
+        };
+
+        clog('✅ Subscription plans loaded and cached:', activePlans.length);
         return activePlans;
       }
 
@@ -47,17 +84,34 @@ export function useSubscriptionState(user) {
   }, []);
 
   /**
-   * Load user purchases from API
+   * Load user purchases from API (with caching)
    */
   const loadPurchases = useCallback(async () => {
     if (!user?.id) return [];
 
     try {
-      clog('Loading user purchases for user ID:', user.id);
+      // Check cache first
+      const now = Date.now();
+      const userId = user.id;
+      const userCacheEntry = subscriptionCache.purchases.get(userId);
+      const isCacheValid = userCacheEntry && (now - userCacheEntry.timestamp < CACHE_DURATION);
+
+      if (isCacheValid) {
+        clog('✅ Using cached user purchases for user', userId);
+        return userCacheEntry.data;
+      }
+
+      clog('🔄 Loading user purchases from API for user ID:', userId);
       const response = await apiRequest(`/entities/purchase?buyer_user_id=${user.id}`);
 
       if (response && Array.isArray(response)) {
-        clog('Loaded user purchases:', response.length);
+        // Update cache
+        subscriptionCache.purchases.set(userId, {
+          data: response,
+          timestamp: now
+        });
+
+        clog('✅ User purchases loaded and cached:', response.length);
         clog('Purchase details:', response.map(p => ({
           id: p.id,
           purchasable_id: p.purchasable_id,
@@ -78,18 +132,36 @@ export function useSubscriptionState(user) {
   }, [user?.id]);
 
   /**
-   * Load user subscriptions from dedicated subscription API
+   * Load user subscriptions from dedicated subscription API (with caching)
    */
   const loadSubscriptions = useCallback(async () => {
     if (!user?.id) return [];
 
     try {
-      clog('Loading user subscriptions for user ID:', user.id);
+      // Check cache first
+      const now = Date.now();
+      const userId = user.id;
+      const userCacheEntry = subscriptionCache.subscriptions.get(userId);
+      const isCacheValid = userCacheEntry && (now - userCacheEntry.timestamp < CACHE_DURATION);
+
+      if (isCacheValid) {
+        clog('✅ Using cached user subscriptions for user', userId);
+        return userCacheEntry.data;
+      }
+
+      clog('🔄 Loading user subscriptions from API for user ID:', userId);
       const response = await apiRequest('/subscriptions/user');
 
       if (response && response.success && response.data) {
         const subscriptions = response.data.subscriptions || [];
-        clog('Loaded user subscriptions:', subscriptions.length);
+
+        // Update cache
+        subscriptionCache.subscriptions.set(userId, {
+          data: subscriptions,
+          timestamp: now
+        });
+
+        clog('✅ User subscriptions loaded and cached:', subscriptions.length);
         clog('Subscription details:', subscriptions.map(s => ({
           id: s.id,
           subscription_plan_id: s.subscription_plan_id,
@@ -219,7 +291,8 @@ export function useSubscriptionState(user) {
         });
 
         if (result.success) {
-          // Refresh subscription data to show pending subscription
+          // Clear cache and refresh subscription data to show pending subscription
+          clearSubscriptionCache(user?.id);
           await initializeData();
 
           return {
@@ -239,7 +312,8 @@ export function useSubscriptionState(user) {
 
         if (result.success) {
           if (result.type === 'direct_change') {
-            // Refresh data and show success
+            // Clear cache and refresh data and show success
+            clearSubscriptionCache(user?.id);
             await initializeData();
             toast({
               title: "התוכנית שונתה",

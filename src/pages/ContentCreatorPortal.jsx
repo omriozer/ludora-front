@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { User, Settings, Game, Workshop, Course, File, Tool, LessonPlan } from "@/services/entities";
+import { Game, Workshop, Course, File, Tool, LessonPlan } from "@/services/entities";
+import { useUser } from "@/contexts/UserContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,8 +25,7 @@ import { Link } from "react-router-dom";
 import { NAV_ITEMS } from "@/config/productTypes";
 
 export default function ContentCreatorPortal() {
-  const [currentUser, setCurrentUser] = useState(null);
-  const [settings, setSettings] = useState(null);
+  const { currentUser, settings, isLoading: userLoading } = useUser();
   const [availableFeatures, setAvailableFeatures] = useState([]);
   const [stats, setStats] = useState({
     games: { total: 0, published: 0 },
@@ -46,18 +46,9 @@ export default function ContentCreatorPortal() {
   const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [userData, settingsData] = await Promise.all([
-        User.me(),
-        Settings.find()
-      ]);
-
-      setCurrentUser(userData);
-      
-      let currentSettings = {};
-      if (settingsData && settingsData.length > 0) {
-        currentSettings = settingsData[0];
-        setSettings(currentSettings);
-      }
+      // Use global user and settings from UserContext
+      const userData = currentUser;
+      const currentSettings = settings || {};
 
       // Moved inside useCallback to prevent dependency issues
       const checkAvailableFeatures = (user, settings) => {
@@ -145,7 +136,7 @@ export default function ContentCreatorPortal() {
       showMessage('error', 'שגיאה בטעינת הנתונים');
     }
     setIsLoading(false);
-  }, [showMessage]); // showMessage is a dependency, as it's defined outside
+  }, [currentUser, settings, showMessage]); // showMessage is a dependency, as it's defined outside
 
   const loadStats = async (user, features) => {
     try {
@@ -255,10 +246,12 @@ export default function ContentCreatorPortal() {
   };
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (currentUser && !userLoading) {
+      loadData();
+    }
+  }, [currentUser, userLoading, loadData]);
 
-  if (isLoading) {
+  if (userLoading || isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center">
         <div className="text-center">

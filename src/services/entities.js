@@ -86,14 +86,4 @@ export {
   ApiUser as User // Ensure latest User object is re-exported
 };
 
-// Game Rules System API entities
-import { apiRequest } from './apiClient.js';
-
-// Create an apiClient object with the needed methods
-const apiClient = {
-  get: (url) => apiRequest(url),
-  post: (url, data) => apiRequest(url, { method: 'POST', body: JSON.stringify(data) }),
-  put: (url, data) => apiRequest(url, { method: 'PUT', body: JSON.stringify(data) }),
-  delete: (url) => apiRequest(url, { method: 'DELETE' })
-};
 

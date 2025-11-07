@@ -8,7 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useUser } from "@/contexts/UserContext";
-import { Settings, Curriculum as CurriculumAPI, CurriculumItem, Product, apiRequest } from "@/services/apiClient";
+import { Curriculum as CurriculumAPI, CurriculumItem, Product, apiRequest } from "@/services/apiClient";
 import ProductCard from "@/components/ProductCard";
 import { PRODUCT_TYPES } from "@/config/productTypes";
 import { toast } from "@/components/ui/use-toast";

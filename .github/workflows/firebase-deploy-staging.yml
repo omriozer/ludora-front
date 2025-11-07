@@ -1,0 +1,133 @@
+name: Build and Deploy Frontend to Firebase Staging
+
+on:
+  push:
+    branches:
+      - staging
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    name: Build and Deploy to Firebase Staging
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get commit message
+        id: commit
+        run: |
+          COMMIT_MSG=$(git log -1 --pretty=format:"%s")
+          echo "message<<EOF" >> $GITHUB_OUTPUT
+          echo "$COMMIT_MSG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Notify deployment started
+        uses: ./.github/actions/telegram-notify
+        with:
+          bot-token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          chat-id: ${{ secrets.TELEGRAM_CHAT_ID }}
+          status: 'started'
+          service: 'Frontend Staging (Firebase)'
+          commit-message: ${{ steps.commit.outputs.message }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'yarn'
+
+      - name: Configure Git for SSH dependencies
+        run: |
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+          git config --global url."https://".insteadOf "git://"
+
+      - name: Install dependencies
+        run: |
+          echo "Installing dependencies..."
+          yarn install --frozen-lockfile
+          echo "✅ Dependencies installed"
+
+      - name: Create environment file
+        run: |
+          echo "Creating staging environment file..."
+          echo "VITE_API_BASE=https://api-staging.ludora.app/api" > .env.production
+          echo "VITE_FIREBASE_API_KEY=AIzaSyD7zFi5zYgy-JUaaSYrhytljGZpGPfkBeU" >> .env.production
+          echo "VITE_FIREBASE_AUTH_DOMAIN=staging.ludora.app" >> .env.production
+          echo "VITE_FIREBASE_PROJECT_ID=ludora-staging" >> .env.production
+          echo "VITE_FIREBASE_STORAGE_BUCKET=ludora-staging.firebasestorage.app" >> .env.production
+          echo "VITE_FIREBASE_MESSAGING_SENDER_ID=40992747906" >> .env.production
+          echo "VITE_FIREBASE_APP_ID=1:40992747906:web:2b0105ff214fa220d2df9b" >> .env.production
+          echo "VITE_FIREBASE_MEASUREMENT_ID=G-MP4QNVM26V" >> .env.production
+          echo "✅ Staging environment file created"
+          echo "Contents:"
+          cat .env.production
+
+      - name: Build application
+        run: |
+          echo "Building application for staging..."
+          yarn build
+          echo "✅ Build completed successfully!"
+          echo "Build output:"
+          ls -la dist/
+          echo "Index file size:"
+          du -h dist/index.html
+
+      - name: Install Firebase CLI
+        run: |
+          echo "Installing Firebase CLI..."
+          npm install -g firebase-tools
+          echo "✅ Firebase CLI installed"
+
+      - name: Setup Firebase Service Account
+        run: |
+          echo "Setting up Firebase service account..."
+          echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}" | base64 --decode > $HOME/firebase-service-account.json
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$HOME/firebase-service-account.json" >> $GITHUB_ENV
+          echo "✅ Service account configured"
+
+      - name: Deploy to Firebase Staging
+        run: |
+          echo "Deploying to Firebase Staging..."
+          firebase deploy --only hosting --project ludora-staging
+          echo "✅ Deployment completed successfully!"
+          echo "Frontend staging deployed to: https://staging.ludora.app"
+          echo "Also available at: https://ludora-staging.web.app"
+
+      - name: Deployment summary
+        run: |
+          echo "🚀 Frontend staging deployment completed successfully!"
+          echo "Live URL: https://staging.ludora.app"
+          echo "Fallback URL: https://ludora-staging.web.app"
+          echo "Firebase Console: https://console.firebase.google.com/project/ludora-staging"
+
+      - name: Notify deployment success
+        if: success()
+        uses: ./.github/actions/telegram-notify
+        with:
+          bot-token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          chat-id: ${{ secrets.TELEGRAM_CHAT_ID }}
+          status: 'success'
+          service: 'Frontend Staging (Firebase)'
+          commit-message: ${{ steps.commit.outputs.message }}
+          details: |
+            🌐 Live URL: https://staging.ludora.app
+            🔗 Fallback URL: https://ludora-staging.web.app
+            📊 Firebase Console: https://console.firebase.google.com/project/ludora-staging
+            📦 Firebase Hosting: https://ludora-staging.firebaseapp.com
+
+      - name: Notify deployment failure
+        if: failure()
+        uses: ./.github/actions/telegram-notify
+        with:
+          bot-token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          chat-id: ${{ secrets.TELEGRAM_CHAT_ID }}
+          status: 'failed'
+          service: 'Frontend Staging (Firebase)'
+          commit-message: ${{ steps.commit.outputs.message }}
+          details: |
+            ⚠️ שלב כושל: ${{ job.status }}
+            🔍 בדוק את הלוגים לפרטים נוספים

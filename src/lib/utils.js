@@ -9,14 +9,14 @@ const ENV = import.meta.env;
 
 export function clog(...args) {
     if (ENV.NODE_ENV !== 'production' || ENV.DEBUG_USER) {
-        // eslint-disable-next-line no-console
+         
         console.log(...args);
     }
 };
 
 export function cerror(...args) {
     if (ENV.NODE_ENV !== 'production' || ENV.DEBUG_USER) {
-        // eslint-disable-next-line no-console
+         
         console.error(...args);
     }
 }

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Workshop, User, EmailTemplate, Purchase } from "@/services/entities";
 import { SendEmail } from "@/services/integrations";
+import { useUser } from "@/contexts/UserContext";
+import { cerror } from "@/lib/utils";
 import { getProductTypeName } from "@/config/productTypes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,10 +30,10 @@ import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 
 export default function Emails() {
+  const { currentUser, isLoading: userLoading } = useUser();
   const [workshops, setWorkshops] = useState([]);
   const [users, setUsers] = useState([]);
   const [templates, setTemplates] = useState([]);
-  const [currentUser, setCurrentUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -49,17 +51,17 @@ export default function Emails() {
   const [isSending, setIsSending] = useState(false);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (!userLoading && currentUser) {
+      loadData();
+    }
+  }, [userLoading, currentUser]);
 
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const user = await User.me();
-      setCurrentUser(user);
-      setIsAdmin(user.role === 'admin');
+      setIsAdmin(currentUser.role === 'admin');
 
-      if (user.role === 'admin') {
+      if (currentUser.role === 'admin') {
         const [workshopsData, usersData, templatesData] = await Promise.all([
           Workshop.find({}, "-created_date"),
           User.list("-created_date"),
@@ -71,7 +73,7 @@ export default function Emails() {
         setTemplates(templatesData);
       }
     } catch (error) {
-      console.error("Error loading data:", error);
+      cerror("Error loading data:", error);
     }
     setIsLoading(false);
   };
@@ -194,7 +196,7 @@ export default function Emails() {
     setTimeout(() => setMessage(null), 3000);
   };
 
-  if (isLoading) {
+  if (userLoading || isLoading) {
     return (
       <div className="p-4 bg-gray-50 min-h-screen flex items-center justify-center">
         <div className="text-center">

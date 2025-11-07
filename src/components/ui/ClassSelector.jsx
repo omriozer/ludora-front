@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useUser } from "@/contexts/UserContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -27,13 +28,13 @@ export default function ClassSelector({
   currentUser,
   disabled = false
 }) {
+  const { settings } = useUser();
   const [classrooms, setClassrooms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateClassModal, setShowCreateClassModal] = useState(false);
   const [creatingClass, setCreatingClass] = useState(false);
 
   // Subscription management state
-  const [settings, setSettings] = useState(null);
   const [subscriptionPlans, setSubscriptionPlans] = useState([]);
   const [userPlan, setUserPlan] = useState(null);
   const [showLimitModal, setShowLimitModal] = useState(false);
@@ -41,7 +42,7 @@ export default function ClassSelector({
   useEffect(() => {
     loadClassrooms();
     loadSubscriptionData();
-  }, [currentUser]);
+  }, [currentUser, settings]);
 
   const loadClassrooms = async () => {
     if (!currentUser) return;
@@ -65,22 +66,17 @@ export default function ClassSelector({
   };
 
   const loadSubscriptionData = async () => {
-    if (!currentUser) return;
+    if (!currentUser || !settings) return;
 
     try {
-      const settingsData = await Settings.find();
-      if (settingsData && settingsData.length > 0) {
-        setSettings(settingsData[0]);
+      // Load subscription plans and user plan if subscription system is enabled
+      if (settings?.subscription_system_enabled) {
+        const plans = await SubscriptionPlan.filter({ is_active: true }, "sort_order");
+        setSubscriptionPlans(plans);
 
-        // Load subscription plans and user plan if subscription system is enabled
-        if (settingsData[0]?.subscription_system_enabled) {
-          const plans = await SubscriptionPlan.filter({ is_active: true }, "sort_order");
-          setSubscriptionPlans(plans);
-
-          if (currentUser.current_subscription_plan_id) {
-            const userPlanData = plans.find(plan => plan.id === currentUser.current_subscription_plan_id);
-            setUserPlan(userPlanData);
-          }
+        if (currentUser.current_subscription_plan_id) {
+          const userPlanData = plans.find(plan => plan.id === currentUser.current_subscription_plan_id);
+          setUserPlan(userPlanData);
         }
       }
     } catch (error) {

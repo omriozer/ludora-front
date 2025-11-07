@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { User, Workshop, Coupon, Purchase, Settings, Notification } from "@/services/entities";
+import { Workshop, Coupon, Purchase, Notification } from "@/services/entities";
+import { useUser } from "@/contexts/UserContext";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,7 +34,9 @@ import { createPayplusPaymentPage } from '@/services/functions';
 
 export default function Registration() {
   const navigate = useNavigate();
-  const [currentUser, setCurrentUser] = useState(null);
+  // Use global state from UserContext instead of direct API calls
+  const { currentUser, settings, isLoading: userLoading } = useUser();
+
   const [existingRegistration, setExistingRegistration] = useState(null);
   const [workshop, setWorkshop] = useState(null); // This will now hold Product data
   const [workshopId, setWorkshopId] = useState(null);
@@ -43,7 +46,6 @@ export default function Registration() {
   const [isTestMode, setIsTestMode] = useState(true);
   const [originalPrice, setOriginalPrice] = useState(0);
   const [finalPrice, setFinalPrice] = useState(0);
-  const [settings, setSettings] = useState(null); // New state for settings
 
   // Registration form data
   const [formData, setFormData] = useState({
@@ -76,11 +78,8 @@ export default function Registration() {
 
       setWorkshopId(workshopIdParam); // Update the state variable
 
-      // Load product and user data in parallel
-      const [productData, user] = await Promise.all([
-        Workshop.get(workshopIdParam), // Using Workshop entity for workshop registration
-        User.me().catch(() => null) // Handle user not logged in gracefully
-      ]);
+      // Load product data (user and settings come from global state)
+      const productData = await Workshop.get(workshopIdParam);
 
       if (!productData) {
         setMessage({ type: 'error', text: `${getProductTypeName('workshop', 'singular')} לא נמצאה` });
@@ -88,16 +87,15 @@ export default function Registration() {
         return;
       }
       setWorkshop(productData); // `workshop` state now holds `Product` data
-      setCurrentUser(user);
       setOriginalPrice(productData.price);
       setFinalPrice(productData.price);
 
       // Check if user already registered for this product/workshop
-      if (user) {
+      if (currentUser) {
         const existingPurchases = await Purchase.filter({
           $or: [
-            { purchasable_type: 'workshop', purchasable_id: workshopIdParam, user_id: user.id },
-            { product_id: workshopIdParam, user_id: user.id } // Legacy fallback
+            { purchasable_type: 'workshop', purchasable_id: workshopIdParam, user_id: currentUser.id },
+            { product_id: workshopIdParam, user_id: currentUser.id } // Legacy fallback
           ]
         });
 
@@ -115,16 +113,10 @@ export default function Registration() {
           // Pre-fill form with user data if no existing registration
           setFormData(prev => ({
             ...prev,
-            participant_name: user.display_name || user.full_name || '',
-            participant_phone: user.phone || ''
+            participant_name: currentUser.display_name || currentUser.full_name || '',
+            participant_phone: currentUser.phone || ''
           }));
         }
-      }
-
-      // Load settings (new part from outline)
-      const settingsData = await Settings.find();
-      if (settingsData.length > 0) {
-        setSettings(settingsData[0]);
       }
 
     } catch (error) {
@@ -309,7 +301,8 @@ export default function Registration() {
      (existingRegistration.access_until && new Date(existingRegistration.access_until) > new Date()) ||
      (!existingRegistration.access_until && !existingRegistration.purchased_lifetime_access)); // Default access if not specified
 
-  if (isLoading) {
+  // Show loading while either global user data is loading OR local workshop data is loading
+  if (userLoading || isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">

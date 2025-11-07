@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useUser } from "@/contexts/UserContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,8 +24,8 @@ import {
 
 export default function CategoryManagement() {
   const navigate = useNavigate();
+  const { currentUser, isLoading: userLoading } = useUser();
 
-  const [currentUser, setCurrentUser] = useState(null);
   const [categories, setCategories] = useState([]);
   const [filteredCategories, setFilteredCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -38,8 +39,10 @@ export default function CategoryManagement() {
   });
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (!userLoading && currentUser) {
+      loadData();
+    }
+  }, [userLoading, currentUser]);
 
   useEffect(() => {
     filterCategories();
@@ -47,13 +50,11 @@ export default function CategoryManagement() {
 
   const loadData = async () => {
     try {
-      // Check if user is admin
-      const user = await User.me();
-      if (user.role !== 'admin') {
+      // User data is now available from global UserContext
+      if (currentUser.role !== 'admin') {
         navigate('/');
         return;
       }
-      setCurrentUser(user);
 
       // Load categories
       const categoriesData = await Category.find({}, "name");
@@ -149,7 +150,7 @@ export default function CategoryManagement() {
     }
   };
 
-  if (isLoading) {
+  if (userLoading || isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">

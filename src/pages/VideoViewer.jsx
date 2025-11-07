@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Workshop, Course, File, Tool, User, Purchase } from "@/services/entities";
+import { Workshop, Course, File, Tool, Purchase } from "@/services/entities";
+import { useUser } from "@/contexts/UserContext";
 import SecureVideoPlayer from "../components/SecureVideoPlayer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,9 +35,9 @@ import {
 
 export default function VideoViewer() {
   const navigate = useNavigate();
+  const { currentUser, isLoading: userLoading } = useUser();
 
   const [workshop, setWorkshop] = useState(null);
-  const [currentUser, setCurrentUser] = useState(null);
   const [hasAccess, setHasAccess] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -45,8 +46,10 @@ export default function VideoViewer() {
   const [showMeetingLink, setShowMeetingLink] = useState(false); // Renamed from showZoomLink
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (!userLoading && currentUser) {
+      loadData();
+    }
+  }, [userLoading, currentUser]);
 
   // Countdown timer effect
   useEffect(() => {
@@ -98,17 +101,6 @@ export default function VideoViewer() {
       const baseUrl = apiBase.replace(/\/api\/?$/, '');
       const finalUrl = `${baseUrl}/api/media/stream/${entityType}/${entityId}`;
 
-      // Debug logging in development
-      if (import.meta.env.DEV) {
-        console.log('🎥 getSecureVideoUrl debug:', {
-          originalVideoUrl: videoUrl,
-          apiBase,
-          baseUrl,
-          finalUrl,
-          entityId,
-          entityType
-        });
-      }
 
       return finalUrl;
     }
@@ -130,8 +122,7 @@ export default function VideoViewer() {
         return;
       }
 
-      const user = await User.me();
-      setCurrentUser(user);
+      // User data is now available from global UserContext
 
       // Load entity data based on type
       let entityData;
@@ -200,13 +191,13 @@ export default function VideoViewer() {
 
       // Check Purchase using new schema with fallback to legacy
       const purchases = await Purchase.filter({
-        buyer_user_id: user.id // Use new schema first
+        buyer_user_id: currentUser.id // Use new schema first
       });
 
       // If no purchases found with new schema, try legacy email-based lookup
       if (purchases.length === 0) {
         const legacyPurchases = await Purchase.filter({
-          buyer_user_id: user.id,
+          buyer_user_id: currentUser.id,
           payment_status: 'paid' // Legacy status check
         });
         purchases.push(...legacyPurchases);
@@ -233,12 +224,11 @@ export default function VideoViewer() {
       } else {
         // Check if item is free - if so, auto-grant access by creating purchase record
         if (parseFloat(entityData.price || 0) === 0) {
-          console.log('🆓 Auto-granting access to free item...');
 
           try {
             // Create purchase with new schema
             const purchaseData = {
-              buyer_user_id: user.id, // New schema uses user ID
+              buyer_user_id: currentUser.id, // New schema uses user ID
               purchasable_type: entityType.toLowerCase(),
               purchasable_id: entityId,
               payment_status: 'completed', // New schema uses 'completed'
@@ -255,10 +245,8 @@ export default function VideoViewer() {
             };
 
             await Purchase.create(purchaseData);
-            console.log('✅ Free access granted automatically');
             setHasAccess(true);
           } catch (autoAccessError) {
-            console.error('❌ Failed to auto-grant free access:', autoAccessError);
             setError('שגיאה במתן גישה אוטומטית');
             setIsLoading(false);
             return;
@@ -271,13 +259,12 @@ export default function VideoViewer() {
       }
 
     } catch (error) {
-      console.error('Error loading data:', error);
       setError('שגיאה בטעינת הנתונים');
     }
     setIsLoading(false);
   };
 
-  if (isLoading) {
+  if (userLoading || isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
         <div className="text-center">
@@ -610,7 +597,6 @@ export default function VideoViewer() {
                 videoUrl={getSecureVideoUrl(workshop.video_file_url || workshop.recording_url)}
                 title={workshop.title}
                 className="w-full h-full"
-                onError={(e) => console.error('Video player error:', e)}
               />
             </div>
             

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Notification, SubscriptionPlan, Settings } from "@/services/entities"; // Added Settings import
+import { User } from "@/services/entities"; // Keep User for updateMyUserData calls only
+import { useUser } from "@/contexts/UserContext";
 import { purchaseUtils } from "@/utils/api.js";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,9 +37,11 @@ import { toast } from '@/components/ui/use-toast';
 
 const MyAccount = () => {
   const navigate = useNavigate();
+  // Use global state from UserContext instead of direct API calls
+  const { currentUser, settings, isLoading: userLoading, setCurrentUser } = useUser();
+
   const [registrations, setRegistrations] = useState([]);
   const [workshops, setWorkshops] = useState([]);
-  const [currentUser, setCurrentUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState(null);
   const [supportPopup, setSupportPopup] = useState({ show: false, registrationId: null });
@@ -52,33 +55,10 @@ const MyAccount = () => {
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
 
   const [accountTexts, setAccountTexts] = useState({});
-  const [settings, setSettings] = useState(null); // New state for global settings
 
   // Use the new subscription state hook
   const subscriptionState = useSubscriptionState(currentUser);
 
-  // Modified getSettings function to fetch from Settings entity and handle defaults
-  const getSettings = useCallback(async () => {
-    try {
-      const settingsData = await Settings.find();
-      console.log('Raw settings data:', settingsData); // Debug
-      
-      if (settingsData && settingsData.length > 0) {
-        const settings = settingsData[0];
-        console.log('Using settings:', settings); // Debug
-        console.log('Subscription system enabled from settings:', settings.subscription_system_enabled); // Debug
-        return settings;
-      } else {
-        console.log('No settings found, returning defaults'); // Debug
-        // Default to false if no settings are found, ensuring subscription features are off by default
-        return { subscription_system_enabled: false }; 
-      }
-    } catch (error) {
-      console.error('Error loading settings:', error);
-      // Default to false on error, preventing potential errors in subscription logic
-      return { subscription_system_enabled: false }; 
-    }
-  }, []);
 
 
   // Add function to check and update user subscription
@@ -93,10 +73,7 @@ const MyAccount = () => {
         const now = new Date();
 
         if (endDate < now) {
-          console.log('[MY_ACCOUNT] Subscription end date passed, checking PayPlus status...');
-
           // Simple check: if subscription end date has passed, reset to free plan
-          console.log('[MY_ACCOUNT] Subscription end date passed, resetting to free plan');
           await User.updateMyUserData({
             current_subscription_plan_id: null,
             subscription_status: 'free_plan',
@@ -120,7 +97,7 @@ const MyAccount = () => {
 
       return user;
     } catch (error) {
-      console.error('[MY_ACCOUNT] Error in checkAndUpdateUserSubscription:', error);
+      cerror('Error in checkAndUpdateUserSubscription:', error);
       return user;
     }
   }, []);
@@ -148,27 +125,16 @@ const MyAccount = () => {
       };
       setAccountTexts(texts);
 
-      // Load global settings first with debug
-      console.log('Loading settings...'); // Debug
-      const settingsData = await getSettings();
-      console.log('Settings loaded:', settingsData); // Debug
-      console.log('Subscription system enabled:', settingsData?.subscription_system_enabled); // Debug
-      setSettings(settingsData);
-
-      let user = await User.me();
+      // Settings and user come from global state, no API calls needed
 
       // Only proceed with subscription logic if subscription system is enabled
-      const isSubscriptionSystemEnabled = settingsData?.subscription_system_enabled === true;
-      console.log('Is subscription system enabled?', isSubscriptionSystemEnabled); // Debug
+      const isSubscriptionSystemEnabled = settings?.subscription_system_enabled === true;
 
       if (!isSubscriptionSystemEnabled) {
-        console.log('Subscription system is disabled, skipping all subscription checks'); // Debug
-        setCurrentUser(user);
         setEditedProfile({
-          display_name: user.display_name || user.full_name || '',
-          phone: user.phone || ''
+          display_name: currentUser?.display_name || currentUser?.full_name || '',
+          phone: currentUser?.phone || ''
         });
-        setCurrentSubscriptionPlan(null); // Ensure no subscription plan is shown
 
         // Clear legacy data since Registration is removed
         setRegistrations([]);
@@ -178,23 +144,20 @@ const MyAccount = () => {
         return; // Exit early if subscription system is disabled
       }
 
-      console.log('Subscription system is enabled, continuing with subscription logic...'); // Debug
-
       // Check if user has pending subscription
-      if (user.subscription_status === 'pending') {
-        console.log('Found user with pending subscription status');
+      if (currentUser?.subscription_status === 'pending') {
         setMessage({ type: 'info', text: 'המנוי שלך נמצא בתהליך עיבוד. אנא המתן מספר דקות.' });
       }
 
       // Handle pending subscriptions timeout
-      if (user.subscription_status === 'pending' && user.subscription_status_updated_at) {
-        const updatedAt = new Date(user.subscription_status_updated_at);
+      if (currentUser?.subscription_status === 'pending' && currentUser?.subscription_status_updated_at) {
+        const updatedAt = new Date(currentUser.subscription_status_updated_at);
         const now = new Date();
         const minutesElapsed = Math.floor((now.getTime() - updatedAt.getTime()) / 60000);
 
         if (minutesElapsed >= 5) {
-          console.log('[MY_ACCOUNT] Resetting expired pending subscription (timeout 5 min)');
           try {
+            // Note: This will update the user in the database, the global state will sync automatically
             await User.updateMyUserData({
               current_subscription_plan_id: null,
               subscription_status: 'free_plan',
@@ -202,24 +165,15 @@ const MyAccount = () => {
               payplus_subscription_uid: null
             });
             setMessage({ type: 'info', text: 'המנוי שלך לא אושר בזמן ובוטל. אנא נסה שוב או צור קשר עם התמיכה.' });
-
-            user = {
-              ...user,
-              current_subscription_plan_id: null,
-              subscription_status: 'free_plan',
-              subscription_status_updated_at: now.toISOString(),
-              payplus_subscription_uid: null
-            };
           } catch (error) {
-            console.error('Error resetting pending subscription:', error);
+            cerror('Error resetting pending subscription:', error);
           }
         }
       }
 
-      setCurrentUser(user);
       setEditedProfile({
-        display_name: user.display_name || user.full_name || '',
-        phone: user.phone || ''
+        display_name: currentUser?.display_name || currentUser?.full_name || '',
+        phone: currentUser?.phone || ''
       });
 
       // Note: Subscription state is now handled by useSubscriptionState hook
@@ -230,11 +184,11 @@ const MyAccount = () => {
       setWorkshops([]);
 
     } catch (error) {
-      console.error("Error loading data:", error);
+      cerror("Error loading data:", error);
       setMessage({ type: 'error', text: 'שגיאה בטעינת הנתונים' });
     }
     setIsLoading(false);
-  }, [checkAndUpdateUserSubscription, getSettings]); // Added getSettings to dependencies
+  }, [checkAndUpdateUserSubscription]);
 
   useEffect(() => {
     loadData();
@@ -249,7 +203,7 @@ const MyAccount = () => {
       setMessage({ type: 'success', text: 'הפרטים עודכנו בהצלחה' });
       setTimeout(() => setMessage(null), 3000);
     } catch (error) {
-      console.error("Error updating profile:", error);
+      cerror("Error updating profile:", error);
       setMessage({ type: 'error', text: 'שגיאה בעדכון הפרטים' });
       setTimeout(() => setMessage(null), 3000);
     }
@@ -293,7 +247,7 @@ const MyAccount = () => {
   };
 
   // Ensure all necessary data (user, texts, settings, subscription) is loaded before rendering main content
-  if (isLoading || settings === null || (settings?.subscription_system_enabled && subscriptionState.loading)) {
+  if (userLoading || isLoading || settings === null || (settings?.subscription_system_enabled && subscriptionState.loading)) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
         <div className="text-center">

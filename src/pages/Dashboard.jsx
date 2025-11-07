@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { User } from "@/services/entities";
+import { useUser } from "@/contexts/UserContext";
 import { getApiBase } from "@/utils/api.js";
 import { apiRequest } from "@/services/apiClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -163,7 +163,7 @@ const WidgetRenderer = ({ widget, isEditMode, onRemove, onMoveUp, onMoveDown, ca
 };
 
 export default function Dashboard() {
-  const [currentUser, setCurrentUser] = useState(null);
+  const { currentUser, isLoading: userLoading } = useUser();
   const [isLoading, setIsLoading] = useState(true);
   const [availableWidgets, setAvailableWidgets] = useState({});
   const [userWidgets, setUserWidgets] = useState([]);
@@ -246,10 +246,6 @@ export default function Dashboard() {
   // Load initial data
   const loadDashboardData = useCallback(async () => {
     try {
-      // Load current user
-      const user = await User.me();
-      setCurrentUser(user);
-
       // Load available widgets and user config in parallel
       await Promise.all([
         loadAvailableWidgets(),
@@ -268,8 +264,10 @@ export default function Dashboard() {
   }, [loadAvailableWidgets, loadDashboardConfig]);
 
   useEffect(() => {
-    loadDashboardData();
-  }, [loadDashboardData]);
+    if (!userLoading && currentUser) {
+      loadDashboardData();
+    }
+  }, [loadDashboardData, userLoading, currentUser]);
 
   // Add widget handler
   const handleAddWidget = async (widgetType) => {
@@ -367,7 +365,7 @@ export default function Dashboard() {
     });
   };
 
-  if (isLoading) {
+  if (userLoading || isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-indigo-50/50 flex items-center justify-center">
         <LudoraLoadingSpinner

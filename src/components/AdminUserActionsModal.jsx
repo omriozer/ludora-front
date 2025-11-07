@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -9,8 +9,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { getApiBase } from '@/utils/api.js';
-import { toast } from '@/components/ui/use-toast';
 import {
   Crown,
   UserCheck,
@@ -19,8 +17,6 @@ import {
   Settings,
   RotateCcw,
   User as UserIcon,
-  GraduationCap,
-  Users,
   Calendar,
   Mail,
   Phone,

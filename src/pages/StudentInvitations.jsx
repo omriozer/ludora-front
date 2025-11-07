@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { StudentInvitation, User, Classroom, ClassroomMembership } from "@/services/entities";
+import { useUser } from "@/contexts/UserContext";
+import { cerror } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -20,9 +22,8 @@ import {
 
 export default function StudentInvitations() {
   const navigate = useNavigate();
+  const { currentUser, isLoading: userLoading } = useUser();
 
-  const [currentUser, setCurrentUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [invitations, setInvitations] = useState([]);
   const [classrooms, setClassrooms] = useState({});
   const [teachers, setTeachers] = useState({});
@@ -30,21 +31,10 @@ export default function StudentInvitations() {
   const [processingInvitation, setProcessingInvitation] = useState(null);
 
   useEffect(() => {
-    const checkUserAndLoadInvitations = async () => {
-      try {
-        const user = await User.me();
-        setCurrentUser(user);
-        await loadInvitations(user);
-      } catch (error) {
-        // User not logged in
-        setCurrentUser(null);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    checkUserAndLoadInvitations();
-  }, []);
+    if (!userLoading && currentUser) {
+      loadInvitations(currentUser);
+    }
+  }, [userLoading, currentUser]);
 
   // Helper function to clean email addresses (remove qa+ prefix)
   const cleanEmail = (email) => {
@@ -103,7 +93,7 @@ export default function StudentInvitations() {
             const classroom = await Classroom.get(id);
             return { id, data: classroom };
           } catch (error) {
-            console.error(`Error loading classroom ${id}:`, error);
+            cerror(`Error loading classroom ${id}:`, error);
             return { id, data: null };
           }
         })),
@@ -112,7 +102,7 @@ export default function StudentInvitations() {
             const teacher = await User.get(id);
             return { id, data: teacher };
           } catch (error) {
-            console.error(`Error loading teacher ${id}:`, error);
+            cerror(`Error loading teacher ${id}:`, error);
             return { id, data: null };
           }
         }))
@@ -133,7 +123,7 @@ export default function StudentInvitations() {
       setTeachers(teachersLookup);
 
     } catch (error) {
-      console.error("Error loading invitations:", error);
+      cerror("Error loading invitations:", error);
       setError("שגיאה בטעינת ההזמנות");
     }
   };
@@ -178,7 +168,7 @@ export default function StudentInvitations() {
       setInvitations(prev => prev.filter(inv => inv.id !== invitation.id));
 
     } catch (error) {
-      console.error("Error accepting invitation:", error);
+      cerror("Error accepting invitation:", error);
       setError("שגיאה באישור ההזמנה");
     } finally {
       setProcessingInvitation(null);
@@ -199,7 +189,7 @@ export default function StudentInvitations() {
       setInvitations(prev => prev.filter(inv => inv.id !== invitation.id));
 
     } catch (error) {
-      console.error("Error rejecting invitation:", error);
+      cerror("Error rejecting invitation:", error);
       setError("שגיאה בדחיית ההזמנה");
     } finally {
       setProcessingInvitation(null);
@@ -225,7 +215,7 @@ export default function StudentInvitations() {
     return gradeMap[gradeLevel] || gradeLevel;
   };
 
-  if (isLoading) {
+  if (userLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">

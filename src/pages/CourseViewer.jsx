@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Course, Purchase, User } from "@/services/entities";
+import { Course, Purchase } from "@/services/entities";
+import { useUser } from "@/contexts/UserContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,8 +22,9 @@ import VideoPlayer from '../components/VideoPlayer'; // Added import for VideoPl
 import { PRODUCT_TYPES, getProductTypeName } from "@/config/productTypes";
 
 export default function CourseViewer() {
+  const { currentUser, isLoading: userLoading } = useUser();
+
   const [course, setCourse] = useState(null);
-  const [currentUser, setCurrentUser] = useState(null);
   const [userPurchase, setUserPurchase] = useState(null);
   const [currentModule, setCurrentModule] = useState(0);
   const [completedModules, setCompletedModules] = useState(new Set());
@@ -59,8 +61,7 @@ export default function CourseViewer() {
         return;
       }
 
-      const user = await User.me();
-      setCurrentUser(user);
+      // User data is now available from global UserContext
 
       const courseData = await Course.get(courseId);
       if (!courseData) {
@@ -71,8 +72,8 @@ export default function CourseViewer() {
       setCourse(courseData);
 
       // Check user access
-      const purchases = await Purchase.filter({ 
-        buyer_user_id: user.id, 
+      const purchases = await Purchase.filter({
+        buyer_user_id: currentUser.id,
         product_id: courseId,
         payment_status: 'paid'
       });
@@ -104,11 +105,13 @@ export default function CourseViewer() {
       setMessage({ type: 'error', text: `שגיאה בטעינת ה${getProductTypeName('course', 'singular')}` });
     }
     setIsLoading(false);
-  }, []); // Empty dependency array - texts are loaded inside the function
+  }, [currentUser]); // Add currentUser as dependency
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (!userLoading && currentUser) {
+      loadData();
+    }
+  }, [loadData, userLoading, currentUser]);
 
   const markModuleCompleted = (moduleIndex) => {
     const newCompleted = new Set(completedModules);
@@ -157,7 +160,7 @@ export default function CourseViewer() {
     return (completedModules.size / course.course_modules.length) * 100;
   };
 
-  if (isLoading) {
+  if (userLoading || isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">

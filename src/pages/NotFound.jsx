@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Settings } from "@/services/entities";
 import { PRODUCT_TYPES, getProductTypeName } from "@/config/productTypes";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { useUser } from "@/contexts/UserContext";
 import {
   Home,
   ArrowRight,
@@ -15,22 +15,7 @@ import {
 } from "lucide-react";
 
 export default function NotFound() {
-  const [settings, setSettings] = useState(null);
-
-  useEffect(() => {
-    loadSettings();
-  }, []);
-
-  const loadSettings = async () => {
-    try {
-      const settingsData = await Settings.find();
-      if (settingsData.length > 0) {
-        setSettings(settingsData[0]);
-      }
-    } catch (error) {
-      console.error('Error loading settings:', error);
-    }
-  };
+  const { settings } = useUser();
 
   // Function to check if navigation item should be visible
   const shouldShowNavItem = (itemKey) => {

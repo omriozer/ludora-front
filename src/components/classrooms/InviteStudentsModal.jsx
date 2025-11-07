@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useUser } from "@/contexts/UserContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +26,7 @@ import {
 import { triggerEmailAutomation } from "@/services/functions";
 
 export default function InviteStudentsModal({ isOpen, onClose, classroom, currentUser }) {
+  const { settings } = useUser();
   const [studentEmail, setStudentEmail] = useState("");
   const [studentName, setStudentName] = useState("");
   const [parentEmail, setParentEmail] = useState("");
@@ -34,25 +36,12 @@ export default function InviteStudentsModal({ isOpen, onClose, classroom, curren
   const [isCheckingStudent, setIsCheckingStudent] = useState(false);
   const [studentStatus, setStudentStatus] = useState(null);
   const [errors, setErrors] = useState({});
-  const [settings, setSettings] = useState(null);
 
   useEffect(() => {
     if (isOpen) {
-      loadSettings();
       resetForm();
     }
   }, [isOpen]);
-
-  const loadSettings = async () => {
-    try {
-      const settingsData = await Settings.find();
-      if (settingsData && settingsData.length > 0) {
-        setSettings(settingsData[0]);
-      }
-    } catch (error) {
-      console.error("Error loading settings:", error);
-    }
-  };
 
   const resetForm = () => {
     setStudentEmail("");

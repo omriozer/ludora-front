@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { User } from "@/services/entities";
+import { useUser } from "@/contexts/UserContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,9 +25,9 @@ import {
 
 export default function AdminPanel() {
   const navigate = useNavigate();
+  const { currentUser, isLoading: userLoading } = useUser();
 
   const [users, setUsers] = useState([]);
-  const [currentUser, setCurrentUser] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -34,17 +35,18 @@ export default function AdminPanel() {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (!userLoading && currentUser) {
+      loadData();
+    }
+  }, [userLoading, currentUser]);
 
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const user = await User.me();
-      setCurrentUser(user);
-      setIsAdmin(user.role === 'admin');
+      // User data is now available from global UserContext
+      setIsAdmin(currentUser.role === 'admin');
 
-      if (user.role === 'admin') {
+      if (currentUser.role === 'admin') {
         const allUsers = await User.list("-created_date");
         setUsers(allUsers);
       }
@@ -131,6 +133,17 @@ export default function AdminPanel() {
     },
     // Add other admin features here if necessary in the future
   ];
+
+  if (userLoading || isLoading) {
+    return (
+      <div className="p-4 md:p-8 bg-gray-50 min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">טוען נתוני ניהול...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!isAdmin) {
     return (

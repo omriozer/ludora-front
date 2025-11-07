@@ -1,5 +1,7 @@
 {
   "projects": {
-    "default": "ludora-af706"
+    "default": "ludora-af706",
+    "production": "ludora-af706",
+    "staging": "ludora-staging"
   }
 }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { User, Settings, LessonPlan } from '@/services/entities';
+import { LessonPlan } from '@/services/entities';
+import { useUser } from '@/contexts/UserContext';
 import { ArrowRight, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -23,9 +24,7 @@ export default function ProductPage() {
   const { productId } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-
-  const [currentUser, setCurrentUser] = useState(null);
-  const [globalSettings, setGlobalSettings] = useState({});
+  const { currentUser, settings: globalSettings, isLoading: userLoading } = useUser();
   const [editingProduct, setEditingProduct] = useState(null);
   const [editingLessonPlan, setEditingLessonPlan] = useState(null);
   const [isLoadingData, setIsLoadingData] = useState(true);
@@ -82,25 +81,17 @@ export default function ProductPage() {
 
   // Load initial data
   useEffect(() => {
-    loadInitialData();
-  }, [productId]);
+    if (currentUser && !userLoading) {
+      loadInitialData();
+    }
+  }, [productId, currentUser, userLoading]);
 
   const loadInitialData = async () => {
     setIsLoadingData(true);
     try {
-      // Load user and settings
-      const [user, settingsData] = await Promise.all([
-        User.me(),
-        Settings.find()
-      ]);
-
-      setCurrentUser(user);
-      const settings = settingsData.length > 0 ? settingsData[0] : {};
-      setGlobalSettings(settings);
-
       // Check access permissions
-      const hasAdminAccess = user.role === 'admin' || user.role === 'sysadmin';
-      const hasContentCreatorAccess = user.content_creator_agreement_sign_date;
+      const hasAdminAccess = currentUser.role === 'admin' || currentUser.role === 'sysadmin';
+      const hasContentCreatorAccess = currentUser.content_creator_agreement_sign_date;
 
       setIsAdmin(hasAdminAccess);
       setIsContentCreator(hasContentCreatorAccess);
@@ -113,12 +104,12 @@ export default function ProductPage() {
       // Load content creator permissions
       if (isInContentCreatorMode) {
         setContentCreatorPermissions({
-          workshops: settings.allow_content_creator_workshops !== false,
-          courses: settings.allow_content_creator_courses !== false,
-          files: settings.allow_content_creator_files !== false,
-          tools: settings.allow_content_creator_tools !== false,
-          games: settings.allow_content_creator_games !== false,
-          lesson_plans: settings.allow_content_creator_lesson_plans !== false
+          workshops: globalSettings?.allow_content_creator_workshops !== false,
+          courses: globalSettings?.allow_content_creator_courses !== false,
+          files: globalSettings?.allow_content_creator_files !== false,
+          tools: globalSettings?.allow_content_creator_tools !== false,
+          games: globalSettings?.allow_content_creator_games !== false,
+          lesson_plans: globalSettings?.allow_content_creator_lesson_plans !== false
         });
       }
 
