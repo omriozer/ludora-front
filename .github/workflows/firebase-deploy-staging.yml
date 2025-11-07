@@ -87,9 +87,27 @@ jobs:
           chmod 600 $HOME/firebase-service-account.json
           echo "GOOGLE_APPLICATION_CREDENTIALS=$HOME/firebase-service-account.json" >> $GITHUB_ENV
           echo "✅ Service account configured"
+          echo "Verifying service account..."
+          cat $HOME/firebase-service-account.json | jq -r '.client_email'
+          echo "Project access test..."
+
+      - name: Authenticate Firebase CLI
+        run: |
+          echo "Authenticating Firebase CLI..."
+          export GOOGLE_APPLICATION_CREDENTIALS=$HOME/firebase-service-account.json
+          firebase login:ci --no-localhost || echo "Using service account authentication..."
+          firebase projects:list || echo "Service account projects access check..."
 
       - name: Deploy to Firebase Staging
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/../firebase-service-account.json
         run: |
+          echo "Copying service account to workspace..."
+          cp $HOME/firebase-service-account.json ${{ github.workspace }}/../firebase-service-account.json
+          echo "Setting explicit environment variable..."
+          export GOOGLE_APPLICATION_CREDENTIALS="${{ github.workspace }}/../firebase-service-account.json"
+          echo "Verifying Firebase CLI authentication..."
+          firebase projects:list
           echo "Deploying to Firebase Staging..."
           firebase deploy --only hosting --project ludora-staging
           echo "✅ Deployment completed successfully!"
