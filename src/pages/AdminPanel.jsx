@@ -9,18 +9,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { 
-  Users, 
-  UserPlus, 
-  UserMinus, 
-  Crown, 
+import {
+  Users,
+  UserPlus,
+  UserMinus,
+  Crown,
   Mail,
   AlertCircle,
   CheckCircle,
   Search,
   UserCheck,
   Eye,
-  School // Added School icon import
+  School, // Added School icon import
+  Tag,
+  FileText
 } from "lucide-react";
 
 export default function AdminPanel() {
@@ -130,6 +132,12 @@ export default function AdminPanel() {
       icon: Tag,
       url: "/coupons",
       description: "צור וניהל קופוני הנחה ומבצעים למערכת"
+    },
+    {
+      title: "תבניות מערכת",
+      icon: FileText,
+      url: "/template-manager",
+      description: "נהל תבניות לתחתיות עמוד, ראשי עמוד וסימני מים"
     },
     // Add other admin features here if necessary in the future
   ];

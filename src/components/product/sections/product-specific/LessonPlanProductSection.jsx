@@ -23,7 +23,9 @@ import {
   Volume2,
   Download,
   CheckCircle,
-  Paperclip
+  Paperclip,
+  Shield,
+  Settings
 } from 'lucide-react';
 import { File, Product, apiUploadWithProgress, apiRequest } from '@/services/apiClient';
 import { getApiBase } from '@/utils/api';
@@ -32,6 +34,7 @@ import { toast } from '@/components/ui/use-toast';
 import { showConfirm } from '@/utils/messaging';
 import EntitySelector from '@/components/ui/EntitySelector';
 import SVGSlideManager from '../SVGSlideManager';
+import AccessControlEditor from '@/components/admin/AccessControlEditor';
 
 /**
  * LessonPlanProductSection - Handles lesson plan specific settings and file uploads
@@ -65,6 +68,9 @@ const LessonPlanProductSection = ({
 
   // SVG slides state
   const [svgSlides, setSvgSlides] = useState([]);
+
+  // Access control editor state
+  const [showAccessControlEditor, setShowAccessControlEditor] = useState(false);
 
   // Initialize file configs from formData
   const initializeFileConfigs = () => {
@@ -1147,6 +1153,59 @@ const LessonPlanProductSection = ({
               </div>
             </div>
           </Card>
+        </div>
+      )}
+
+      {/* Selective Access Control for Lesson Plan Slides */}
+      {svgSlides.length > 0 && editingProduct && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-indigo-900">בקרת גישה לשקפים</h3>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="space-y-0.5">
+                <Label className="text-sm font-medium text-blue-900 flex items-center gap-2">
+                  <Shield className="w-4 h-4" />
+                  ניהול גישה לשקפים וסימני מים
+                </Label>
+                <p className="text-xs text-blue-700">
+                  קבע איזה שקפים יהיו זמינים בתצוגה מקדימה והוסף סימני מים לשקפים מוגבלים
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAccessControlEditor(!showAccessControlEditor)}
+                className="border-blue-300 text-blue-700 hover:bg-blue-100"
+              >
+                <Settings className="w-4 h-4 ml-2" />
+                {showAccessControlEditor ? 'הסתר הגדרות' : 'נהל גישה'}
+              </Button>
+            </div>
+
+            {/* Access Control Editor */}
+            {showAccessControlEditor && (
+              <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                <AccessControlEditor
+                  entityType="lesson_plan"
+                  entityId={editingProduct?.entity_id}
+                  entityData={{
+                    ...formData,
+                    id: editingProduct?.entity_id,
+                    total_slides: svgSlides.length
+                  }}
+                  onSettingsChange={(settings) => {
+                    // Update the form data with the new access control settings
+                    updateFormData({
+                      accessible_slides: settings.accessible_slides,
+                      allow_slide_preview: settings.allow_slide_preview,
+                      watermark_template_id: settings.watermark_template_id
+                    });
+                  }}
+                />
+              </div>
+            )}
+          </div>
         </div>
       )}
 

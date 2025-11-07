@@ -15,6 +15,11 @@ import {
 	Timer,
 	Clock,
 	Sparkles,
+	Shield,
+	Eye,
+	EyeOff,
+	Lock,
+	AlertTriangle,
 } from 'lucide-react';
 import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
 import TimerComponent from '@/components/ui/Timer';
@@ -37,6 +42,9 @@ export default function LessonPlanPresentation() {
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState(null);
 	const [hasAccess, setHasAccess] = useState(false);
+	const [accessMode, setAccessMode] = useState('full'); // 'full', 'selective', 'preview', 'restricted'
+	const [accessibleSlides, setAccessibleSlides] = useState([]);
+	const [restrictedSlideIds, setRestrictedSlideIds] = useState(new Set());
 
 	// Slideshow state
 	const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -107,7 +115,7 @@ export default function LessonPlanPresentation() {
 				throw new Error('נדרשת הרשמה לצפייה בפרזנטציה');
 			}
 
-			// Load SVG slides using the new API
+			// Load SVG slides using the new API with selective access support
 			const slidesData = await apiRequest(`/svg-slides/${lessonPlanId}`, {
 				method: 'GET',
 			});
@@ -126,21 +134,65 @@ export default function LessonPlanPresentation() {
 			}
 			clog('🎭 SVG slides data loaded:', slidesData);
 
+			// Parse selective access information from response
+			const slideAccess = slidesData.data.slideAccess || {};
+			const hasFullAccess = slideAccess.hasFullAccess || false;
+			const allowPreview = slideAccess.allowPreview || false;
+			const userAccessibleSlides = slideAccess.accessibleSlides || [];
+			const userRestrictedSlides = slideAccess.restrictedSlides || [];
+
+			// Determine access mode
+			let userAccessMode = 'full';
+			if (!hasFullAccess) {
+				if (userAccessibleSlides.length > 0) {
+					userAccessMode = 'selective';
+				} else if (allowPreview) {
+					userAccessMode = 'preview';
+				} else {
+					userAccessMode = 'restricted';
+				}
+			}
+
+			setAccessMode(userAccessMode);
+			setAccessibleSlides(userAccessibleSlides);
+			setRestrictedSlideIds(new Set(userRestrictedSlides));
+
+			clog('🔐 Access mode determined:', {
+				mode: userAccessMode,
+				hasFullAccess,
+				allowPreview,
+				accessibleSlides: userAccessibleSlides,
+				restrictedSlides: userRestrictedSlides
+			});
+
 			if (!slidesData.success || !slidesData.data.slides || slidesData.data.slides.length === 0) {
 				setError('לא נמצאו שקפים עבור תוכנית שיעור זו');
 				setIsLoading(false);
 				return;
 			}
 
-			// Process SVG slides for display
-			const svgSlides = slidesData.data.slides.map((slide, index) => ({
-				id: slide.id,
-				filename: slide.title || slide.filename || `שקף ${index + 1}`,
-				type: 'svg',
-				slideNumber: index + 1,
-				url: `${getApiBase()}/assets/download/lesson-plan-slide/${lessonPlanId}/${slide.id}`,
-				slideOrder: slide.slide_order || index + 1,
-			}));
+			// Process SVG slides for display with selective access control
+			const svgSlides = slidesData.data.slides.map((slide, index) => {
+				const isRestricted = userRestrictedSlides.includes(slide.slide_number || (index + 1));
+				const slideNumber = slide.slide_number || (index + 1);
+
+				// For restricted slides, use placeholder if user doesn't have access
+				const slideUrl = isRestricted && userAccessMode !== 'full'
+					? `${getApiBase()}/assets/placeholder/slide-not-available.svg`
+					: `${getApiBase()}/assets/download/lesson-plan-slide/${lessonPlanId}/${slide.id}`;
+
+				return {
+					id: slide.id,
+					filename: slide.title || slide.filename || `שקף ${slideNumber}`,
+					type: 'svg',
+					slideNumber: slideNumber,
+					url: slideUrl,
+					slideOrder: slide.slide_order || index + 1,
+					isRestricted: isRestricted,
+					isAccessible: !isRestricted || userAccessMode === 'full' || userAccessibleSlides.includes(slideNumber),
+					originalUrl: `${getApiBase()}/assets/download/lesson-plan-slide/${lessonPlanId}/${slide.id}`,
+				};
+			});
 
 			// Also load lesson plan data for audio files and title
 			let lessonPlanData = null;
@@ -421,6 +473,33 @@ export default function LessonPlanPresentation() {
 		};
 	}, [slideBlobUrls]);
 
+	// Helper functions for slide access control
+	const isSlideRestricted = (slide) => {
+		return slide && slide.isRestricted && !slide.isAccessible;
+	};
+
+	const getSlideStatusIcon = (slide) => {
+		if (!slide) return null;
+
+		if (slide.isRestricted && !slide.isAccessible) {
+			return <Lock className='w-4 h-4' />;
+		} else if (slide.isRestricted && slide.isAccessible) {
+			return <Shield className='w-4 h-4' />;
+		}
+		return null;
+	};
+
+	const getSlideStatusColor = (slide) => {
+		if (!slide) return 'text-white';
+
+		if (slide.isRestricted && !slide.isAccessible) {
+			return 'text-red-400';
+		} else if (slide.isRestricted && slide.isAccessible) {
+			return 'text-yellow-400';
+		}
+		return 'text-white';
+	};
+
 	// Current slide data
 	const currentSlide = renderedSlides[currentSlideIndex];
 
@@ -579,6 +658,30 @@ export default function LessonPlanPresentation() {
 								dangerouslySetInnerHTML={{ __html: currentSlide.html || '' }}
 							/>
 						)}
+
+						{/* Restricted Slide Overlay */}
+						{isSlideRestricted(currentSlide) && (
+							<div className='absolute inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-10'>
+								<div className='text-center max-w-md px-6'>
+									<div className='w-20 h-20 bg-red-600 rounded-full flex items-center justify-center mx-auto mb-6'>
+										<Lock className='w-10 h-10 text-white' />
+									</div>
+									<h3 className='text-2xl font-bold text-white mb-4'>שקף מוגבל</h3>
+									<p className='text-gray-300 mb-6'>
+										שקף זה מוגבל ואינך יכול לצפות בו במצב זה.
+										{accessMode === 'preview' && ' קנה את המוצר כדי לגשת לכל השקפים.'}
+									</p>
+									{accessMode === 'preview' && (
+										<Button
+											onClick={() => navigate(`/product-details?type=lesson_plan&id=${lessonPlanId}`)}
+											className='bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-8 py-3'
+										>
+											קנה למשך גישה מלאה
+										</Button>
+									)}
+								</div>
+							</div>
+						)}
 					</div>
 				)}
 
@@ -634,10 +737,41 @@ export default function LessonPlanPresentation() {
 						{/* Left Section - Slide Counter (only show when not fullscreen) */}
 						<div className='flex items-center gap-3'>
 							{!isFullscreen && (
-								<div className='bg-gradient-to-r from-gray-800/80 to-gray-700/80 backdrop-blur-sm rounded-lg px-3 py-1 border border-gray-600/30 shadow-inner'>
-									<div className='text-center'>
-										<div className='text-white font-semibold text-sm leading-none'>{currentSlideIndex + 1}</div>
-										<div className='text-gray-400 text-xs font-medium'>מתוך {renderedSlides.length}</div>
+								<div className={`bg-gradient-to-r from-gray-800/80 to-gray-700/80 backdrop-blur-sm rounded-lg px-3 py-1 border shadow-inner ${
+									isSlideRestricted(currentSlide)
+										? 'border-red-600/50 bg-gradient-to-r from-red-900/40 to-red-800/40'
+										: currentSlide?.isRestricted
+											? 'border-yellow-600/50 bg-gradient-to-r from-yellow-900/40 to-yellow-800/40'
+											: 'border-gray-600/30'
+								}`}>
+									<div className='text-center flex items-center gap-2'>
+										<div className='flex flex-col'>
+											<div className={`font-semibold text-sm leading-none ${getSlideStatusColor(currentSlide)}`}>
+												{currentSlideIndex + 1}
+											</div>
+											<div className='text-gray-400 text-xs font-medium'>מתוך {renderedSlides.length}</div>
+										</div>
+										{getSlideStatusIcon(currentSlide) && (
+											<div className={getSlideStatusColor(currentSlide)}>
+												{getSlideStatusIcon(currentSlide)}
+											</div>
+										)}
+									</div>
+								</div>
+							)}
+
+							{/* Access Mode Indicator */}
+							{accessMode !== 'full' && (
+								<div className='bg-gradient-to-r from-blue-800/60 to-blue-700/60 backdrop-blur-sm rounded-lg px-2 py-1 border border-blue-600/30 shadow-inner'>
+									<div className='flex items-center gap-1'>
+										{accessMode === 'selective' && <Shield className='w-3 h-3 text-yellow-400' />}
+										{accessMode === 'preview' && <Eye className='w-3 h-3 text-blue-400' />}
+										{accessMode === 'restricted' && <Lock className='w-3 h-3 text-red-400' />}
+										<span className='text-xs text-white font-medium'>
+											{accessMode === 'selective' && 'גישה חלקית'}
+											{accessMode === 'preview' && 'תצוגה מקדימה'}
+											{accessMode === 'restricted' && 'מוגבל'}
+										</span>
 									</div>
 								</div>
 							)}

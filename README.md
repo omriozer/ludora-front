@@ -194,4 +194,4 @@ The build output will be in the `dist/` directory, ready for deployment to any s
 
 ---
 
-**Note**: This project was migrated from Base44 to a custom architecture for enhanced control and scalability.
+**Note**: This project was migrated from Base44 to a custom architecture for enhanced control and scalability.# Test deployment with clean env script - Fri Nov  7 19:37:09 +07 2025

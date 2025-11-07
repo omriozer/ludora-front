@@ -1,19 +1,131 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { NumberInput } from '@/components/ui/number-input';
-import { Crown } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Crown, RotateCw, EyeOff, Eye, Template, Loader2 } from 'lucide-react';
+import { getApiBase } from '@/utils/api';
+import { clog, cerror } from '@/lib/utils';
+import { toast } from '@/components/ui/use-toast';
 
 const FooterControlsSidebar = ({
   footerConfig,
   onConfigChange,
-  userRole
+  userRole,
+  currentFileId = null
 }) => {
   const isAdmin = userRole === 'admin' || userRole === 'sysadmin';
   const isContentCreator = !isAdmin;
+
+  // Template management state
+  const [templates, setTemplates] = useState([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState(null);
+  const [savingAsTemplate, setSavingAsTemplate] = useState(false);
+
+  // Load available templates
+  useEffect(() => {
+    if (isAdmin) {
+      loadFooterTemplates();
+    }
+  }, [isAdmin]);
+
+  const loadFooterTemplates = async () => {
+    setLoadingTemplates(true);
+    try {
+      const response = await fetch(`${getApiBase()}/system-templates/footer`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (!response.ok) throw new Error('Failed to load templates');
+
+      const result = await response.json();
+      setTemplates(result.data || []);
+      clog('Footer templates loaded:', result.data);
+    } catch (error) {
+      cerror('Error loading footer templates:', error);
+      toast({
+        title: "שגיאה בטעינת תבניות",
+        description: "לא ניתן לטעון את רשימת התבניות",
+        variant: "destructive"
+      });
+    }
+    setLoadingTemplates(false);
+  };
+
+  const applyTemplate = async (templateId) => {
+    if (!templateId) return;
+
+    try {
+      const template = templates.find(t => t.id === templateId);
+      if (!template) return;
+
+      clog('Applying template:', template);
+      onConfigChange(template.template_data);
+      setSelectedTemplateId(templateId);
+
+      toast({
+        title: "תבנית הוחלה בהצלחה",
+        description: `התבנית "${template.name}" הוחלה על הכותרת התחתונה`
+      });
+    } catch (error) {
+      cerror('Error applying template:', error);
+      toast({
+        title: "שגיאה בהחלת התבנית",
+        description: "לא ניתן להחיל את התבנית",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const saveAsTemplate = async () => {
+    if (!isAdmin || !currentFileId) return;
+
+    const templateName = prompt('הזן שם לתבנית החדשה:');
+    if (!templateName) return;
+
+    setSavingAsTemplate(true);
+    try {
+      const response = await fetch(`${getApiBase()}/system-templates/save-from-file/${currentFileId}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: templateName,
+          description: `תבנית שנוצרה מקובץ מספר ${currentFileId}`,
+          category: 'custom'
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to save template');
+      }
+
+      toast({
+        title: "התבנית נשמרה בהצלחה",
+        description: `התבנית "${templateName}" נוצרה ותהיה זמינה לשימוש בקבצים אחרים`
+      });
+
+      // Reload templates
+      await loadFooterTemplates();
+    } catch (error) {
+      cerror('Error saving template:', error);
+      toast({
+        title: "שגיאה בשמירת התבנית",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+    setSavingAsTemplate(false);
+  };
 
   const updateConfig = (section, field, value) => {
     onConfigChange({
@@ -61,6 +173,85 @@ const FooterControlsSidebar = ({
 
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto p-5 space-y-6">
+        {/* Template Picker - Admin Only */}
+        {isAdmin && (
+          <div className="space-y-4 p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border border-indigo-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Template className="w-5 h-5 text-indigo-600" />
+                <Label className="text-base font-bold text-gray-800">תבניות מערכת</Label>
+                <Crown className="w-4 h-4 text-amber-500" />
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <Label className="text-sm">החל תבנית קיימת</Label>
+                <div className="flex gap-2">
+                  <select
+                    value={selectedTemplateId || ''}
+                    onChange={(e) => e.target.value && applyTemplate(parseInt(e.target.value))}
+                    className="flex-1 px-3 py-2 border rounded-lg bg-white disabled:opacity-50"
+                    disabled={loadingTemplates}
+                  >
+                    <option value="">בחר תבנית...</option>
+                    {templates.map((template) => (
+                      <option key={template.id} value={template.id}>
+                        {template.name} {template.is_default ? '(ברירת מחדל)' : ''} - {template.category}
+                      </option>
+                    ))}
+                  </select>
+                  {loadingTemplates && (
+                    <div className="flex items-center justify-center px-3">
+                      <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  onClick={saveAsTemplate}
+                  disabled={savingAsTemplate || !currentFileId}
+                  size="sm"
+                  variant="outline"
+                  className="text-indigo-600 border-indigo-300 hover:bg-indigo-50"
+                >
+                  {savingAsTemplate ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin ml-2" />
+                      שומר...
+                    </>
+                  ) : (
+                    <>
+                      <Template className="w-4 h-4 ml-2" />
+                      שמור כתבנית
+                    </>
+                  )}
+                </Button>
+                <Button
+                  onClick={loadFooterTemplates}
+                  disabled={loadingTemplates}
+                  size="sm"
+                  variant="outline"
+                  className="text-gray-600 border-gray-300 hover:bg-gray-50"
+                >
+                  {loadingTemplates ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    'רענן'
+                  )}
+                </Button>
+              </div>
+
+              <div className="text-xs text-gray-600 bg-white p-2 rounded border">
+                💡 <strong>תבניות מאפשרות:</strong> שמירה ושימוש חוזר בהגדרות כותרת תחתונה מותאמות.
+                שמור את ההגדרות הנוכחיות כתבנית או החל תבנית קיימת על הקובץ הזה.
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Logo Controls */}
         <div className="space-y-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
           <div className="flex items-center justify-between">
@@ -68,12 +259,28 @@ const FooterControlsSidebar = ({
               <Label className="text-base font-bold text-gray-800">לוגו</Label>
               {isAdmin && <Crown className="w-4 h-4 text-amber-500" />}
             </div>
-            {isAdmin && (
-              <Switch
-                checked={footerConfig.logo.visible}
-                onCheckedChange={(checked) => updateConfig('logo', 'visible', checked)}
-              />
-            )}
+            <div className="flex items-center gap-2">
+              {isAdmin && (
+                <>
+                  <Switch
+                    checked={footerConfig.logo.visible && !footerConfig.logo.hidden}
+                    onCheckedChange={(checked) => {
+                      updateConfig('logo', 'visible', checked);
+                      updateConfig('logo', 'hidden', !checked);
+                    }}
+                  />
+                  <button
+                    onClick={() => updateConfig('logo', 'hidden', !footerConfig.logo.hidden)}
+                    className={`p-1 rounded hover:bg-gray-200 transition-colors ${
+                      footerConfig.logo.hidden ? 'text-red-500' : 'text-gray-600'
+                    }`}
+                    title={footerConfig.logo.hidden ? 'הלוגו מוסתר' : 'הסתר לוגו (ללא מחיקה)'}
+                  >
+                    {footerConfig.logo.hidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </>
+              )}
+            </div>
           </div>
 
           {footerConfig.logo.visible && (
@@ -116,6 +323,39 @@ const FooterControlsSidebar = ({
                       suffix="%"
                     />
                   </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-1">
+                      <RotateCw className="w-3 h-3 text-blue-500" />
+                      <Label className="text-sm">סיבוב</Label>
+                      <Crown className="w-3 h-3 text-orange-500" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <NumberInput
+                        value={footerConfig.logo.rotation || 0}
+                        onChange={(value) => updateConfig('logo', 'rotation', value)}
+                        min={-180}
+                        max={180}
+                        step={15}
+                        suffix="°"
+                        className="flex-1"
+                      />
+                      <Button
+                        onClick={() => updateConfig('logo', 'rotation', 0)}
+                        size="sm"
+                        variant="outline"
+                        className="px-2"
+                        title="איפוס סיבוב"
+                      >
+                        <RotateCw className="w-3 h-3" />
+                      </Button>
+                    </div>
+                    {(footerConfig.logo.rotation || 0) !== 0 && (
+                      <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded border">
+                        ⚠️ סיבוב עדיין לא יוצג ב-PDF הסופי (בפיתוח)
+                      </p>
+                    )}
+                  </div>
                 </>
               )}
             </>
@@ -129,12 +369,28 @@ const FooterControlsSidebar = ({
               <Label className="text-base font-bold text-gray-800">טקסט זכויות יוצרים</Label>
               {isAdmin && <Crown className="w-4 h-4 text-amber-500" />}
             </div>
-            {isAdmin && (
-              <Switch
-                checked={footerConfig.text.visible}
-                onCheckedChange={(checked) => updateConfig('text', 'visible', checked)}
-              />
-            )}
+            <div className="flex items-center gap-2">
+              {isAdmin && (
+                <>
+                  <Switch
+                    checked={footerConfig.text.visible && !footerConfig.text.hidden}
+                    onCheckedChange={(checked) => {
+                      updateConfig('text', 'visible', checked);
+                      updateConfig('text', 'hidden', !checked);
+                    }}
+                  />
+                  <button
+                    onClick={() => updateConfig('text', 'hidden', !footerConfig.text.hidden)}
+                    className={`p-1 rounded hover:bg-gray-200 transition-colors ${
+                      footerConfig.text.hidden ? 'text-red-500' : 'text-gray-600'
+                    }`}
+                    title={footerConfig.text.hidden ? 'הטקסט מוסתר' : 'הסתר טקסט (ללא מחיקה)'}
+                  >
+                    {footerConfig.text.hidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </>
+              )}
+            </div>
           </div>
 
           {footerConfig.text.visible && (
@@ -247,6 +503,39 @@ const FooterControlsSidebar = ({
                       </div>
                     </div>
                   </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-1">
+                      <RotateCw className="w-3 h-3 text-blue-500" />
+                      <Label className="text-sm">סיבוב</Label>
+                      <Crown className="w-3 h-3 text-orange-500" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <NumberInput
+                        value={footerConfig.text.rotation || 0}
+                        onChange={(value) => updateConfig('text', 'rotation', value)}
+                        min={-180}
+                        max={180}
+                        step={15}
+                        suffix="°"
+                        className="flex-1"
+                      />
+                      <Button
+                        onClick={() => updateConfig('text', 'rotation', 0)}
+                        size="sm"
+                        variant="outline"
+                        className="px-2"
+                        title="איפוס סיבוב"
+                      >
+                        <RotateCw className="w-3 h-3" />
+                      </Button>
+                    </div>
+                    {(footerConfig.text.rotation || 0) !== 0 && (
+                      <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded border">
+                        ⚠️ סיבוב עדיין לא יוצג ב-PDF הסופי (בפיתוח)
+                      </p>
+                    )}
+                  </div>
                 </>
               )}
             </>
@@ -260,12 +549,28 @@ const FooterControlsSidebar = ({
               <Label className="text-base font-bold text-gray-800">קישור URL</Label>
               {isAdmin && <Crown className="w-4 h-4 text-amber-500" />}
             </div>
-            {isAdmin && (
-              <Switch
-                checked={footerConfig.url.visible}
-                onCheckedChange={(checked) => updateConfig('url', 'visible', checked)}
-              />
-            )}
+            <div className="flex items-center gap-2">
+              {isAdmin && (
+                <>
+                  <Switch
+                    checked={footerConfig.url.visible && !footerConfig.url.hidden}
+                    onCheckedChange={(checked) => {
+                      updateConfig('url', 'visible', checked);
+                      updateConfig('url', 'hidden', !checked);
+                    }}
+                  />
+                  <button
+                    onClick={() => updateConfig('url', 'hidden', !footerConfig.url.hidden)}
+                    className={`p-1 rounded hover:bg-gray-200 transition-colors ${
+                      footerConfig.url.hidden ? 'text-red-500' : 'text-gray-600'
+                    }`}
+                    title={footerConfig.url.hidden ? 'הקישור מוסתר' : 'הסתר קישור (ללא מחיקה)'}
+                  >
+                    {footerConfig.url.hidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </>
+              )}
+            </div>
           </div>
 
           {footerConfig.url.visible && (
@@ -343,6 +648,39 @@ const FooterControlsSidebar = ({
                         <Crown className="w-3 h-3 text-orange-500" />
                       </div>
                     </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-1">
+                      <RotateCw className="w-3 h-3 text-blue-500" />
+                      <Label className="text-sm">סיבוב</Label>
+                      <Crown className="w-3 h-3 text-orange-500" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <NumberInput
+                        value={footerConfig.url.rotation || 0}
+                        onChange={(value) => updateConfig('url', 'rotation', value)}
+                        min={-180}
+                        max={180}
+                        step={15}
+                        suffix="°"
+                        className="flex-1"
+                      />
+                      <Button
+                        onClick={() => updateConfig('url', 'rotation', 0)}
+                        size="sm"
+                        variant="outline"
+                        className="px-2"
+                        title="איפוס סיבוב"
+                      >
+                        <RotateCw className="w-3 h-3" />
+                      </Button>
+                    </div>
+                    {(footerConfig.url.rotation || 0) !== 0 && (
+                      <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded border">
+                        ⚠️ סיבוב עדיין לא יוצג ב-PDF הסופי (בפיתוח)
+                      </p>
+                    )}
                   </div>
                 </>
               )}

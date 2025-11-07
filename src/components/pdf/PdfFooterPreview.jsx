@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { X, Save, RotateCcw } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { X, Save, RotateCcw, Palette } from 'lucide-react';
 import logo from '@/assets/images/logo.png';
 import PdfCanvasWithFooter from './PdfCanvasWithFooter';
 import ItemButtons from './ItemButtons';
@@ -25,6 +26,9 @@ const PdfFooterPreview = ({
   const [isLoadingSettings, setIsLoadingSettings] = useState(true);
   const [selectedItem, setSelectedItem] = useState(null);
   const [focusedItem, setFocusedItem] = useState(null);
+  const [templates, setTemplates] = useState([]);
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState(null);
 
 
   const getDefaultConfig = (copyrightTextValue) => {
@@ -152,6 +156,29 @@ const PdfFooterPreview = ({
       fetchData();
     }
   }, [isOpen, fileEntityId]);
+
+  // Fetch available templates when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      const fetchTemplates = async () => {
+        setIsLoadingTemplates(true);
+        try {
+          clog('Fetching available footer templates...');
+          const response = await apiRequest('/system-templates?type=footer');
+          const templateList = Array.isArray(response) ? response : [];
+          clog('Available templates:', templateList);
+          setTemplates(templateList);
+        } catch (error) {
+          cerror('Error fetching templates:', error);
+          setTemplates([]);
+        } finally {
+          setIsLoadingTemplates(false);
+        }
+      };
+
+      fetchTemplates();
+    }
+  }, [isOpen]);
 
   // Fetch PDF file via API when modal opens
   useEffect(() => {
@@ -536,6 +563,45 @@ const PdfFooterPreview = ({
     }
   };
 
+  const handleApplyTemplate = async (templateId) => {
+    if (!templateId) return;
+
+    try {
+      const template = templates.find(t => t.id === parseInt(templateId));
+      if (!template) {
+        cerror('Template not found:', templateId);
+        return;
+      }
+
+      clog('🎨 Applying template:', template);
+
+      // Apply template configuration while preserving system text content
+      const newConfig = {
+        ...template.template_data,
+        text: {
+          ...template.template_data.text,
+          content: copyrightText // Always preserve system copyright text
+        },
+        logo: {
+          ...template.template_data.logo,
+          url: logo // Use the logo from assets
+        }
+      };
+
+      clog('🎨 Template applied config:', newConfig);
+      setFooterConfig(newConfig);
+      setSelectedTemplateId(templateId);
+
+      // Clear any selected item
+      setSelectedItem(null);
+      setFocusedItem(null);
+
+      clog(`✅ Applied template: ${template.name}`);
+    } catch (error) {
+      cerror('Error applying template:', error);
+    }
+  };
+
   const handleClose = () => {
     // Reset to loaded settings on close without saving
     setCurrentPage(1);
@@ -575,6 +641,33 @@ const PdfFooterPreview = ({
               <p className="text-sm text-gray-600 mt-1">התאם אישית את מיקום ועיצוב הכותרת התחתונה</p>
             </div>
             <div className="flex items-center gap-3">
+              {/* Template Picker */}
+              <div className="flex items-center gap-2">
+                <Palette className="w-4 h-4 text-purple-600" />
+                <Select
+                  value={selectedTemplateId || ""}
+                  onValueChange={handleApplyTemplate}
+                  disabled={isLoadingTemplates}
+                >
+                  <SelectTrigger className="w-40 text-sm border-purple-300 text-purple-700 hover:bg-purple-50">
+                    <SelectValue placeholder="בחר תבנית" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {templates.length > 0 ? (
+                      templates.map((template) => (
+                        <SelectItem key={template.id} value={template.id.toString()}>
+                          {template.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="none" disabled>
+                        {isLoadingTemplates ? 'טוען תבניות...' : 'אין תבניות זמינות'}
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <Button onClick={handleReset} variant="outline" className="gap-2 border-orange-300 text-orange-700 hover:bg-orange-50">
                 <RotateCcw className="w-4 h-4" />
                 איפוס להגדרות ברירת מחדל

@@ -65,6 +65,7 @@ export const SubscriptionSettings = lazy(() => import('./SubscriptionSettings'))
 export const SchoolManagement = lazy(() => import('./SchoolManagement'));
 export const AdminHelp = lazy(() => import('./AdminHelp'));
 export const Documentation = lazy(() => import('./Documentation'));
+export const TemplateManager = lazy(() => import('./TemplateManager'));
 
 // Coupon management (admin-only)
 export const CouponDashboard = lazy(() => import('./CouponDashboard'));

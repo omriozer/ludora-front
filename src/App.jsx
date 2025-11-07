@@ -628,6 +628,16 @@ function App() {
 							</AdminRoute>
 						}
 					/>
+					<Route
+						path='/template-manager'
+						element={
+							<AdminRoute>
+								<Suspense fallback={<SuspenseLoader />}>
+									<LazyPages.TemplateManager />
+								</Suspense>
+							</AdminRoute>
+						}
+					/>
 
 					{/* Coupon Admin Routes */}
 					<Route

@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { X, Crown, Trash2 } from 'lucide-react';
+import { X, Crown, Trash2, RotateCw, EyeOff, Eye } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -110,6 +110,25 @@ const FloatingSettingsMenu = ({
 
   const renderLogoControls = () => (
     <>
+      {/* Hidden Toggle */}
+      {isAdmin && (
+        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+          <div className="flex items-center gap-2">
+            <Label className="text-sm font-medium">אלמנט מוסתר</Label>
+            <Crown className="w-3 h-3 text-orange-500" />
+          </div>
+          <button
+            onClick={() => onConfigChange('logo', 'hidden', !itemConfig.hidden)}
+            className={`p-1 rounded transition-colors ${
+              itemConfig.hidden ? 'text-red-500 bg-red-50' : 'text-gray-600 hover:bg-gray-200'
+            }`}
+            title={itemConfig.hidden ? 'הלוגו מוסתר' : 'הסתר לוגו (ללא מחיקה)'}
+          >
+            {itemConfig.hidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          </button>
+        </div>
+      )}
+
       {isAdmin && (
         <>
           <div className="space-y-2">
@@ -140,6 +159,39 @@ const FloatingSettingsMenu = ({
               suffix="%"
             />
           </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center gap-1">
+              <RotateCw className="w-3 h-3 text-blue-500" />
+              <Label className="text-sm">סיבוב</Label>
+              <Crown className="w-3 h-3 text-orange-500" />
+            </div>
+            <div className="flex items-center gap-2">
+              <NumberInput
+                value={itemConfig.rotation || 0}
+                onChange={(value) => onConfigChange('logo', 'rotation', value)}
+                min={-180}
+                max={180}
+                step={15}
+                suffix="°"
+                className="flex-1"
+              />
+              <Button
+                onClick={() => onConfigChange('logo', 'rotation', 0)}
+                size="sm"
+                variant="outline"
+                className="px-2"
+                title="איפוס סיבוב"
+              >
+                <RotateCw className="w-3 h-3" />
+              </Button>
+            </div>
+            {(itemConfig.rotation || 0) !== 0 && (
+              <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded border">
+                ⚠️ סיבוב עדיין לא יוצג ב-PDF הסופי (בפיתוח)
+              </p>
+            )}
+          </div>
         </>
       )}
     </>
@@ -147,6 +199,25 @@ const FloatingSettingsMenu = ({
 
   const renderTextControls = () => (
     <>
+      {/* Hidden Toggle */}
+      {isAdmin && (
+        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+          <div className="flex items-center gap-2">
+            <Label className="text-sm font-medium">אלמנט מוסתר</Label>
+            <Crown className="w-3 h-3 text-orange-500" />
+          </div>
+          <button
+            onClick={() => onConfigChange('text', 'hidden', !itemConfig.hidden)}
+            className={`p-1 rounded transition-colors ${
+              itemConfig.hidden ? 'text-red-500 bg-red-50' : 'text-gray-600 hover:bg-gray-200'
+            }`}
+            title={itemConfig.hidden ? 'הטקסט מוסתר' : 'הסתר טקסט (ללא מחיקה)'}
+          >
+            {itemConfig.hidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          </button>
+        </div>
+      )}
+
       {isAdmin && (
         <div className="space-y-2">
           <div className="flex items-center gap-1">
@@ -221,6 +292,39 @@ const FloatingSettingsMenu = ({
             />
           </div>
 
+          <div className="space-y-2">
+            <div className="flex items-center gap-1">
+              <RotateCw className="w-3 h-3 text-blue-500" />
+              <Label className="text-sm">סיבוב</Label>
+              <Crown className="w-3 h-3 text-orange-500" />
+            </div>
+            <div className="flex items-center gap-2">
+              <NumberInput
+                value={itemConfig.rotation || 0}
+                onChange={(value) => onConfigChange('text', 'rotation', value)}
+                min={-180}
+                max={180}
+                step={15}
+                suffix="°"
+                className="flex-1"
+              />
+              <Button
+                onClick={() => onConfigChange('text', 'rotation', 0)}
+                size="sm"
+                variant="outline"
+                className="px-2"
+                title="איפוס סיבוב"
+              >
+                <RotateCw className="w-3 h-3" />
+              </Button>
+            </div>
+            {(itemConfig.rotation || 0) !== 0 && (
+              <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded border">
+                ⚠️ סיבוב עדיין לא יוצג ב-PDF הסופי (בפיתוח)
+              </p>
+            )}
+          </div>
+
           <div className="flex gap-4">
             <div className="flex items-center gap-2">
               <Switch
@@ -250,6 +354,25 @@ const FloatingSettingsMenu = ({
 
   const renderUrlControls = () => (
     <>
+      {/* Hidden Toggle */}
+      {isAdmin && (
+        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+          <div className="flex items-center gap-2">
+            <Label className="text-sm font-medium">אלמנט מוסתר</Label>
+            <Crown className="w-3 h-3 text-orange-500" />
+          </div>
+          <button
+            onClick={() => onConfigChange('url', 'hidden', !itemConfig.hidden)}
+            className={`p-1 rounded transition-colors ${
+              itemConfig.hidden ? 'text-red-500 bg-red-50' : 'text-gray-600 hover:bg-gray-200'
+            }`}
+            title={itemConfig.hidden ? 'הקישור מוסתר' : 'הסתר קישור (ללא מחיקה)'}
+          >
+            {itemConfig.hidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          </button>
+        </div>
+      )}
+
       {isAdmin && (
         <>
           <div className="space-y-2">
@@ -292,6 +415,39 @@ const FloatingSettingsMenu = ({
               step={5}
               suffix="%"
             />
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center gap-1">
+              <RotateCw className="w-3 h-3 text-blue-500" />
+              <Label className="text-sm">סיבוב</Label>
+              <Crown className="w-3 h-3 text-orange-500" />
+            </div>
+            <div className="flex items-center gap-2">
+              <NumberInput
+                value={itemConfig.rotation || 0}
+                onChange={(value) => onConfigChange('url', 'rotation', value)}
+                min={-180}
+                max={180}
+                step={15}
+                suffix="°"
+                className="flex-1"
+              />
+              <Button
+                onClick={() => onConfigChange('url', 'rotation', 0)}
+                size="sm"
+                variant="outline"
+                className="px-2"
+                title="איפוס סיבוב"
+              >
+                <RotateCw className="w-3 h-3" />
+              </Button>
+            </div>
+            {(itemConfig.rotation || 0) !== 0 && (
+              <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded border">
+                ⚠️ סיבוב עדיין לא יוצג ב-PDF הסופי (בפיתוח)
+              </p>
+            )}
           </div>
 
           <div className="flex gap-4">
