@@ -10,6 +10,7 @@ import { Crown, RotateCw, EyeOff, Eye, Template, Loader2 } from 'lucide-react';
 import { getApiBase } from '@/utils/api';
 import { clog, cerror } from '@/lib/utils';
 import { toast } from '@/components/ui/use-toast';
+import { apiRequest } from '@/services/apiClient.js';
 
 const FooterControlsSidebar = ({
   footerConfig,
@@ -36,15 +37,7 @@ const FooterControlsSidebar = ({
   const loadFooterTemplates = async () => {
     setLoadingTemplates(true);
     try {
-      const response = await fetch(`${getApiBase()}/system-templates/footer`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (!response.ok) throw new Error('Failed to load templates');
-
-      const result = await response.json();
+      const result = await apiRequest('/system-templates/type/footer');
       setTemplates(result.data || []);
       clog('Footer templates loaded:', result.data);
     } catch (error) {
@@ -91,23 +84,14 @@ const FooterControlsSidebar = ({
 
     setSavingAsTemplate(true);
     try {
-      const response = await fetch(`${getApiBase()}/system-templates/save-from-file/${currentFileId}`, {
+      await apiRequest(`/system-templates/save-from-file/${currentFileId}`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify({
           name: templateName,
           description: `תבנית שנוצרה מקובץ מספר ${currentFileId}`,
           category: 'custom'
         })
       });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to save template');
-      }
 
       toast({
         title: "התבנית נשמרה בהצלחה",

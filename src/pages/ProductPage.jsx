@@ -118,7 +118,7 @@ export default function ProductPage() {
       const visibleTypes = [];
 
       for (const productType of productTypesToCheck) {
-        const visibility = await FeatureFlagService.getFeatureVisibility(
+        const visibility = await FeatureFlagService.getFeatureVisibility(globalSettings,
           productType === 'file' ? 'files' :
           productType === 'lesson_plan' ? 'lesson_plans' :
           `${productType}s`

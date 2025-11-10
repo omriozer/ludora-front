@@ -103,15 +103,22 @@ export const WizardLayout = ({
           return true; // Game products are considered complete when created
         }
         if (formData.product_type === 'lesson_plan') {
-          // Lesson plans require at least one file in the opening section
+          // Lesson plans require either SVG slides OR at least one file in the opening section
           const hasOpeningFiles = !!(formData.file_configs?.files?.some(file => file.file_role === 'opening'));
+          const hasSVGSlides = !!(formData.file_configs?.presentation && formData.file_configs.presentation.length > 0);
+          const isValid = hasOpeningFiles || hasSVGSlides;
+
           console.log('🎯 Lesson plan validation debug:', {
             'formData.file_configs': formData.file_configs,
             'formData.file_configs?.files?.length': formData.file_configs?.files?.length,
+            'formData.file_configs?.presentation?.length': formData.file_configs?.presentation?.length,
             'hasOpeningFiles': hasOpeningFiles,
-            'files array': formData.file_configs?.files
+            'hasSVGSlides': hasSVGSlides,
+            'isValid': isValid,
+            'files array': formData.file_configs?.files,
+            'presentation array': formData.file_configs?.presentation
           });
-          return hasOpeningFiles;
+          return isValid;
         }
         return true; // Other product types don't have specific requirements
       },
@@ -151,6 +158,7 @@ export const WizardLayout = ({
     formData.total_duration_minutes,
     formData.file_configs?.files?.length, // For lesson plan file validation
     JSON.stringify(formData.file_configs?.files?.filter(f => f.file_role === 'opening')), // Trigger on opening files change
+    formData.file_configs?.presentation?.length, // For lesson plan SVG slides validation
     formData.is_published, // For publishing step validation
     hasUploadedFile,
     visibleSections.length // Only depend on length, not the entire array

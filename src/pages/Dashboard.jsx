@@ -19,6 +19,10 @@ import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import LudoraLoadingSpinner from "@/components/ui/LudoraLoadingSpinner";
 import PurchaseHistory from "@/components/PurchaseHistory";
+import LessonModeWidget from "@/components/dashboard/widgets/LessonModeWidget";
+import DiceRollerWidget from "@/components/dashboard/widgets/DiceRollerWidget";
+import ColorWheelWidget from "@/components/dashboard/widgets/ColorWheelWidget";
+import TableDisplayWidget from "@/components/dashboard/widgets/TableDisplayWidget";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { clog, cerror } from "@/lib/utils";
 import { toast } from "@/components/ui/use-toast";
@@ -93,6 +97,50 @@ const WidgetRenderer = ({ widget, isEditMode, onRemove, onMoveUp, onMoveDown, ca
             showHeader={true}
             className=""
           />
+        );
+      case 'lesson-mode':
+        return (
+          <Card>
+            <CardContent className="p-0">
+              <LessonModeWidget
+                widgetId={widget.id}
+                settings={widget.settings}
+              />
+            </CardContent>
+          </Card>
+        );
+      case 'dice-roller':
+        return (
+          <Card>
+            <CardContent className="p-0">
+              <DiceRollerWidget
+                widgetId={widget.id}
+                settings={widget.settings}
+              />
+            </CardContent>
+          </Card>
+        );
+      case 'color-wheel':
+        return (
+          <Card>
+            <CardContent className="p-0">
+              <ColorWheelWidget
+                widgetId={widget.id}
+                settings={widget.settings}
+              />
+            </CardContent>
+          </Card>
+        );
+      case 'table-display':
+        return (
+          <Card>
+            <CardContent className="p-0">
+              <TableDisplayWidget
+                widgetId={widget.id}
+                settings={widget.settings}
+              />
+            </CardContent>
+          </Card>
         );
       default:
         return (

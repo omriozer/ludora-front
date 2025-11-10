@@ -34,7 +34,7 @@ import CourseProductSection from './product-specific/CourseProductSection';
 import ToolProductSection from './product-specific/ToolProductSection';
 import GameProductSection from './product-specific/GameProductSection';
 import LessonPlanProductSection from './product-specific/LessonPlanProductSection';
-import PdfFooterPreview from '@/components/pdf/PdfFooterPreview';
+import VisualTemplateEditor from '@/components/templates/VisualTemplateEditor';
 
 /**
  * ProductSpecificSection - Renders product type-specific fields and functionality
@@ -425,9 +425,9 @@ export const ProductSpecificSection = ({
       </CardContent>
     </Card>
 
-    {/* PDF Footer Preview Modal */}
+    {/* Visual Template Editor Modal */}
     {formData.product_type === 'file' && showFooterPreview && (
-      <PdfFooterPreview
+      <VisualTemplateEditor
         isOpen={showFooterPreview}
         onClose={() => setShowFooterPreview(false)}
         onSave={async (footerConfig) => {
@@ -448,6 +448,8 @@ export const ProductSpecificSection = ({
         fileEntityId={editingProduct?.entity_id}
         userRole={currentUser?.role}
         initialFooterConfig={editingProduct?.footer_settings || formData.footer_settings}
+        targetFormat="pdf-a4-portrait" // TODO: Detect format from file
+        templateType="branding" // This modal is specifically for branding editing
       />
     )}
   </>

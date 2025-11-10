@@ -28,7 +28,7 @@ export default function ProductTypeSelector({
   size = 'md',
   adminOverride = false
 }) {
-  const { currentUser } = useUser();
+  const { currentUser, settings: userSettings } = useUser();
   const [visibleTypes, setVisibleTypes] = useState([]);
   const [adminOnlyTypes, setAdminOnlyTypes] = useState(new Set());
   const [loading, setLoading] = useState(true);
@@ -39,30 +39,17 @@ export default function ProductTypeSelector({
 
   // Load settings for icon configuration
   useEffect(() => {
-    const loadSettings = async () => {
-      try {
-        // Get settings from UserContext if available, or load them
-        if (currentUser) {
-          // Try to get settings from user context first
-          const userSettings = currentUser.settings;
-          if (userSettings) {
-            setSettings(userSettings);
-          } else {
-            // Fallback: load settings manually if needed
-            // For now, we'll use null and fallback to default icons
-            setSettings({});
-          }
-        } else {
-          setSettings({});
-        }
-      } catch (error) {
-        console.warn('Error loading settings for ProductTypeSelector:', error);
-        setSettings({});
-      }
-    };
-
-    loadSettings();
-  }, [currentUser]);
+    // Use settings directly from UserContext
+    if (userSettings) {
+      setSettings(userSettings);
+    } else if (currentUser) {
+      // Still loading or no settings - wait
+      setSettings(null);
+    } else {
+      // No user - use empty settings
+      setSettings({});
+    }
+  }, [currentUser, userSettings]);
 
   // Load visible product types using the same logic as Products.jsx
   useEffect(() => {
@@ -98,7 +85,7 @@ export default function ProductTypeSelector({
                            `${productType}s`;
 
           try {
-            const visibility = await FeatureFlagService.getFeatureVisibility(featureKey);
+            const visibility = await FeatureFlagService.getFeatureVisibility(settings, featureKey);
 
             // Product management visibility logic
             // Not hidden AND user has admin or content creator access

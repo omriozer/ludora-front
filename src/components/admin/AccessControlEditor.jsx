@@ -30,7 +30,9 @@ import {
 } from 'lucide-react';
 import { getApiBase } from '@/utils/api.js';
 import { clog, cerror } from '@/lib/utils';
+import { apiRequest } from '@/services/apiClient.js';
 import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
+import TemplateSelector from '@/components/product/TemplateSelector';
 
 const AccessControlEditor = ({
   entityType,
@@ -39,14 +41,13 @@ const AccessControlEditor = ({
   className = ''
 }) => {
   const [entity, setEntity] = useState(null);
-  const [watermarkTemplates, setWatermarkTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [changes, setChanges] = useState({});
   const [newPageInput, setNewPageInput] = useState('');
   const [newSlideInput, setNewSlideInput] = useState('');
 
-  // Load entity data and watermark templates
+  // Load entity data
   useEffect(() => {
     loadData();
   }, [entityType, entityId]);
@@ -54,34 +55,14 @@ const AccessControlEditor = ({
   const loadData = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
 
-      // Load entity data
-      const entityResponse = await fetch(`${getApiBase()}/entities/${entityType}/${entityId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      if (!entityResponse.ok) {
-        throw new Error('Failed to load entity data');
-      }
-
-      const entityData = await entityResponse.json();
+      // Load entity data using apiRequest
+      const entityData = await apiRequest(`/entities/${entityType}/${entityId}`);
       setEntity(entityData);
-
-      // Load watermark templates
-      const templatesResponse = await fetch(`${getApiBase()}/system-templates?type=watermark`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      if (templatesResponse.ok) {
-        const templatesData = await templatesResponse.json();
-        setWatermarkTemplates(templatesData.data || []);
-      }
 
       clog('AccessControlEditor: Data loaded', {
         entityType,
-        entityId,
-        templatesCount: watermarkTemplates.length
+        entityId
       });
 
     } catch (error) {
@@ -104,18 +85,40 @@ const AccessControlEditor = ({
     return changes.hasOwnProperty(field) ? changes[field] : entity?.[field];
   };
 
+  const parsePageRanges = (input) => {
+    const pageNumbers = [];
+    const parts = input.split(',').map(p => p.trim());
+
+    for (const part of parts) {
+      if (part.includes('-')) {
+        // Handle range like "3-5"
+        const [start, end] = part.split('-').map(s => parseInt(s.trim()));
+        if (!isNaN(start) && !isNaN(end) && start > 0 && end >= start) {
+          for (let i = start; i <= end; i++) {
+            pageNumbers.push(i);
+          }
+        }
+      } else {
+        // Handle single number like "1" or "7"
+        const num = parseInt(part);
+        if (!isNaN(num) && num > 0) {
+          pageNumbers.push(num);
+        }
+      }
+    }
+
+    return pageNumbers;
+  };
+
   const addAccessiblePage = () => {
     if (!newPageInput.trim()) return;
 
-    const pageNumbers = newPageInput.split(',').map(p => {
-      const num = parseInt(p.trim());
-      return isNaN(num) ? null : num;
-    }).filter(p => p !== null && p > 0);
+    const pageNumbers = parsePageRanges(newPageInput);
 
     if (pageNumbers.length === 0) {
       toast({
-        title: "מספר עמוד לא תקין",
-        description: "אנא הכנס מספרי עמודים תקינים (1, 2, 3...)",
+        title: "פורמט לא תקין",
+        description: "אנא השתמש בפורמט: 1, 3-5, 7 (מספרים בודדים או טווחים)",
         variant: "destructive"
       });
       return;
@@ -126,6 +129,12 @@ const AccessControlEditor = ({
 
     updateField('accessible_pages', newPages);
     setNewPageInput('');
+
+    toast({
+      title: "עמודים נוספו",
+      description: `נוספו ${pageNumbers.length} עמודים לרשימת הגישה`,
+      variant: "default"
+    });
   };
 
   const removeAccessiblePage = (pageNumber) => {
@@ -136,15 +145,28 @@ const AccessControlEditor = ({
   const addAccessibleSlide = () => {
     if (!newSlideInput.trim()) return;
 
-    const slideIds = newSlideInput.split(',').map(s => s.trim()).filter(s => s.length > 0);
+    const slideNumbers = parsePageRanges(newSlideInput);
 
-    if (slideIds.length === 0) return;
+    if (slideNumbers.length === 0) {
+      toast({
+        title: "פורמט לא תקין",
+        description: "אנא השתמש בפורמט: 1, 3-5, 7 (מספרים בודדים או טווחים)",
+        variant: "destructive"
+      });
+      return;
+    }
 
     const currentSlides = getCurrentValue('accessible_slides') || [];
-    const newSlides = [...new Set([...currentSlides, ...slideIds])];
+    const newSlides = [...new Set([...currentSlides, ...slideNumbers])].sort((a, b) => a - b);
 
     updateField('accessible_slides', newSlides);
     setNewSlideInput('');
+
+    toast({
+      title: "שקופיות נוספו",
+      description: `נוספו ${slideNumbers.length} שקופיות לרשימת הגישה`,
+      variant: "default"
+    });
   };
 
   const removeAccessibleSlide = (slideId) => {
@@ -152,8 +174,10 @@ const AccessControlEditor = ({
     updateField('accessible_slides', currentSlides.filter(s => s !== slideId));
   };
 
-  const saveChanges = async () => {
-    if (Object.keys(changes).length === 0) {
+  const saveChanges = async (specificChanges = null) => {
+    const changesToSave = specificChanges || changes;
+
+    if (Object.keys(changesToSave).length === 0) {
       toast({
         title: "אין שינויים לשמירה",
         description: "לא בוצעו שינויים בהגדרות בקרת הגישה",
@@ -164,24 +188,24 @@ const AccessControlEditor = ({
 
     try {
       setSaving(true);
-      const token = localStorage.getItem('token');
 
-      const response = await fetch(`${getApiBase()}/entities/${entityType}/${entityId}`, {
+      // Save changes using apiRequest
+      const updatedEntity = await apiRequest(`/entities/${entityType}/${entityId}`, {
         method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(changes)
+        body: JSON.stringify(changesToSave)
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to save access control settings');
-      }
-
-      const updatedEntity = await response.json();
       setEntity(updatedEntity);
-      setChanges({});
+
+      // Only clear changes if we're saving the current changes, not specific changes
+      if (!specificChanges) {
+        setChanges({});
+      } else {
+        // When saving specific changes, update the entity with the new values
+        // This ensures the UI reflects the saved state
+        const newEntityState = { ...entity, ...changesToSave };
+        setEntity(newEntityState);
+      }
 
       toast({
         title: "הגדרות נשמרו",
@@ -193,7 +217,7 @@ const AccessControlEditor = ({
         onUpdate(updatedEntity);
       }
 
-      clog('AccessControlEditor: Settings saved', { entityType, entityId, changes });
+      clog('AccessControlEditor: Settings saved', { entityType, entityId, changes: changesToSave });
 
     } catch (error) {
       cerror('AccessControlEditor: Save error:', error);
@@ -272,12 +296,8 @@ const AccessControlEditor = ({
       </CardHeader>
 
       <CardContent className="space-y-6">
-        <Tabs defaultValue="preview" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="preview" className="flex items-center gap-2">
-              <Eye className="w-4 h-4" />
-              תצוגה מקדימה
-            </TabsTrigger>
+        <Tabs defaultValue="access" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="access" className="flex items-center gap-2">
               <Lock className="w-4 h-4" />
               הרשאות גישה
@@ -288,45 +308,6 @@ const AccessControlEditor = ({
             </TabsTrigger>
           </TabsList>
 
-          {/* Preview Settings Tab */}
-          <TabsContent value="preview" className="space-y-4">
-            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Eye className="w-5 h-5 text-blue-600" />
-                  <div>
-                    <h3 className="font-medium text-blue-900">
-                      {isFile ? 'אפשר תצוגה מקדימה' : 'אפשר תצוגת שקופיות'}
-                    </h3>
-                    <p className="text-sm text-blue-700">
-                      {isFile
-                        ? 'משתמשים ללא גישה יוכלו לצפות בחלק מהקובץ'
-                        : 'משתמשים ללא גישה יוכלו לצפות בחלק מהשקופיות'
-                      }
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  checked={getCurrentValue(isFile ? 'allow_preview' : 'allow_slide_preview') || false}
-                  onCheckedChange={(checked) =>
-                    updateField(isFile ? 'allow_preview' : 'allow_slide_preview', checked)
-                  }
-                />
-              </div>
-            </div>
-
-            <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-              <div className="flex items-center gap-2 mb-2">
-                <AlertTriangle className="w-5 h-5 text-yellow-600" />
-                <h4 className="font-medium text-yellow-900">שימו לב</h4>
-              </div>
-              <p className="text-sm text-yellow-800">
-                כאשר תצוגה מקדימה מופעלת, משתמשים ללא גישה יוכלו לצפות ב{isFile ? 'עמודים' : 'שקופיות'} שנבחרו בלבד.
-                תוכן שמוגבל יוחלף בעמוד/שקופית החלפה המציינת שהתוכן מוגבל.
-              </p>
-            </div>
-          </TabsContent>
-
           {/* Access Control Tab */}
           <TabsContent value="access" className="space-y-4">
             {isFile && (
@@ -336,23 +317,30 @@ const AccessControlEditor = ({
                   <h3 className="font-medium">עמודים נגישים בתצוגה מקדימה</h3>
                 </div>
 
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="מספרי עמודים (1,2,3...)"
-                    value={newPageInput}
-                    onChange={(e) => setNewPageInput(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && addAccessiblePage()}
-                    className="flex-1"
-                    disabled={!getCurrentValue('allow_preview')}
-                  />
-                  <Button
-                    onClick={addAccessiblePage}
-                    disabled={!newPageInput.trim() || !getCurrentValue('allow_preview')}
-                    size="sm"
-                  >
-                    <Plus className="w-4 h-4 ml-1" />
-                    הוסף
-                  </Button>
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="עמודים: 1, 3-5, 7 (מספרים בודדים או טווחים)"
+                      value={newPageInput}
+                      onChange={(e) => setNewPageInput(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && addAccessiblePage()}
+                      className="flex-1"
+                      disabled={!getCurrentValue('allow_preview')}
+                    />
+                    <Button
+                      onClick={addAccessiblePage}
+                      disabled={!newPageInput.trim() || !getCurrentValue('allow_preview')}
+                      size="sm"
+                    >
+                      <Plus className="w-4 h-4 ml-1" />
+                      הוסף
+                    </Button>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    דוגמאות: <code className="bg-gray-100 px-1 rounded">1</code> (עמוד בודד),
+                    <code className="bg-gray-100 px-1 rounded ml-1">3-5</code> (טווח),
+                    <code className="bg-gray-100 px-1 rounded ml-1">1, 3-5, 7</code> (שילוב)
+                  </p>
                 </div>
 
                 <div className="flex flex-wrap gap-2">
@@ -385,32 +373,39 @@ const AccessControlEditor = ({
                   <h3 className="font-medium">שקופיות נגישות בתצוגה מקדימה</h3>
                 </div>
 
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="מזהי שקופיות (slide_001,slide_002...)"
-                    value={newSlideInput}
-                    onChange={(e) => setNewSlideInput(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && addAccessibleSlide()}
-                    className="flex-1"
-                    disabled={!getCurrentValue('allow_slide_preview')}
-                  />
-                  <Button
-                    onClick={addAccessibleSlide}
-                    disabled={!newSlideInput.trim() || !getCurrentValue('allow_slide_preview')}
-                    size="sm"
-                  >
-                    <Plus className="w-4 h-4 ml-1" />
-                    הוסף
-                  </Button>
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="שקופיות: 1, 3-5, 7 (מספרים בודדים או טווחים)"
+                      value={newSlideInput}
+                      onChange={(e) => setNewSlideInput(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && addAccessibleSlide()}
+                      className="flex-1"
+                      disabled={!getCurrentValue('allow_slide_preview')}
+                    />
+                    <Button
+                      onClick={addAccessibleSlide}
+                      disabled={!newSlideInput.trim() || !getCurrentValue('allow_slide_preview')}
+                      size="sm"
+                    >
+                      <Plus className="w-4 h-4 ml-1" />
+                      הוסף
+                    </Button>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    דוגמאות: <code className="bg-gray-100 px-1 rounded">1</code> (שקופית בודדת),
+                    <code className="bg-gray-100 px-1 rounded ml-1">3-5</code> (טווח),
+                    <code className="bg-gray-100 px-1 rounded ml-1">1, 3-5, 7</code> (שילוב)
+                  </p>
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  {(getCurrentValue('accessible_slides') || []).map(slideId => (
-                    <Badge key={slideId} variant="secondary" className="flex items-center gap-1">
-                      {slideId}
+                  {(getCurrentValue('accessible_slides') || []).map(slideNumber => (
+                    <Badge key={slideNumber} variant="secondary" className="flex items-center gap-1">
+                      שקופית {slideNumber}
                       <X
                         className="w-3 h-3 cursor-pointer hover:text-red-500"
-                        onClick={() => removeAccessibleSlide(slideId)}
+                        onClick={() => removeAccessibleSlide(slideNumber)}
                       />
                     </Badge>
                   ))}
@@ -431,27 +426,33 @@ const AccessControlEditor = ({
           {/* Watermarks Tab */}
           <TabsContent value="watermarks" className="space-y-4">
             <div className="space-y-4">
-              <div className="flex items-center gap-2 mb-3">
-                <Settings className="w-5 h-5 text-indigo-600" />
-                <h3 className="font-medium">תבנית סימני מים</h3>
-              </div>
-
-              <Select
-                value={getCurrentValue('watermark_template_id')?.toString() || ''}
-                onValueChange={(value) => updateField('watermark_template_id', value ? parseInt(value) : null)}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="בחר תבנית סימני מים (אופציונלי)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">ללא סימני מים</SelectItem>
-                  {watermarkTemplates.map(template => (
-                    <SelectItem key={template.id} value={template.id.toString()}>
-                      {template.name} - {template.description}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {/* Use TemplateSelector for consistent interface like branding */}
+              <TemplateSelector
+                entityType={entityType}
+                entityId={entityId}
+                templateType="watermark"
+                targetFormat="pdf-a4-portrait" // TODO: Detect format from file
+                currentTemplateId={getCurrentValue('watermark_template_id')}
+                customTemplateData={getCurrentValue('watermark_settings')}
+                enabled={true} // Always enabled in watermarks tab
+                hideToggle={true} // Hide toggle in access control context
+                onTemplateChange={(templateId, templateData) => {
+                  updateField('watermark_template_id', templateId);
+                  // Automatically save watermark template changes
+                  const changeToSave = { watermark_template_id: templateId };
+                  saveChanges(changeToSave);
+                }}
+                onCustomTemplateChange={(customData) => {
+                  updateField('watermark_settings', customData);
+                  // Automatically save custom watermark settings
+                  const changeToSave = { watermark_settings: customData };
+                  saveChanges(changeToSave);
+                }}
+                onEnabledChange={() => {}} // No-op since it's automatically managed
+                fileExists={true} // Always show when in access control
+                userRole="admin" // Assume admin for access control context
+                className="mt-0"
+              />
 
               <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
                 <div className="flex items-center gap-2 mb-2">

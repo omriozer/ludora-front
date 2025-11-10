@@ -336,11 +336,17 @@ export default function FloatingAdminMenu({ currentUser }) {
           icon: <SettingsIcon className="w-4 h-4" />, // Changed to SettingsIcon
           description: "ברירות מחדל למוצרים"
         },
-        { 
-          title: "ניהול צלילים", 
-          url: "/audio", 
+        {
+          title: "ניהול צלילים",
+          url: "/audio",
           icon: <Volume2 className="w-4 h-4" />,
           description: `צלילים ברקע ל${getProductTypeName('game', 'plural')}`
+        },
+        {
+          title: "תבניות",
+          url: "/template-manager",
+          icon: <Layers className="w-4 h-4" />,
+          description: "תבניות תחתיות עמוד, ראשי עמוד וסימני מים"
         }
       ]
     },

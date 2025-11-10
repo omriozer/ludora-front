@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
-  FileText, Play, Calendar, BookOpen, UserIcon, Users, GraduationCap, Menu, X, Crown, LogIn, LogOut, ShieldAlert, ChevronLeft, ChevronRight, ShoppingCart, Settings
+  FileText, Play, Calendar, BookOpen, UserIcon, Users, GraduationCap, Menu, X, Crown, LogIn, LogOut, ShieldAlert, ChevronLeft, ChevronRight, ShoppingCart, Settings, LogOutIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { iconMap } from "@/lib/layoutUtils";
@@ -482,15 +482,25 @@ const PublicNav = ({ currentUser, handleLogout, handleLogin, settings }) => {
         <div className="border-t border-gray-200/50 p-4">
           {!currentUser ? (
             <Button
-              variant="outline"
-              className={`flex items-center gap-2 font-bold transition-all duration-300 ${
-                isCollapsed ? 'w-12 h-12 p-0 justify-center' : 'w-full justify-center'
+              variant="default"
+              className={`group relative bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 text-white font-bold
+                transition-all duration-300 transform hover:scale-105 hover:shadow-xl hover:shadow-purple-500/25
+                focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 active:scale-95 ${
+                isCollapsed
+                  ? 'w-12 h-12 p-0 justify-center rounded-xl'
+                  : 'w-full justify-center py-3 rounded-xl shadow-lg'
               }`}
               onClick={handleLogin}
               title={isCollapsed ? "התחברות" : undefined}
             >
-              <LogIn className="w-5 h-5" />
-              {!isCollapsed && <span>התחברות</span>}
+              <div className="absolute inset-0 bg-gradient-to-r from-purple-700 via-pink-700 to-blue-700 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <LogIn className="w-5 h-5 relative z-10 transition-transform duration-300 group-hover:scale-110" />
+              {!isCollapsed && (
+                <span className="relative z-10 text-white font-bold drop-shadow-sm">התחברות</span>
+              )}
+              {!isCollapsed && (
+                <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-white/10 to-transparent opacity-50"></div>
+              )}
             </Button>
           ) : (
             <div className="space-y-3">
@@ -529,15 +539,26 @@ const PublicNav = ({ currentUser, handleLogout, handleLogin, settings }) => {
               )}
 
               <Button
-                variant="ghost"
-                className={`flex items-center gap-2 font-bold transition-all duration-300 ${
-                  isCollapsed ? 'w-12 h-12 p-0 justify-center' : 'w-full justify-center'
+                variant="outline"
+                className={`group relative bg-gradient-to-r from-emerald-50 to-green-50 border-emerald-200 text-emerald-700 font-bold
+                  transition-all duration-300 hover:from-emerald-100 hover:to-green-100 hover:border-emerald-300
+                  hover:shadow-lg hover:shadow-emerald-500/10 focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${
+                  isCollapsed
+                    ? 'w-12 h-12 p-0 justify-center rounded-xl'
+                    : 'w-full justify-center py-3 rounded-xl'
                 }`}
                 onClick={handleLogout}
                 title={isCollapsed ? "התנתקות" : undefined}
               >
-                <LogOut className="w-5 h-5" />
-                {!isCollapsed && <span>התנתקות</span>}
+                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 to-green-500/5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <LogOutIcon className="w-5 h-5 relative z-10 transition-transform duration-300 group-hover:scale-105" />
+                {!isCollapsed && (
+                  <span className="relative z-10 font-bold">התנתקות</span>
+                )}
+                {/* Secure indicator - positioned differently based on collapsed state */}
+                <div className={`absolute w-2 h-2 bg-emerald-500 rounded-full shadow-sm opacity-75 ${
+                  isCollapsed ? '-top-0.5 -right-0.5' : '-top-1 -right-1 w-3 h-3'
+                }`}></div>
               </Button>
             </div>
           )}

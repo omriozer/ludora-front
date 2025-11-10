@@ -77,6 +77,9 @@ const FloatingSettingsMenu = ({
         case 'box': return 'תיבה';
         case 'line': return 'קו';
         case 'dotted-line': return 'קו מנוקד';
+        case 'watermark-text': return 'טקסט סימן מים';
+        case 'watermark-logo': return 'לוגו סימן מים';
+        case 'free-text': return 'טקסט חופשי';
         default: return elementType;
       }
     }
@@ -96,6 +99,9 @@ const FloatingSettingsMenu = ({
         case 'box': return 'bg-green-50 border-green-200';
         case 'line': return 'bg-yellow-50 border-yellow-200';
         case 'dotted-line': return 'bg-orange-50 border-orange-200';
+        case 'watermark-text': return 'bg-red-50 border-red-200';
+        case 'watermark-logo': return 'bg-pink-50 border-pink-200';
+        case 'free-text': return 'bg-blue-50 border-blue-200';
         default: return 'bg-gray-50 border-gray-200';
       }
     }
@@ -482,55 +488,68 @@ const FloatingSettingsMenu = ({
 
     const elementType = itemConfig.type;
 
-    const renderBasicDimensions = () => (
-      <>
-        <div className="space-y-2">
-          <Label className="text-sm">רוחב</Label>
-          <NumberInput
-            value={itemConfig.style.width}
-            onChange={(value) => onStyleChange(selectedItem, 'width', value)}
-            min={10}
-            step={5}
-            suffix="px"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label className="text-sm">גובה</Label>
-          <NumberInput
-            value={itemConfig.style.height}
-            onChange={(value) => onStyleChange(selectedItem, 'height', value)}
-            min={1}
-            step={1}
-            suffix="px"
-          />
-        </div>
-      </>
-    );
+    const renderBasicDimensions = () => {
+      // Check if this element has width/height properties (only for box, line, dotted-line)
+      if (!itemConfig.style || (!('width' in itemConfig.style) && !('height' in itemConfig.style))) {
+        return null; // Don't render dimensions for elements that don't have them
+      }
 
-    const renderColorAndOpacity = () => (
-      <>
-        <div className="space-y-2">
-          <Label className="text-sm">צבע</Label>
-          <Input
-            type="color"
-            value={itemConfig.style.color || itemConfig.style.borderColor}
-            onChange={(e) => onStyleChange(selectedItem, elementType === 'box' ? 'borderColor' : 'color', e.target.value)}
-            className="h-10 w-full"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label className="text-sm">שקיפות</Label>
-          <NumberInput
-            value={itemConfig.style.opacity}
-            onChange={(value) => onStyleChange(selectedItem, 'opacity', value)}
-            min={0}
-            max={100}
-            step={5}
-            suffix="%"
-          />
-        </div>
-      </>
-    );
+      return (
+        <>
+          <div className="space-y-2">
+            <Label className="text-sm">רוחב</Label>
+            <NumberInput
+              value={itemConfig.style.width || 100}
+              onChange={(value) => onStyleChange(selectedItem, 'width', value)}
+              min={10}
+              step={5}
+              suffix="px"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-sm">גובה</Label>
+            <NumberInput
+              value={itemConfig.style.height || 10}
+              onChange={(value) => onStyleChange(selectedItem, 'height', value)}
+              min={1}
+              step={1}
+              suffix="px"
+            />
+          </div>
+        </>
+      );
+    };
+
+    const renderColorAndOpacity = () => {
+      if (!itemConfig.style) {
+        return null; // Don't render if style object doesn't exist
+      }
+
+      return (
+        <>
+          <div className="space-y-2">
+            <Label className="text-sm">צבע</Label>
+            <Input
+              type="color"
+              value={itemConfig.style.color || itemConfig.style.borderColor || '#000000'}
+              onChange={(e) => onStyleChange(selectedItem, elementType === 'box' ? 'borderColor' : 'color', e.target.value)}
+              className="h-10 w-full"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-sm">שקיפות</Label>
+            <NumberInput
+              value={itemConfig.style.opacity || 100}
+              onChange={(value) => onStyleChange(selectedItem, 'opacity', value)}
+              min={0}
+              max={100}
+              step={5}
+              suffix="%"
+            />
+          </div>
+        </>
+      );
+    };
 
     switch (elementType) {
       case 'box':
@@ -569,6 +588,157 @@ const FloatingSettingsMenu = ({
           </>
         );
 
+      case 'free-text':
+      case 'watermark-text':
+        return (
+          <>
+            <div className="space-y-2">
+              <Label className="text-sm">תוכן הטקסט</Label>
+              <Textarea
+                value={itemConfig.content || ''}
+                onChange={(e) => onConfigChange(selectedItem, 'content', e.target.value)}
+                rows={3}
+                className="resize-none"
+                dir="rtl"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm">גודל גופן</Label>
+              <NumberInput
+                value={itemConfig.style?.fontSize || (elementType === 'free-text' ? 24 : 36)}
+                onChange={(value) => onStyleChange(selectedItem, 'fontSize', value)}
+                min={8}
+                step={1}
+                suffix="px"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm">צבע</Label>
+              <Input
+                type="color"
+                value={itemConfig.style?.color || (elementType === 'free-text' ? '#000000' : '#cccccc')}
+                onChange={(e) => onStyleChange(selectedItem, 'color', e.target.value)}
+                className="h-10 w-full"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm">שקיפות</Label>
+              <NumberInput
+                value={itemConfig.style?.opacity || (elementType === 'free-text' ? 100 : 30)}
+                onChange={(value) => onStyleChange(selectedItem, 'opacity', value)}
+                min={0}
+                max={100}
+                step={5}
+                suffix="%"
+              />
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center gap-1">
+                <RotateCw className="w-3 h-3 text-blue-500" />
+                <Label className="text-sm">סיבוב</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <NumberInput
+                  value={itemConfig.style?.rotation || 0}
+                  onChange={(value) => onStyleChange(selectedItem, 'rotation', value)}
+                  min={-180}
+                  max={180}
+                  step={15}
+                  suffix="°"
+                  className="flex-1"
+                />
+                <Button
+                  onClick={() => onStyleChange(selectedItem, 'rotation', 0)}
+                  size="sm"
+                  variant="outline"
+                  className="px-2"
+                  title="איפוס סיבוב"
+                >
+                  <RotateCw className="w-3 h-3" />
+                </Button>
+              </div>
+            </div>
+            <div className="flex gap-4">
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={itemConfig.style?.bold || false}
+                  onCheckedChange={(checked) => onStyleChange(selectedItem, 'bold', checked)}
+                />
+                <Label className="text-sm">מודגש</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={itemConfig.style?.italic || false}
+                  onCheckedChange={(checked) => onStyleChange(selectedItem, 'italic', checked)}
+                />
+                <Label className="text-sm">נטוי</Label>
+              </div>
+            </div>
+          </>
+        );
+
+      case 'watermark-logo':
+        return (
+          <>
+            <div className="space-y-2">
+              <Label className="text-sm">URL תמונה</Label>
+              <Input
+                type="text"
+                value={itemConfig.url || ''}
+                onChange={(e) => onConfigChange(selectedItem, 'url', e.target.value)}
+                placeholder="https://example.com/logo.png"
+                className="text-sm"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm">גודל</Label>
+              <NumberInput
+                value={itemConfig.style?.size || 80}
+                onChange={(value) => onStyleChange(selectedItem, 'size', value)}
+                min={20}
+                step={10}
+                suffix="px"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm">שקיפות</Label>
+              <NumberInput
+                value={itemConfig.style?.opacity || 100}
+                onChange={(value) => onStyleChange(selectedItem, 'opacity', value)}
+                min={0}
+                max={100}
+                step={5}
+                suffix="%"
+              />
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center gap-1">
+                <RotateCw className="w-3 h-3 text-blue-500" />
+                <Label className="text-sm">סיבוב</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <NumberInput
+                  value={itemConfig.style?.rotation || 0}
+                  onChange={(value) => onStyleChange(selectedItem, 'rotation', value)}
+                  min={-180}
+                  max={180}
+                  step={15}
+                  suffix="°"
+                  className="flex-1"
+                />
+                <Button
+                  onClick={() => onStyleChange(selectedItem, 'rotation', 0)}
+                  size="sm"
+                  variant="outline"
+                  className="px-2"
+                  title="איפוס סיבוב"
+                >
+                  <RotateCw className="w-3 h-3" />
+                </Button>
+              </div>
+            </div>
+          </>
+        );
 
       default:
         return renderBasicDimensions();

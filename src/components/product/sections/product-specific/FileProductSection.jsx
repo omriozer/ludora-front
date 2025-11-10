@@ -6,6 +6,8 @@ import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Download, Trash2, Loader2, Eye, AlertCircle, Shield, Settings } from 'lucide-react';
 import AccessControlEditor from '@/components/admin/AccessControlEditor';
+import TemplateSelector from '@/components/product/TemplateSelector';
+import VisualTemplateEditor from '@/components/templates/VisualTemplateEditor';
 
 /**
  * FileProductSection - Handles file-specific settings
@@ -157,21 +159,64 @@ const FileProductSection = ({
             </div>
             <Switch
               checked={formData.allow_preview}
-              onCheckedChange={(checked) => updateFormData({ allow_preview: checked })}
+              onCheckedChange={(checked) => {
+                updateFormData({ allow_preview: checked });
+                // Clear watermark settings when preview is disabled
+                if (!checked) {
+                  updateFormData({
+                    watermark_template_id: null,
+                    watermark_settings: null
+                  });
+                }
+              }}
             />
+          </div>
+        )}
+
+        {/* Preview Summary - Only for PDF files with uploaded file and when preview is enabled */}
+        {uploadedFileInfo?.exists && formData.file_type === 'pdf' && formData.allow_preview && (
+          <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertCircle className="w-5 h-5 text-yellow-600" />
+              <h4 className="font-medium text-yellow-900">שימו לב</h4>
+            </div>
+            <p className="text-sm text-yellow-800 mb-3">
+              כאשר תצוגה מקדימה מופעלת, משתמשים ללא גישה יוכלו לצפות בעמודים שנבחרו בלבד.
+              תוכן שמוגבל יוחלף בעמוד החלפה המציין שהתוכן מוגבל.
+            </p>
+
+            {/* Current Settings Summary */}
+            <div className="space-y-2">
+              <div className="text-sm">
+                <span className="font-medium text-yellow-900">עמודים זמינים: </span>
+                <span className="text-yellow-800">
+                  {formData.accessible_pages && formData.accessible_pages.length > 0
+                    ? `${formData.accessible_pages.length} עמודים (${formData.accessible_pages.join(', ')})`
+                    : 'כל הקובץ זמין'
+                  }
+                </span>
+              </div>
+
+              {formData.watermark_template_id && (
+                <div className="text-sm">
+                  <span className="font-medium text-yellow-900">סימני מים: </span>
+                  <span className="text-yellow-800">מופעלים לתוכן מוגבל</span>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
         {/* Selective Access Control - Only for PDF files with uploaded file and when preview is enabled */}
         {uploadedFileInfo?.exists && formData.file_type === 'pdf' && formData.allow_preview && (
           <div className="space-y-3">
-            <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="flex items-center justify-between p-4 bg-purple-50 rounded-lg border border-purple-200">
               <div className="space-y-0.5">
-                <Label className="text-sm font-medium text-blue-900 flex items-center gap-2">
+                <Label className="text-sm font-medium text-purple-900 flex items-center gap-2">
                   <Shield className="w-4 h-4" />
-                  בקרת גישה לדפים וסימני מים
+                  בקרת גישה וסימני מים
                 </Label>
-                <p className="text-xs text-blue-700">
+                <p className="text-xs text-purple-700">
                   נהל איזה דפים זמינים בתצוגה מקדימה והוסף סימני מים לתוכן מוגבל
                 </p>
               </div>
@@ -180,7 +225,7 @@ const FileProductSection = ({
                 variant="outline"
                 size="sm"
                 onClick={() => setShowAccessControlEditor(!showAccessControlEditor)}
-                className="border-blue-300 text-blue-700 hover:bg-blue-100"
+                className="border-purple-300 text-purple-700 hover:bg-purple-100"
               >
                 <Settings className="w-4 h-4 ml-2" />
                 {showAccessControlEditor ? 'הסתר הגדרות' : 'נהל גישה'}
@@ -190,60 +235,52 @@ const FileProductSection = ({
             {/* Access Control Editor */}
             {showAccessControlEditor && (
               <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                {/* Page Selection */}
                 <AccessControlEditor
                   entityType="file"
-                  entityId={editingProduct?.id}
-                  entityData={{
-                    ...formData,
-                    id: editingProduct?.id
-                  }}
-                  onSettingsChange={(settings) => {
+                  entityId={editingProduct?.entity_id}
+                  onUpdate={(updatedEntity) => {
                     // Update the form data with the new access control settings
                     updateFormData({
-                      accessible_pages: settings.accessible_pages,
-                      watermark_template_id: settings.watermark_template_id
+                      accessible_pages: updatedEntity.accessible_pages,
+                      watermark_template_id: updatedEntity.watermark_template_id
                     });
                   }}
                 />
               </div>
             )}
+
           </div>
         )}
 
-        {/* Add Copyrights Footer Toggle - Admin Only */}
-        {(currentUser?.role === 'admin' || currentUser?.role === 'sysadmin') && (
-          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <div className="space-y-0.5">
-              <Label className="text-sm font-medium text-gray-900">הוסף כותרת תחתונה עם זכויות יוצרים</Label>
-              <p className="text-xs text-gray-500">
-                כאשר מופעל, יוסף באופן אוטומטי כותרת תחתונה עם פרטי זכויות היוצרים של היוצר
-              </p>
-            </div>
-            <Switch
-              checked={formData.add_copyrights_footer}
-              onCheckedChange={(checked) => updateFormData({ add_copyrights_footer: checked })}
+        {/* Template Selection - For PDF files only */}
+        {uploadedFileInfo?.exists && formData.file_type === 'pdf' && (
+          <div className="space-y-4">
+            <h4 className="text-md font-semibold text-gray-900 border-b border-gray-200 pb-2">
+              עיצוב ומיתוג הקובץ
+            </h4>
+
+            {/* Branding Template */}
+            <TemplateSelector
+              entityType="file"
+              entityId={editingProduct?.entity_id}
+              templateType="branding"
+              targetFormat="pdf-a4-portrait" // TODO: Detect format from file
+              currentTemplateId={formData.branding_template_id}
+              customTemplateData={formData.branding_settings}
+              enabled={formData.add_branding || false}
+              onTemplateChange={(templateId, templateData) => {
+                updateFormData({ branding_template_id: templateId });
+              }}
+              onCustomTemplateChange={(customData) => {
+                updateFormData({ branding_settings: customData });
+              }}
+              onEnabledChange={(enabled) => {
+                updateFormData({ add_branding: enabled });
+              }}
+              fileExists={uploadedFileInfo?.exists}
+              userRole={currentUser?.role}
             />
-          </div>
-        )}
-
-        {/* Footer Preview Button - Show if add_copyrights_footer is true, file is PDF, and file is uploaded */}
-        {formData.add_copyrights_footer &&
-         uploadedFileInfo?.exists &&
-         formData.file_type === 'pdf' &&
-         (currentUser?.role === 'admin' || currentUser?.role === 'sysadmin' || currentUser?.content_creator_agreement_sign_date) && (
-          <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setShowFooterPreview(true)}
-              className="w-full"
-            >
-              <Eye className="w-4 h-4 ml-2" />
-              תצוגה מקדימה של כותרת תחתונה
-            </Button>
-            <p className="text-xs text-gray-600 mt-2">
-              לחץ לצפייה בתצוגה מקדימה של קובץ ה-PDF עם כותרת תחתונה של זכויות יוצרים
-            </p>
           </div>
         )}
 

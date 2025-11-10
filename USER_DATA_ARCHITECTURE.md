@@ -80,11 +80,6 @@ if (canAccess(user, 'teacher')) { ... }
 
 ## Migration Notes
 
-### Removed Fields
-- `customClaims` object (was confusing)
-- `_app_role` field (redundant with `role`)
-- Mixed role sources
-
 ### Added Fields
 - Clean role validation in User model
 - Role hierarchy utility functions

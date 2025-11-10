@@ -35,6 +35,7 @@ import { showConfirm } from '@/utils/messaging';
 import EntitySelector from '@/components/ui/EntitySelector';
 import SVGSlideManager from '../SVGSlideManager';
 import AccessControlEditor from '@/components/admin/AccessControlEditor';
+import TemplateSelector from '@/components/product/TemplateSelector';
 
 /**
  * LessonPlanProductSection - Handles lesson plan specific settings and file uploads
@@ -1156,56 +1157,138 @@ const LessonPlanProductSection = ({
         </div>
       )}
 
-      {/* Selective Access Control for Lesson Plan Slides */}
-      {svgSlides.length > 0 && editingProduct && (
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-indigo-900">בקרת גישה לשקפים</h3>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <div className="space-y-0.5">
-                <Label className="text-sm font-medium text-blue-900 flex items-center gap-2">
-                  <Shield className="w-4 h-4" />
-                  ניהול גישה לשקפים וסימני מים
-                </Label>
-                <p className="text-xs text-blue-700">
-                  קבע איזה שקפים יהיו זמינים בתצוגה מקדימה והוסף סימני מים לשקפים מוגבלים
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setShowAccessControlEditor(!showAccessControlEditor)}
-                className="border-blue-300 text-blue-700 hover:bg-blue-100"
-              >
-                <Settings className="w-4 h-4 ml-2" />
-                {showAccessControlEditor ? 'הסתר הגדרות' : 'נהל גישה'}
-              </Button>
+      {/* Allow Preview Toggle - Only for lesson plans with SVG slides */}
+      {svgSlides.length > 0 && (
+        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <div className="space-y-0.5">
+            <Label className="text-sm font-medium text-gray-900">לאפשר תצוגה מקדימה</Label>
+            <p className="text-xs text-gray-500">
+              כאשר מופעל, משתמשים יוכלו לצפות בתצוגה מקדימה של שקפי השיעור לפני הרכישה
+            </p>
+          </div>
+          <Switch
+            checked={formData.allow_slide_preview || false}
+            onCheckedChange={(checked) => {
+              updateFormData({ allow_slide_preview: checked });
+              // Clear watermark settings when preview is disabled
+              if (!checked) {
+                updateFormData({
+                  watermark_template_id: null,
+                  watermark_settings: null
+                });
+              }
+            }}
+          />
+        </div>
+      )}
+
+      {/* Preview Summary - Only for lesson plans with slides and when preview is enabled */}
+      {svgSlides.length > 0 && formData.allow_slide_preview && (
+        <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertCircle className="w-5 h-5 text-yellow-600" />
+            <h4 className="font-medium text-yellow-900">שימו לב</h4>
+          </div>
+          <p className="text-sm text-yellow-800 mb-3">
+            כאשר תצוגה מקדימה מופעלת, משתמשים ללא גישה יוכלו לצפות בשקופיות שנבחרו בלבד.
+            תוכן שמוגבל יוחלף בשקופית החלפה המציינת שהתוכן מוגבל.
+          </p>
+
+          {/* Current Settings Summary */}
+          <div className="space-y-2">
+            <div className="text-sm">
+              <span className="font-medium text-yellow-900">שקופיות זמינות: </span>
+              <span className="text-yellow-800">
+                {formData.accessible_slides && formData.accessible_slides.length > 0
+                  ? `${formData.accessible_slides.length} שקופיות (${formData.accessible_slides.join(', ')})`
+                  : `כל המצגת זמינה (${svgSlides.length} שקופיות)`
+                }
+              </span>
             </div>
 
-            {/* Access Control Editor */}
-            {showAccessControlEditor && (
-              <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-                <AccessControlEditor
-                  entityType="lesson_plan"
-                  entityId={editingProduct?.entity_id}
-                  entityData={{
-                    ...formData,
-                    id: editingProduct?.entity_id,
-                    total_slides: svgSlides.length
-                  }}
-                  onSettingsChange={(settings) => {
-                    // Update the form data with the new access control settings
-                    updateFormData({
-                      accessible_slides: settings.accessible_slides,
-                      allow_slide_preview: settings.allow_slide_preview,
-                      watermark_template_id: settings.watermark_template_id
-                    });
-                  }}
-                />
+            {formData.watermark_template_id && (
+              <div className="text-sm">
+                <span className="font-medium text-yellow-900">סימני מים: </span>
+                <span className="text-yellow-800">מופעלים לתוכן מוגבל</span>
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Selective Access Control - Only for lesson plans with slides and when preview is enabled */}
+      {svgSlides.length > 0 && formData.allow_slide_preview && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between p-4 bg-purple-50 rounded-lg border border-purple-200">
+            <div className="space-y-0.5">
+              <Label className="text-sm font-medium text-purple-900 flex items-center gap-2">
+                <Shield className="w-4 h-4" />
+                בקרת גישה וסימני מים
+              </Label>
+              <p className="text-xs text-purple-700">
+                נהל איזה שקפים זמינים בתצוגה מקדימה והוסף סימני מים לתוכן מוגבל
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowAccessControlEditor(!showAccessControlEditor)}
+              className="border-purple-300 text-purple-700 hover:bg-purple-100"
+            >
+              <Settings className="w-4 h-4 ml-2" />
+              {showAccessControlEditor ? 'הסתר הגדרות' : 'נהל גישה'}
+            </Button>
+          </div>
+
+          {/* Access Control Editor */}
+          {showAccessControlEditor && (
+            <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+              {/* Slide Selection */}
+              <AccessControlEditor
+                entityType="lessonplan"
+                entityId={editingProduct?.entity_id}
+                onUpdate={(updatedEntity) => {
+                  // Update the form data with the new access control settings
+                  updateFormData({
+                    accessible_slides: updatedEntity.accessible_slides,
+                    watermark_template_id: updatedEntity.watermark_template_id
+                  });
+                }}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Template Selection - For lesson plans with SVG slides */}
+      {svgSlides.length > 0 && (
+        <div className="space-y-4">
+          <h4 className="text-md font-semibold text-gray-900 border-b border-gray-200 pb-2">
+            עיצוב ומיתוג השקפים
+          </h4>
+
+          {/* Branding Template */}
+          <TemplateSelector
+            entityType="lessonplan"
+            entityId={editingProduct?.entity_id}
+            templateType="branding"
+            targetFormat="svg-lessonplan"
+            currentTemplateId={formData.branding_template_id}
+            customTemplateData={formData.branding_settings}
+            enabled={formData.add_branding || false}
+            onTemplateChange={(templateId, templateData) => {
+              updateFormData({ branding_template_id: templateId });
+            }}
+            onCustomTemplateChange={(customData) => {
+              updateFormData({ branding_settings: customData });
+            }}
+            onEnabledChange={(enabled) => {
+              updateFormData({ add_branding: enabled });
+            }}
+            fileExists={svgSlides.length > 0}
+            userRole={editingProduct?.user?.role || 'user'}
+          />
         </div>
       )}
 

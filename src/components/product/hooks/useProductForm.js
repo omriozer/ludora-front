@@ -43,7 +43,7 @@ export const useProductForm = (editingProduct = null, currentUser = null) => {
         file_size: editingProduct.file_size || '',
         file_type: editingProduct.file_type || 'pdf',
         allow_preview: editingProduct.allow_preview ?? true,
-        add_copyrights_footer: editingProduct.add_copyrights_footer ?? true,
+        add_branding: editingProduct.add_branding ?? true,
         creator_user_id: editingProduct.creator_user_id,
         image_is_private: editingProduct.image_is_private ?? false,
         // Lesson plan specific
@@ -99,7 +99,7 @@ export const useProductForm = (editingProduct = null, currentUser = null) => {
       file_size: '',
       file_type: 'pdf',
       allow_preview: true,
-      add_copyrights_footer: true,
+      add_branding: true,
       creator_user_id: (currentUser?.role === 'admin' || currentUser?.role === 'sysadmin') ? null : currentUser?.uid || null, // Default to Ludora for admins, user for others
       image_is_private: false,
       // Lesson plan specific
