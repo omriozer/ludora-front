@@ -1,7 +1,6 @@
 // Import integrations from apiClient.js (our new API client)
 import {
   Core,
-  InvokeLLM,
   SendEmail,
   UploadFile,
   ExtractDataFromUploadedFile
@@ -10,7 +9,6 @@ import {
 // Re-export all integrations
 export {
   Core,
-  InvokeLLM,
   SendEmail,
   UploadFile,
   ExtractDataFromUploadedFile
