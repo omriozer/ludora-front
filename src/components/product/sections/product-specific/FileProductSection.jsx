@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Download, Trash2, Loader2, Eye, AlertCircle, Shield, Settings } from 'lucide-react';
 import AccessControlEditor from '@/components/admin/AccessControlEditor';
@@ -265,7 +266,7 @@ const FileProductSection = ({
               entityType="file"
               entityId={editingProduct?.entity_id}
               templateType="branding"
-              targetFormat="pdf-a4-portrait" // TODO: Detect format from file
+              targetFormat={formData.target_format || 'pdf-a4-portrait'}
               currentTemplateId={formData.branding_template_id}
               customTemplateData={formData.branding_settings}
               enabled={formData.add_branding || false}
@@ -298,6 +299,87 @@ const FileProductSection = ({
               {formData.file_type === 'text' && 'טקסט'}
               {formData.file_type === 'video' && 'וידיאו'}
               {formData.file_type === 'other' && 'אחר'}
+            </div>
+          </div>
+        )}
+
+        {/* File format display (for PDFs) */}
+        {formData.file_type === 'pdf' && formData.target_format && (
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">כיוון הקובץ (זוהה אוטומטית)</Label>
+            <div className="p-2 bg-blue-50 rounded border border-blue-200 text-sm text-blue-700 flex items-center gap-2">
+              {formData.target_format === 'pdf-a4-portrait' && (
+                <>
+                  <span className="text-lg">📄</span>
+                  PDF אנכי (Portrait)
+                </>
+              )}
+              {formData.target_format === 'pdf-a4-landscape' && (
+                <>
+                  <span className="text-lg">📋</span>
+                  PDF אופקי (Landscape)
+                </>
+              )}
+              {formData.target_format === 'svg-lessonplan' && (
+                <>
+                  <span className="text-lg">📐</span>
+                  תבנית SVG למצגת
+                </>
+              )}
+              {formData.target_format === 'unknown' && (
+                <>
+                  <span className="text-lg">❓</span>
+                  כיוון לא זוהה
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Manual format selection (for PDFs) */}
+        {formData.file_type === 'pdf' && uploadedFileInfo?.exists && (
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">שינוי כיוון קובץ (ידני)</Label>
+            <div className="space-y-2">
+              <Select
+                value={formData.target_format || 'pdf-a4-portrait'}
+                onValueChange={(value) => {
+                  updateFormData({ target_format: value });
+                }}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="בחר כיוון קובץ" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pdf-a4-portrait">
+                    <div className="flex items-center gap-2">
+                      <span>📄</span>
+                      <span>PDF אנכי (Portrait)</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="pdf-a4-landscape">
+                    <div className="flex items-center gap-2">
+                      <span>📋</span>
+                      <span>PDF אופקי (Landscape)</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="svg-lessonplan">
+                    <div className="flex items-center gap-2">
+                      <span>📐</span>
+                      <span>תבנית SVG למצגת</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="unknown">
+                    <div className="flex items-center gap-2">
+                      <span>❓</span>
+                      <span>כיוון לא ידוע</span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-500">
+                שינוי הכיוון ישפיע על התבניות הזמינות במיתוג וסימני המים
+              </p>
             </div>
           </div>
         )}

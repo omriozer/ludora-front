@@ -24,7 +24,8 @@ const VisualTemplateEditor = ({
   targetFormat = 'pdf-a4-portrait', // Default to portrait if not specified
   templateType = 'branding', // Default to footer if not specified
   currentTemplateId = null, // ID of currently selected template to show as selected
-  onTemplateChange = null // Callback when template selection changes in editor
+  onTemplateChange = null, // Callback when template selection changes in editor
+  fileEntity = null // File entity with target_format for template filtering
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pdfBlobUrl, setPdfBlobUrl] = useState(null);
@@ -448,7 +449,11 @@ const VisualTemplateEditor = ({
 
           if (templateType === 'watermark') {
             // Handle watermark templates - use same structure as footer/header
-            if (initialFooterConfig && initialFooterConfig.logo && initialFooterConfig.text && initialFooterConfig.url) {
+            if (fileEntityId === null) {
+              // Template creation mode - always start with clean defaults
+              finalConfig = getDefaultWatermarkConfig();
+              clog('🆕 Using clean watermark defaults for template creation');
+            } else if (initialFooterConfig && initialFooterConfig.logo && initialFooterConfig.text && initialFooterConfig.url) {
               // If initialFooterConfig already has proper footer structure, use it directly
               finalConfig = initialFooterConfig;
               setLoadedFooterSettings(initialFooterConfig);
@@ -478,48 +483,55 @@ const VisualTemplateEditor = ({
             clog('🔧 Watermark config (same as footer structure):', finalConfig);
           } else {
             // Handle footer/header templates
-            const systemFooterSettings = settings?.footer_settings || getDefaultConfig('');
-            const copyrightText = systemFooterSettings?.text?.content || settings?.copyright_footer_text || '';
-
-            clog('📄 System footer settings:', systemFooterSettings);
-            clog('📄 Copyright text extracted:', copyrightText);
-            setCopyrightText(copyrightText);
-
-            // Merge with provided initialFooterConfig (file-specific settings)
-            if (initialFooterConfig) {
-              clog('Merging initialFooterConfig with system settings');
-              setLoadedFooterSettings(initialFooterConfig);
-
-              // File settings override positioning/styling, system settings provide content
-              finalConfig = {
-                ...systemFooterSettings,
-                ...initialFooterConfig,
-                text: {
-                  ...systemFooterSettings.text,
-                  ...initialFooterConfig.text,
-                  content: copyrightText // ALWAYS use system text content
-                },
-                logo: {
-                  ...systemFooterSettings.logo,
-                  ...initialFooterConfig.logo,
-                  url: logo // Use backend logoUrl or fallback to frontend asset
-                }
-              };
-              clog('🔧 Merged config with system settings:', finalConfig);
+            if (fileEntityId === null) {
+              // Template creation mode - always start with clean defaults
+              finalConfig = getDefaultConfig('');
+              setCopyrightText('');
+              clog('🆕 Using clean branding defaults for template creation');
             } else {
-              clog('Using system footer settings as defaults');
-              finalConfig = {
-                ...systemFooterSettings,
-                text: {
-                  ...systemFooterSettings.text,
-                  content: copyrightText
-                },
-                logo: {
-                  ...systemFooterSettings.logo,
-                  url: logo
-                }
-              };
-              clog('🔧 System default config:', finalConfig);
+              const systemFooterSettings = settings?.footer_settings || getDefaultConfig('');
+              const copyrightText = systemFooterSettings?.text?.content || settings?.copyright_footer_text || '';
+
+              clog('📄 System footer settings:', systemFooterSettings);
+              clog('📄 Copyright text extracted:', copyrightText);
+              setCopyrightText(copyrightText);
+
+              // Merge with provided initialFooterConfig (file-specific settings)
+              if (initialFooterConfig) {
+                clog('Merging initialFooterConfig with system settings');
+                setLoadedFooterSettings(initialFooterConfig);
+
+                // File settings override positioning/styling, system settings provide content
+                finalConfig = {
+                  ...systemFooterSettings,
+                  ...initialFooterConfig,
+                  text: {
+                    ...systemFooterSettings.text,
+                    ...initialFooterConfig.text,
+                    content: copyrightText // ALWAYS use system text content
+                  },
+                  logo: {
+                    ...systemFooterSettings.logo,
+                    ...initialFooterConfig.logo,
+                    url: logo // Use backend logoUrl or fallback to frontend asset
+                  }
+                };
+                clog('🔧 Merged config with system settings:', finalConfig);
+              } else {
+                clog('Using system footer settings as defaults');
+                finalConfig = {
+                  ...systemFooterSettings,
+                  text: {
+                    ...systemFooterSettings.text,
+                    content: copyrightText
+                  },
+                  logo: {
+                    ...systemFooterSettings.logo,
+                    url: logo
+                  }
+                };
+                clog('🔧 System default config:', finalConfig);
+              }
             }
           }
 
@@ -555,8 +567,10 @@ const VisualTemplateEditor = ({
       const fetchTemplates = async () => {
         setIsLoadingTemplates(true);
         try {
-          clog(`🎨 Fetching available ${templateType} templates...`);
-          const response = await apiRequest(`/system-templates?type=${templateType}&format=${targetFormat}`);
+          // Use fileEntity target_format if available, fallback to prop targetFormat
+          const effectiveFormat = fileEntity?.target_format || targetFormat;
+          clog(`🎨 Fetching available ${templateType} templates for format: ${effectiveFormat}...`);
+          const response = await apiRequest(`/system-templates?type=${templateType}&format=${effectiveFormat}`);
           clog('🎨 Raw template API response:', response);
 
           // Handle different response formats - same logic as TemplateSelector
@@ -584,13 +598,17 @@ const VisualTemplateEditor = ({
             } else {
               clog(`⚠️ Current template ID ${currentTemplateId} not found in available templates`);
             }
-          } else if (!currentTemplateId && templateList.length > 0) {
-            // No current template, try to select default
+          } else if (!currentTemplateId && fileEntityId !== null && templateList.length > 0) {
+            // Only auto-select default for existing files, not for custom template creation
             const defaultTemplate = templateList.find(t => t.is_default) || templateList[0];
             if (defaultTemplate) {
-              clog(`🎯 Auto-selecting default template: ${defaultTemplate.name} (ID: ${defaultTemplate.id})`);
+              clog(`🎯 Auto-selecting default template for existing file: ${defaultTemplate.name} (ID: ${defaultTemplate.id})`);
               setSelectedTemplateId(defaultTemplate.id.toString());
             }
+          } else if (!currentTemplateId && fileEntityId === null) {
+            // For custom template creation, don't auto-select any template
+            clog(`🆕 Starting with clean system defaults for custom ${templateType} design`);
+            setSelectedTemplateId(null);
           }
         } catch (error) {
           cerror('Error fetching templates:', error);
@@ -602,7 +620,7 @@ const VisualTemplateEditor = ({
 
       fetchTemplates();
     }
-  }, [isOpen]);
+  }, [isOpen, fileEntity?.target_format]);
 
   // Cache placeholder PDF/SVG for template mode
   useEffect(() => {
@@ -1516,19 +1534,97 @@ const VisualTemplateEditor = ({
 
       let newConfig;
       if (templateType === 'watermark') {
-        // Handle watermark template - use same structure as footer/header
-        newConfig = {
-          ...template.template_data,
-          text: {
-            ...template.template_data.text,
-            content: template.template_data.text?.content || 'לתצוגה בלבד' // Use watermark text or default
-          },
-          logo: {
-            ...template.template_data.logo,
-            url: logo // Use the logo from assets
+        // Handle watermark template - check if it's legacy format and convert
+        if (template.template_data.logo && !template.template_data.logoElements) {
+          // Legacy watermark template with logo/text/url structure - convert to new structure
+          clog('🔄 Converting legacy watermark template to new structure');
+
+          newConfig = {
+            logo: {
+              visible: true,
+              url: logo, // Always use imported logo
+              position: { x: 15, y: 15 },
+              style: { size: 60, opacity: 30 }
+            },
+            text: {
+              visible: true,
+              content: template.template_data.text?.content || 'לתצוגה בלבד',
+              position: template.template_data.text?.position || { x: 50, y: 50 },
+              style: {
+                fontSize: template.template_data.text?.style?.fontSize || 24,
+                color: template.template_data.text?.style?.color || '#FF6B6B',
+                bold: template.template_data.text?.style?.bold !== false,
+                italic: template.template_data.text?.style?.italic || false,
+                opacity: template.template_data.text?.style?.opacity || 40,
+                width: template.template_data.text?.style?.width || 300,
+                rotation: template.template_data.text?.style?.rotation || 0,
+                fontFamily: template.template_data.text?.style?.fontFamily || 'Arial, sans-serif'
+              }
+            },
+            url: {
+              visible: template.template_data.url?.visible || false,
+              href: template.template_data.url?.href || 'https://ludora.app',
+              position: template.template_data.url?.position || { x: 50, y: 85 },
+              style: template.template_data.url?.style || {
+                fontSize: 12,
+                color: '#0066cc',
+                bold: false,
+                italic: false,
+                opacity: 100
+              }
+            },
+            customElements: {
+              // Convert legacy logo to custom element
+              'watermark-logo-legacy': {
+                id: 'watermark-logo-legacy',
+                type: 'watermark-logo',
+                visible: template.template_data.logo?.visible !== false,
+                position: template.template_data.logo?.position || { x: 85, y: 15 },
+                style: {
+                  size: template.template_data.logo?.style?.size || 60,
+                  opacity: template.template_data.logo?.style?.opacity || 30,
+                  rotation: template.template_data.logo?.style?.rotation || 0
+                },
+                url: logo, // Use imported logo asset
+                deletable: true
+              }
+            },
+            globalSettings: template.template_data.globalSettings || {
+              layerBehindContent: false,
+              preserveReadability: true
+            }
+          };
+        } else {
+          // Modern watermark template - use as-is but fix logo URLs
+          newConfig = {
+            ...template.template_data,
+            text: {
+              ...template.template_data.text,
+              content: template.template_data.text?.content || 'לתצוגה בלבד'
+            },
+            logo: {
+              ...template.template_data.logo,
+              url: logo // Use the logo from assets
+            }
+          };
+
+          // Fix any custom elements that might have legacy logo URLs
+          if (newConfig.customElements) {
+            Object.keys(newConfig.customElements).forEach(elementId => {
+              const element = newConfig.customElements[elementId];
+              if (element.type === 'logo' || element.type === 'watermark-logo') {
+                // Replace any legacy logo URLs with imported asset
+                if (element.url && typeof element.url === 'string' &&
+                    (element.url.includes('ludora.app/logo.png') || element.url.includes('/api/assets/image/settings/logo.png'))) {
+                  element.url = logo;
+                  clog(`🔧 Fixed legacy logo URL in custom element ${elementId}`);
+                }
+              }
+            });
           }
-        };
-        clog('🔧 Applied watermark template (same structure):', newConfig);
+        }
+
+        clog('🔧 Applied watermark template (converted structure):', newConfig);
       } else {
         // Handle footer/header template - use as-is with system content
         newConfig = {
