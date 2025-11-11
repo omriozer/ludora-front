@@ -268,18 +268,6 @@ function App() {
 						}
 					/>
 					<Route
-						path='/chat'
-						element={
-							<ProtectedRoute>
-								<OnboardingRedirect>
-									<Suspense fallback={<SuspenseLoader />}>
-										<LazyPages.AiChat />
-									</Suspense>
-								</OnboardingRedirect>
-							</ProtectedRoute>
-						}
-					/>
-					<Route
 						path='/curriculum'
 						element={
 							<ConditionalRoute visibilityField='nav_curriculum_visibility'>

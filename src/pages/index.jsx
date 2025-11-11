@@ -23,7 +23,6 @@ import ProductPage from './ProductPage';
 import ProductDetails from './ProductDetails';
 import EmailAutomations from './EmailAutomations';
 import Purchases from './Purchases';
-import AiChat from './AiChat';
 import AdminSystemUsers from './AdminSystemUsers';
 import Users from './Users';
 import ApiTest from './ApiTest';
@@ -83,7 +82,6 @@ export {
   ProductDetails,
   EmailAutomations,
   Purchases,
-  AiChat,
   AdminSystemUsers,
   Users,
   ApiTest,

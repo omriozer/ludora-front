@@ -31,7 +31,6 @@ export const Checkout = lazy(() => import('./Checkout'));
 export const VideoViewer = lazy(() => import('./VideoViewer'));
 export const LessonPlanPresentation = lazy(() => import('./LessonPlanPresentation'));
 export const CourseViewer = lazy(() => import('./CourseViewer'));
-export const AiChat = lazy(() => import('./AiChat'));
 
 // Classroom management
 export const MyClassrooms = lazy(() => import('./MyClassrooms'));
