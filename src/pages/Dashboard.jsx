@@ -13,7 +13,10 @@ import {
   X,
   Trash2,
   GripVertical,
-  Settings
+  Settings,
+  Maximize2,
+  Minimize2,
+  Square
 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
@@ -23,54 +26,89 @@ import LessonModeWidget from "@/components/dashboard/widgets/LessonModeWidget";
 import DiceRollerWidget from "@/components/dashboard/widgets/DiceRollerWidget";
 import ColorWheelWidget from "@/components/dashboard/widgets/ColorWheelWidget";
 import TableDisplayWidget from "@/components/dashboard/widgets/TableDisplayWidget";
+import MyProductsWidget from "@/components/dashboard/widgets/MyProductsWidget";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { clog, cerror } from "@/lib/utils";
 import { toast } from "@/components/ui/use-toast";
+import "@/styles/dashboard.css";
 
 // Widget picker modal component
-const WidgetPickerModal = ({ isOpen, onClose, availableWidgets, onAddWidget }) => {
+const WidgetPickerModal = ({ isOpen, onClose, availableWidgets, onAddWidget, onRemoveWidget, userWidgets }) => {
   if (!isOpen) return null;
+
+  // Check if a widget is already added
+  const isWidgetAdded = (widgetType) => {
+    return userWidgets.some(widget => widget.type === widgetType);
+  };
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
         <div className="p-6 border-b">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-gray-900">הוסף ווידג'ט</h2>
+            <h2 className="text-xl font-bold text-gray-900">נהל ווידג'טים</h2>
             <Button variant="ghost" size="sm" onClick={onClose}>
               <X className="w-4 h-4" />
             </Button>
           </div>
-          <p className="text-gray-600 mt-2">בחר ווידג'ט להוספה ללוח המחוונים שלך</p>
+          <p className="text-gray-600 mt-2">הוסף או הסר ווידג'טים מהדאשבורד שלך</p>
         </div>
 
         <div className="p-6">
           <div className="grid gap-4">
-            {Object.values(availableWidgets).map((widget) => (
-              <div
-                key={widget.id}
-                className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900 mb-1">{widget.name}</h3>
-                    <p className="text-sm text-gray-600 mb-3">{widget.description}</p>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                        {widget.category === 'purchases' ? 'רכישות' : widget.category}
-                      </span>
+            {Object.values(availableWidgets).map((widget) => {
+              const isAdded = isWidgetAdded(widget.id);
+              const addedWidget = userWidgets.find(w => w.type === widget.id);
+
+              return (
+                <div
+                  key={widget.id}
+                  className={`border rounded-lg p-4 transition-colors ${
+                    isAdded
+                      ? 'border-green-300 bg-green-50'
+                      : 'border-gray-200 hover:border-blue-300'
+                  }`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900 mb-1">{widget.name}</h3>
+                      <p className="text-sm text-gray-600 mb-3">{widget.description}</p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                          {widget.category === 'purchases' ? 'רכישות' :
+                           widget.category === 'tools' ? 'כלים' :
+                           widget.category === 'classroom' ? 'כיתה' :
+                           widget.category}
+                        </span>
+                        {isAdded && (
+                          <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                            ✓ נוסף
+                          </span>
+                        )}
+                      </div>
                     </div>
+                    {isAdded ? (
+                      <Button
+                        onClick={() => onRemoveWidget(addedWidget.id)}
+                        variant="destructive"
+                        className="bg-red-600 hover:bg-red-700 text-white"
+                      >
+                        <Trash2 className="w-4 h-4 ml-2" />
+                        הסר
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={() => onAddWidget(widget.id)}
+                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                      >
+                        <Plus className="w-4 h-4 ml-2" />
+                        הוסף
+                      </Button>
+                    )}
                   </div>
-                  <Button
-                    onClick={() => onAddWidget(widget.id)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
-                  >
-                    <Plus className="w-4 h-4 ml-2" />
-                    הוסף
-                  </Button>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
@@ -79,7 +117,7 @@ const WidgetPickerModal = ({ isOpen, onClose, availableWidgets, onAddWidget }) =
 };
 
 // Widget component renderer
-const WidgetRenderer = ({ widget, isEditMode, onRemove, onMoveUp, onMoveDown, canMoveUp, canMoveDown, user }) => {
+const WidgetRenderer = ({ widget, isEditMode, onRemove, onMoveUp, onMoveDown, canMoveUp, canMoveDown, user, onResize }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const handleDelete = () => {
@@ -87,21 +125,60 @@ const WidgetRenderer = ({ widget, isEditMode, onRemove, onMoveUp, onMoveDown, ca
     setShowDeleteConfirm(false);
   };
 
+  const handleSizeChange = (newSize) => {
+    onResize(widget.id, newSize);
+  };
+
+  // Widget size configuration
+  const getWidgetSizeConfig = (widgetType) => {
+    const sizeConfigs = {
+      'purchase-history': ['medium', 'large'], // Only medium and large
+      'lesson-mode': ['small', 'medium'],      // Small and medium only
+      'dice-roller': ['small', 'medium'],      // Small and medium only
+      'color-wheel': ['small', 'medium'],      // Small and medium only
+      'table-display': ['medium', 'large'],    // Medium and large only
+      'my-products': ['small', 'medium', 'large'] // All sizes
+    };
+
+    return sizeConfigs[widgetType] || ['medium']; // Default to medium only
+  };
+
+  const availableSizes = getWidgetSizeConfig(widget.type);
+  const currentSize = widget.size || 'medium';
+
+  const getSizeIcon = (size) => {
+    switch (size) {
+      case 'small': return Minimize2;
+      case 'large': return Maximize2;
+      default: return Square;
+    }
+  };
+
+  const getSizeLabel = (size) => {
+    switch (size) {
+      case 'small': return 'קטן';
+      case 'large': return 'גדול';
+      default: return 'בינוני';
+    }
+  };
+
   const renderWidgetContent = () => {
     switch (widget.type) {
       case 'purchase-history':
         return (
-          <PurchaseHistory
-            user={user}
-            title={widget.settings?.title || "היסטוריית רכישות"}
-            showHeader={true}
-            className=""
-          />
+          <div className="h-full">
+            <PurchaseHistory
+              user={user}
+              title={widget.settings?.title || "היסטוריית רכישות"}
+              showHeader={true}
+              className="h-full"
+            />
+          </div>
         );
       case 'lesson-mode':
         return (
-          <Card>
-            <CardContent className="p-0">
+          <Card className="h-full border-0 bg-gradient-to-br from-blue-50 to-indigo-50 shadow-lg hover:shadow-xl transition-all duration-300">
+            <CardContent className="p-0 h-full">
               <LessonModeWidget
                 widgetId={widget.id}
                 settings={widget.settings}
@@ -111,8 +188,8 @@ const WidgetRenderer = ({ widget, isEditMode, onRemove, onMoveUp, onMoveDown, ca
         );
       case 'dice-roller':
         return (
-          <Card>
-            <CardContent className="p-0">
+          <Card className="h-full border-0 bg-gradient-to-br from-green-50 to-emerald-50 shadow-lg hover:shadow-xl transition-all duration-300">
+            <CardContent className="p-0 h-full">
               <DiceRollerWidget
                 widgetId={widget.id}
                 settings={widget.settings}
@@ -122,8 +199,8 @@ const WidgetRenderer = ({ widget, isEditMode, onRemove, onMoveUp, onMoveDown, ca
         );
       case 'color-wheel':
         return (
-          <Card>
-            <CardContent className="p-0">
+          <Card className="h-full border-0 bg-gradient-to-br from-purple-50 to-pink-50 shadow-lg hover:shadow-xl transition-all duration-300">
+            <CardContent className="p-0 h-full">
               <ColorWheelWidget
                 widgetId={widget.id}
                 settings={widget.settings}
@@ -133,8 +210,8 @@ const WidgetRenderer = ({ widget, isEditMode, onRemove, onMoveUp, onMoveDown, ca
         );
       case 'table-display':
         return (
-          <Card>
-            <CardContent className="p-0">
+          <Card className="h-full border-0 bg-gradient-to-br from-indigo-50 to-blue-50 shadow-lg hover:shadow-xl transition-all duration-300">
+            <CardContent className="p-0 h-full">
               <TableDisplayWidget
                 widgetId={widget.id}
                 settings={widget.settings}
@@ -142,11 +219,23 @@ const WidgetRenderer = ({ widget, isEditMode, onRemove, onMoveUp, onMoveDown, ca
             </CardContent>
           </Card>
         );
+      case 'my-products':
+        return (
+          <Card className="h-full border-0 bg-gradient-to-br from-purple-50 to-pink-50 shadow-lg hover:shadow-xl transition-all duration-300">
+            <CardContent className="p-0 h-full">
+              <MyProductsWidget
+                widgetId={widget.id}
+                settings={widget.settings}
+                size={widget.size || 'medium'}
+              />
+            </CardContent>
+          </Card>
+        );
       default:
         return (
-          <Card className="border border-red-200 bg-red-50">
-            <CardContent className="p-6 text-center">
-              <p className="text-red-600">ווידג'ט לא זמין: {widget.type}</p>
+          <Card className="h-full border border-red-200 bg-gradient-to-br from-red-50 to-orange-50 shadow-lg">
+            <CardContent className="p-6 text-center h-full flex items-center justify-center">
+              <p className="text-red-600 font-medium">ווידג'ט לא זמין: {widget.type}</p>
             </CardContent>
           </Card>
         );
@@ -154,45 +243,72 @@ const WidgetRenderer = ({ widget, isEditMode, onRemove, onMoveUp, onMoveDown, ca
   };
 
   return (
-    <div className="relative">
+    <div className={`
+      relative w-full h-full min-h-[280px]
+      ${isEditMode ? 'widget-edit-mode' : ''}
+      widget-item transition-all duration-200 ease-in-out
+      ${isEditMode ? 'hover:scale-[1.02] hover:shadow-xl hover:z-10' : ''}
+    `}>
       {isEditMode && (
-        <div className="absolute top-2 left-2 z-10 flex items-center gap-1 bg-white rounded-lg shadow-lg border p-1">
+        <div className="absolute top-3 left-3 z-20 flex items-center gap-2 bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200/50 p-2">
+          {/* Drag Handle */}
+          <div
+            className="cursor-move p-1 text-gray-400 hover:text-gray-600 transition-colors drag-handle"
+            title="גרור ווידג'ט"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <GripVertical className="w-4 h-4" />
+          </div>
+
+          {/* Size Controls */}
+          {availableSizes.length > 1 && (
+            <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+              {availableSizes.map((size) => {
+                const Icon = getSizeIcon(size);
+                return (
+                  <Button
+                    key={size}
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleSizeChange(size)}
+                    className={`h-6 w-6 p-0 rounded ${
+                      currentSize === size
+                        ? 'bg-blue-500 text-white'
+                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200'
+                    }`}
+                    title={getSizeLabel(size)}
+                  >
+                    <Icon className="w-3 h-3" />
+                  </Button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Delete Button */}
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setShowDeleteConfirm(true)}
-            className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+            className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg"
             title="הסר ווידג'ט"
           >
-            <Trash2 className="w-3 h-3" />
+            <Trash2 className="w-4 h-4" />
           </Button>
 
-          <div className="flex flex-col gap-0.5">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onMoveUp}
-              disabled={!canMoveUp}
-              className="h-4 w-6 p-0 text-gray-600 hover:text-gray-800 disabled:opacity-30"
-              title="הזז למעלה"
-            >
-              <GripVertical className="w-3 h-3 rotate-90" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onMoveDown}
-              disabled={!canMoveDown}
-              className="h-4 w-6 p-0 text-gray-600 hover:text-gray-800 disabled:opacity-30"
-              title="הזז למטה"
-            >
-              <GripVertical className="w-3 h-3 -rotate-90" />
-            </Button>
+          {/* Size Indicator */}
+          <div className="text-xs text-gray-500 px-2 py-1 bg-gray-100 rounded-md">
+            {getSizeLabel(currentSize)}
           </div>
         </div>
       )}
 
-      <div className={`transition-all ${isEditMode ? 'ring-2 ring-blue-200 ring-opacity-50 rounded-lg' : ''}`}>
+      <div className={`
+        w-full h-full
+        transition-all duration-300 ease-in-out
+        ${isEditMode ? 'ring-2 ring-blue-300/30 ring-offset-2 rounded-xl shadow-lg' : 'shadow-md hover:shadow-lg'}
+        ${isEditMode ? 'transform' : ''}
+      `}>
         {renderWidgetContent()}
       </div>
 
@@ -217,6 +333,8 @@ export default function Dashboard() {
   const [userWidgets, setUserWidgets] = useState([]);
   const [isEditMode, setIsEditMode] = useState(false);
   const [showWidgetPicker, setShowWidgetPicker] = useState(false);
+  const [draggedWidget, setDraggedWidget] = useState(null);
+  const [dragOverIndex, setDragOverIndex] = useState(null);
 
   // Load available widgets from API
   const loadAvailableWidgets = useCallback(async () => {
@@ -226,14 +344,72 @@ export default function Dashboard() {
       clog('[Dashboard] Available widgets loaded:', data);
 
       if (data.success) {
-        setAvailableWidgets(data.data || {});
+        const widgets = data.data || {};
+
+        // Add My Products widget if it doesn't exist in the API
+        if (!widgets['my-products']) {
+          widgets['my-products'] = {
+            id: 'my-products',
+            name: 'המוצרים שלי',
+            description: 'גישה מהירה למוצרים שרכשת ללא פרטי רכישה',
+            category: 'purchases',
+            icon: 'package',
+            defaultSettings: {
+              title: 'המוצרים שלי',
+              size: 'medium'
+            }
+          };
+        }
+
+        setAvailableWidgets(widgets);
       }
     } catch (error) {
       cerror('[Dashboard] Error loading available widgets:', error);
+
+      // Fallback: provide basic widgets if API fails
+      setAvailableWidgets({
+        'lesson-mode': {
+          id: 'lesson-mode',
+          name: 'מצב שיעור',
+          description: 'כלים למצב מצגת עם טיימר ואפקטים',
+          category: 'classroom'
+        },
+        'dice-roller': {
+          id: 'dice-roller',
+          name: 'קוביות',
+          description: 'זריקת קוביות אקראיות לפעילויות',
+          category: 'tools'
+        },
+        'color-wheel': {
+          id: 'color-wheel',
+          name: 'גלגל צבעים',
+          description: 'בחירת צבע אקראי מגלגל מסתובב',
+          category: 'tools'
+        },
+        'table-display': {
+          id: 'table-display',
+          name: 'הצגת טבלה',
+          description: 'טבלה לארגון מידע עם יכולות CSV',
+          category: 'tools'
+        },
+        'my-products': {
+          id: 'my-products',
+          name: 'המוצרים שלי',
+          description: 'גישה מהירה למוצרים שרכשת ללא פרטי רכישה',
+          category: 'purchases'
+        },
+        'purchase-history': {
+          id: 'purchase-history',
+          name: 'היסטוריית רכישות',
+          description: 'צפייה מפורטת בהיסטוריית הרכישות שלך',
+          category: 'purchases'
+        }
+      });
+
       toast({
-        title: "שגיאה",
-        description: "לא הצלחנו לטעון את הווידג'טים הזמינים",
-        variant: "destructive"
+        title: "טעינה חלקית",
+        description: "טענו ווידג'טים בסיסיים - חלק מהתכונות עלולות להיות מוגבלות",
+        variant: "default"
       });
     }
   }, []);
@@ -403,6 +579,28 @@ export default function Dashboard() {
     }
   };
 
+  // Resize widget
+  const handleResizeWidget = async (widgetId, newSize) => {
+    const updatedWidgets = userWidgets.map(widget =>
+      widget.id === widgetId
+        ? { ...widget, size: newSize }
+        : widget
+    );
+
+    try {
+      await saveDashboardConfig(updatedWidgets);
+      setUserWidgets(updatedWidgets);
+
+      toast({
+        title: "גודל ווידג'ט עודכן",
+        description: `גודל הווידג'ט שונה ל${newSize === 'small' ? 'קטן' : newSize === 'large' ? 'גדול' : 'בינוני'}`,
+        variant: "default"
+      });
+    } catch (error) {
+      // Error handling is in saveDashboardConfig
+    }
+  };
+
   // Save edit mode changes
   const handleSaveChanges = () => {
     setIsEditMode(false);
@@ -411,6 +609,104 @@ export default function Dashboard() {
       description: "השינויים בדאשבורד נשמרו בהצלחה",
       variant: "default"
     });
+  };
+
+  // Helper function to determine widget grid span based on widget type and size
+  const getWidgetGridSpan = (widgetType, size = 'medium') => {
+    const sizeToSpanMap = {
+      small: 'col-span-1',                           // Small = 1 column
+      medium: 'col-span-1 md:col-span-2',           // Medium = 1-2 columns
+      large: 'col-span-1 md:col-span-2 xl:col-span-3' // Large = 1-3 columns
+    };
+
+    // Special cases for certain widgets
+    const specialCases = {
+      'purchase-history': {
+        medium: 'col-span-1 md:col-span-2',
+        large: 'col-span-1 md:col-span-2 xl:col-span-3'
+      },
+      'table-display': {
+        medium: 'col-span-1 md:col-span-2',
+        large: 'col-span-1 md:col-span-2 xl:col-span-3'
+      },
+      'my-products': {
+        small: 'col-span-1',
+        medium: 'col-span-1 md:col-span-2',
+        large: 'col-span-1 md:col-span-2 xl:col-span-3'
+      }
+    };
+
+    // Check for special cases first
+    if (specialCases[widgetType] && specialCases[widgetType][size]) {
+      return specialCases[widgetType][size];
+    }
+
+    // Use general size mapping
+    return sizeToSpanMap[size] || sizeToSpanMap.medium;
+  };
+
+  // Drag and Drop handlers
+  const handleDragStart = (e, widget, index) => {
+    setDraggedWidget({ widget, index });
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', widget.id);
+
+    // Add visual feedback
+    setTimeout(() => {
+      e.target.style.opacity = '0.5';
+    }, 0);
+  };
+
+  const handleDragEnd = (e) => {
+    e.target.style.opacity = '1';
+    setDraggedWidget(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragOver = (e, index) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverIndex(index);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverIndex(null);
+  };
+
+  const handleDrop = async (e, dropIndex) => {
+    e.preventDefault();
+    setDragOverIndex(null);
+
+    if (!draggedWidget || draggedWidget.index === dropIndex) {
+      setDraggedWidget(null);
+      return;
+    }
+
+    // Create new widgets array with reordered items
+    const newWidgets = [...userWidgets];
+    const [draggedItem] = newWidgets.splice(draggedWidget.index, 1);
+    newWidgets.splice(dropIndex, 0, draggedItem);
+
+    // Update order values
+    newWidgets.forEach((widget, index) => {
+      widget.order = index;
+    });
+
+    try {
+      // Save the new order
+      await saveDashboardConfig(newWidgets);
+      setUserWidgets(newWidgets);
+
+      toast({
+        title: "סדר הווידג'טים עודכן",
+        description: "סדר הווידג'טים נשמר בהצלחה",
+        variant: "default"
+      });
+    } catch (error) {
+      // Error handling is in saveDashboardConfig
+    }
+
+    setDraggedWidget(null);
   };
 
   if (userLoading || isLoading) {
@@ -505,20 +801,41 @@ export default function Dashboard() {
             </div>
           </div>
         ) : (
-          /* Widgets Grid */
-          <div className="space-y-6">
+          /* Modern Responsive Grid Layout */
+          <div className="dashboard-grid grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6 auto-rows-min">
             {userWidgets.map((widget, index) => (
-              <WidgetRenderer
+              <div
                 key={widget.id}
-                widget={widget}
-                isEditMode={isEditMode}
-                onRemove={handleRemoveWidget}
-                onMoveUp={() => handleMoveWidget(widget.id, 'up')}
-                onMoveDown={() => handleMoveWidget(widget.id, 'down')}
-                canMoveUp={index > 0}
-                canMoveDown={index < userWidgets.length - 1}
-                user={currentUser}
-              />
+                className={`
+                  widget-container
+                  ${getWidgetGridSpan(widget.type, widget.size || 'medium')}
+                  ${isEditMode ? 'edit-mode' : ''}
+                  ${dragOverIndex === index ? 'drag-over' : ''}
+                  ${isEditMode ? 'cursor-move' : ''}
+                  transition-all duration-200 ease-in-out
+                `}
+                data-widget-id={widget.id}
+                data-widget-type={widget.type}
+                data-widget-size={widget.size || 'medium'}
+                draggable={isEditMode}
+                onDragStart={(e) => handleDragStart(e, widget, index)}
+                onDragEnd={handleDragEnd}
+                onDragOver={(e) => handleDragOver(e, index)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, index)}
+              >
+                <WidgetRenderer
+                  widget={widget}
+                  isEditMode={isEditMode}
+                  onRemove={handleRemoveWidget}
+                  onResize={handleResizeWidget}
+                  onMoveUp={() => handleMoveWidget(widget.id, 'up')}
+                  onMoveDown={() => handleMoveWidget(widget.id, 'down')}
+                  canMoveUp={index > 0}
+                  canMoveDown={index < userWidgets.length - 1}
+                  user={currentUser}
+                />
+              </div>
             ))}
           </div>
         )}
@@ -529,6 +846,8 @@ export default function Dashboard() {
           onClose={() => setShowWidgetPicker(false)}
           availableWidgets={availableWidgets}
           onAddWidget={handleAddWidget}
+          onRemoveWidget={handleRemoveWidget}
+          userWidgets={userWidgets}
         />
       </div>
     </div>

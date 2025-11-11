@@ -8,7 +8,7 @@ import ClassroomEffectMenu from '@/components/ui/ClassroomEffectMenu';
  * ClassroomModeScreen - Full-screen classroom mode interface
  * Provides timer controls, effects, and clean presentation environment
  */
-const ClassroomModeScreen = ({ onClose }) => {
+const ClassroomModeScreen = ({ onClose, defaultTimer = 300 }) => {
   const [showTimer, setShowTimer] = useState(false);
   const [lessonTitle, setLessonTitle] = useState('מצב שיעור');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -158,7 +158,7 @@ const ClassroomModeScreen = ({ onClose }) => {
             {showTimer && (
               <div className="mt-8 flex justify-center">
                 <Timer
-                  defaultTime={300} // 5 minutes default
+                  defaultTime={defaultTimer}
                   isDraggable={true}
                   allowTimeChange={true}
                   className="scale-125" // Make timer larger for classroom visibility

@@ -1,6 +1,7 @@
-import React, { useState, useCallback, Fragment } from 'react';
-import { Plus, Trash2, Edit3, Minus, Settings, GripVertical } from 'lucide-react';
+import React, { useState, useCallback, Fragment, useRef } from 'react';
+import { Plus, Trash2, Edit3, Minus, Settings, GripVertical, Download, Upload, Calculator } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import FullScreenOverlay from './shared/FullScreenOverlay';
 
 /**
@@ -8,9 +9,21 @@ import FullScreenOverlay from './shared/FullScreenOverlay';
  * Provides large table grid with draggable text elements for content
  */
 const TableDisplayScreen = ({ onClose, initialRows = 4, initialCols = 4 }) => {
-  // Table structure state (no content, just grid)
+  // Table structure state
   const [rowCount, setRowCount] = useState(initialRows);
   const [colCount, setColCount] = useState(initialCols);
+
+  // Table data state (for actual cell content)
+  const [tableData, setTableData] = useState(() => {
+    const initialData = [];
+    for (let i = 0; i < initialRows; i++) {
+      initialData[i] = [];
+      for (let j = 0; j < initialCols; j++) {
+        initialData[i][j] = '';
+      }
+    }
+    return initialData;
+  });
 
   // Text elements state (for adding custom text anywhere on screen)
   const [textElements, setTextElements] = useState([]);
@@ -22,24 +35,139 @@ const TableDisplayScreen = ({ onClose, initialRows = 4, initialCols = 4 }) => {
   const [toolsPanelPosition, setToolsPanelPosition] = useState({ x: 100, y: 100 });
   const [isDraggingTools, setIsDraggingTools] = useState(false);
 
+  // CSV file input ref
+  const fileInputRef = useRef(null);
+
   // Table structure functions
   const addRow = () => {
-    setRowCount(prev => prev + 1);
+    setRowCount(prev => {
+      const newRowCount = prev + 1;
+      setTableData(currentData => {
+        const newData = [...currentData];
+        newData[prev] = Array(colCount).fill('');
+        return newData;
+      });
+      return newRowCount;
+    });
   };
 
   const deleteRow = () => {
     if (rowCount > 1) {
-      setRowCount(prev => prev - 1);
+      setRowCount(prev => {
+        const newRowCount = prev - 1;
+        setTableData(currentData => currentData.slice(0, newRowCount));
+        return newRowCount;
+      });
     }
   };
 
   const addColumn = () => {
-    setColCount(prev => prev + 1);
+    setColCount(prev => {
+      const newColCount = prev + 1;
+      setTableData(currentData =>
+        currentData.map(row => [...row, ''])
+      );
+      return newColCount;
+    });
   };
 
   const deleteColumn = () => {
     if (colCount > 1) {
-      setColCount(prev => prev - 1);
+      setColCount(prev => {
+        const newColCount = prev - 1;
+        setTableData(currentData =>
+          currentData.map(row => row.slice(0, newColCount))
+        );
+        return newColCount;
+      });
+    }
+  };
+
+  // Cell data functions
+  const updateCellData = (row, col, value) => {
+    setTableData(currentData => {
+      const newData = [...currentData];
+      if (!newData[row]) newData[row] = [];
+      newData[row][col] = value;
+      return newData;
+    });
+  };
+
+  const getCellData = (row, col) => {
+    return tableData[row] && tableData[row][col] ? tableData[row][col] : '';
+  };
+
+  // CSV Import/Export functions
+  const exportToCSV = () => {
+    const csvContent = tableData
+      .map(row => row.map(cell => `"${cell}"`).join(','))
+      .join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `table-${Date.now()}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const importFromCSV = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const csvText = e.target.result;
+      const rows = csvText.split('\n')
+        .filter(row => row.trim())
+        .map(row =>
+          row.split(',').map(cell =>
+            cell.trim().replace(/^"|"$/g, '') // Remove quotes
+          )
+        );
+
+      if (rows.length > 0) {
+        const newRowCount = rows.length;
+        const newColCount = Math.max(...rows.map(row => row.length));
+
+        // Pad rows to ensure consistent column count
+        const paddedRows = rows.map(row => {
+          const paddedRow = [...row];
+          while (paddedRow.length < newColCount) {
+            paddedRow.push('');
+          }
+          return paddedRow;
+        });
+
+        setTableData(paddedRows);
+        setRowCount(newRowCount);
+        setColCount(newColCount);
+      }
+    };
+    reader.readAsText(file);
+
+    // Reset the file input
+    event.target.value = '';
+  };
+
+  // Simple formula evaluation
+  const evaluateFormula = (formula) => {
+    try {
+      // Remove = if present
+      const cleanFormula = formula.startsWith('=') ? formula.substring(1) : formula;
+
+      // Simple arithmetic operations only
+      const allowedChars = /^[0-9+\-*/().\s]+$/;
+      if (!allowedChars.test(cleanFormula)) {
+        return formula; // Return original if contains invalid characters
+      }
+
+      // Evaluate basic math expressions
+      const result = Function(`"use strict"; return (${cleanFormula})`)();
+      return isNaN(result) ? formula : result.toString();
+    } catch (error) {
+      return formula; // Return original if evaluation fails
     }
   };
 
@@ -139,6 +267,15 @@ const TableDisplayScreen = ({ onClose, initialRows = 4, initialCols = 4 }) => {
       </div>
 
 
+      {/* Hidden File Input for CSV Import */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={importFromCSV}
+        accept=".csv"
+        style={{ display: 'none' }}
+      />
+
       <div
         className="w-full h-full relative"
         onMouseMove={(e) => {
@@ -229,6 +366,31 @@ const TableDisplayScreen = ({ onClose, initialRows = 4, initialCols = 4 }) => {
                 </div>
               </div>
 
+              {/* CSV Import/Export Section */}
+              <div className="border-t pt-4 mb-4">
+                <div className="text-sm font-semibold text-gray-700 text-center mb-3">קבצי CSV</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    onClick={() => fileInputRef.current?.click()}
+                    size="sm"
+                    variant="outline"
+                    className="text-blue-600 hover:text-blue-700"
+                  >
+                    <Upload className="w-3 h-3 ml-1" />
+                    יבוא
+                  </Button>
+                  <Button
+                    onClick={exportToCSV}
+                    size="sm"
+                    variant="outline"
+                    className="text-green-600 hover:text-green-700"
+                  >
+                    <Download className="w-3 h-3 ml-1" />
+                    יצוא
+                  </Button>
+                </div>
+              </div>
+
               {/* Add Text Element */}
               <Button
                 onClick={addTextElement}
@@ -240,7 +402,8 @@ const TableDisplayScreen = ({ onClose, initialRows = 4, initialCols = 4 }) => {
               </Button>
 
               <div className="text-xs text-gray-500 mt-2 text-center">
-                גרור טקסטים למיקום הרצוי
+                גרור טקסטים למיקום הרצוי<br />
+                הכנס = לחישוב נוסחאות פשוטות
               </div>
             </div>
           </div>
@@ -256,13 +419,30 @@ const TableDisplayScreen = ({ onClose, initialRows = 4, initialCols = 4 }) => {
                     {Array.from({ length: colCount }, (_, colIndex) => (
                       <td
                         key={colIndex}
-                        className="border border-gray-300 bg-white hover:bg-gray-50 transition-colors"
+                        className="border border-gray-300 bg-white hover:bg-gray-50 transition-colors p-2"
                         style={{
                           width: `${100 / colCount}%`,
                           height: `${100 / rowCount}%`
                         }}
                       >
-                        {/* Empty cell - content comes from draggable text elements */}
+                        <input
+                          type="text"
+                          value={getCellData(rowIndex, colIndex)}
+                          onChange={(e) => updateCellData(rowIndex, colIndex, e.target.value)}
+                          onBlur={(e) => {
+                            // Evaluate formula if starts with =
+                            if (e.target.value.startsWith('=')) {
+                              const result = evaluateFormula(e.target.value);
+                              updateCellData(rowIndex, colIndex, result);
+                            }
+                          }}
+                          className="w-full h-full border-none outline-none bg-transparent text-center text-sm resize-none"
+                          style={{
+                            minHeight: `${Math.min(60, (window.innerHeight - 100) / rowCount - 4)}px`,
+                            fontSize: `${Math.min(16, (window.innerHeight - 100) / rowCount / 5)}px`
+                          }}
+                          placeholder={rowIndex === 0 ? `עמ' ${colIndex + 1}` : ''}
+                        />
                       </td>
                     ))}
                   </tr>

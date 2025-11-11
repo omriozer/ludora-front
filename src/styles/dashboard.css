@@ -1,0 +1,189 @@
+/* Dashboard Grid Styling */
+.dashboard-grid {
+  position: relative;
+}
+
+/* Widget Container Styling */
+.widget-container {
+  position: relative;
+  transition: all 0.2s ease-in-out;
+  min-height: 280px; /* Default height */
+}
+
+/* Size-based heights */
+.widget-container[data-widget-size="small"] {
+  min-height: 200px; /* Smaller height for compact widgets */
+}
+
+.widget-container[data-widget-size="medium"] {
+  min-height: 280px; /* Standard height */
+}
+
+.widget-container[data-widget-size="large"] {
+  min-height: 350px; /* Larger height for detailed widgets */
+}
+
+.widget-container.edit-mode {
+  user-select: none;
+}
+
+.widget-container.edit-mode:hover {
+  transform: scale(1.02);
+  z-index: 10;
+}
+
+/* Drag Over Effect */
+.widget-container.drag-over {
+  transform: scale(1.05);
+  border: 2px dashed #3b82f6;
+  border-radius: 12px;
+  background-color: rgba(59, 130, 246, 0.1);
+  box-shadow: 0 10px 25px rgba(59, 130, 246, 0.2);
+}
+
+/* Dragging State */
+.widget-container[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.widget-container[draggable="true"] {
+  cursor: grab;
+}
+
+/* Widget Edit Mode Styling */
+.widget-edit-mode {
+  position: relative;
+}
+
+.widget-edit-mode::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  transition: border-color 0.2s ease-in-out;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.widget-edit-mode:hover::before {
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+/* Drag Handle Styling */
+.drag-handle {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(8px);
+  border-radius: 6px;
+  transition: all 0.2s ease-in-out;
+}
+
+.drag-handle:hover {
+  background: rgba(255, 255, 255, 1);
+  transform: scale(1.1);
+}
+
+/* Grid Animation */
+.dashboard-grid {
+  animation: fadeInUp 0.4s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Widget Entry Animation */
+.widget-item {
+  animation: slideInScale 0.3s ease-out;
+}
+
+@keyframes slideInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Responsive Grid Improvements */
+@media (max-width: 768px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .widget-container.edit-mode:hover {
+    transform: none;
+  }
+
+  .widget-container.drag-over {
+    transform: scale(1.02);
+  }
+}
+
+/* Modern Glassmorphism Effects */
+.widget-card-modern {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.widget-card-modern:hover {
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+/* Edit Mode Enhancements */
+.edit-mode-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(59, 130, 246, 0.05);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 12px;
+  pointer-events: none;
+  transition: all 0.2s ease-in-out;
+}
+
+.widget-container.edit-mode .edit-mode-overlay {
+  opacity: 1;
+}
+
+/* Grid Snap Guidelines */
+.dashboard-grid.edit-mode::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image:
+    linear-gradient(to right, rgba(59, 130, 246, 0.1) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(59, 130, 246, 0.1) 1px, transparent 1px);
+  background-size: 20px 20px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.dashboard-grid.edit-mode:hover::after {
+  opacity: 1;
+}
