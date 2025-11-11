@@ -718,10 +718,6 @@ export async function sendInvitationEmails(data) {
 
 // Integration APIs
 export const Core = {
-  InvokeLLM: async (data) => apiRequest('/integrations/invokeLLM', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  }),
   SendEmail: async (data) => apiRequest('/integrations/sendEmail', {
     method: 'POST',
     body: JSON.stringify(data)
@@ -768,7 +764,6 @@ export const Core = {
   },
 };
 
-export const InvokeLLM = Core.InvokeLLM;
 export const SendEmail = Core.SendEmail;
 export const UploadFile = Core.UploadFile;
 export const ExtractDataFromUploadedFile = Core.ExtractDataFromUploadedFile;
