@@ -104,7 +104,6 @@ export default defineConfig({
 
           // Admin-only features (lazy loaded)
           'admin-features': [
-            './src/pages/AdminPanel',
             './src/pages/Users',
             './src/pages/CategoryManagement',
             './src/pages/BrandSettings',
