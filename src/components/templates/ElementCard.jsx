@@ -16,6 +16,7 @@ import {
 const ElementCard = ({
   element,
   elementKey,
+  elementName, // Optional override for element name
   isSelected,
   isMultiSelected,
   isGrouped,
@@ -39,26 +40,32 @@ const ElementCard = ({
     if (element.type) {
       // Custom element
       return {
-        name: getCustomElementName(element.type),
+        name: elementName || getCustomElementName(element.type),
         icon: getCustomElementIcon(element.type),
         color: getCustomElementColor(element.type),
         isCustom: true
       };
     } else {
       // Built-in element
-      return getBuiltInElementInfo(elementKey);
+      const builtInInfo = getBuiltInElementInfo(elementKey);
+      return {
+        ...builtInInfo,
+        name: elementName || builtInInfo.name
+      };
     }
   };
 
   const getCustomElementName = (type) => {
     switch (type) {
       case 'box': return 'תיבה';
+      case 'circle': return 'עיגול';
       case 'line': return 'קו';
       case 'dotted-line': return 'קו מנוקד';
       case 'free-text': return 'טקסט חופשי';
       case 'watermark-text': return 'טקסט סימן מים';
       case 'watermark-logo': return 'לוגו סימן מים';
       case 'logo': return 'לוגו';
+      case 'user-info': return 'פרטי משתמש';
       default: return type;
     }
   };
@@ -66,12 +73,14 @@ const ElementCard = ({
   const getCustomElementIcon = (type) => {
     switch (type) {
       case 'box': return '📦';
+      case 'circle': return '⭕';
       case 'line': return '➖';
       case 'dotted-line': return '⋯';
       case 'free-text': return '✏️';
       case 'watermark-text': return '🔤';
       case 'watermark-logo': return '🖼️';
       case 'logo': return '🖼️';
+      case 'user-info': return '👤';
       default: return '🔧';
     }
   };
@@ -79,9 +88,11 @@ const ElementCard = ({
   const getCustomElementColor = (type) => {
     switch (type) {
       case 'box': return 'border-green-300 bg-green-50 hover:bg-green-100';
+      case 'circle': return 'border-pink-300 bg-pink-50 hover:bg-pink-100';
       case 'line': return 'border-yellow-300 bg-yellow-50 hover:bg-yellow-100';
       case 'dotted-line': return 'border-orange-300 bg-orange-50 hover:bg-orange-100';
       case 'free-text': return 'border-blue-300 bg-blue-50 hover:bg-blue-100';
+      case 'user-info': return 'border-violet-300 bg-violet-50 hover:bg-violet-100';
       case 'watermark-text': return 'border-indigo-300 bg-indigo-50 hover:bg-indigo-100';
       case 'watermark-logo': return 'border-purple-300 bg-purple-50 hover:bg-purple-100';
       case 'logo': return 'border-purple-300 bg-purple-50 hover:bg-purple-100';
@@ -94,19 +105,32 @@ const ElementCard = ({
       logo: {
         name: 'לוגו',
         icon: '🖼️',
+        color: 'border-purple-300 bg-purple-50 hover:bg-purple-100',
+        isCustom: false
+      },
+      'copyright-text': {
+        name: 'זכויות יוצרים',
+        icon: '📝',
         color: 'border-gray-300 bg-gray-50 hover:bg-gray-100',
         isCustom: false
       },
+      url: {
+        name: 'קישור לאתר',
+        icon: '🔗',
+        color: 'border-cyan-300 bg-cyan-50 hover:bg-cyan-100',
+        isCustom: false
+      },
+      'user-info': {
+        name: 'פרטי משתמש',
+        icon: '👤',
+        color: 'border-violet-300 bg-violet-50 hover:bg-violet-100',
+        isCustom: false
+      },
+      // Legacy support for old 'text' key
       text: {
         name: 'טקסט זכויות יוצרים',
         icon: '📝',
         color: 'border-blue-300 bg-blue-50 hover:bg-blue-100',
-        isCustom: false
-      },
-      url: {
-        name: 'קישור URL',
-        icon: '🔗',
-        color: 'border-purple-300 bg-purple-50 hover:bg-purple-100',
         isCustom: false
       }
     };
@@ -281,6 +305,20 @@ const ElementCard = ({
               title="מרכז Y"
             >
               <Move className="w-3 h-3" />
+            </Button>
+
+            {/* Copy/Duplicate */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDuplicate?.(elementKey);
+              }}
+              title="שכפל אלמנט"
+            >
+              <Copy className="w-3 h-3 text-green-600" />
             </Button>
 
             {/* More actions */}

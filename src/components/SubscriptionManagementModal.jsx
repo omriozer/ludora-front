@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
+import { cerror } from "@/lib/utils";
 
 // Helper component for confirmation dialog
 function ConfirmationDialog({ isOpen, onClose, onConfirm, title, message, confirmText, cancelText, variant, isLoading }) {
@@ -113,7 +114,7 @@ export default function SubscriptionManagementModal({ user, subscriptionPlans, o
         showMessage('info', 'לא בוצעו שינויים');
       }
     } catch (error) {
-      console.error('Error updating subscription:', error);
+      cerror('Error updating subscription:', error);
       showMessage('error', 'שגיאה בעדכון המנוי');
     } finally {
       setIsLoading(false);
@@ -123,8 +124,6 @@ export default function SubscriptionManagementModal({ user, subscriptionPlans, o
   const handleResetSubscription = async () => {
     setIsLoading(true);
     try {
-      console.log(`[RESET_SUBSCRIPTION] Resetting subscription for user: ${user.email}`);
-
       // Delete all subscription history for this user
       const subscriptionHistoryRecords = await SubscriptionHistory.filter({ user_id: user.id });
       for (const record of subscriptionHistoryRecords) {
@@ -146,13 +145,11 @@ export default function SubscriptionManagementModal({ user, subscriptionPlans, o
         subscription_status_updated_at: new Date().toISOString(),
         payplus_subscription_uid: null
       });
-
-      console.log(`[RESET_SUBSCRIPTION] ✅ Successfully reset subscription for user: ${user.email}`);
       showMessage('success', `המנוי של המשתמש ${user.display_name || user.full_name} אופס בהצלחה.`);
       onUpdate();
-      
+
     } catch (error) {
-      console.error('[RESET_SUBSCRIPTION] Error resetting subscription:', error);
+      cerror('Error resetting subscription:', error);
       showMessage('error', 'שגיאה באיפוס המנוי.');
     } finally {
       setIsLoading(false);

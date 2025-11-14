@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { apiRequest } from '@/services/apiClient';
+import { cerror } from '@/lib/utils';
 import {
 	Users,
 	Search,
@@ -122,7 +123,7 @@ function SubscriptionManagementModal({
 			const pending = await PendingSubscription.filter({ user_id: user.id });
 			setPendingSubscriptions(pending);
 		} catch (error) {
-			console.error('Error fetching pending subscriptions:', error);
+			cerror('Error fetching pending subscriptions:', error);
 			showMessage('error', 'שגיאה בטעינת מנויים ממתינים.');
 		} finally {
 			setIsFetchingPending(false);
@@ -158,7 +159,7 @@ function SubscriptionManagementModal({
 			showMessage('success', 'פרטי המנוי עודכנו בהצלחה.');
 			onUpdate(); // Trigger refresh in parent and close modal
 		} catch (error) {
-			console.error('Error updating subscription:', error);
+			cerror('Error updating subscription:', error);
 			showMessage('error', 'שגיאה בעדכון פרטי המנוי.');
 		} finally {
 			setIsSaving(false);
@@ -172,7 +173,7 @@ function SubscriptionManagementModal({
 			showMessage('success', 'מנוי ממתין נמחק בהצלחה.');
 			fetchPendingSubscriptions();
 		} catch (error) {
-			console.error('Error deleting pending subscription:', error);
+			cerror('Error deleting pending subscription:', error);
 			showMessage('error', 'שגיאה במחיקת מנוי ממתין.');
 		}
 	};
@@ -194,7 +195,7 @@ function SubscriptionManagementModal({
 			setNewPendingPlanId('');
 			fetchPendingSubscriptions();
 		} catch (error) {
-			console.error('Error adding pending subscription:', error);
+			cerror('Error adding pending subscription:', error);
 			showMessage('error', 'שגיאה בהוספת מנוי ממתין.');
 		}
 	};
@@ -473,7 +474,7 @@ export default function UsersPage() {
 				setFilteredUsers(allUsersData);
 			}
 		} catch (error) {
-			console.error('Error loading data:', error);
+			cerror('Error loading data:', error);
 			setMessage({ type: 'error', text: 'שגיאה בטעינת נתונים' });
 		}
 		setLoading(false);
@@ -513,7 +514,6 @@ export default function UsersPage() {
 		setResetLoading(userToReset.id);
 
 		try {
-			console.log(`[RESET_SUBSCRIPTION] Resetting subscription for user: ${userToReset.email}`);
 
 			// Delete all subscription history for this user
 			const subscriptionHistoryRecords = await SubscriptionHistory.filter({ user_id: userToReset.id });
@@ -538,30 +538,23 @@ export default function UsersPage() {
 						const parsedData = JSON.parse(actualUserId);
 						actualUserId = parsedData.user_id;
 					} catch (parseError) {
-						// Log error but continue to next pending record if parsing fails
-						console.error(
-							`[RESET_SUBSCRIPTION] Failed to parse JSON user_id for pending subscription ${pending.id}:`,
-							parseError
-						);
+						// Continue to next pending record if parsing fails
 						continue;
 					}
 				}
 
 				if (actualUserId === userToReset.id) {
 					await PendingSubscription.delete(pending.id);
-					console.log(`[RESET_SUBSCRIPTION] Deleted pending subscription with JSON format: ${pending.id}`);
 				}
 			}
 
 			// Delete any pending purchases for this user
-			console.log(`[RESET_SUBSCRIPTION] Cleaning up pending purchases...`);
 			const pendingPurchases = await Purchase.filter({
 				buyer_user_id: userToReset.id,
 				payment_status: 'pending'
 			});
 			for (const purchase of pendingPurchases) {
 				await Purchase.delete(purchase.id);
-				console.log(`[RESET_SUBSCRIPTION] Deleted pending purchase: ${purchase.id}`);
 			}
 
 			// Reset user subscription data completely
@@ -574,13 +567,11 @@ export default function UsersPage() {
 				payplus_subscription_uid: null,
 			});
 
-			console.log(`[RESET_SUBSCRIPTION] ✅ Successfully reset subscription for user: ${userToReset.email}`);
-
 			showMessage('success', `המנוי של המשתמש ${userToReset.display_name || userToReset.full_name} אופס בהצלחה.`);
 
 			fetchAdminDashboardData(); // Refresh the data
 		} catch (error) {
-			console.error('[RESET_SUBSCRIPTION] Error resetting subscription:', error);
+			cerror('Error resetting subscription:', error);
 			showMessage('error', 'שגיאה באיפוס המנוי.');
 		} finally {
 			setShowResetConfirm(false);
@@ -600,7 +591,7 @@ export default function UsersPage() {
 			showMessage('success', 'תפקיד המשתמש עודכן בהצלחה');
 			fetchAdminDashboardData();
 		} catch (error) {
-			console.error('Error updating user role:', error);
+			cerror('Error updating user role:', error);
 			showMessage('error', 'שגיאה בעדכון תפקיד המשתמש');
 		}
 	};
@@ -612,7 +603,7 @@ export default function UsersPage() {
 			showMessage('success', 'סוג המשתמש עודכן בהצלחה');
 			fetchAdminDashboardData();
 		} catch (error) {
-			console.error('Error updating user type:', error);
+			cerror('Error updating user type:', error);
 			showMessage('error', 'שגיאה בעדכון סוג המשתמש');
 		}
 	};
@@ -638,7 +629,7 @@ export default function UsersPage() {
 				navigate('/');
 			}, 1000);
 		} catch (error) {
-			console.error('Error impersonating user:', error);
+			cerror('Error impersonating user:', error);
 			setMessage({ type: 'error', text: 'שגיאה בהתחזות למשתמש' });
 		} finally {
 			setImpersonationLoading(null);
@@ -739,7 +730,7 @@ export default function UsersPage() {
 			showMessage('success', `סטטוס ההכנה עבור ${user.display_name || user.full_name} אופס בהצלחה`);
 
 		} catch (error) {
-			console.error('Error resetting onboarding:', error);
+			cerror('Error resetting onboarding:', error);
 			showMessage('error', `שגיאה באיפוס ההכנה: ${error.message}`);
 		} finally {
 			setLoading(false);
@@ -798,7 +789,7 @@ export default function UsersPage() {
 			showMessage('success', `איפוס קשה עבור ${user.display_name || user.full_name} בוצע בהצלחה`);
 
 		} catch (error) {
-			console.error('Error hard resetting onboarding:', error);
+			cerror('Error hard resetting onboarding:', error);
 			showMessage('error', `שגיאה באיפוס קשה: ${error.message}`);
 		} finally {
 			setLoading(false);

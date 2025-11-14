@@ -21,6 +21,7 @@ import { he } from "date-fns/locale";
 import { PRODUCT_TYPES, getProductTypeName } from "@/config/productTypes";
 import { useUser } from "@/contexts/UserContext";
 import { cerror, clog } from "@/lib/utils";
+import { toast } from "@/components/ui/use-toast";
 
 export default function PaymentResult() {
   const navigate = useNavigate();
@@ -66,7 +67,7 @@ export default function PaymentResult() {
 
   const findProductId = async (entityType, entityId) => {
     try {
-      console.log(`🔍 Finding Product ID for ${entityType}:`, entityId);
+      clog(`🔍 Finding Product ID for ${entityType}:`, entityId);
 
       // Search for Product with matching product_type and entity_id
       const products = await Product.filter({
@@ -77,12 +78,12 @@ export default function PaymentResult() {
       if (products && products.length > 0) {
         const foundProductId = products[0].id;
         setProductId(foundProductId);
-        console.log(`✅ Found Product ID:`, foundProductId);
+        clog(`✅ Found Product ID:`, foundProductId);
       } else {
-        console.log(`⚠️ No Product found for ${entityType}:${entityId}`);
+        clog(`⚠️ No Product found for ${entityType}:${entityId}`);
       }
     } catch (error) {
-      console.error('❌ Error finding Product ID:', error);
+      cerror('❌ Error finding Product ID:', error);
     }
   };
 
@@ -105,7 +106,7 @@ export default function PaymentResult() {
 
       // Handle PayPlus redirect parameters
       if (pageRequestUid && !paymentStatus) {
-        console.log('🔍 PayPlus redirect detected, finding purchase by page_request_uid:', pageRequestUid);
+        clog('🔍 PayPlus redirect detected, finding purchase by page_request_uid:', pageRequestUid);
 
         try {
           // Find purchase by PayPlus page_request_uid in metadata
@@ -117,19 +118,15 @@ export default function PaymentResult() {
 
           if (purchases && purchases.length > 0) {
             const purchaseData = purchases[0];
-            console.log('✅ Found purchase via PayPlus UID:', purchaseData.id);
-
             finalOrderNumber = purchaseData.metadata?.transaction_uid || purchaseData.id;
 
             // Determine status from purchase and transaction presence
             if (transactionUid && purchaseData.payment_status === 'pending') {
               // Payment completed (we have transaction_uid), but webhook may not have fired yet
               finalStatus = 'success';
-              console.log('💳 Payment successful - transaction_uid present:', transactionUid);
 
               // Try to update purchase status in background (webhook fallback)
               try {
-                console.log('🔄 Attempting to update purchase status as fallback for webhook...');
                 await Purchase.update(purchaseData.id, {
                   payment_status: 'completed',
                   metadata: {
@@ -139,9 +136,8 @@ export default function PaymentResult() {
                     payment_completed_at: new Date().toISOString()
                   }
                 });
-                console.log('✅ Purchase status updated via fallback mechanism');
               } catch (updateError) {
-                console.warn('⚠️ Could not update purchase status via fallback:', updateError);
+                cerror('Could not update purchase status via fallback:', updateError);
               }
             } else {
               // Use existing purchase status
@@ -152,14 +148,12 @@ export default function PaymentResult() {
                 'pending': transactionUid ? 'success' : 'pending'
               };
               finalStatus = statusMap[purchaseData.payment_status] || 'unknown';
-              console.log('📊 Using purchase status:', purchaseData.payment_status, '→', finalStatus);
             }
           } else {
-            console.warn('⚠️ No purchase found for PayPlus page_request_uid:', pageRequestUid);
             finalStatus = transactionUid ? 'success' : 'unknown';
           }
         } catch (searchError) {
-          console.error('❌ Error searching for purchase by PayPlus UID:', searchError);
+          cerror('Error searching for purchase by PayPlus UID:', searchError);
           finalStatus = transactionUid ? 'success' : 'unknown';
         }
       }
@@ -172,7 +166,6 @@ export default function PaymentResult() {
 
       if (finalOrderNumber) {
         // Find purchase by transaction_uid or purchase ID
-        console.log('🔍 Looking for purchase with identifier:', finalOrderNumber);
         try {
           // First try to find by transaction_uid in metadata
           let purchases = await Purchase.filter({
@@ -187,7 +180,6 @@ export default function PaymentResult() {
           if (purchases.length > 0) {
             const purchaseData = purchases[0];
             setPurchase(purchaseData);
-            console.log('✅ Purchase found:', purchaseData.id);
 
             // Load the associated item (product or game)
             // Handle both new polymorphic and legacy purchase structures
@@ -198,7 +190,6 @@ export default function PaymentResult() {
                 const entityType = purchaseData.purchasable_type;
                 const entityId = purchaseData.purchasable_id;
 
-                console.log(`📦 Loading ${entityType}:`, entityId);
                 switch (entityType) {
                   case 'workshop':
                     itemData = await Workshop.findById(entityId);
@@ -220,7 +211,6 @@ export default function PaymentResult() {
                 }
                 setItem(itemData);
                 setItemType(entityType);
-                console.log(`✅ ${entityType} loaded:`, itemData.title);
 
                 // Find the corresponding Product ID
                 await findProductId(entityType, entityId);
@@ -233,38 +223,32 @@ export default function PaymentResult() {
               try {
                 let itemData;
                 if (type === 'game') {
-                  console.log('🎮 Loading game:', purchaseData.product_id);
                   itemData = await Game.findById(purchaseData.product_id);
-                  console.log('✅ Game loaded:', itemData.title);
                 } else {
                   // Default to workshop for legacy product_id
-                  console.log('📦 Loading workshop (legacy):', purchaseData.product_id);
                   itemData = await Workshop.findById(purchaseData.product_id);
-                  console.log('✅ Workshop loaded:', itemData.title);
                   setItemType('workshop');
                 }
                 setItem(itemData);
               } catch (itemError) {
-                cerror('❌ Error loading item:', itemError);
+                cerror('Error loading item:', itemError);
                 // Try Game as fallback for legacy data
                 try {
-                  console.log('🔄 Fallback: trying Game for legacy product ID');
                   const fallbackItem = await Game.findById(purchaseData.product_id);
                   setItem(fallbackItem);
                   setItemType('game');
-                  console.log('✅ Fallback game loaded:', fallbackItem.title);
                 } catch (fallbackError) {
-                  cerror('❌ Fallback also failed:', fallbackError);
+                  cerror('Fallback also failed:', fallbackError);
                   setError('לא ניתן לטעון את פרטי המוצר');
                 }
               }
             }
           } else {
-            cerror('❌ Purchase not found for order:', finalOrderNumber);
+            cerror('Purchase not found for order:', finalOrderNumber);
             setError('רכישה לא נמצאה');
           }
         } catch (purchaseError) {
-          cerror('❌ Error finding purchase:', purchaseError);
+          cerror('Error finding purchase:', purchaseError);
           setError('שגיאה בחיפוש הרכישה');
         }
       }

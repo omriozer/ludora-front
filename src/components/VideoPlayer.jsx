@@ -3,6 +3,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Play, AlertCircle, Loader2, ExternalLink } from 'lucide-react';
 import { createSignedUrl } from '@/services/functions';
+import { clog, cerror } from '@/lib/utils';
 
 // Helper function to detect and convert Google Drive URLs
 const processVideoUrl = (url, is_private = false) => {
@@ -98,12 +99,12 @@ export default function VideoPlayer({
           playbackUrl: data.signed_url,
           isPrivate: true
         });
-        console.log('Generated signed URL for video, expires at:', data.expires_at);
+        clog('Generated signed URL for video, expires at:', data.expires_at);
       } else {
         throw new Error('לא התקבל קישור תקין מהשרת');
       }
     } catch (error) {
-      console.error('Error generating signed URL:', error);
+      cerror('Error generating signed URL:', error);
       setError(error.response?.data?.error || error.message || 'שגיאה בטעינת הוידאו');
     } finally {
       setIsLoading(false);
@@ -132,7 +133,7 @@ export default function VideoPlayer({
         
         // If less than 5 minutes remaining, refresh the URL
         if (timeToExpiry < 5 * 60 * 1000 && timeToExpiry > 0) {
-          console.log('Signed URL expiring soon, refreshing...');
+          clog('Signed URL expiring soon, refreshing...');
           generateSignedUrl();
         }
       };

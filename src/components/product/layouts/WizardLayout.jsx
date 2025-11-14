@@ -62,17 +62,6 @@ export const WizardLayout = ({
   useEffect(() => {
     const validation = validateForm();
 
-    // Debug step validation (throttled to prevent spam)
-    const debugKey = `${formData.product_type}-${hasUploadedFile}-${validation.isValid}`;
-    if (!window._lastDebugKey || window._lastDebugKey !== debugKey) {
-      console.log('🎯 WizardLayout step validation:', {
-        'formData.product_type': formData.product_type,
-        hasUploadedFile,
-        'validation.isValid': validation.isValid
-      });
-      window._lastDebugKey = debugKey;
-    }
-
     // Define step-specific validation rules
     const stepRequirements = {
       basicInfo: () => {
@@ -108,16 +97,6 @@ export const WizardLayout = ({
           const hasSVGSlides = !!(formData.file_configs?.presentation && formData.file_configs.presentation.length > 0);
           const isValid = hasOpeningFiles || hasSVGSlides;
 
-          console.log('🎯 Lesson plan validation debug:', {
-            'formData.file_configs': formData.file_configs,
-            'formData.file_configs?.files?.length': formData.file_configs?.files?.length,
-            'formData.file_configs?.presentation?.length': formData.file_configs?.presentation?.length,
-            'hasOpeningFiles': hasOpeningFiles,
-            'hasSVGSlides': hasSVGSlides,
-            'isValid': isValid,
-            'files array': formData.file_configs?.files,
-            'presentation array': formData.file_configs?.presentation
-          });
           return isValid;
         }
         return true; // Other product types don't have specific requirements

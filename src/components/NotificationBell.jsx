@@ -27,7 +27,6 @@ export default function NotificationBell({ currentUser }) {
         return await Notification.find({ user_email: userEmail });
       } catch (error) {
         if (error.response?.status === 429 && i < retries - 1) {
-          console.log(`[NOTIFICATIONS] Rate limit hit, retrying in ${delay}ms... (${i + 1}/${retries})`);
           await new Promise(resolve => setTimeout(resolve, delay));
           delay *= 2; // Exponential backoff
         } else {
@@ -90,7 +89,10 @@ export default function NotificationBell({ currentUser }) {
         setNotificationEntityAvailable(false);
       }
     } catch (error) {
-      console.log('Notification entity not available:', error);
+      // This is expected when notification entity is not available - use clog for debugging
+      import('@/lib/utils').then(({ clog }) => {
+        clog('Notification entity not available:', error);
+      });
       setNotificationEntityAvailable(false);
       setHasError(true);
     }

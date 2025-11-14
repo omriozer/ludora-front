@@ -10,6 +10,9 @@ import { Info, Plus, X, AlertCircle } from 'lucide-react';
 import { Category } from '@/services/entities';
 import { getProductTypeName } from '@/config/productTypes';
 import ProductTypeSelector from '@/components/ui/ProductTypeSelector';
+import ContentTopicSelector from '@/components/ui/ContentTopicSelector';
+import { contentTopicService } from '@/services/contentTopicService';
+import { toast } from '@/components/ui/use-toast';
 
 /**
  * BasicInfoSection - Handles core product information
@@ -30,6 +33,7 @@ export const BasicInfoSection = ({
 }) => {
   const [categories, setCategories] = useState([]);
   const [tagsInputValue, setTagsInputValue] = useState('');
+  const [savingContentTopic, setSavingContentTopic] = useState(false);
 
   // Load categories on mount
   useEffect(() => {
@@ -68,6 +72,54 @@ export const BasicInfoSection = ({
       addTag(tagsInputValue.trim());
       setTagsInputValue('');
     }
+  };
+
+  // Handle immediate content topic save
+  const handleContentTopicChange = async (topicIds) => {
+    const newTopicId = topicIds.length > 0 ? topicIds[0] : null;
+
+    // Update form data immediately
+    updateFormData({ content_topic_id: newTopicId });
+
+    // For existing products, save to database immediately
+    const productId = formData.id || window.location.pathname.split('/').pop();
+
+    if (!isNewProduct && productId && productId !== 'new') {
+      setSavingContentTopic(true);
+      try {
+        await contentTopicService.updateProductTopics(productId, newTopicId ? [newTopicId] : []);
+
+        // Use setTimeout to ensure toast shows up after modal closes
+        setTimeout(() => {
+          toast({
+            title: "נושא התוכן עודכן",
+            description: newTopicId ? "נושא התוכן נשמר בהצלחה" : "נושא התוכן הוסר בהצלחה",
+          });
+        }, 100);
+      } catch (error) {
+        console.error('Failed to save content topic:', error);
+
+        // Show specific error message based on the error type
+        let errorMessage = "נכשל בשמירת נושא התוכן";
+        let errorTitle = "שגיאה בשמירה";
+
+        if (error.message?.includes('Access token required') || error.message?.includes('Unauthorized')) {
+          errorTitle = "שגיאת הרשאה";
+          errorMessage = "נדרשת התחברות מחדש. אנא רענן את הדף והתחבר שוב.";
+        } else if (error.message) {
+          errorMessage = `שגיאה: ${error.message}`;
+        }
+
+        toast({
+          title: errorTitle,
+          description: errorMessage,
+          variant: "destructive"
+        });
+      } finally {
+        setSavingContentTopic(false);
+      }
+    }
+    // For new products, the topic will be saved when the product is created
   };
 
   // If this is a new product and no type is selected, show type selector
@@ -214,6 +266,30 @@ export const BasicInfoSection = ({
             </Select>
             {!isFieldValid('target_audience') && (
               <p className="text-sm text-red-600 mt-1">{getFieldError('target_audience')}</p>
+            )}
+          </div>
+
+          {/* Content Topic */}
+          <div>
+            <ContentTopicSelector
+              value={formData.content_topic_id ? [formData.content_topic_id] : []}
+              onValueChange={handleContentTopicChange}
+              title={savingContentTopic ? "נושא תוכן (שומר...)" : "נושא תוכן"}
+              description="בחר נושא תוכן אחד רלוונטי למוצר זה. זה יעזור לקושר אותו לפריטי תוכנית הלימודים המתאימים"
+              placeholder="בחר נושא תוכן..."
+              mode="modal"
+              allowCreate={true}
+              singleSelection={true}
+              disabled={savingContentTopic}
+              className={!isFieldValid('content_topic') ? 'border-red-500' : ''}
+            />
+            {!isFieldValid('content_topic') && (
+              <p className="text-sm text-red-600 mt-1">{getFieldError('content_topic')}</p>
+            )}
+            {savingContentTopic && (
+              <p className="text-xs text-blue-600 mt-1 flex items-center gap-1">
+                <span>שומר את הנושא...</span>
+              </p>
             )}
           </div>
 

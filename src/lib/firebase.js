@@ -1,11 +1,12 @@
 // Firebase configuration and initialization
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
+import { clog, cerror } from '@/lib/utils';
 
 // Debug environment variables
-console.log('🔍 All import.meta.env:', import.meta.env);
-console.log('🔍 VITE_FIREBASE_API_KEY:', import.meta.env.VITE_FIREBASE_API_KEY);
-console.log('🔍 VITE_FIREBASE_PROJECT_ID:', import.meta.env.VITE_FIREBASE_PROJECT_ID);
+clog('🔍 All import.meta.env:', import.meta.env);
+clog('🔍 VITE_FIREBASE_API_KEY:', import.meta.env.VITE_FIREBASE_API_KEY);
+clog('🔍 VITE_FIREBASE_PROJECT_ID:', import.meta.env.VITE_FIREBASE_PROJECT_ID);
 
 // Firebase configuration from environment variables
 const firebaseConfig = {
@@ -24,22 +25,22 @@ let auth;
 let googleProvider;
 
 try {
-  console.log('🔥 Firebase config being used:', firebaseConfig);
-  
+  clog('🔥 Firebase config being used:', firebaseConfig);
+
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
   googleProvider = new GoogleAuthProvider();
-  
+
   // Configure Google provider
   googleProvider.addScope('email');
   googleProvider.addScope('profile');
-  
-  console.log('✅ Firebase initialized successfully');
-  console.log('🔑 Auth object:', auth);
-  console.log('🔑 Google Provider:', googleProvider);
+
+  clog('✅ Firebase initialized successfully');
+  clog('🔑 Auth object:', auth);
+  clog('🔑 Google Provider:', googleProvider);
 } catch (error) {
-  console.error('❌ Firebase initialization error:', error);
-  console.warn('🔧 Please check your Firebase environment variables in .env.development');
+  cerror('❌ Firebase initialization error:', error);
+  cerror('🔧 Please check your Firebase environment variables in .env.development');
 }
 
 // Firebase Auth functions
@@ -60,7 +61,7 @@ export const firebaseAuth = {
         credential: result.credential
       };
     } catch (error) {
-      console.error('Google sign-in error:', error);
+      cerror('Google sign-in error:', error);
       throw error;
     }
   },
@@ -73,9 +74,9 @@ export const firebaseAuth = {
     
     try {
       await signOut(auth);
-      console.log('✅ Firebase sign out successful');
+      clog('✅ Firebase sign out successful');
     } catch (error) {
-      console.error('Firebase sign out error:', error);
+      cerror('Firebase sign out error:', error);
       throw error;
     }
   },
@@ -89,7 +90,7 @@ export const firebaseAuth = {
     try {
       return await auth.currentUser.getIdToken();
     } catch (error) {
-      console.error('Error getting user token:', error);
+      cerror('Error getting user token:', error);
       return null;
     }
   },
@@ -102,10 +103,10 @@ export const firebaseAuth = {
   // Listen to auth state changes
   onAuthStateChanged: (callback) => {
     if (!auth) {
-      console.warn('Firebase auth not initialized');
+      cerror('Firebase auth not initialized');
       return () => {};
     }
-    
+
     return auth.onAuthStateChanged(callback);
   }
 };

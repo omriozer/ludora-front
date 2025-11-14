@@ -15,7 +15,6 @@ import {
   BarChart3,
   Palette,
   Shield,
-  Code,
   Volume2,
   X,
   Grid3X3,
@@ -242,6 +241,12 @@ export default function FloatingAdminMenu({ currentUser }) {
           url: "/game-contents",
           icon: <FileText className="w-4 h-4" />,
           description: `מילים, תמונות ושאלות ל${getProductTypeName('game', 'plural')}`
+        },
+        {
+          title: "נושאי תוכן",
+          url: "/content-topics",
+          icon: <Tag className="w-4 h-4" />,
+          description: "ניהול נושאי תוכן למוצרים ותכניות לימודים"
         }
       ]
     },
@@ -299,12 +304,6 @@ export default function FloatingAdminMenu({ currentUser }) {
           icon: <Shield className="w-4 h-4" />,
           description: "פניות משתמשים ותמיכה"
         },
-        {
-          title: "צ'אט AI",
-          url: "/chat",
-          icon: <BarChart3 className="w-4 h-4" />,
-          description: "עוזר AI למנהלים"
-        }
       ]
     },
     {
@@ -347,25 +346,6 @@ export default function FloatingAdminMenu({ currentUser }) {
           url: "/template-manager",
           icon: <Layers className="w-4 h-4" />,
           description: "תבניות תחתיות עמוד, ראשי עמוד וסימני מים"
-        }
-      ]
-    },
-    {
-      title: "כלי פיתוח",
-      icon: <Code className="w-5 h-5" />,
-      color: "from-gray-600 to-slate-700",
-      items: [
-        {
-          title: "טקסטים באתר",
-          url: "/texts",
-          icon: <FileText className="w-4 h-4" />,
-          description: "עריכת טקסטים דינמיים"
-        },
-        {
-          title: "כלי פיתוח",
-          url: "/dev-tools",
-          icon: <Code className="w-4 h-4" />,
-          description: "ניקוי וכלי מתקדמים"
         }
       ]
     }

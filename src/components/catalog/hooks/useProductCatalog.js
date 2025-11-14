@@ -88,7 +88,7 @@ export default function useProductCatalog(productType, filters, activeTab) {
 
     try {
       // 1. Use currentUser from UserContext - no need to load separately
-      console.log('✅ useProductCatalog - Using user from UserContext:', {
+      clog('useProductCatalog - Using user from UserContext:', {
         id: currentUser?.id,
         email: currentUser?.email,
         role: currentUser?.role,
@@ -172,18 +172,18 @@ export default function useProductCatalog(productType, filters, activeTab) {
           }
 
           // Debug logging for purchase data
-          console.log('🔍 Loaded user purchases:', purchasesData);
-          console.log('🔍 Purchase count:', purchasesData.length);
+          clog('Loaded user purchases:', purchasesData);
+          clog('Purchase count:', purchasesData.length);
           if (purchasesData.length > 0) {
-            console.log('🔍 Sample purchase:', purchasesData[0]);
-            console.log('🔍 Purchase structure check:', {
+            clog('Sample purchase:', purchasesData[0]);
+            clog('Purchase structure check:', {
               hasProductId: !!purchasesData[0].product_id,
               hasPurchasableId: !!purchasesData[0].purchasable_id,
               paymentStatus: purchasesData[0].payment_status
             });
           }
 
-          console.log('📦 useProductCatalog: Setting userPurchases:', {
+          clog('useProductCatalog: Setting userPurchases:', {
             count: purchasesData.length,
             cartItems: purchasesData.filter(p => p.payment_status === 'cart').length,
             paidItems: purchasesData.filter(p => p.payment_status === 'paid').length,
@@ -427,36 +427,36 @@ export default function useProductCatalog(productType, filters, activeTab) {
   // Listen for cart changes to refresh purchase data
   useEffect(() => {
     const handleCartChange = () => {
-      console.log('🎧 useProductCatalog: Received cart change event!');
-      console.log('🎧 useProductCatalog: isLoadingUser =', isLoadingUser);
+      clog('useProductCatalog: Received cart change event');
+      clog('useProductCatalog: isLoadingUser =', isLoadingUser);
       clog('Cart change detected - clearing purchase cache and refreshing data');
 
       // Clear purchases cache for current user when cart changes
       if (currentUser?.id) {
-        clog('🗑️ Clearing purchases cache for user (cart change event):', currentUser.id, {
+        clog('Clearing purchases cache for user (cart change event):', currentUser.id, {
           cacheEntriesBeforeClearing: purchasesCache.size,
           timestamp: new Date().toISOString()
         });
         clearPurchasesCache(currentUser.id);
-        clog('🗑️ Cleared purchases cache for user', currentUser.id, {
+        clog('Cleared purchases cache for user', currentUser.id, {
           cacheEntriesAfterClearing: purchasesCache.size
         });
       }
 
       if (!isLoadingUser) {
-        console.log('🎧 useProductCatalog: Calling loadData()');
+        clog('useProductCatalog: Calling loadData()');
         loadData();
       } else {
-        console.log('🎧 useProductCatalog: Skipping loadData - user still loading');
+        clog('useProductCatalog: Skipping loadData - user still loading');
       }
     };
 
-    console.log('🎧 useProductCatalog: Setting up cart change listener');
+    clog('useProductCatalog: Setting up cart change listener');
     // Listen for cart change events
     window.addEventListener('ludora-cart-changed', handleCartChange);
 
     return () => {
-      console.log('🎧 useProductCatalog: Removing cart change listener');
+      clog('useProductCatalog: Removing cart change listener');
       window.removeEventListener('ludora-cart-changed', handleCartChange);
     };
   }, [loadData, isLoadingUser, currentUser?.id]);

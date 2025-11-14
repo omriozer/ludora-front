@@ -1,4 +1,5 @@
 import { useUnifiedAssetUploads } from './useUnifiedAssetUploads';
+import { clog, cerror } from '@/lib/utils';
 
 /**
  * Backward Compatibility Wrapper for useProductUploads
@@ -18,7 +19,7 @@ export const useProductUploadsCompat = (editingProduct = null) => {
 
   // Legacy-compatible wrapper for handleFileUpload
   const handleFileUpload = async (event, fileType, moduleIndex = null) => {
-    console.log('🔄 Legacy compatibility: handleFileUpload called with:', {
+    clog('Legacy compatibility: handleFileUpload called with:', {
       fileType,
       moduleIndex,
       usingUnifiedBackend: true
@@ -39,7 +40,7 @@ export const useProductUploadsCompat = (editingProduct = null) => {
 
   // Legacy-compatible wrapper for handleDeleteFile
   const handleDeleteFile = async (fileType, moduleIndex = null) => {
-    console.log('🔄 Legacy compatibility: handleDeleteFile called with:', {
+    clog('Legacy compatibility: handleDeleteFile called with:', {
       fileType,
       moduleIndex,
       usingUnifiedBackend: true
@@ -66,7 +67,7 @@ export const useProductUploadsCompat = (editingProduct = null) => {
         };
       }
     } catch (error) {
-      console.error('Error checking file upload:', error);
+      cerror('Error checking file upload:', error);
     }
 
     return null;

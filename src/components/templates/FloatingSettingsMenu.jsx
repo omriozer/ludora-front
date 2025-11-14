@@ -1,33 +1,29 @@
 import React, { useState, useRef } from 'react';
-import { X, Crown, Trash2, RotateCw, EyeOff, Eye } from 'lucide-react';
+import { X, Crown, Trash2, RotateCw, EyeOff, Eye, Type, Palette, Move, Sparkles, FileText } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { NumberInput } from '@/components/ui/number-input';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const FloatingSettingsMenu = ({
   selectedItem,
-  footerConfig,
+  templateConfig,
   onConfigChange,
   onStyleChange,
   userRole,
   onClose,
   onDeleteElement
 }) => {
-  // Early return must be before any hooks
-  const itemConfig = footerConfig[selectedItem] || footerConfig.customElements?.[selectedItem];
-  if (!selectedItem || !itemConfig) return null;
-
+  // ALL hooks must be called before any conditional returns
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [position, setPosition] = useState({ x: 50, y: 50 });
   const menuRef = useRef(null);
 
-  const isAdmin = userRole === 'admin' || userRole === 'sysadmin';
-  const isCustomElement = footerConfig.customElements?.[selectedItem];
-
+  // Define event handlers before useEffect
   const handleMouseDown = (e) => {
     if (e.target.closest('.menu-content')) return; // Don't drag when clicking on controls
 
@@ -58,7 +54,7 @@ const FloatingSettingsMenu = ({
     setIsDragging(false);
   };
 
-  // Add global event listeners for dragging
+  // ALL useEffect hooks must be called before conditional returns
   React.useEffect(() => {
     if (isDragging) {
       document.addEventListener('mousemove', handleMouseMove);
@@ -70,16 +66,44 @@ const FloatingSettingsMenu = ({
     }
   }, [isDragging, dragStart]);
 
+  // Early return AFTER all hooks
+  const itemConfig = templateConfig[selectedItem] || templateConfig.customElements?.[selectedItem];
+  if (!selectedItem || !itemConfig) return null;
+
+  const isAdmin = userRole === 'admin' || userRole === 'sysadmin';
+  const isCustomElement = templateConfig.customElements?.[selectedItem];
+
+  // Determine element capabilities
+  const elementCapabilities = {
+    hasContent: ['text', 'copyright-text', 'url', 'user-info', 'free-text', 'watermark-text'].includes(selectedItem) ||
+                (isCustomElement && ['free-text', 'watermark-text', 'user-info'].includes(itemConfig.type)),
+    hasTextStyling: ['text', 'copyright-text', 'url', 'user-info', 'free-text', 'watermark-text'].includes(selectedItem) ||
+                    (isCustomElement && ['free-text', 'watermark-text', 'user-info'].includes(itemConfig.type)),
+    hasDimensions: ['logo'].includes(selectedItem) ||
+                   (isCustomElement && ['box', 'circle', 'line', 'dotted-line', 'logo', 'watermark-logo'].includes(itemConfig.type)),
+    hasSize: ['logo'].includes(selectedItem) ||
+             (isCustomElement && ['logo', 'watermark-logo'].includes(itemConfig.type)),
+    hasRotation: true, // All elements can rotate
+    hasOpacity: true, // All elements can have opacity
+    hasPosition: true, // All elements have position (handled via drag)
+    hasShadow: true, // All elements can have shadow effects
+    isTextual: ['text', 'copyright-text', 'url', 'user-info', 'free-text', 'watermark-text'].includes(selectedItem) ||
+               (isCustomElement && ['free-text', 'watermark-text', 'user-info'].includes(itemConfig.type))
+  };
+
   const getItemDisplayName = () => {
     if (isCustomElement) {
       const elementType = itemConfig.type;
       switch (elementType) {
         case 'box': return 'תיבה';
+        case 'circle': return 'עיגול';
         case 'line': return 'קו';
         case 'dotted-line': return 'קו מנוקד';
         case 'watermark-text': return 'טקסט סימן מים';
         case 'watermark-logo': return 'לוגו סימן מים';
         case 'free-text': return 'טקסט חופשי';
+        case 'user-info': return 'פרטי משתמש';
+        case 'logo': return 'לוגו מותאם';
         default: return elementType;
       }
     }
@@ -87,7 +111,9 @@ const FloatingSettingsMenu = ({
     switch (selectedItem) {
       case 'logo': return 'לוגו';
       case 'text': return 'טקסט זכויות יוצרים';
-      case 'url': return 'קישור URL';
+      case 'copyright-text': return 'זכויות יוצרים';
+      case 'url': return 'קישור לאתר';
+      case 'user-info': return 'פרטי משתמש';
       default: return selectedItem;
     }
   };
@@ -97,207 +123,268 @@ const FloatingSettingsMenu = ({
       const elementType = itemConfig.type;
       switch (elementType) {
         case 'box': return 'bg-green-50 border-green-200';
+        case 'circle': return 'bg-pink-50 border-pink-200';
         case 'line': return 'bg-yellow-50 border-yellow-200';
         case 'dotted-line': return 'bg-orange-50 border-orange-200';
         case 'watermark-text': return 'bg-red-50 border-red-200';
         case 'watermark-logo': return 'bg-pink-50 border-pink-200';
         case 'free-text': return 'bg-blue-50 border-blue-200';
+        case 'user-info': return 'bg-violet-50 border-violet-200';
         default: return 'bg-gray-50 border-gray-200';
       }
     }
 
     switch (selectedItem) {
-      case 'logo': return 'bg-gray-50 border-gray-200';
+      case 'logo': return 'bg-purple-50 border-purple-200';
       case 'text': return 'bg-blue-50 border-blue-200';
-      case 'url': return 'bg-purple-50 border-purple-200';
+      case 'copyright-text': return 'bg-gray-50 border-gray-200';
+      case 'url': return 'bg-cyan-50 border-cyan-200';
+      case 'user-info': return 'bg-violet-50 border-violet-200';
       default: return 'bg-gray-50 border-gray-200';
     }
   };
 
-  const renderLogoControls = () => (
-    <>
-      {/* Hidden Toggle */}
-      {isAdmin && (
-        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
-          <div className="flex items-center gap-2">
-            <Label className="text-sm font-medium">אלמנט מוסתר</Label>
-            <Crown className="w-3 h-3 text-orange-500" />
-          </div>
-          <button
-            onClick={() => onConfigChange('logo', 'hidden', !itemConfig.hidden)}
-            className={`p-1 rounded transition-colors ${
-              itemConfig.hidden ? 'text-red-500 bg-red-50' : 'text-gray-600 hover:bg-gray-200'
-            }`}
-            title={itemConfig.hidden ? 'הלוגו מוסתר' : 'הסתר לוגו (ללא מחיקה)'}
-          >
-            {itemConfig.hidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-          </button>
-        </div>
-      )}
+  // Unified render functions for each tab
+  const renderContentTab = () => {
+    if (!elementCapabilities.hasContent || !isAdmin) return null;
 
-      {isAdmin && (
-        <>
-          <div className="space-y-2">
-            <div className="flex items-center gap-1">
-              <Label className="text-sm">גודל</Label>
-              <Crown className="w-3 h-3 text-orange-500" />
-            </div>
-            <NumberInput
-              value={itemConfig.style.size}
-              onChange={(value) => onStyleChange('logo', 'size', value)}
-              min={20}
-              step={10}
-              suffix="px"
-            />
-          </div>
+    const contentLabel = elementCapabilities.isTextual ? 'תוכן הטקסט' : 'תוכן';
 
-          <div className="space-y-2">
-            <div className="flex items-center gap-1">
-              <Label className="text-sm">שקיפות</Label>
-              <Crown className="w-3 h-3 text-orange-500" />
-            </div>
-            <NumberInput
-              value={itemConfig.style.opacity}
-              onChange={(value) => onStyleChange('logo', 'opacity', value)}
-              min={0}
-              max={100}
-              step={5}
-              suffix="%"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center gap-1">
-              <RotateCw className="w-3 h-3 text-blue-500" />
-              <Label className="text-sm">סיבוב</Label>
-              <Crown className="w-3 h-3 text-orange-500" />
-            </div>
-            <div className="flex items-center gap-2">
-              <NumberInput
-                value={itemConfig.rotation || 0}
-                onChange={(value) => onConfigChange('logo', 'rotation', value)}
-                min={-180}
-                max={180}
-                step={15}
-                suffix="°"
-                className="flex-1"
-              />
-              <Button
-                onClick={() => onConfigChange('logo', 'rotation', 0)}
-                size="sm"
-                variant="outline"
-                className="px-2"
-                title="איפוס סיבוב"
-              >
-                <RotateCw className="w-3 h-3" />
-              </Button>
-            </div>
-            {(itemConfig.rotation || 0) !== 0 && (
-              <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded border">
-                ⚠️ סיבוב עדיין לא יוצג ב-PDF הסופי (בפיתוח)
-              </p>
-            )}
-          </div>
-        </>
-      )}
-    </>
-  );
-
-  const renderTextControls = () => (
-    <>
-      {/* Hidden Toggle */}
-      {isAdmin && (
-        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
-          <div className="flex items-center gap-2">
-            <Label className="text-sm font-medium">אלמנט מוסתר</Label>
-            <Crown className="w-3 h-3 text-orange-500" />
-          </div>
-          <button
-            onClick={() => onConfigChange('text', 'hidden', !itemConfig.hidden)}
-            className={`p-1 rounded transition-colors ${
-              itemConfig.hidden ? 'text-red-500 bg-red-50' : 'text-gray-600 hover:bg-gray-200'
-            }`}
-            title={itemConfig.hidden ? 'הטקסט מוסתר' : 'הסתר טקסט (ללא מחיקה)'}
-          >
-            {itemConfig.hidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-          </button>
-        </div>
-      )}
-
-      {isAdmin && (
+    return (
+      <div className="space-y-4">
         <div className="space-y-2">
           <div className="flex items-center gap-1">
-            <Label className="text-sm">תוכן הטקסט</Label>
+            <Label className="text-sm">{contentLabel}</Label>
             <Crown className="w-3 h-3 text-orange-500" />
           </div>
           <Textarea
-            value={itemConfig.content}
-            onChange={(e) => onConfigChange('text', 'content', e.target.value)}
+            value={itemConfig.content || ''}
+            onChange={(e) => {
+              const elementKey = isCustomElement ? selectedItem : selectedItem;
+              onConfigChange(elementKey, 'content', e.target.value);
+            }}
             rows={3}
             className="resize-none"
             dir="rtl"
           />
         </div>
-      )}
 
-      {isAdmin && (
-        <>
+        {/* Element-specific content controls */}
+        {selectedItem === 'url' && (
           <div className="space-y-2">
             <div className="flex items-center gap-1">
-              <Label className="text-sm">גודל גופן</Label>
-              <Crown className="w-3 h-3 text-orange-500" />
-            </div>
-            <NumberInput
-              value={itemConfig.style.fontSize}
-              onChange={(value) => onStyleChange('text', 'fontSize', value)}
-              min={8}
-              step={1}
-              suffix="px"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center gap-1">
-              <Label className="text-sm">צבע</Label>
+              <Label className="text-sm">כתובת הקישור</Label>
               <Crown className="w-3 h-3 text-orange-500" />
             </div>
             <Input
-              type="color"
-              value={itemConfig.style.color}
-              onChange={(e) => onStyleChange('text', 'color', e.target.value)}
-              className="h-10 w-full"
+              value={itemConfig.href || itemConfig.content || ''}
+              onChange={(e) => onConfigChange('url', 'href', e.target.value)}
+              dir="ltr"
+              placeholder="https://example.com"
             />
           </div>
+        )}
+      </div>
+    );
+  };
 
+  const renderStylingTab = () => {
+    if (!isAdmin) return null;
+
+    return (
+      <div className="space-y-4">
+        {/* Text styling for textual elements */}
+        {elementCapabilities.hasTextStyling && (
+          <>
+            <div className="space-y-2">
+              <div className="flex items-center gap-1">
+                <Label className="text-sm">גודל גופן</Label>
+                <Crown className="w-3 h-3 text-orange-500" />
+              </div>
+              <NumberInput
+                value={itemConfig.style?.fontSize || 12}
+                onChange={(value) => {
+                  const elementKey = isCustomElement ? selectedItem : selectedItem;
+                  onStyleChange(elementKey, 'fontSize', value);
+                }}
+                min={8}
+                step={1}
+                suffix="px"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-1">
+                <Label className="text-sm">צבע הטקסט</Label>
+                <Crown className="w-3 h-3 text-orange-500" />
+              </div>
+              <Input
+                type="color"
+                value={itemConfig.style?.color || '#000000'}
+                onChange={(e) => {
+                  const elementKey = isCustomElement ? selectedItem : selectedItem;
+                  onStyleChange(elementKey, 'color', e.target.value);
+                }}
+                className="h-10 w-full"
+              />
+            </div>
+
+            <div className="flex gap-4">
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={itemConfig.style?.bold || false}
+                  onCheckedChange={(checked) => {
+                    const elementKey = isCustomElement ? selectedItem : selectedItem;
+                    onStyleChange(elementKey, 'bold', checked);
+                  }}
+                />
+                <div className="flex items-center gap-1">
+                  <Label className="text-sm">מודגש</Label>
+                  <Crown className="w-3 h-3 text-orange-500" />
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={itemConfig.style?.italic || false}
+                  onCheckedChange={(checked) => {
+                    const elementKey = isCustomElement ? selectedItem : selectedItem;
+                    onStyleChange(elementKey, 'italic', checked);
+                  }}
+                />
+                <div className="flex items-center gap-1">
+                  <Label className="text-sm">נטוי</Label>
+                  <Crown className="w-3 h-3 text-orange-500" />
+                </div>
+              </div>
+            </div>
+
+            {elementCapabilities.hasTextStyling && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-1">
+                  <Label className="text-sm">רוחב מיכל הטקסט</Label>
+                  <Crown className="w-3 h-3 text-orange-500" />
+                </div>
+                <NumberInput
+                  value={itemConfig.style?.width || 300}
+                  onChange={(value) => {
+                    const elementKey = isCustomElement ? selectedItem : selectedItem;
+                    onStyleChange(elementKey, 'width', value);
+                  }}
+                  min={100}
+                  step={10}
+                  suffix="px"
+                />
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Size controls for elements with size */}
+        {elementCapabilities.hasSize && (
           <div className="space-y-2">
             <div className="flex items-center gap-1">
-              <Label className="text-sm">שקיפות</Label>
+              <Label className="text-sm">גודל</Label>
               <Crown className="w-3 h-3 text-orange-500" />
             </div>
             <NumberInput
-              value={itemConfig.style.opacity}
-              onChange={(value) => onStyleChange('text', 'opacity', value)}
-              min={0}
-              max={100}
-              step={5}
-              suffix="%"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center gap-1">
-              <Label className="text-sm">רוחב מיכל הטקסט</Label>
-              <Crown className="w-3 h-3 text-orange-500" />
-            </div>
-            <NumberInput
-              value={itemConfig.style.width || 300}
-              onChange={(value) => onStyleChange('text', 'width', value)}
-              min={100}
+              value={itemConfig.style?.size || 80}
+              onChange={(value) => {
+                const elementKey = isCustomElement ? selectedItem : selectedItem;
+                onStyleChange(elementKey, 'size', value);
+              }}
+              min={20}
               step={10}
               suffix="px"
             />
           </div>
+        )}
 
+        {/* Dimensions for shapes */}
+        {elementCapabilities.hasDimensions && !elementCapabilities.hasSize && (
+          <>
+            <div className="space-y-2">
+              <Label className="text-sm">רוחב</Label>
+              <NumberInput
+                value={itemConfig.style?.width || 100}
+                onChange={(value) => {
+                  onStyleChange(selectedItem, 'width', value);
+                }}
+                min={10}
+                step={5}
+                suffix="px"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm">גובה</Label>
+              <NumberInput
+                value={itemConfig.style?.height || 10}
+                onChange={(value) => {
+                  onStyleChange(selectedItem, 'height', value);
+                }}
+                min={1}
+                step={1}
+                suffix="px"
+              />
+            </div>
+
+            {/* Color for shapes */}
+            <div className="space-y-2">
+              <Label className="text-sm">צבע</Label>
+              <Input
+                type="color"
+                value={itemConfig.style?.color || itemConfig.style?.borderColor || '#000000'}
+                onChange={(e) => {
+                  const colorProperty = ['box', 'circle'].includes(itemConfig.type) ? 'borderColor' : 'color';
+                  onStyleChange(selectedItem, colorProperty, e.target.value);
+                }}
+                className="h-10 w-full"
+              />
+            </div>
+
+            {/* Additional box and circle controls */}
+            {['box', 'circle'].includes(itemConfig.type) && (
+              <>
+                <div className="space-y-2">
+                  <Label className="text-sm">עובי מסגרת</Label>
+                  <NumberInput
+                    value={itemConfig.style?.borderWidth || 1}
+                    onChange={(value) => onStyleChange(selectedItem, 'borderWidth', value)}
+                    min={0}
+                    step={1}
+                    suffix="px"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm">צבע רקע</Label>
+                  <Input
+                    type="color"
+                    value={itemConfig.style?.backgroundColor === 'transparent' ? '#ffffff' : itemConfig.style?.backgroundColor || '#ffffff'}
+                    onChange={(e) => onStyleChange(selectedItem, 'backgroundColor', e.target.value)}
+                    className="h-10 w-full"
+                  />
+                </div>
+              </>
+            )}
+          </>
+        )}
+      </div>
+    );
+  };
+
+  const renderTransformTab = () => {
+    if (!isAdmin) return null;
+
+    return (
+      <div className="space-y-4">
+        {/* Position hint */}
+        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <p className="text-sm text-blue-800 font-medium">
+            🖱️ גרור את האלמנט בתצוגה המקדימה כדי לשנות את מיקומו
+          </p>
+        </div>
+
+        {/* Rotation for all elements */}
+        {elementCapabilities.hasRotation && (
           <div className="space-y-2">
             <div className="flex items-center gap-1">
               <RotateCw className="w-3 h-3 text-blue-500" />
@@ -306,8 +393,19 @@ const FloatingSettingsMenu = ({
             </div>
             <div className="flex items-center gap-2">
               <NumberInput
-                value={itemConfig.rotation || 0}
-                onChange={(value) => onConfigChange('text', 'rotation', value)}
+                value={
+                  isCustomElement
+                    ? (itemConfig.style?.rotation || 0)
+                    : (itemConfig.rotation || 0)
+                }
+                onChange={(value) => {
+                  const elementKey = isCustomElement ? selectedItem : selectedItem;
+                  if (isCustomElement) {
+                    onStyleChange(elementKey, 'rotation', value);
+                  } else {
+                    onConfigChange(elementKey, 'rotation', value);
+                  }
+                }}
                 min={-180}
                 max={180}
                 step={15}
@@ -315,7 +413,14 @@ const FloatingSettingsMenu = ({
                 className="flex-1"
               />
               <Button
-                onClick={() => onConfigChange('text', 'rotation', 0)}
+                onClick={() => {
+                  const elementKey = isCustomElement ? selectedItem : selectedItem;
+                  if (isCustomElement) {
+                    onStyleChange(elementKey, 'rotation', 0);
+                  } else {
+                    onConfigChange(elementKey, 'rotation', 0);
+                  }
+                }}
                 size="sm"
                 variant="outline"
                 className="px-2"
@@ -324,426 +429,183 @@ const FloatingSettingsMenu = ({
                 <RotateCw className="w-3 h-3" />
               </Button>
             </div>
-            {(itemConfig.rotation || 0) !== 0 && (
-              <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded border">
-                ⚠️ סיבוב עדיין לא יוצג ב-PDF הסופי (בפיתוח)
-              </p>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderEffectsTab = () => {
+    if (!isAdmin) return null;
+
+    return (
+      <div className="space-y-4">
+        {/* Opacity for all elements */}
+        {elementCapabilities.hasOpacity && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-1">
+              <Label className="text-sm">שקיפות</Label>
+              <Crown className="w-3 h-3 text-orange-500" />
+            </div>
+            <NumberInput
+              value={itemConfig.style?.opacity || 100}
+              onChange={(value) => {
+                const elementKey = isCustomElement ? selectedItem : selectedItem;
+                onStyleChange(elementKey, 'opacity', value);
+              }}
+              min={0}
+              max={100}
+              step={5}
+              suffix="%"
+            />
+          </div>
+        )}
+
+        {/* Shadow settings for all elements */}
+        {elementCapabilities.hasShadow && (
+          <>
+            <div className="space-y-2">
+              <div className="flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-purple-500" />
+                <Label className="text-sm">הצללה</Label>
+                <Crown className="w-3 h-3 text-orange-500" />
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={itemConfig.style?.shadow?.enabled || false}
+                  onCheckedChange={(checked) => {
+                    const elementKey = isCustomElement ? selectedItem : selectedItem;
+                    const currentShadow = itemConfig.style?.shadow || {};
+                    const newShadow = {
+                      ...currentShadow,
+                      enabled: checked,
+                      color: currentShadow.color || '#000000',
+                      offsetX: currentShadow.offsetX || 2,
+                      offsetY: currentShadow.offsetY || 2,
+                      blur: currentShadow.blur || 4,
+                      opacity: currentShadow.opacity || 50
+                    };
+                    onStyleChange(elementKey, 'shadow', newShadow);
+                  }}
+                />
+                <Label className="text-sm">הפעל הצללה</Label>
+              </div>
+            </div>
+
+            {itemConfig.style?.shadow?.enabled && (
+              <>
+                <div className="space-y-2">
+                  <Label className="text-sm">צבע הצללה</Label>
+                  <Input
+                    type="color"
+                    value={itemConfig.style?.shadow?.color || '#000000'}
+                    onChange={(e) => {
+                      const elementKey = isCustomElement ? selectedItem : selectedItem;
+                      const currentShadow = itemConfig.style?.shadow || {};
+                      const newShadow = { ...currentShadow, color: e.target.value };
+                      onStyleChange(elementKey, 'shadow', newShadow);
+                    }}
+                    className="h-10 w-full"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label className="text-sm">הסטה X</Label>
+                    <NumberInput
+                      value={itemConfig.style?.shadow?.offsetX || 2}
+                      onChange={(value) => {
+                        const elementKey = isCustomElement ? selectedItem : selectedItem;
+                        const currentShadow = itemConfig.style?.shadow || {};
+                        const newShadow = { ...currentShadow, offsetX: value };
+                        onStyleChange(elementKey, 'shadow', newShadow);
+                      }}
+                      min={-20}
+                      max={20}
+                      step={1}
+                      suffix="px"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm">הסטה Y</Label>
+                    <NumberInput
+                      value={itemConfig.style?.shadow?.offsetY || 2}
+                      onChange={(value) => {
+                        const elementKey = isCustomElement ? selectedItem : selectedItem;
+                        const currentShadow = itemConfig.style?.shadow || {};
+                        const newShadow = { ...currentShadow, offsetY: value };
+                        onStyleChange(elementKey, 'shadow', newShadow);
+                      }}
+                      min={-20}
+                      max={20}
+                      step={1}
+                      suffix="px"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm">טשטוש</Label>
+                  <NumberInput
+                    value={itemConfig.style?.shadow?.blur || 4}
+                    onChange={(value) => {
+                      const elementKey = isCustomElement ? selectedItem : selectedItem;
+                      const currentShadow = itemConfig.style?.shadow || {};
+                      const newShadow = { ...currentShadow, blur: value };
+                      onStyleChange(elementKey, 'shadow', newShadow);
+                    }}
+                    min={0}
+                    max={20}
+                    step={1}
+                    suffix="px"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm">עוצמת הצללה</Label>
+                  <NumberInput
+                    value={itemConfig.style?.shadow?.opacity || 50}
+                    onChange={(value) => {
+                      const elementKey = isCustomElement ? selectedItem : selectedItem;
+                      const currentShadow = itemConfig.style?.shadow || {};
+                      const newShadow = { ...currentShadow, opacity: value };
+                      onStyleChange(elementKey, 'shadow', newShadow);
+                    }}
+                    min={0}
+                    max={100}
+                    step={5}
+                    suffix="%"
+                  />
+                </div>
+              </>
             )}
-          </div>
+          </>
+        )}
 
-          <div className="flex gap-4">
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={itemConfig.style.bold}
-                onCheckedChange={(checked) => onStyleChange('text', 'bold', checked)}
-              />
-              <div className="flex items-center gap-1">
-                <Label className="text-sm">מודגש</Label>
-                <Crown className="w-3 h-3 text-orange-500" />
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={itemConfig.style.italic}
-                onCheckedChange={(checked) => onStyleChange('text', 'italic', checked)}
-              />
-              <div className="flex items-center gap-1">
-                <Label className="text-sm">נטוי</Label>
-                <Crown className="w-3 h-3 text-orange-500" />
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-    </>
-  );
-
-  const renderUrlControls = () => (
-    <>
-      {/* Hidden Toggle */}
-      {isAdmin && (
+        {/* Hidden toggle */}
         <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
           <div className="flex items-center gap-2">
             <Label className="text-sm font-medium">אלמנט מוסתר</Label>
             <Crown className="w-3 h-3 text-orange-500" />
           </div>
           <button
-            onClick={() => onConfigChange('url', 'hidden', !itemConfig.hidden)}
+            onClick={() => {
+              const elementKey = isCustomElement ? selectedItem : selectedItem;
+              onConfigChange(elementKey, 'hidden', !itemConfig.hidden);
+            }}
             className={`p-1 rounded transition-colors ${
               itemConfig.hidden ? 'text-red-500 bg-red-50' : 'text-gray-600 hover:bg-gray-200'
             }`}
-            title={itemConfig.hidden ? 'הקישור מוסתר' : 'הסתר קישור (ללא מחיקה)'}
+            title={itemConfig.hidden ? 'האלמנט מוסתר' : 'הסתר אלמנט (ללא מחיקה)'}
           >
             {itemConfig.hidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
           </button>
         </div>
-      )}
-
-      {isAdmin && (
-        <>
-          <div className="space-y-2">
-            <div className="flex items-center gap-1">
-              <Label className="text-sm">גודל גופן</Label>
-              <Crown className="w-3 h-3 text-orange-500" />
-            </div>
-            <NumberInput
-              value={itemConfig.style.fontSize}
-              onChange={(value) => onStyleChange('url', 'fontSize', value)}
-              min={8}
-              step={1}
-              suffix="px"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center gap-1">
-              <Label className="text-sm">צבע</Label>
-              <Crown className="w-3 h-3 text-orange-500" />
-            </div>
-            <Input
-              type="color"
-              value={itemConfig.style.color}
-              onChange={(e) => onStyleChange('url', 'color', e.target.value)}
-              className="h-10 w-full"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center gap-1">
-              <Label className="text-sm">שקיפות</Label>
-              <Crown className="w-3 h-3 text-orange-500" />
-            </div>
-            <NumberInput
-              value={itemConfig.style.opacity}
-              onChange={(value) => onStyleChange('url', 'opacity', value)}
-              min={0}
-              max={100}
-              step={5}
-              suffix="%"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center gap-1">
-              <RotateCw className="w-3 h-3 text-blue-500" />
-              <Label className="text-sm">סיבוב</Label>
-              <Crown className="w-3 h-3 text-orange-500" />
-            </div>
-            <div className="flex items-center gap-2">
-              <NumberInput
-                value={itemConfig.rotation || 0}
-                onChange={(value) => onConfigChange('url', 'rotation', value)}
-                min={-180}
-                max={180}
-                step={15}
-                suffix="°"
-                className="flex-1"
-              />
-              <Button
-                onClick={() => onConfigChange('url', 'rotation', 0)}
-                size="sm"
-                variant="outline"
-                className="px-2"
-                title="איפוס סיבוב"
-              >
-                <RotateCw className="w-3 h-3" />
-              </Button>
-            </div>
-            {(itemConfig.rotation || 0) !== 0 && (
-              <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded border">
-                ⚠️ סיבוב עדיין לא יוצג ב-PDF הסופי (בפיתוח)
-              </p>
-            )}
-          </div>
-
-          <div className="flex gap-4">
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={itemConfig.style.bold}
-                onCheckedChange={(checked) => onStyleChange('url', 'bold', checked)}
-              />
-              <div className="flex items-center gap-1">
-                <Label className="text-sm">מודגש</Label>
-                <Crown className="w-3 h-3 text-orange-500" />
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={itemConfig.style.italic}
-                onCheckedChange={(checked) => onStyleChange('url', 'italic', checked)}
-              />
-              <div className="flex items-center gap-1">
-                <Label className="text-sm">נטוי</Label>
-                <Crown className="w-3 h-3 text-orange-500" />
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-    </>
-  );
-
-  const renderCustomElementControls = () => {
-    if (!isCustomElement || !isAdmin) return null;
-
-    const elementType = itemConfig.type;
-
-    const renderBasicDimensions = () => {
-      // Check if this element has width/height properties (only for box, line, dotted-line)
-      if (!itemConfig.style || (!('width' in itemConfig.style) && !('height' in itemConfig.style))) {
-        return null; // Don't render dimensions for elements that don't have them
-      }
-
-      return (
-        <>
-          <div className="space-y-2">
-            <Label className="text-sm">רוחב</Label>
-            <NumberInput
-              value={itemConfig.style.width || 100}
-              onChange={(value) => onStyleChange(selectedItem, 'width', value)}
-              min={10}
-              step={5}
-              suffix="px"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label className="text-sm">גובה</Label>
-            <NumberInput
-              value={itemConfig.style.height || 10}
-              onChange={(value) => onStyleChange(selectedItem, 'height', value)}
-              min={1}
-              step={1}
-              suffix="px"
-            />
-          </div>
-        </>
-      );
-    };
-
-    const renderColorAndOpacity = () => {
-      if (!itemConfig.style) {
-        return null; // Don't render if style object doesn't exist
-      }
-
-      return (
-        <>
-          <div className="space-y-2">
-            <Label className="text-sm">צבע</Label>
-            <Input
-              type="color"
-              value={itemConfig.style.color || itemConfig.style.borderColor || '#000000'}
-              onChange={(e) => onStyleChange(selectedItem, elementType === 'box' ? 'borderColor' : 'color', e.target.value)}
-              className="h-10 w-full"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label className="text-sm">שקיפות</Label>
-            <NumberInput
-              value={itemConfig.style.opacity || 100}
-              onChange={(value) => onStyleChange(selectedItem, 'opacity', value)}
-              min={0}
-              max={100}
-              step={5}
-              suffix="%"
-            />
-          </div>
-        </>
-      );
-    };
-
-    switch (elementType) {
-      case 'box':
-        return (
-          <>
-            {renderBasicDimensions()}
-            {renderColorAndOpacity()}
-            <div className="space-y-2">
-              <Label className="text-sm">עובי מסגרת</Label>
-              <NumberInput
-                value={itemConfig.style.borderWidth}
-                onChange={(value) => onStyleChange(selectedItem, 'borderWidth', value)}
-                min={0}
-                step={1}
-                suffix="px"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-sm">צבע רקע</Label>
-              <Input
-                type="color"
-                value={itemConfig.style.backgroundColor === 'transparent' ? '#ffffff' : itemConfig.style.backgroundColor}
-                onChange={(e) => onStyleChange(selectedItem, 'backgroundColor', e.target.value)}
-                className="h-10 w-full"
-              />
-            </div>
-          </>
-        );
-
-      case 'line':
-      case 'dotted-line':
-        return (
-          <>
-            {renderBasicDimensions()}
-            {renderColorAndOpacity()}
-          </>
-        );
-
-      case 'free-text':
-      case 'watermark-text':
-        return (
-          <>
-            <div className="space-y-2">
-              <Label className="text-sm">תוכן הטקסט</Label>
-              <Textarea
-                value={itemConfig.content || ''}
-                onChange={(e) => onConfigChange(selectedItem, 'content', e.target.value)}
-                rows={3}
-                className="resize-none"
-                dir="rtl"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-sm">גודל גופן</Label>
-              <NumberInput
-                value={itemConfig.style?.fontSize || (elementType === 'free-text' ? 24 : 36)}
-                onChange={(value) => onStyleChange(selectedItem, 'fontSize', value)}
-                min={8}
-                step={1}
-                suffix="px"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-sm">צבע</Label>
-              <Input
-                type="color"
-                value={itemConfig.style?.color || (elementType === 'free-text' ? '#000000' : '#cccccc')}
-                onChange={(e) => onStyleChange(selectedItem, 'color', e.target.value)}
-                className="h-10 w-full"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-sm">שקיפות</Label>
-              <NumberInput
-                value={itemConfig.style?.opacity || (elementType === 'free-text' ? 100 : 30)}
-                onChange={(value) => onStyleChange(selectedItem, 'opacity', value)}
-                min={0}
-                max={100}
-                step={5}
-                suffix="%"
-              />
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center gap-1">
-                <RotateCw className="w-3 h-3 text-blue-500" />
-                <Label className="text-sm">סיבוב</Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <NumberInput
-                  value={itemConfig.style?.rotation || 0}
-                  onChange={(value) => onStyleChange(selectedItem, 'rotation', value)}
-                  min={-180}
-                  max={180}
-                  step={15}
-                  suffix="°"
-                  className="flex-1"
-                />
-                <Button
-                  onClick={() => onStyleChange(selectedItem, 'rotation', 0)}
-                  size="sm"
-                  variant="outline"
-                  className="px-2"
-                  title="איפוס סיבוב"
-                >
-                  <RotateCw className="w-3 h-3" />
-                </Button>
-              </div>
-            </div>
-            <div className="flex gap-4">
-              <div className="flex items-center gap-2">
-                <Switch
-                  checked={itemConfig.style?.bold || false}
-                  onCheckedChange={(checked) => onStyleChange(selectedItem, 'bold', checked)}
-                />
-                <Label className="text-sm">מודגש</Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <Switch
-                  checked={itemConfig.style?.italic || false}
-                  onCheckedChange={(checked) => onStyleChange(selectedItem, 'italic', checked)}
-                />
-                <Label className="text-sm">נטוי</Label>
-              </div>
-            </div>
-          </>
-        );
-
-      case 'watermark-logo':
-        return (
-          <>
-            <div className="space-y-2">
-              <Label className="text-sm">URL תמונה</Label>
-              <Input
-                type="text"
-                value={itemConfig.url || ''}
-                onChange={(e) => onConfigChange(selectedItem, 'url', e.target.value)}
-                placeholder="https://example.com/logo.png"
-                className="text-sm"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-sm">גודל</Label>
-              <NumberInput
-                value={itemConfig.style?.size || 80}
-                onChange={(value) => onStyleChange(selectedItem, 'size', value)}
-                min={20}
-                step={10}
-                suffix="px"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-sm">שקיפות</Label>
-              <NumberInput
-                value={itemConfig.style?.opacity || 100}
-                onChange={(value) => onStyleChange(selectedItem, 'opacity', value)}
-                min={0}
-                max={100}
-                step={5}
-                suffix="%"
-              />
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center gap-1">
-                <RotateCw className="w-3 h-3 text-blue-500" />
-                <Label className="text-sm">סיבוב</Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <NumberInput
-                  value={itemConfig.style?.rotation || 0}
-                  onChange={(value) => onStyleChange(selectedItem, 'rotation', value)}
-                  min={-180}
-                  max={180}
-                  step={15}
-                  suffix="°"
-                  className="flex-1"
-                />
-                <Button
-                  onClick={() => onStyleChange(selectedItem, 'rotation', 0)}
-                  size="sm"
-                  variant="outline"
-                  className="px-2"
-                  title="איפוס סיבוב"
-                >
-                  <RotateCw className="w-3 h-3" />
-                </Button>
-              </div>
-            </div>
-          </>
-        );
-
-      default:
-        return renderBasicDimensions();
-    }
+      </div>
+    );
   };
+
 
   return (
     <div
@@ -784,26 +646,67 @@ const FloatingSettingsMenu = ({
         </div>
       </div>
 
-      {/* Content */}
-      <div className="menu-content p-4 space-y-4 max-h-96 overflow-y-auto">
-        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-sm text-blue-800 font-medium">
-            🖱️ גרור את האלמנט בתצוגה המקדימה כדי לשנות את מיקומו
-          </p>
-        </div>
+      {/* Content with Tabbed Interface */}
+      <div className="menu-content max-h-96 overflow-y-auto">
+        {isAdmin ? (
+          <Tabs defaultValue="content" className="w-full">
+            <TabsList className="grid w-full grid-cols-4 m-2">
+              <TabsTrigger value="content" className="text-xs flex items-center gap-1">
+                <FileText className="w-3 h-3" />
+                תוכן
+              </TabsTrigger>
+              <TabsTrigger value="styling" className="text-xs flex items-center gap-1">
+                <Palette className="w-3 h-3" />
+                עיצוב
+              </TabsTrigger>
+              <TabsTrigger value="transform" className="text-xs flex items-center gap-1">
+                <Move className="w-3 h-3" />
+                מיקום
+              </TabsTrigger>
+              <TabsTrigger value="effects" className="text-xs flex items-center gap-1">
+                <Sparkles className="w-3 h-3" />
+                אפקטים
+              </TabsTrigger>
+            </TabsList>
 
-        {!isCustomElement && selectedItem === 'logo' && renderLogoControls()}
-        {!isCustomElement && selectedItem === 'text' && renderTextControls()}
-        {!isCustomElement && selectedItem === 'url' && renderUrlControls()}
+            <TabsContent value="content" className="p-4 space-y-4 mt-0">
+              {renderContentTab()}
+              {!elementCapabilities.hasContent && (
+                <div className="text-center py-4 text-gray-500 text-sm">
+                  אין תוכן לעריכה עבור אלמנט זה
+                </div>
+              )}
+            </TabsContent>
 
-        {isCustomElement && renderCustomElementControls()}
+            <TabsContent value="styling" className="p-4 space-y-4 mt-0">
+              {renderStylingTab()}
+              {!elementCapabilities.hasTextStyling && !elementCapabilities.hasSize && !elementCapabilities.hasDimensions && (
+                <div className="text-center py-4 text-gray-500 text-sm">
+                  אין אפשרויות עיצוב זמינות עבור אלמנט זה
+                </div>
+              )}
+            </TabsContent>
 
-        {/* Info for content creators */}
-        {!isAdmin && (
-          <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-300 rounded-lg shadow-sm">
-            <p className="text-sm text-blue-900 font-medium">
-              💡 כיוצר תוכן, תוכל לשנות רק את מיקום האלמנטים. עיצוב וטקסט ניתנים לעריכה על ידי מנהלים בלבד.
-            </p>
+            <TabsContent value="transform" className="p-4 space-y-4 mt-0">
+              {renderTransformTab()}
+            </TabsContent>
+
+            <TabsContent value="effects" className="p-4 space-y-4 mt-0">
+              {renderEffectsTab()}
+            </TabsContent>
+          </Tabs>
+        ) : (
+          <div className="p-4">
+            <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-300 rounded-lg shadow-sm">
+              <p className="text-sm text-blue-900 font-medium">
+                💡 כיוצר תוכן, תוכל לשנות רק את מיקום האלמנטים. עיצוב וטקסט ניתנים לעריכה על ידי מנהלים בלבד.
+              </p>
+            </div>
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg mt-4">
+              <p className="text-sm text-blue-800 font-medium">
+                🖱️ גרור את האלמנט בתצוגה המקדימה כדי לשנות את מיקומו
+              </p>
+            </div>
           </div>
         )}
       </div>

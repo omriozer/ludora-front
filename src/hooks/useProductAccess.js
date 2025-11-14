@@ -11,31 +11,18 @@ import { useMemo } from 'react';
 const findUserPurchaseForProduct = (product, userPurchases = []) => {
   if (!product) return null;
 
-  // DEBUG: Log what we're checking for embedded purchase
-  console.log(`🔍 findUserPurchaseForProduct Debug for product ${product.id}:`, {
-    product,
-    hasPurchaseProperty: !!product.purchase,
-    purchaseValue: product.purchase,
-    purchaseType: typeof product.purchase
-  });
-
   // 1. Check embedded purchase first (ProductDetails style)
   if (product.purchase) {
-    console.log(`🔍 Found embedded purchase for product ${product.id}:`, product.purchase);
     return product.purchase;
   }
 
   // 2. Search in userPurchases array (ProductGrid style)
   if (!userPurchases || userPurchases.length === 0) {
-    console.log(`🔍 No userPurchases array provided for product ${product.id}`);
     return null;
   }
 
   const productId = product.id;
   const entityId = product.entity_id;
-
-  console.log(`🔍 Searching for purchase - Product ID: ${productId}, Entity ID: ${entityId}`);
-  console.log(`🔍 Available purchases:`, userPurchases.length);
 
   const foundPurchase = userPurchases.find(purchase => {
     // Use polymorphic structure: purchasable_id (new) or product_id (legacy)
@@ -47,12 +34,9 @@ const findUserPurchaseForProduct = (product, userPurchases = []) => {
     // For legacy products, match against product ID
     const matches = (purchaseEntityId === productId || purchaseEntityId === entityId) && isRelevant;
 
-    console.log(`  - Purchase ${purchase.id}: purchaseEntityId=${purchaseEntityId}, status=${purchase.payment_status}, matches=${matches}`);
-
     return matches;
   });
 
-  console.log(`🔍 Found purchase for product ${productId}:`, foundPurchase);
   return foundPurchase;
 };
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { X, Save, Palette, Undo2, Redo2 } from 'lucide-react';
+import { X, Save, Palette, Undo2, Redo2, Eye, EyeOff, Layers, Trash2 } from 'lucide-react';
 import logo from '@/assets/images/logo.png';
 import TemplateCanvas from './TemplateCanvas';
 import ItemButtons from './ItemButtons';
@@ -12,6 +12,7 @@ import { apiDownload, apiRequest } from '@/services/apiClient';
 import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
 import { clog, cerror } from '@/lib/utils';
 import { getTextFontFamily, containsHebrew } from '@/utils/hebrewUtils';
+import { useUser } from '@/contexts/UserContext';
 
 
 const VisualTemplateEditor = ({
@@ -20,17 +21,27 @@ const VisualTemplateEditor = ({
   onSave,
   fileEntityId,
   userRole,
-  initialFooterConfig,
+  currentUser = null, // Current user object for email template resolution
+  initialTemplateConfig: propInitialTemplateConfig,
   targetFormat = 'pdf-a4-portrait', // Default to portrait if not specified
-  templateType = 'branding', // Default to footer if not specified
+  templateType = 'branding', // Default to branding if not specified
   currentTemplateId = null, // ID of currently selected template to show as selected
   onTemplateChange = null, // Callback when template selection changes in editor
   fileEntity = null // File entity with target_format for template filtering
 }) => {
+  // Get global settings from UserContext
+  const { settings } = useUser();
+
   const [currentPage, setCurrentPage] = useState(1);
   const [pdfBlobUrl, setPdfBlobUrl] = useState(null);
+
+  // SVG slide navigation state
+  const [availableSlides, setAvailableSlides] = useState([]);
+  const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+  const [totalSlides, setTotalSlides] = useState(0);
+  const [preloadedSlides, setPreloadedSlides] = useState({}); // Cache for preloaded slide blobs
   const [copyrightText, setCopyrightText] = useState('');
-  const [loadedFooterSettings, setLoadedFooterSettings] = useState(null);
+  const [loadedBrandingSettings, setLoadedBrandingSettings] = useState(null);
   const [isLoadingSettings, setIsLoadingSettings] = useState(true);
   const [selectedItem, setSelectedItem] = useState(null);
   const [focusedItem, setFocusedItem] = useState(null);
@@ -60,93 +71,43 @@ const VisualTemplateEditor = ({
   const [placeholderPdfUrl, setPlaceholderPdfUrl] = useState(null);
   const [isLoadingPdf, setIsLoadingPdf] = useState(false);
 
-  const getDefaultConfig = (copyrightTextValue) => {
-    const config = {
-      logo: {
-        visible: true,
-        url: logo,
-        position: { x: 50, y: 75 }, // Moved up from 95% to 75% for better visibility
-        style: {
-          size: 80,
-          opacity: 100
-        }
-      },
-      text: {
-        visible: true,
-        content: copyrightTextValue || '',
-        position: { x: 50, y: 82 }, // Moved up from 90% to 82% for better visibility
-        style: {
-          fontSize: 12,
-          color: '#000000',
-          bold: false,
-          italic: false,
-          opacity: 80,
-          width: 300
-        }
-      },
-      url: {
-        visible: true,
-        href: 'https://ludora.app',
-        position: { x: 50, y: 88 }, // Moved up from 85% to 88% for better visibility
-        style: {
-          fontSize: 12,
-          color: '#0066cc',
-          bold: false,
-          italic: false,
-          opacity: 100
-        }
-      },
-      customElements: {}
-    };
-    clog('📝 getDefaultConfig called with copyrightTextValue:', copyrightTextValue, 'resulting text.content:', config.text.content);
-    return config;
-  };
+  // File content visibility toggle state
+  const [showFileContent, setShowFileContent] = useState(true);
 
-  const getDefaultWatermarkConfig = () => {
+  // Template elements visibility toggle state (visual only, no changes)
+  const [showTemplateElements, setShowTemplateElements] = useState(true);
+
+  // Clear all elements confirmation dialog state
+  const [showClearAllConfirmation, setShowClearAllConfirmation] = useState(false);
+
+  const getDefaultConfig = () => {
+    // Start with completely blank canvas for unified editor
     const config = {
-      textElements: [
-        {
-          id: 'watermark-text-1',
-          content: 'לתצוגה בלבד',
-          position: { x: 50, y: 50 },
-          style: {
-            fontSize: 24,
-            color: '#FF6B6B',
-            opacity: 40,
-            rotation: 45,
-            fontFamily: 'Arial, sans-serif',
-            bold: true
-          },
-          pattern: 'single',
-          visible: true
-        }
-      ],
-      logoElements: [
-        {
-          id: 'watermark-logo-1',
-          source: 'system-logo',
-          url: logo,
-          position: { x: 85, y: 15 },
-          style: {
-            size: 60,
-            opacity: 30,
-            rotation: 0
-          },
-          pattern: 'single',
-          visible: true  // Show logo by default
-        }
-      ],
+      customElements: {},
       globalSettings: {
         layerBehindContent: false,
         preserveReadability: true
       }
     };
-    clog('🔮 getDefaultWatermarkConfig created:', config);
+    // Reduced logging: clog('📝 getDefaultConfig - returning blank canvas for unified editor:', config);
     return config;
   };
 
-  // Adapter functions to convert between watermark structure and footer/header structure
-  const convertWatermarkToFooterStructure = (watermarkConfig) => {
+  const getDefaultWatermarkConfig = () => {
+    // Start with completely blank canvas for unified editor (same as branding)
+    const config = {
+      customElements: {},
+      globalSettings: {
+        layerBehindContent: false,
+        preserveReadability: true
+      }
+    };
+    // Reduced logging: clog('🔮 getDefaultWatermarkConfig - returning blank canvas for unified editor:', config);
+    return config;
+  };
+
+  // Adapter functions to convert between watermark structure and branding structure
+  const convertWatermarkToBrandingStructure = (watermarkConfig) => {
     if (!watermarkConfig) return { customElements: {} };
 
     const customElements = {};
@@ -175,44 +136,16 @@ const VisualTemplateEditor = ({
           visible: logoElement.visible !== false,
           position: logoElement.position,
           style: logoElement.style,
-          url: logoElement.url,
+          // Logo uses static file, no URL needed
           deletable: true
         };
       });
     }
 
     const result = {
-      // Built-in elements work exactly the same as footer/header templates
-      logo: {
-        visible: true,
-        url: logo,
-        position: { x: 15, y: 15 },
-        style: { size: 60, opacity: 30 }
-      },
-      text: {
-        visible: true,
-        content: 'לתצוגה בלבד',
-        position: { x: 50, y: 90 },
-        style: {
-          fontSize: 16,
-          color: '#FF6B6B',
-          bold: true,
-          italic: false,
-          opacity: 40
-        }
-      },
-      url: {
-        visible: true,
-        href: 'https://ludora.app',
-        position: { x: 50, y: 95 },
-        style: {
-          fontSize: 12,
-          color: '#0066cc',
-          bold: false,
-          italic: false,
-          opacity: 100
-        }
-      },
+      // For watermark templates, we don't add hardcoded built-in elements
+      // We only show the custom elements from the watermark template
+      // The branding elements (if any) will come from the backend when skipWatermarks=false
       customElements,
       globalSettings: watermarkConfig.globalSettings || {
         layerBehindContent: false,
@@ -220,18 +153,18 @@ const VisualTemplateEditor = ({
       }
     };
 
-    clog('🔄 Converted watermark to footer structure:', { input: watermarkConfig, output: result });
+    // Reduced logging: clog('🔄 Converted watermark to footer structure:', { input: watermarkConfig, output: result });
     return result;
   };
 
-  const convertFooterToWatermarkStructure = (footerConfig) => {
-    if (!footerConfig) return getDefaultWatermarkConfig();
+  const convertBrandingToWatermarkStructure = (templateConfig) => {
+    if (!templateConfig) return getDefaultWatermarkConfig();
 
     const textElements = [];
     const logoElements = [];
 
     // Convert custom elements back to watermark elements
-    Object.entries(footerConfig.customElements || {}).forEach(([id, element]) => {
+    Object.entries(templateConfig.customElements || {}).forEach(([id, element]) => {
       if (element.type === 'watermark-text' || element.type === 'free-text') {
         textElements.push({
           id: id,
@@ -244,7 +177,7 @@ const VisualTemplateEditor = ({
       } else if (element.type === 'watermark-logo' || element.type === 'logo') {
         logoElements.push({
           id: id,
-          url: element.url || '',
+          // Logo uses static file, no URL needed
           position: element.position,
           style: element.style,
           visible: element.visible !== false
@@ -255,17 +188,125 @@ const VisualTemplateEditor = ({
     const result = {
       textElements,
       logoElements,
-      globalSettings: footerConfig.globalSettings || {
+      globalSettings: templateConfig.globalSettings || {
         layerBehindContent: false,
         preserveReadability: true
       }
     };
 
-    clog('🔄 Converted footer to watermark structure:', { input: footerConfig, output: result });
+    // Reduced logging: clog('🔄 Converted footer to watermark structure:', { input: templateConfig, output: result });
     return result;
   };
 
-  const [footerConfig, setFooterConfig] = useState(getDefaultConfig(''));
+  const [templateConfig, setTemplateConfig] = useState(getDefaultConfig());
+
+  // Preload all slides for faster navigation
+  const preloadAllSlides = async (slides, entityId) => {
+    try {
+      // Reduced logging: clog('🚀 Starting to preload all slides...', slides.length, 'slides');
+      const slideBlobs = {};
+
+      // Download all slides in parallel
+      const downloadPromises = slides.map(async (slide, index) => {
+        try {
+          const slideBlob = await apiDownload(`/assets/download/lesson-plan-slide/${entityId}/${slide.id}`);
+          const blobUrl = URL.createObjectURL(slideBlob);
+          slideBlobs[index] = blobUrl;
+          // Reduced logging: clog(`✅ Preloaded slide ${index + 1}/${slides.length}:`, slide.id);
+          return { index, blobUrl };
+        } catch (error) {
+          cerror(`❌ Failed to preload slide ${index}:`, error);
+          return null;
+        }
+      });
+
+      await Promise.all(downloadPromises);
+      setPreloadedSlides(slideBlobs);
+      clog('🎉 All slides preloaded successfully!', Object.keys(slideBlobs).length, 'slides cached');
+
+      return slideBlobs;
+    } catch (error) {
+      cerror('❌ Error preloading slides:', error);
+      return {};
+    }
+  };
+
+  // SVG slide loading helper function - now uses cache
+  const loadSlideByIndex = async (slideIndex, slides, entityId) => {
+    try {
+      // Reduced logging: clog('🎬 loadSlideByIndex called with:', { slideIndex, slidesCount: slides?.length, entityId });
+
+      if (!slides || slideIndex < 0 || slideIndex >= slides.length) {
+        clog('❌ Invalid slide index:', slideIndex, 'Available slides:', slides?.length || 0);
+        return;
+      }
+
+      const slide = slides[slideIndex];
+      // Reduced logging: clog('✅ Loading slide:', slide.id, 'Index:', slideIndex);
+
+      // Check if slide is already preloaded
+      if (preloadedSlides[slideIndex]) {
+        // Reduced logging: clog('⚡ Using preloaded slide from cache:', slideIndex);
+        const cachedBlobUrl = preloadedSlides[slideIndex];
+
+        // Clean up previous blob URL (but keep the cached ones)
+        if (pdfBlobUrl && pdfBlobUrl.startsWith('blob:') && !Object.values(preloadedSlides).includes(pdfBlobUrl)) {
+          // Reduced logging: clog('🗑️ Cleaning up previous blob URL:', pdfBlobUrl);
+          URL.revokeObjectURL(pdfBlobUrl);
+        }
+
+        setPdfBlobUrl(cachedBlobUrl);
+        setCurrentSlideIndex(slideIndex);
+        // Reduced logging: clog('📍 Instant slide switch to index:', slideIndex);
+        return;
+      }
+
+      // If not cached, download it (fallback - should rarely happen)
+      // Reduced logging: clog('📥 Slide not in cache, downloading:', `/assets/download/lesson-plan-slide/${entityId}/${slide.id}`);
+      const slideBlob = await apiDownload(`/assets/download/lesson-plan-slide/${entityId}/${slide.id}`);
+      const blobUrl = URL.createObjectURL(slideBlob);
+      // Reduced logging: clog('🎯 SVG slide blob URL created for slide', slideIndex, ':', blobUrl);
+
+      // Clean up previous blob URL
+      if (pdfBlobUrl && pdfBlobUrl.startsWith('blob:')) {
+        // Reduced logging: clog('🗑️ Cleaning up previous blob URL:', pdfBlobUrl);
+        URL.revokeObjectURL(pdfBlobUrl);
+      }
+
+      // Cache this slide for future use
+      setPreloadedSlides(prev => ({ ...prev, [slideIndex]: blobUrl }));
+
+      setPdfBlobUrl(blobUrl);
+      setCurrentSlideIndex(slideIndex);
+      // Reduced logging: clog('📍 Current slide index updated to:', slideIndex);
+    } catch (error) {
+      cerror('❌ Error loading slide:', slideIndex, error);
+    }
+  };
+
+  // SVG slide navigation handlers
+  const handlePrevSlide = () => {
+    // Reduced logging: clog('🔙 Previous slide requested. Current:', currentSlideIndex, 'Available:', availableSlides.length);
+    if (currentSlideIndex > 0 && availableSlides.length > 0) {
+      loadSlideByIndex(currentSlideIndex - 1, availableSlides, fileEntityId);
+    }
+  };
+
+  const handleNextSlide = () => {
+    // Reduced logging: clog('▶️ Next slide requested. Current:', currentSlideIndex, 'Total:', totalSlides, 'Available:', availableSlides.length);
+    if (currentSlideIndex < totalSlides - 1 && availableSlides.length > 0) {
+      loadSlideByIndex(currentSlideIndex + 1, availableSlides, fileEntityId);
+    }
+  };
+
+  const handleSlideChange = (newPageNumber) => {
+    // Convert 1-based page number to 0-based slide index
+    const newSlideIndex = newPageNumber - 1;
+    // Reduced logging: clog('📄 Slide change requested. Page number:', newPageNumber, 'Slide index:', newSlideIndex, 'Total:', totalSlides);
+    if (newSlideIndex >= 0 && newSlideIndex < totalSlides && availableSlides.length > 0) {
+      loadSlideByIndex(newSlideIndex, availableSlides, fileEntityId);
+    }
+  };
 
   // Snapshot-based Undo/Redo System
   const saveSnapshot = (config) => {
@@ -291,7 +332,7 @@ const VisualTemplateEditor = ({
         newStack.shift();
       }
 
-      clog('📸 Snapshot saved to undo stack. Stack length:', newStack.length);
+      // Reduced logging: clog('📸 Snapshot saved to undo stack. Stack length:', newStack.length);
       return newStack;
     });
 
@@ -314,7 +355,7 @@ const VisualTemplateEditor = ({
     clog('↶ Undo: Restoring snapshot');
 
     // Save current state to redo stack
-    setRedoStack(prev => [...prev, JSON.parse(JSON.stringify(footerConfig))]);
+    setRedoStack(prev => [...prev, JSON.parse(JSON.stringify(templateConfig))]);
 
     // Remove last snapshot from undo stack
     setUndoStack(prev => prev.slice(0, -1));
@@ -323,7 +364,7 @@ const VisualTemplateEditor = ({
     setLastSavedSnapshot(JSON.parse(JSON.stringify(previousSnapshot)));
 
     // Apply the previous snapshot
-    setFooterConfig(JSON.parse(JSON.stringify(previousSnapshot)));
+    setTemplateConfig(JSON.parse(JSON.stringify(previousSnapshot)));
 
     setTimeout(() => setIsUndoRedoAction(false), 100);
   };
@@ -340,7 +381,7 @@ const VisualTemplateEditor = ({
     clog('↷ Redo: Restoring snapshot');
 
     // Save current state to undo stack
-    setUndoStack(prev => [...prev, JSON.parse(JSON.stringify(footerConfig))]);
+    setUndoStack(prev => [...prev, JSON.parse(JSON.stringify(templateConfig))]);
 
     // Remove last snapshot from redo stack
     setRedoStack(prev => prev.slice(0, -1));
@@ -349,7 +390,7 @@ const VisualTemplateEditor = ({
     setLastSavedSnapshot(JSON.parse(JSON.stringify(nextSnapshot)));
 
     // Apply the next snapshot
-    setFooterConfig(JSON.parse(JSON.stringify(nextSnapshot)));
+    setTemplateConfig(JSON.parse(JSON.stringify(nextSnapshot)));
 
     setTimeout(() => setIsUndoRedoAction(false), 100);
   };
@@ -372,25 +413,25 @@ const VisualTemplateEditor = ({
 
     // Schedule a snapshot save after changes settle (1 second delay)
     changeTimeoutRef.current = setTimeout(() => {
-      clog('⏱️ Changes settled, saving snapshot');
-      saveSnapshot(footerConfig);
+      // Reduced logging: clog('⏱️ Changes settled, saving snapshot');
+      saveSnapshot(templateConfig);
     }, 1000);
   };
 
   // Check if current config differs from initial template config
   const hasConfigChangesFromTemplate = () => {
-    if (!initialTemplateConfig || !footerConfig) return false;
+    if (!initialTemplateConfig || !templateConfig) return false;
 
     // Compare the current config with the initial template config
-    const currentJson = JSON.stringify(footerConfig);
+    const currentJson = JSON.stringify(templateConfig);
     const initialJson = JSON.stringify(initialTemplateConfig);
 
     return currentJson !== initialJson;
   };
 
-  // Track footerConfig changes with debounced snapshot saving and custom changes detection
+  // Track templateConfig changes with debounced snapshot saving and custom changes detection
   useEffect(() => {
-    if (!isUndoRedoAction && footerConfig && Object.keys(footerConfig).length > 0) {
+    if (!isUndoRedoAction && templateConfig && Object.keys(templateConfig).length > 0) {
       scheduleSnapshotSave();
 
       // Check if we now have custom changes
@@ -399,7 +440,8 @@ const VisualTemplateEditor = ({
         setHasCustomChanges(hasChanges);
 
         // If we now have custom changes and still have a template selected, show custom confirmation
-        if (hasChanges && selectedTemplateId && selectedTemplateId !== 'custom' && !showCustomConfirmation) {
+        // Only show this for product editing mode (fileEntityId !== null), not for template manager mode
+        if (hasChanges && selectedTemplateId && selectedTemplateId !== 'custom' && !showCustomConfirmation && fileEntityId !== null) {
           setShowCustomConfirmation(true);
         }
       }
@@ -411,7 +453,7 @@ const VisualTemplateEditor = ({
         clearTimeout(changeTimeoutRef.current);
       }
     };
-  }, [footerConfig, hasCustomChanges, initialTemplateConfig, selectedTemplateId]);
+  }, [templateConfig, hasCustomChanges, initialTemplateConfig, selectedTemplateId]);
 
   // Keyboard shortcuts for undo/redo
   useEffect(() => {
@@ -432,110 +474,53 @@ const VisualTemplateEditor = ({
     return () => document.removeEventListener('keydown', handleKeyboard);
   }, [isOpen, canUndo, canRedo]);
 
-  // Fetch system footer settings when modal opens
+  // Initialize template configuration when modal opens
   useEffect(() => {
     if (isOpen) {
-      const fetchData = async () => {
+      const initializeData = async () => {
         setIsLoadingSettings(true);
         try {
-          // Fetch full footer settings from system
-          clog('Fetching system footer settings...');
-          const settingsResponse = await apiRequest('/entities/settings');
-          clog('Raw settings response:', settingsResponse);
-          const settings = Array.isArray(settingsResponse) ? settingsResponse[0] : settingsResponse;
-          clog('Parsed settings object:', settings);
+          // Extract copyright text from global settings
+          const systemCopyrightText = settings?.copyright_text || settings?.footer_settings?.text?.content || '';
+          setCopyrightText(systemCopyrightText);
+          clog('System copyright text loaded from global settings:', systemCopyrightText);
 
           let finalConfig;
 
-          if (templateType === 'watermark') {
-            // Handle watermark templates - use same structure as footer/header
-            if (fileEntityId === null) {
-              // Template creation mode - always start with clean defaults
-              finalConfig = getDefaultWatermarkConfig();
-              clog('🆕 Using clean watermark defaults for template creation');
-            } else if (initialFooterConfig && initialFooterConfig.logo && initialFooterConfig.text && initialFooterConfig.url) {
-              // If initialFooterConfig already has proper footer structure, use it directly
-              finalConfig = initialFooterConfig;
-              setLoadedFooterSettings(initialFooterConfig);
-            } else if (initialFooterConfig && (initialFooterConfig.textElements || initialFooterConfig.logoElements)) {
-              // Convert old watermark structure to new footer structure
-              finalConfig = convertWatermarkToFooterStructure(initialFooterConfig);
-              setLoadedFooterSettings(finalConfig);
+          // Use unified approach for both watermark and branding templates
+          if (fileEntityId === null) {
+            // Template creation/editing mode from template manager
+            if (currentTemplateId && propInitialTemplateConfig && Object.keys(propInitialTemplateConfig).length > 0) {
+              // Use provided template config when opening from template manager with specific template
+              finalConfig = propInitialTemplateConfig;
+              clog(`🎨 Using provided template config from template manager:`, propInitialTemplateConfig);
             } else {
-              // Use default footer structure for watermarks
-              finalConfig = {
-                ...getDefaultConfig(''),
-                text: {
-                  visible: true,
-                  content: 'לתצוגה בלבד',
-                  position: { x: 50, y: 50 },
-                  style: {
-                    fontSize: 24,
-                    color: '#FF6B6B',
-                    bold: true,
-                    italic: false,
-                    opacity: 40,
-                    width: 300
-                  }
-                }
-              };
+              // Start with blank canvas for creating new custom templates
+              finalConfig = getDefaultConfig();
+              clog(`🆕 Using blank canvas for unified ${templateType} template creation`);
             }
-            clog('🔧 Watermark config (same as footer structure):', finalConfig);
           } else {
-            // Handle footer/header templates
-            if (fileEntityId === null) {
-              // Template creation mode - always start with clean defaults
-              finalConfig = getDefaultConfig('');
-              setCopyrightText('');
-              clog('🆕 Using clean branding defaults for template creation');
-            } else {
-              const systemFooterSettings = settings?.footer_settings || getDefaultConfig('');
-              const copyrightText = systemFooterSettings?.text?.content || settings?.copyright_footer_text || '';
-
-              clog('📄 System footer settings:', systemFooterSettings);
-              clog('📄 Copyright text extracted:', copyrightText);
-              setCopyrightText(copyrightText);
-
-              // Merge with provided initialFooterConfig (file-specific settings)
-              if (initialFooterConfig) {
-                clog('Merging initialFooterConfig with system settings');
-                setLoadedFooterSettings(initialFooterConfig);
-
-                // File settings override positioning/styling, system settings provide content
-                finalConfig = {
-                  ...systemFooterSettings,
-                  ...initialFooterConfig,
-                  text: {
-                    ...systemFooterSettings.text,
-                    ...initialFooterConfig.text,
-                    content: copyrightText // ALWAYS use system text content
-                  },
-                  logo: {
-                    ...systemFooterSettings.logo,
-                    ...initialFooterConfig.logo,
-                    url: logo // Use backend logoUrl or fallback to frontend asset
-                  }
-                };
-                clog('🔧 Merged config with system settings:', finalConfig);
+            // File editing mode - load existing template configuration
+            if (propInitialTemplateConfig && Object.keys(propInitialTemplateConfig).length > 0) {
+              // Convert legacy formats if needed
+              if (templateType === 'watermark' && (propInitialTemplateConfig.textElements || propInitialTemplateConfig.logoElements)) {
+                // Convert old watermark structure to unified structure
+                finalConfig = convertWatermarkToBrandingStructure(propInitialTemplateConfig);
+                clog('🔄 Converted legacy watermark structure to unified format');
               } else {
-                clog('Using system footer settings as defaults');
-                finalConfig = {
-                  ...systemFooterSettings,
-                  text: {
-                    ...systemFooterSettings.text,
-                    content: copyrightText
-                  },
-                  logo: {
-                    ...systemFooterSettings.logo,
-                    url: logo
-                  }
-                };
-                clog('🔧 System default config:', finalConfig);
+                // Use existing configuration directly
+                finalConfig = propInitialTemplateConfig;
+                clog('✅ Using existing template configuration');
               }
+              setLoadedBrandingSettings(propInitialTemplateConfig);
+            } else {
+              // No existing config - use blank canvas
+              finalConfig = getDefaultConfig();
+              clog('📝 No existing config - using blank canvas');
             }
           }
 
-          setFooterConfig(finalConfig);
+          setTemplateConfig(finalConfig);
 
           // Store initial template configuration for comparison
           setInitialTemplateConfig(JSON.parse(JSON.stringify(finalConfig)));
@@ -546,20 +531,20 @@ const VisualTemplateEditor = ({
             setLastSavedSnapshot(JSON.parse(JSON.stringify(finalConfig)));
           }, 100);
         } catch (error) {
-          cerror('Error fetching settings or footer config:', error);
+          cerror('Error initializing template config:', error);
           // Fall back to defaults on error
-          setFooterConfig(getDefaultConfig(''));
+          setTemplateConfig(getDefaultConfig());
           setTimeout(() => {
-            setLastSavedSnapshot(JSON.parse(JSON.stringify(getDefaultConfig(''))));
+            setLastSavedSnapshot(JSON.parse(JSON.stringify(getDefaultConfig())));
           }, 100);
         } finally {
           setIsLoadingSettings(false);
         }
       };
 
-      fetchData();
+      initializeData();
     }
-  }, [isOpen]);
+  }, [isOpen, settings]);
 
   // Fetch available templates when modal opens
   useEffect(() => {
@@ -587,14 +572,26 @@ const VisualTemplateEditor = ({
           }
 
           clog(`✅ Loaded ${templateList.length} ${templateType} templates:`, templateList);
+          // Log first template data for debugging
+          if (templateList.length > 0) {
+            clog('🔍 First template data preview:', {
+              id: templateList[0].id,
+              name: templateList[0].name,
+              template_data_keys: Object.keys(templateList[0].template_data || {}),
+              template_data_preview: templateList[0].template_data
+            });
+          }
           setTemplates(templateList);
 
-          // Auto-set the selected template if we have a currentTemplateId
+          // Auto-set and apply the selected template if we have a currentTemplateId
           if (currentTemplateId && templateList.length > 0) {
             const currentTemplate = templateList.find(t => t.id.toString() === currentTemplateId.toString());
             if (currentTemplate) {
-              clog(`🎯 Setting current template: ${currentTemplate.name} (ID: ${currentTemplate.id})`);
+              clog(`🎯 Setting and applying current template: ${currentTemplate.name} (ID: ${currentTemplate.id})`);
               setSelectedTemplateId(currentTemplateId.toString());
+              // Auto-apply the template when opened from template manager
+              // IMMEDIATE APPLICATION - no timeout delay to prevent empty canvas flash
+              handleApplyTemplate(currentTemplateId.toString());
             } else {
               clog(`⚠️ Current template ID ${currentTemplateId} not found in available templates`);
             }
@@ -656,34 +653,86 @@ const VisualTemplateEditor = ({
     }
   }, [isOpen, placeholderPdfUrl, targetFormat]);
 
-  // Unified PDF fetching logic for both real files and template mode
+  // Unified PDF/SVG fetching logic for both real files and template mode
   useEffect(() => {
     if (isOpen) {
       if (fileEntityId) {
-        // Fetch actual file
-        const fetchPdf = async () => {
+        // Fetch actual file - different logic for PDF vs SVG LessonPlan
+        const fetchFile = async () => {
           try {
             setIsLoadingPdf(true);
-            clog('Fetching PDF from API for preview:', fileEntityId);
 
-            // Add skipFooter=true to skip backend footer merge (we render our own overlay)
-            const blob = await apiDownload(`/assets/download/file/${fileEntityId}?skipFooter=true`);
+            // Check if this is a LessonPlan entity (SVG slides)
+            if (targetFormat === 'svg-lessonplan') {
+              clog('Fetching SVG slides from LessonPlan API for preview:', fileEntityId);
 
-            const blobUrl = URL.createObjectURL(blob);
-            clog('PDF blob URL created:', blobUrl);
-            setPdfBlobUrl(blobUrl);
+              // Fetch SVG slides for LessonPlan
+              const slidesResponse = await apiRequest(`/svg-slides/${fileEntityId}`);
+
+              if (slidesResponse.success && slidesResponse.data.slides && slidesResponse.data.slides.length > 0) {
+                const slides = slidesResponse.data.slides;
+                clog('🎬 Found SVG slides for navigation:', slides);
+                clog('📊 Setting up slide state - Total slides:', slides.length);
+
+                // Store all available slides for navigation
+                setAvailableSlides(slides);
+                setTotalSlides(slides.length);
+                setCurrentSlideIndex(0); // Start with first slide
+
+                clog('📍 Initial slide state set - Available:', slides.length, 'Total:', slides.length, 'Current index: 0');
+
+                // Start preloading all slides in the background for fast navigation
+                const preloadSlides = async () => {
+                  clog('🏁 Starting background preload of all slides...');
+                  const cachedSlides = await preloadAllSlides(slides, fileEntityId);
+
+                  // Set the first slide immediately if it's cached
+                  if (cachedSlides[0]) {
+                    clog('⚡ Setting first slide from preloaded cache');
+                    setPdfBlobUrl(cachedSlides[0]);
+                  }
+                };
+
+                // Load the first slide immediately (don't wait for preloading)
+                clog('🎯 Loading initial slide (index 0)');
+                await loadSlideByIndex(0, slides, fileEntityId);
+
+                // Start preloading other slides in the background
+                preloadSlides();
+              } else {
+                clog('❌ No SVG slides found, using placeholder');
+                // Reset slide state
+                setAvailableSlides([]);
+                setTotalSlides(0);
+                setCurrentSlideIndex(0);
+                // No slides available, will show placeholder
+              }
+            } else {
+              // Regular PDF file
+              clog('Fetching PDF from API for preview:', fileEntityId);
+
+              // Skip the correct template type based on what we're editing:
+              // - Branding editor: skip branding from API (skipBranding=true)
+              // - Watermark editor: skip watermarks from API (skipWatermarks=true)
+              const skipParam = templateType === 'branding' ? 'skipBranding=true' : 'skipWatermarks=true';
+              const blob = await apiDownload(`/assets/download/file/${fileEntityId}?${skipParam}`);
+
+              const blobUrl = URL.createObjectURL(blob);
+              clog('PDF blob URL created:', blobUrl);
+              setPdfBlobUrl(blobUrl);
+            }
           } catch (error) {
-            cerror('Error fetching PDF - will show placeholder:', error);
+            cerror('Error fetching file - will show placeholder:', error);
             // Don't set pdfBlobUrl, will show placeholder message instead
           } finally {
             setIsLoadingPdf(false);
           }
         };
 
-        fetchPdf();
+        fetchFile();
       } else if (placeholderPdfUrl) {
-        // Template mode: use cached placeholder PDF
-        clog('📄 Using placeholder PDF for template mode:', placeholderPdfUrl);
+        // Template mode: use cached placeholder PDF/SVG
+        clog('📄 Using placeholder file for template mode:', placeholderPdfUrl);
         setPdfBlobUrl(placeholderPdfUrl);
       }
     }
@@ -694,11 +743,27 @@ const VisualTemplateEditor = ({
         URL.revokeObjectURL(pdfBlobUrl);
         setPdfBlobUrl(null);
       }
+
+      // Reset slide state when fileEntityId changes or modal closes
+      if (!fileEntityId) {
+        // Clean up all preloaded slide blobs
+        Object.values(preloadedSlides).forEach(blobUrl => {
+          if (blobUrl && blobUrl.startsWith('blob:')) {
+            URL.revokeObjectURL(blobUrl);
+          }
+        });
+
+        setAvailableSlides([]);
+        setTotalSlides(0);
+        setCurrentSlideIndex(0);
+        setPreloadedSlides({});
+        clog('🗑️ Cleaned up all preloaded slides');
+      }
     };
-  }, [isOpen, fileEntityId, placeholderPdfUrl]);
+  }, [isOpen, fileEntityId, placeholderPdfUrl, targetFormat]);
 
   const handleConfigChange = (newConfig, metadata) => {
-    setFooterConfig(newConfig);
+    setTemplateConfig(newConfig);
 
     // DEBUG: Log scaling metadata for coordinate verification
     if (metadata) {
@@ -713,29 +778,29 @@ const VisualTemplateEditor = ({
 
   const updateConfig = (section, field, value) => {
     const newConfig = {
-      ...footerConfig,
+      ...templateConfig,
       [section]: {
-        ...footerConfig[section],
+        ...templateConfig[section],
         [field]: value
       }
     };
-    setFooterConfig(newConfig);
+    setTemplateConfig(newConfig);
   };
 
   const updateStyle = (section, styleField, value) => {
     let newConfig;
 
     // Check if it's a custom element or built-in element
-    if (footerConfig.customElements?.[section]) {
+    if (templateConfig.customElements?.[section]) {
       // Handle custom elements
       newConfig = {
-        ...footerConfig,
+        ...templateConfig,
         customElements: {
-          ...footerConfig.customElements,
+          ...templateConfig.customElements,
           [section]: {
-            ...footerConfig.customElements[section],
+            ...templateConfig.customElements[section],
             style: {
-              ...footerConfig.customElements[section].style,
+              ...templateConfig.customElements[section].style,
               [styleField]: value
             }
           }
@@ -744,18 +809,18 @@ const VisualTemplateEditor = ({
     } else {
       // Handle built-in elements (logo, text, url)
       newConfig = {
-        ...footerConfig,
+        ...templateConfig,
         [section]: {
-          ...footerConfig[section],
+          ...templateConfig[section],
           style: {
-            ...footerConfig[section].style,
+            ...templateConfig[section].style,
             [styleField]: value
           }
         }
       };
     }
 
-    setFooterConfig(newConfig);
+    setTemplateConfig(newConfig);
   };
 
   const handleItemClick = (item) => {
@@ -779,16 +844,16 @@ const VisualTemplateEditor = ({
     let newConfig;
 
     // Check if it's a custom element or built-in element
-    if (footerConfig.customElements?.[elementKey]) {
+    if (templateConfig.customElements?.[elementKey]) {
       // Handle custom elements
       newConfig = {
-        ...footerConfig,
+        ...templateConfig,
         customElements: {
-          ...footerConfig.customElements,
+          ...templateConfig.customElements,
           [elementKey]: {
-            ...footerConfig.customElements[elementKey],
+            ...templateConfig.customElements[elementKey],
             position: {
-              ...footerConfig.customElements[elementKey].position,
+              ...templateConfig.customElements[elementKey].position,
               x: 50
             }
           }
@@ -797,35 +862,35 @@ const VisualTemplateEditor = ({
     } else {
       // Handle built-in elements (logo, text, url)
       newConfig = {
-        ...footerConfig,
+        ...templateConfig,
         [elementKey]: {
-          ...footerConfig[elementKey],
+          ...templateConfig[elementKey],
           position: {
-            ...footerConfig[elementKey].position,
+            ...templateConfig[elementKey].position,
             x: 50
           }
         }
       };
     }
 
-    setFooterConfig(newConfig);
-    clog(`✨ Centered ${elementKey} on X axis to 50%`);
+    setTemplateConfig(newConfig);
+    // Reduced logging: clog(`✨ Centered ${elementKey} on X axis to 50%`);
   };
 
   const handleCenterY = (elementKey) => {
     let newConfig;
 
     // Check if it's a custom element or built-in element
-    if (footerConfig.customElements?.[elementKey]) {
+    if (templateConfig.customElements?.[elementKey]) {
       // Handle custom elements
       newConfig = {
-        ...footerConfig,
+        ...templateConfig,
         customElements: {
-          ...footerConfig.customElements,
+          ...templateConfig.customElements,
           [elementKey]: {
-            ...footerConfig.customElements[elementKey],
+            ...templateConfig.customElements[elementKey],
             position: {
-              ...footerConfig.customElements[elementKey].position,
+              ...templateConfig.customElements[elementKey].position,
               y: 50
             }
           }
@@ -834,41 +899,58 @@ const VisualTemplateEditor = ({
     } else {
       // Handle built-in elements (logo, text, url)
       newConfig = {
-        ...footerConfig,
+        ...templateConfig,
         [elementKey]: {
-          ...footerConfig[elementKey],
+          ...templateConfig[elementKey],
           position: {
-            ...footerConfig[elementKey].position,
+            ...templateConfig[elementKey].position,
             y: 50
           }
         }
       };
     }
 
-    setFooterConfig(newConfig);
-    clog(`✨ Centered ${elementKey} on Y axis to 50%`);
+    setTemplateConfig(newConfig);
+    // Reduced logging: clog(`✨ Centered ${elementKey} on Y axis to 50%`);
   };
 
   const handleAddElement = (elementType) => {
-    // Generate unique element ID to allow multiple instances
-    const timestamp = Date.now();
-    const elementId = `${elementType}-${timestamp}`;
+    // Check if this is a built-in element type
+    const builtInElements = ['logo', 'text', 'url', 'copyright-text', 'user-info', 'watermark-logo'];
 
-    // Create new element - allow multiple instances of any type
-    const newElement = getDefaultElementConfig(elementType, elementId);
+    if (builtInElements.includes(elementType)) {
+      // Handle built-in elements - add directly to template config
+      const newElement = getDefaultElementConfig(elementType, elementType);
 
-    const newConfig = {
-      ...footerConfig,
-      customElements: {
-        ...footerConfig.customElements,
-        [elementId]: newElement
-      }
-    };
+      const newConfig = {
+        ...templateConfig,
+        [elementType]: newElement
+      };
 
-    setFooterConfig(newConfig);
-    setSelectedItem(elementId);
-    setFocusedItem(elementId);
-    clog(`✨ Added new ${elementType} element:`, elementId);
+      setTemplateConfig(newConfig);
+      setSelectedItem(elementType);
+      setFocusedItem(elementType);
+      // Reduced logging: clog(`✨ Added new built-in ${elementType} element`);
+    } else {
+      // Handle custom elements - add to customElements
+      const timestamp = Date.now();
+      const elementId = `${elementType}-${timestamp}`;
+
+      const newElement = getDefaultElementConfig(elementType, elementId);
+
+      const newConfig = {
+        ...templateConfig,
+        customElements: {
+          ...templateConfig.customElements,
+          [elementId]: newElement
+        }
+      };
+
+      setTemplateConfig(newConfig);
+      setSelectedItem(elementId);
+      setFocusedItem(elementId);
+      // Reduced logging: clog(`✨ Added new custom ${elementType} element:`, elementId);
+    }
   };
 
   const getDefaultElementConfig = (elementType, elementId) => {
@@ -881,6 +963,64 @@ const VisualTemplateEditor = ({
     };
 
     switch (elementType) {
+      case 'logo':
+        return {
+          ...baseConfig,
+          // Logo uses static file, no URL needed
+          style: {
+            size: 80,
+            opacity: 100,
+            rotation: 0
+          }
+        };
+      case 'copyright-text':
+        const copyrightContent = copyrightText || 'טקסט זכויות יוצרים';
+        return {
+          ...baseConfig,
+          content: copyrightContent,
+          style: {
+            fontSize: 12,
+            color: '#000000',
+            opacity: 80,
+            rotation: 0,
+            fontFamily: getTextFontFamily(copyrightContent, false),
+            bold: false,
+            italic: false,
+            width: 300
+          }
+        };
+      case 'url':
+        const urlContent = 'https://ludora.app';
+        return {
+          ...baseConfig,
+          content: urlContent,
+          style: {
+            fontSize: 12,
+            color: '#0066cc',
+            opacity: 100,
+            rotation: 0,
+            fontFamily: getTextFontFamily(urlContent, false),
+            bold: false,
+            italic: false,
+            textDecoration: 'underline'
+          }
+        };
+      case 'free-text':
+        const freeTextContent = 'טקסט חופשי';
+        return {
+          ...baseConfig,
+          content: freeTextContent,
+          style: {
+            fontSize: 16,
+            color: '#000000',
+            opacity: 100,
+            rotation: 0,
+            fontFamily: getTextFontFamily(freeTextContent, false),
+            bold: false,
+            italic: false,
+            width: 200
+          }
+        };
       case 'box':
         return {
           ...baseConfig,
@@ -890,7 +1030,8 @@ const VisualTemplateEditor = ({
             borderColor: '#000000',
             borderWidth: 2,
             backgroundColor: 'transparent',
-            opacity: 100
+            opacity: 100,
+            rotation: 0
           }
         };
       case 'line':
@@ -900,7 +1041,8 @@ const VisualTemplateEditor = ({
             width: 100,
             height: 2,
             color: '#000000',
-            opacity: 100
+            opacity: 100,
+            rotation: 0
           }
         };
       case 'dotted-line':
@@ -911,46 +1053,37 @@ const VisualTemplateEditor = ({
             height: 2,
             color: '#000000',
             opacity: 100,
-            dashArray: '5,5'
-          }
-        };
-      case 'free-text':
-        return {
-          ...baseConfig,
-          content: templateType === 'watermark' ? 'לתצוגה בלבד' : 'טקסט חופשי',
-          style: {
-            fontSize: templateType === 'watermark' ? 24 : 14,
-            color: templateType === 'watermark' ? '#FF6B6B' : '#000000',
-            opacity: templateType === 'watermark' ? 40 : 100,
-            rotation: templateType === 'watermark' ? 45 : 0,
-            fontFamily: 'Arial, sans-serif',
-            bold: templateType === 'watermark',
-            italic: false
-          }
-        };
-      case 'watermark-text':
-        return {
-          ...baseConfig,
-          content: 'לתצוגה בלבד',
-          style: {
-            fontSize: 24,
-            color: '#FF6B6B',
-            opacity: 40,
-            rotation: 45,
-            fontFamily: 'Arial, sans-serif',
-            bold: true,
-            italic: false
-          }
-        };
-      case 'logo':
-      case 'watermark-logo':
-        return {
-          ...baseConfig,
-          url: logo, // Use default logo
-          style: {
-            size: 80,
-            opacity: 60,
+            dashArray: '5,5',
             rotation: 0
+          }
+        };
+      case 'circle':
+        return {
+          ...baseConfig,
+          style: {
+            size: 50,
+            borderColor: '#000000',
+            borderWidth: 2,
+            backgroundColor: 'transparent',
+            opacity: 100,
+            rotation: 0
+          }
+        };
+      case 'user-info':
+        const userInfoContent = 'קובץ זה נוצר עבור {{user.email}}';
+        return {
+          ...baseConfig,
+          content: userInfoContent,
+          editable: false, // Text content is not editable, only style
+          style: {
+            fontSize: 11,
+            color: '#666666',
+            opacity: 70,
+            rotation: 0,
+            fontFamily: getTextFontFamily(userInfoContent, false),
+            bold: false,
+            italic: true,
+            width: 250
           }
         };
       default:
@@ -959,19 +1092,19 @@ const VisualTemplateEditor = ({
   };
 
   const handleDeleteElement = (elementId) => {
-    if (footerConfig.customElements?.[elementId]?.deletable) {
+    if (templateConfig.customElements?.[elementId]?.deletable) {
       const newConfig = {
-        ...footerConfig,
+        ...templateConfig,
         customElements: {
-          ...footerConfig.customElements
+          ...templateConfig.customElements
         }
       };
       delete newConfig.customElements[elementId];
 
-      setFooterConfig(newConfig);
+      setTemplateConfig(newConfig);
       setSelectedItem(null);
       setFocusedItem(null);
-      clog(`🗑️ Deleted custom element:`, elementId);
+      // Reduced logging: clog(`🗑️ Deleted custom element:`, elementId);
     }
   };
 
@@ -979,70 +1112,70 @@ const VisualTemplateEditor = ({
   const handleToggleVisibility = (elementKey) => {
     let newConfig;
 
-    if (footerConfig.customElements?.[elementKey]) {
+    if (templateConfig.customElements?.[elementKey]) {
       newConfig = {
-        ...footerConfig,
+        ...templateConfig,
         customElements: {
-          ...footerConfig.customElements,
+          ...templateConfig.customElements,
           [elementKey]: {
-            ...footerConfig.customElements[elementKey],
-            visible: !footerConfig.customElements[elementKey].visible
+            ...templateConfig.customElements[elementKey],
+            visible: !templateConfig.customElements[elementKey].visible
           }
         }
       };
     } else {
       newConfig = {
-        ...footerConfig,
+        ...templateConfig,
         [elementKey]: {
-          ...footerConfig[elementKey],
-          visible: !footerConfig[elementKey].visible
+          ...templateConfig[elementKey],
+          visible: !templateConfig[elementKey].visible
         }
       };
     }
 
-    setFooterConfig(newConfig);
-    clog(`👁️ Toggled visibility for ${elementKey}`);
+    setTemplateConfig(newConfig);
+    // Reduced logging: clog(`👁️ Toggled visibility for ${elementKey}`);
   };
 
   const handleLockToggle = (elementKey) => {
     let newConfig;
 
-    if (footerConfig.customElements?.[elementKey]) {
+    if (templateConfig.customElements?.[elementKey]) {
       newConfig = {
-        ...footerConfig,
+        ...templateConfig,
         customElements: {
-          ...footerConfig.customElements,
+          ...templateConfig.customElements,
           [elementKey]: {
-            ...footerConfig.customElements[elementKey],
-            locked: !footerConfig.customElements[elementKey].locked
+            ...templateConfig.customElements[elementKey],
+            locked: !templateConfig.customElements[elementKey].locked
           }
         }
       };
     } else {
       newConfig = {
-        ...footerConfig,
+        ...templateConfig,
         [elementKey]: {
-          ...footerConfig[elementKey],
-          locked: !footerConfig[elementKey].locked
+          ...templateConfig[elementKey],
+          locked: !templateConfig[elementKey].locked
         }
       };
     }
 
-    setFooterConfig(newConfig);
-    clog(`🔒 Toggled lock for ${elementKey}`);
+    setTemplateConfig(newConfig);
+    // Reduced logging: clog(`🔒 Toggled lock for ${elementKey}`);
   };
 
   const handleDuplicate = (elementKey) => {
-    const sourceElement = footerConfig.customElements?.[elementKey] || footerConfig[elementKey];
+    const sourceElement = templateConfig.customElements?.[elementKey] || templateConfig[elementKey];
     if (!sourceElement) return;
 
-    if (footerConfig.customElements?.[elementKey]) {
+    if (templateConfig.customElements?.[elementKey]) {
       // Duplicate custom element
       const newElementId = `${elementKey}_copy_${Date.now()}`;
       const newConfig = {
-        ...footerConfig,
+        ...templateConfig,
         customElements: {
-          ...footerConfig.customElements,
+          ...templateConfig.customElements,
           [newElementId]: {
             ...sourceElement,
             id: newElementId,
@@ -1053,10 +1186,33 @@ const VisualTemplateEditor = ({
           }
         }
       };
-      setFooterConfig(newConfig);
-      clog(`📄 Duplicated custom element ${elementKey} as ${newElementId}`);
+      setTemplateConfig(newConfig);
+      // Reduced logging: clog(`📄 Duplicated custom element ${elementKey} as ${newElementId}`);
+    } else if (templateConfig[elementKey]) {
+      // Duplicate built-in element as custom element
+      const newElementId = `${elementKey}_copy_${Date.now()}`;
+      const duplicatedElement = {
+        ...sourceElement,
+        id: newElementId,
+        type: elementKey, // Set the type to match the original element key
+        deletable: true, // Custom copies are deletable
+        position: {
+          x: sourceElement.position.x + 10,
+          y: sourceElement.position.y + 10
+        }
+      };
+
+      const newConfig = {
+        ...templateConfig,
+        customElements: {
+          ...templateConfig.customElements,
+          [newElementId]: duplicatedElement
+        }
+      };
+      setTemplateConfig(newConfig);
+      clog(`📄 Duplicated built-in element ${elementKey} as custom element ${newElementId}`);
     } else {
-      clog(`⚠️ Cannot duplicate built-in element: ${elementKey}`);
+      clog(`⚠️ Cannot duplicate element: ${elementKey} - element not found`);
     }
   };
 
@@ -1073,7 +1229,7 @@ const VisualTemplateEditor = ({
     };
 
     // Update elements to belong to this group
-    let newConfig = { ...footerConfig };
+    let newConfig = { ...templateConfig };
 
     elementIds.forEach(elementId => {
       if (newConfig.customElements?.[elementId]) {
@@ -1084,9 +1240,9 @@ const VisualTemplateEditor = ({
     });
 
     setGroups({ ...groups, [groupId]: newGroup });
-    setFooterConfig(newConfig);
+    setTemplateConfig(newConfig);
     setSelectedItems([]);
-    clog(`👥 Created group ${groupId} with elements:`, elementIds);
+    // Reduced logging: clog(`👥 Created group ${groupId} with elements:`, elementIds);
   };
 
   const getNextGroupColor = () => {
@@ -1108,7 +1264,7 @@ const VisualTemplateEditor = ({
 
   const handleGroupDelete = (groupId) => {
     // Remove group reference from all elements
-    let newConfig = { ...footerConfig };
+    let newConfig = { ...templateConfig };
 
     Object.keys(newConfig.customElements || {}).forEach(elementId => {
       if (newConfig.customElements[elementId].groupId === groupId) {
@@ -1126,7 +1282,7 @@ const VisualTemplateEditor = ({
     delete newGroups[groupId];
 
     setGroups(newGroups);
-    setFooterConfig(newConfig);
+    setTemplateConfig(newConfig);
     setSelectedGroupId(null);
     clog(`🗑️ Deleted group ${groupId}`);
   };
@@ -1135,7 +1291,7 @@ const VisualTemplateEditor = ({
     const groupElements = getGroupElements(groupId);
     const allVisible = groupElements.every(([, element]) => element.visible !== false);
 
-    let newConfig = { ...footerConfig };
+    let newConfig = { ...templateConfig };
 
     groupElements.forEach(([elementId]) => {
       if (newConfig.customElements?.[elementId]) {
@@ -1145,7 +1301,7 @@ const VisualTemplateEditor = ({
       }
     });
 
-    setFooterConfig(newConfig);
+    setTemplateConfig(newConfig);
     clog(`👁️ Toggled visibility for group ${groupId}: ${!allVisible ? 'show' : 'hide'}`);
   };
 
@@ -1153,7 +1309,7 @@ const VisualTemplateEditor = ({
     const groupElements = getGroupElements(groupId);
     const allLocked = groupElements.every(([, element]) => element.locked);
 
-    let newConfig = { ...footerConfig };
+    let newConfig = { ...templateConfig };
 
     groupElements.forEach(([elementId]) => {
       if (newConfig.customElements?.[elementId]) {
@@ -1163,7 +1319,7 @@ const VisualTemplateEditor = ({
       }
     });
 
-    setFooterConfig(newConfig);
+    setTemplateConfig(newConfig);
     clog(`🔒 Toggled lock for group ${groupId}: ${!allLocked ? 'lock' : 'unlock'}`);
   };
 
@@ -1177,7 +1333,7 @@ const VisualTemplateEditor = ({
       created: Date.now()
     };
 
-    let newConfig = { ...footerConfig };
+    let newConfig = { ...templateConfig };
 
     groupElements.forEach(([elementId, element]) => {
       if (newConfig.customElements?.[elementId]) {
@@ -1195,12 +1351,12 @@ const VisualTemplateEditor = ({
     });
 
     setGroups({ ...groups, [newGroupId]: newGroup });
-    setFooterConfig(newConfig);
+    setTemplateConfig(newConfig);
     clog(`📄 Duplicated group ${groupId} as ${newGroupId}`);
   };
 
   const handleElementAddToGroup = (elementId, groupId) => {
-    let newConfig = { ...footerConfig };
+    let newConfig = { ...templateConfig };
 
     if (newConfig.customElements?.[elementId]) {
       newConfig.customElements[elementId].groupId = groupId;
@@ -1208,12 +1364,12 @@ const VisualTemplateEditor = ({
       newConfig[elementId].groupId = groupId;
     }
 
-    setFooterConfig(newConfig);
+    setTemplateConfig(newConfig);
     clog(`➕ Added element ${elementId} to group ${groupId}`);
   };
 
   const handleElementRemoveFromGroup = (elementId, groupId) => {
-    let newConfig = { ...footerConfig };
+    let newConfig = { ...templateConfig };
 
     if (newConfig.customElements?.[elementId]) {
       delete newConfig.customElements[elementId].groupId;
@@ -1221,7 +1377,7 @@ const VisualTemplateEditor = ({
       delete newConfig[elementId].groupId;
     }
 
-    setFooterConfig(newConfig);
+    setTemplateConfig(newConfig);
     clog(`➖ Removed element ${elementId} from group ${groupId}`);
   };
 
@@ -1235,7 +1391,7 @@ const VisualTemplateEditor = ({
     const elements = [];
 
     // Check custom elements
-    Object.entries(footerConfig.customElements || {}).forEach(([elementId, element]) => {
+    Object.entries(templateConfig.customElements || {}).forEach(([elementId, element]) => {
       if (element.groupId === groupId) {
         elements.push([elementId, element]);
       }
@@ -1243,8 +1399,8 @@ const VisualTemplateEditor = ({
 
     // Check built-in elements
     ['logo', 'text', 'url'].forEach(elementKey => {
-      if (footerConfig[elementKey]?.groupId === groupId) {
-        elements.push([elementKey, footerConfig[elementKey]]);
+      if (templateConfig[elementKey]?.groupId === groupId) {
+        elements.push([elementKey, templateConfig[elementKey]]);
       }
     });
 
@@ -1265,7 +1421,7 @@ const VisualTemplateEditor = ({
         break;
       case 'ungroup':
         data.forEach(elementId => {
-          const element = footerConfig.customElements?.[elementId] || footerConfig[elementId];
+          const element = templateConfig.customElements?.[elementId] || templateConfig[elementId];
           if (element?.groupId) {
             handleElementRemoveFromGroup(elementId, element.groupId);
           }
@@ -1279,25 +1435,25 @@ const VisualTemplateEditor = ({
         break;
       case 'lock':
         data.forEach(elementId => {
-          const element = footerConfig.customElements?.[elementId] || footerConfig[elementId];
+          const element = templateConfig.customElements?.[elementId] || templateConfig[elementId];
           if (!element?.locked) handleLockToggle(elementId);
         });
         break;
       case 'unlock':
         data.forEach(elementId => {
-          const element = footerConfig.customElements?.[elementId] || footerConfig[elementId];
+          const element = templateConfig.customElements?.[elementId] || templateConfig[elementId];
           if (element?.locked) handleLockToggle(elementId);
         });
         break;
       case 'show':
         data.forEach(elementId => {
-          const element = footerConfig.customElements?.[elementId] || footerConfig[elementId];
+          const element = templateConfig.customElements?.[elementId] || templateConfig[elementId];
           if (!element?.visible) handleToggleVisibility(elementId);
         });
         break;
       case 'hide':
         data.forEach(elementId => {
-          const element = footerConfig.customElements?.[elementId] || footerConfig[elementId];
+          const element = templateConfig.customElements?.[elementId] || templateConfig[elementId];
           if (element?.visible !== false) handleToggleVisibility(elementId);
         });
         break;
@@ -1305,36 +1461,36 @@ const VisualTemplateEditor = ({
         data.forEach(elementId => {
           // Align all selected elements to the leftmost position
           const positions = data.map(id => {
-            const element = footerConfig.customElements?.[id] || footerConfig[id];
+            const element = templateConfig.customElements?.[id] || templateConfig[id];
             return element?.position?.x || 0;
           });
           const leftmostX = Math.min(...positions);
 
-          let newConfig = { ...footerConfig };
+          let newConfig = { ...templateConfig };
           if (newConfig.customElements?.[elementId]) {
             newConfig.customElements[elementId].position.x = leftmostX;
           } else if (newConfig[elementId]) {
             newConfig[elementId].position.x = leftmostX;
           }
-          setFooterConfig(newConfig);
+          setTemplateConfig(newConfig);
         });
         break;
       case 'alignTop':
         data.forEach(elementId => {
           // Align all selected elements to the topmost position
           const positions = data.map(id => {
-            const element = footerConfig.customElements?.[id] || footerConfig[id];
+            const element = templateConfig.customElements?.[id] || templateConfig[id];
             return element?.position?.y || 0;
           });
           const topmostY = Math.min(...positions);
 
-          let newConfig = { ...footerConfig };
+          let newConfig = { ...templateConfig };
           if (newConfig.customElements?.[elementId]) {
             newConfig.customElements[elementId].position.y = topmostY;
           } else if (newConfig[elementId]) {
             newConfig[elementId].position.y = topmostY;
           }
-          setFooterConfig(newConfig);
+          setTemplateConfig(newConfig);
         });
         break;
       case 'alignCenter':
@@ -1353,22 +1509,22 @@ const VisualTemplateEditor = ({
 
       if (templateType === 'watermark') {
         // Save watermark config using same structure as footer/header
-        configToSave = footerConfig;
+        configToSave = templateConfig;
         clog('💾 Save: watermark config being saved (same structure):', configToSave);
       } else {
         // Save footer/header config as-is
-        configToSave = footerConfig;
-        clog('💾 Save: footerConfig being saved:', configToSave);
-        clog('💾 Save: text content being saved:', footerConfig.text?.content);
+        configToSave = templateConfig;
+        clog('💾 Save: templateConfig being saved:', configToSave);
+        clog('💾 Save: text content being saved:', templateConfig.text?.content);
 
         // Check if copyright text has changed and update system settings if needed
-        if (footerConfig.text?.content !== copyrightText) {
+        if (templateConfig.text?.content && templateConfig.text.content !== copyrightText) {
           clog('💾 Save: Copyright text changed, updating system settings...');
           const { Settings: SettingsEntity } = await import('@/services/entities');
 
           // Update system settings with new copyright text
           await SettingsEntity.update(1, {
-            copyright_footer_text: footerConfig.text.content
+            copyright_footer_text: templateConfig.text.content
           });
 
           clog('✅ Save: System settings updated with new copyright text');
@@ -1391,7 +1547,7 @@ const VisualTemplateEditor = ({
       // Clear history and set snapshot after successful save
       clearHistory();
       setTimeout(() => {
-        setLastSavedSnapshot(JSON.parse(JSON.stringify(footerConfig)));
+        setLastSavedSnapshot(JSON.parse(JSON.stringify(templateConfig)));
       }, 100);
 
       onClose();
@@ -1407,22 +1563,22 @@ const VisualTemplateEditor = ({
     // Create a comparable version of the current config
     const currentComparable = {
       logo: {
-        visible: footerConfig.logo.visible,
-        position: footerConfig.logo.position,
-        style: footerConfig.logo.style
+        visible: templateConfig.logo.visible,
+        position: templateConfig.logo.position,
+        style: templateConfig.logo.style
       },
       text: {
-        visible: footerConfig.text.visible,
-        position: footerConfig.text.position,
-        style: footerConfig.text.style
+        visible: templateConfig.text.visible,
+        position: templateConfig.text.position,
+        style: templateConfig.text.style
       },
       url: {
-        visible: footerConfig.url.visible,
-        href: footerConfig.url.href,
-        position: footerConfig.url.position,
-        style: footerConfig.url.style
+        visible: templateConfig.url.visible,
+        href: templateConfig.url.href,
+        position: templateConfig.url.position,
+        style: templateConfig.url.style
       },
-      customElements: footerConfig.customElements || {}
+      customElements: templateConfig.customElements || {}
     };
 
     // Create a comparable version of the template
@@ -1470,7 +1626,7 @@ const VisualTemplateEditor = ({
     // Ignore selection of custom template (it's just a display item)
     if (templateId === 'custom') return;
 
-    const template = templates.find(t => t.id === parseInt(templateId));
+    const template = templates.find(t => t.id.toString() === templateId.toString());
     if (!template) return;
 
     // Check if there are differences that would be lost
@@ -1513,7 +1669,7 @@ const VisualTemplateEditor = ({
   // Handle custom template creation cancellation (revert to original template)
   const handleCustomConfirmCancel = () => {
     if (initialTemplateConfig) {
-      setFooterConfig(JSON.parse(JSON.stringify(initialTemplateConfig)));
+      setTemplateConfig(JSON.parse(JSON.stringify(initialTemplateConfig)));
       setHasCustomChanges(false);
     }
     setShowCustomConfirmation(false);
@@ -1524,124 +1680,50 @@ const VisualTemplateEditor = ({
     if (!templateId) return;
 
     try {
-      const template = templates.find(t => t.id === parseInt(templateId));
+      const template = templates.find(t => t.id.toString() === templateId.toString());
       if (!template) {
         cerror('Template not found:', templateId);
         return;
       }
 
       clog('🎨 Applying template:', template);
+      clog('🎨 Template data structure:', JSON.stringify(template.template_data, null, 2));
 
       let newConfig;
-      if (templateType === 'watermark') {
-        // Handle watermark template - check if it's legacy format and convert
-        if (template.template_data.logo && !template.template_data.logoElements) {
-          // Legacy watermark template with logo/text/url structure - convert to new structure
-          clog('🔄 Converting legacy watermark template to new structure');
 
-          newConfig = {
-            logo: {
-              visible: true,
-              url: logo, // Always use imported logo
-              position: { x: 15, y: 15 },
-              style: { size: 60, opacity: 30 }
-            },
-            text: {
-              visible: true,
-              content: template.template_data.text?.content || 'לתצוגה בלבד',
-              position: template.template_data.text?.position || { x: 50, y: 50 },
-              style: {
-                fontSize: template.template_data.text?.style?.fontSize || 24,
-                color: template.template_data.text?.style?.color || '#FF6B6B',
-                bold: template.template_data.text?.style?.bold !== false,
-                italic: template.template_data.text?.style?.italic || false,
-                opacity: template.template_data.text?.style?.opacity || 40,
-                width: template.template_data.text?.style?.width || 300,
-                rotation: template.template_data.text?.style?.rotation || 0,
-                fontFamily: template.template_data.text?.style?.fontFamily || 'Arial, sans-serif'
-              }
-            },
-            url: {
-              visible: template.template_data.url?.visible || false,
-              href: template.template_data.url?.href || 'https://ludora.app',
-              position: template.template_data.url?.position || { x: 50, y: 85 },
-              style: template.template_data.url?.style || {
-                fontSize: 12,
-                color: '#0066cc',
-                bold: false,
-                italic: false,
-                opacity: 100
-              }
-            },
-            customElements: {
-              // Convert legacy logo to custom element
-              'watermark-logo-legacy': {
-                id: 'watermark-logo-legacy',
-                type: 'watermark-logo',
-                visible: template.template_data.logo?.visible !== false,
-                position: template.template_data.logo?.position || { x: 85, y: 15 },
-                style: {
-                  size: template.template_data.logo?.style?.size || 60,
-                  opacity: template.template_data.logo?.style?.opacity || 30,
-                  rotation: template.template_data.logo?.style?.rotation || 0
-                },
-                url: logo, // Use imported logo asset
-                deletable: true
-              }
-            },
-            globalSettings: template.template_data.globalSettings || {
-              layerBehindContent: false,
-              preserveReadability: true
-            }
-          };
-        } else {
-          // Modern watermark template - use as-is but fix logo URLs
-          newConfig = {
-            ...template.template_data,
-            text: {
-              ...template.template_data.text,
-              content: template.template_data.text?.content || 'לתצוגה בלבד'
-            },
-            logo: {
-              ...template.template_data.logo,
-              url: logo // Use the logo from assets
-            }
-          };
+      // Apply template data directly - our new templates already have the correct structure
+      newConfig = {
+        ...template.template_data
+        // Logo uses static file, no URL needed
+      };
 
-          // Fix any custom elements that might have legacy logo URLs
-          if (newConfig.customElements) {
-            Object.keys(newConfig.customElements).forEach(elementId => {
-              const element = newConfig.customElements[elementId];
-              if (element.type === 'logo' || element.type === 'watermark-logo') {
-                // Replace any legacy logo URLs with imported asset
-                if (element.url && typeof element.url === 'string' &&
-                    (element.url.includes('ludora.app/logo.png') || element.url.includes('/api/assets/image/settings/logo.png'))) {
-                  element.url = logo;
-                  clog(`🔧 Fixed legacy logo URL in custom element ${elementId}`);
-                }
-              }
-            });
-          }
-        }
+      clog('🎨 New config after template application:', JSON.stringify(newConfig, null, 2));
 
-        clog('🔧 Applied watermark template (converted structure):', newConfig);
-      } else {
-        // Handle footer/header template - use as-is with system content
-        newConfig = {
-          ...template.template_data,
-          text: {
-            ...template.template_data.text,
-            content: copyrightText // Always preserve system copyright text
-          },
-          logo: {
-            ...template.template_data.logo,
-            url: logo // Use the logo from assets
-          }
+      // For branding templates, preserve system copyright text
+      if (templateType === 'branding') {
+        newConfig.text = {
+          ...template.template_data.text,
+          content: copyrightText // Always preserve system copyright text
         };
-        clog('🎨 Applied footer/header template config:', newConfig);
       }
 
-      setFooterConfig(newConfig);
+      // Remove any logo URLs from custom elements - logos should only use static files
+      if (newConfig.customElements) {
+        Object.keys(newConfig.customElements).forEach(elementId => {
+          const element = newConfig.customElements[elementId];
+          if (element.type === 'logo' || element.type === 'watermark-logo') {
+            // Remove URL property - logo elements should only use static files
+            if (element.url) {
+              delete element.url;
+              clog(`🔧 Removed logo URL from custom element ${elementId} - using static file only`);
+            }
+          }
+        });
+      }
+
+      clog('🎨 Applied template config:', newConfig);
+
+      setTemplateConfig(newConfig);
 
       // Update the selected template ID to reflect the applied template
       setSelectedTemplateId(templateId);
@@ -1654,8 +1736,8 @@ const VisualTemplateEditor = ({
 
       // Notify parent component of template change
       if (onTemplateChange) {
-        const selectedTemplate = templates.find(t => t.id === parseInt(templateId));
-        onTemplateChange(parseInt(templateId), selectedTemplate);
+        const selectedTemplate = templates.find(t => t.id.toString() === templateId.toString());
+        onTemplateChange(templateId, selectedTemplate);
       }
 
       // Clear any selected item
@@ -1668,7 +1750,7 @@ const VisualTemplateEditor = ({
         setLastSavedSnapshot(JSON.parse(JSON.stringify(newConfig)));
       }, 100);
 
-      clog(`✅ Applied template: ${template.name} - now working on independent footer config`);
+      clog(`✅ Applied template: ${template.name} - now working on independent branding config`);
     } catch (error) {
       cerror('Error applying template:', error);
     }
@@ -1676,24 +1758,38 @@ const VisualTemplateEditor = ({
 
   // Dynamic title based on template type and target format
   const getPageTitle = () => {
+    let baseTitle;
+
     if (fileEntityId !== null) {
       // Real file mode - different titles based on template type
       switch (templateType) {
-        case 'header':
-          return 'עיצוב כותרת עליונה';
+        case 'branding':
+          baseTitle = 'עיצוב מיתוג';
+          break;
         case 'watermark':
-          return 'עיצוב סימן מים';
-        case 'footer':
+          baseTitle = 'עיצוב סימן מים';
+          break;
         default:
-          return 'עיצוב כותרת תחתונה';
+          baseTitle = 'עיצוב תבנית';
+      }
+
+      // Add product context if we have fileEntity information
+      if (fileEntity?.name && fileEntity?.type) {
+        const productName = fileEntity.name.length > 20
+          ? fileEntity.name.substring(0, 17) + '...'
+          : fileEntity.name;
+        const productType = fileEntity.type === 'Course' ? 'קורס' :
+                          fileEntity.type === 'Workshop' ? 'סדנה' :
+                          fileEntity.type === 'LessonPlan' ? 'מצגת' :
+                          fileEntity.type;
+        baseTitle += ` - עבור ${productType} ${productName}`;
       }
     } else {
-      // Template creation mode - titles based on template type + target format
-      const baseTitle = {
-        header: 'עיצוב תבנית כותרת עליונה',
-        watermark: 'עיצוב תבנית סימן מים',
-        footer: 'עיצוב תבנית כותרת תחתונה'
-      }[templateType] || 'עיצוב תבנית כותרת תחתונה';
+      // Template creation/editing mode from template manager
+      const templateBaseTitle = {
+        branding: 'עיצוב תבנית מיתוג',
+        watermark: 'עיצוב תבנית סימן מים'
+      }[templateType] || 'עיצוב תבנית';
 
       const formatSuffix = {
         'pdf-a4-portrait': ' (PDF אנכי)',
@@ -1701,8 +1797,22 @@ const VisualTemplateEditor = ({
         'svg-lessonplan': ' (SVG מצגת)'
       }[targetFormat] || '';
 
-      return baseTitle + formatSuffix;
+      baseTitle = templateBaseTitle + formatSuffix;
+
+      // Add system template context if opened from template manager
+      if (currentTemplateId) {
+        const currentTemplate = templates.find(t => t.id.toString() === currentTemplateId.toString());
+        if (currentTemplate) {
+          const isDefault = currentTemplate.is_default;
+          baseTitle += ' - תבנית מערכת';
+          if (isDefault) {
+            baseTitle += ' ⭐';
+          }
+        }
+      }
     }
+
+    return baseTitle;
   };
 
   // Dynamic subtitle based on template type and mode
@@ -1710,26 +1820,213 @@ const VisualTemplateEditor = ({
     if (fileEntityId !== null) {
       // Real file mode
       switch (templateType) {
-        case 'header':
-          return 'התאם אישית את מיקום ועיצוב הכותרת העליונה';
+        case 'branding':
+          return 'התאם אישית את מיקום ועיצוב המיתוג';
         case 'watermark':
           return 'התאם אישית את מיקום ועיצוב סימן המים';
-        case 'footer':
         default:
-          return 'התאם אישית את מיקום ועיצוב הכותרת התחתונה';
+          return 'התאם אישית את מיקום ועיצוב התבנית';
       }
     } else {
       // Template creation mode
       switch (templateType) {
-        case 'header':
-          return 'צור ועצב תבנית כותרת עליונה חדשה';
+        case 'branding':
+          return 'צור ועצב תבנית מיתוג חדשה';
         case 'watermark':
           return 'צור ועצב תבנית סימן מים חדשה';
-        case 'footer':
         default:
-          return 'צור ועצב תבנית כותרת תחתונה חדשה';
+          return 'צור ועצב תבנית חדשה';
       }
     }
+  };
+
+  // Context information to display in header
+  const getContextInfo = () => {
+    // Show context for both template manager and product editing modes
+    const contextItems = [];
+
+    if (fileEntityId === null) {
+      // Template manager mode - still show some context
+
+      // Show template type if we know it
+      if (templateType) {
+        const typeLabel = templateType === 'branding' ? 'מיתוג' :
+                         templateType === 'watermark' ? 'סימן מים' :
+                         templateType;
+        contextItems.push(
+          <span key="templateType" className="bg-indigo-100 text-indigo-700 px-2 py-1 rounded text-xs font-medium">
+            🎨 {typeLabel}
+          </span>
+        );
+      }
+
+      // Show target format if we know it
+      if (targetFormat) {
+        const formatLabel = targetFormat === 'pdf-a4-portrait' ? 'PDF אנכי' :
+                           targetFormat === 'pdf-a4-landscape' ? 'PDF אופקי' :
+                           targetFormat === 'svg-lessonplan' ? 'SVG מצגת' :
+                           targetFormat;
+        contextItems.push(
+          <span key="fallbackFormat" className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs font-medium">
+            📄 {formatLabel}
+          </span>
+        );
+      }
+
+      // Add template manager badge
+      contextItems.push(
+        <span key="mode" className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-medium">
+          ⚙️ עריכת תבנית
+        </span>
+      );
+    } else {
+      // Product editing mode - show product context
+
+      // Product information (for product editing mode)
+      if (fileEntity) {
+        // Product type - check both type and product_type fields
+        const productType = fileEntity.type || fileEntity.product_type;
+        if (productType) {
+          const typeLabel = productType === 'Course' ? 'קורס' :
+                           productType === 'Workshop' ? 'סדנה' :
+                           productType === 'LessonPlan' ? 'מצגת' :
+                           productType === 'file' ? 'קובץ' :
+                           productType;
+          contextItems.push(
+            <span key="type" className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-medium">
+              📚 {typeLabel}
+            </span>
+          );
+        }
+
+        // Product name - check both name and title fields
+        const productName = fileEntity.name || fileEntity.title;
+        if (productName) {
+          const displayName = productName.length > 25
+            ? productName.substring(0, 22) + '...'
+            : productName;
+          contextItems.push(
+            <span key="name" className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-medium">
+              📝 {displayName}
+            </span>
+          );
+        }
+
+        // Target format
+        if (fileEntity.target_format || targetFormat) {
+          const format = fileEntity.target_format || targetFormat;
+          const formatLabel = format === 'pdf-a4-portrait' ? 'PDF אנכי' :
+                             format === 'pdf-a4-landscape' ? 'PDF אופקי' :
+                             format === 'svg-lessonplan' ? 'SVG מצגת' :
+                             format;
+          contextItems.push(
+            <span key="format" className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs font-medium">
+              📄 {formatLabel}
+            </span>
+          );
+        }
+      } else {
+        // Fallback information when fileEntity is not available but we have a fileEntityId
+        contextItems.push(
+          <span key="product" className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-medium">
+            📝 עריכת מוצר
+          </span>
+        );
+
+        // Show template type if we know it
+        if (templateType) {
+          const typeLabel = templateType === 'branding' ? 'מיתוג' :
+                           templateType === 'watermark' ? 'סימן מים' :
+                           templateType;
+          contextItems.push(
+            <span key="templateType" className="bg-indigo-100 text-indigo-700 px-2 py-1 rounded text-xs font-medium">
+              🎨 {typeLabel}
+            </span>
+          );
+        }
+
+        // Show target format if we know it
+        if (targetFormat) {
+          const formatLabel = targetFormat === 'pdf-a4-portrait' ? 'PDF אנכי' :
+                             targetFormat === 'pdf-a4-landscape' ? 'PDF אופקי' :
+                             targetFormat === 'svg-lessonplan' ? 'SVG מצגת' :
+                             targetFormat;
+          contextItems.push(
+            <span key="fallbackFormat" className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs font-medium">
+              📄 {formatLabel}
+            </span>
+          );
+        }
+      }
+    }
+
+    // Template source information
+    if (selectedTemplateId && templates.length > 0) {
+      const currentTemplate = templates.find(t => t.id.toString() === selectedTemplateId.toString());
+      if (currentTemplate) {
+        const isSystemTemplate = true; // All templates from API are system templates
+        const isDefault = currentTemplate.is_default;
+
+        let templateLabel = 'תבנית מערכת';
+        if (isDefault) {
+          templateLabel += ' (ברירת מחדל)';
+        }
+
+        contextItems.push(
+          <span key="template" className="bg-orange-100 text-orange-700 px-2 py-1 rounded text-xs font-medium">
+            🎨 {templateLabel}
+          </span>
+        );
+      }
+    } else if (selectedTemplateId === 'custom' || hasCustomChanges) {
+      contextItems.push(
+        <span key="custom" className="bg-amber-100 text-amber-700 px-2 py-1 rounded text-xs font-medium">
+          ✏️ תבנית מותאמת אישית
+        </span>
+      );
+    }
+
+    return contextItems.length > 0 ? contextItems : null;
+  };
+
+  // Handle toggle template elements visibility (visual only, no config changes)
+  const handleToggleTemplateElementsVisibility = () => {
+    setShowTemplateElements(!showTemplateElements);
+    clog(`👁️ Template elements visibility toggled to: ${!showTemplateElements}`);
+  };
+
+  // Handle clear all elements from template (with confirmation)
+  const handleClearAllElements = () => {
+    setShowClearAllConfirmation(true);
+  };
+
+  // Confirm clearing all elements
+  const handleConfirmClearAll = () => {
+    const newConfig = {
+      ...templateConfig,
+      customElements: {} // Clear all custom elements
+    };
+
+    // Reset built-in elements to default invisible state if they exist
+    ['logo', 'text', 'url', 'copyright-text', 'user-info', 'watermark-logo'].forEach(elementType => {
+      if (newConfig[elementType]) {
+        newConfig[elementType] = {
+          ...newConfig[elementType],
+          visible: false
+        };
+      }
+    });
+
+    setTemplateConfig(newConfig);
+    setShowClearAllConfirmation(false);
+    setSelectedItem(null);
+    setFocusedItem(null);
+    clog('🗑️ Cleared all template elements');
+  };
+
+  // Cancel clearing all elements
+  const handleCancelClearAll = () => {
+    setShowClearAllConfirmation(false);
   };
 
   const handleClose = () => {
@@ -1737,20 +2034,20 @@ const VisualTemplateEditor = ({
     setCurrentPage(1);
 
     // Reset to the originally loaded config
-    if (initialFooterConfig) {
-      setFooterConfig({
-        ...initialFooterConfig,
-        text: { ...initialFooterConfig.text, content: copyrightText },
-        logo: { ...initialFooterConfig.logo, url: logo }
+    if (initialTemplateConfig) {
+      setTemplateConfig({
+        ...initialTemplateConfig,
+        text: { ...initialTemplateConfig.text, content: copyrightText },
+        logo: { ...initialTemplateConfig.logo, url: logo }
       });
-    } else if (loadedFooterSettings) {
-      setFooterConfig({
-        logo: { ...loadedFooterSettings.logo, url: logo },
-        text: { ...loadedFooterSettings.text, content: copyrightText },
-        url: { ...loadedFooterSettings.url }
+    } else if (loadedBrandingSettings) {
+      setTemplateConfig({
+        logo: { ...loadedBrandingSettings.logo, url: logo },
+        text: { ...loadedBrandingSettings.text, content: copyrightText },
+        url: { ...loadedBrandingSettings.url }
       });
     } else {
-      setFooterConfig(getDefaultConfig(copyrightText));
+      setTemplateConfig(getDefaultConfig());
     }
 
     onClose();
@@ -1766,13 +2063,22 @@ const VisualTemplateEditor = ({
         <div className="flex flex-col h-[98vh]">
           {/* Modern Header with gradient */}
           <div className="px-6 py-4 border-b flex items-center justify-between bg-gradient-to-r from-blue-50 to-indigo-50">
-            <div>
+            <div className="flex-1">
               <h2 className="text-2xl font-bold text-gray-800">
                 {getPageTitle()}
               </h2>
               <p className="text-sm text-gray-600 mt-1">
                 {getPageSubtitle()}
               </p>
+              {/* Context Information */}
+              {(() => {
+                const contextInfo = getContextInfo();
+                return contextInfo && (
+                  <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
+                    {contextInfo}
+                  </div>
+                );
+              })()}
             </div>
             <div className="flex items-center gap-3">
               {/* Undo/Redo Controls */}
@@ -1805,40 +2111,73 @@ const VisualTemplateEditor = ({
                 </Button>
               </div>
 
-              {/* Template Picker */}
-              <div className="flex items-center gap-2">
-                <Palette className="w-4 h-4 text-purple-600" />
-                <Select
-                  value={selectedTemplateId || ""}
-                  onValueChange={handleTemplateSelect}
-                  disabled={isLoadingTemplates}
+              {/* File Content Visibility Toggle and Template Management */}
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowFileContent(!showFileContent)}
+                  className="h-8 w-8 p-0 border-slate-300 hover:bg-slate-50"
+                  title={showFileContent ? 'הסתר קובץ רקע' : 'הצג קובץ רקע'}
                 >
-                  <SelectTrigger className="w-40 text-sm border-purple-300 text-purple-700 hover:bg-purple-50">
-                    <SelectValue placeholder="בחר תבנית" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {selectedTemplateId === 'custom' && (
-                      <SelectItem value="custom">
-                        <div className="flex items-center gap-2">
-                          <span className="text-orange-600">🎨</span>
-                          <span>תבנית מותאמת אישית</span>
-                        </div>
-                      </SelectItem>
-                    )}
-                    {templates.length > 0 ? (
-                      templates.map((template) => (
-                        <SelectItem key={template.id} value={template.id.toString()}>
-                          {formatTemplateName(template)}
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="none" disabled>
-                        {isLoadingTemplates ? 'טוען תבניות...' : 'אין תבניות זמינות'}
-                      </SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
+                  {showFileContent ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleToggleTemplateElementsVisibility}
+                  className="h-8 w-8 p-0 border-slate-300 hover:bg-slate-50"
+                  title={showTemplateElements ? 'הסתר אלמנטי תבנית' : 'הצג אלמנטי תבנית'}
+                >
+                  <Layers className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleClearAllElements}
+                  className="h-8 w-8 p-0 border-slate-300 hover:bg-red-50 hover:border-red-300"
+                  title="נקה את כל האלמנטים מהתבנית"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
               </div>
+
+              {/* Template Picker - Only show for file editing mode */}
+              {fileEntityId !== null && (
+                <div className="flex items-center gap-2">
+                  <Palette className="w-4 h-4 text-purple-600" />
+                  <Select
+                    value={selectedTemplateId || ""}
+                    onValueChange={handleTemplateSelect}
+                    disabled={isLoadingTemplates}
+                  >
+                    <SelectTrigger className="w-40 text-sm border-purple-300 text-purple-700 hover:bg-purple-50">
+                      <SelectValue placeholder="בחר תבנית" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {selectedTemplateId === 'custom' && (
+                        <SelectItem value="custom">
+                          <div className="flex items-center gap-2">
+                            <span className="text-orange-600">🎨</span>
+                            <span>תבנית מותאמת אישית</span>
+                          </div>
+                        </SelectItem>
+                      )}
+                      {templates.length > 0 ? (
+                        templates.map((template) => (
+                          <SelectItem key={template.id} value={template.id.toString()}>
+                            {formatTemplateName(template)}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="none" disabled>
+                          {isLoadingTemplates ? 'טוען תבניות...' : 'אין תבניות זמינות'}
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               <Button onClick={handleSave} className="gap-2 bg-blue-600 hover:bg-blue-700 shadow-md">
                 <Save className="w-4 h-4" />
@@ -1854,41 +2193,62 @@ const VisualTemplateEditor = ({
           {/* Main content area - responsive layout */}
           <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
             {/* PDF Preview - responsive width */}
-            <div className="flex-1 flex flex-col bg-gray-100 p-4 lg:p-6 overflow-hidden">
+            <div className="flex-1 flex flex-col bg-gray-100 overflow-hidden">
               {pdfBlobUrl ? (
                 <TemplateCanvas
                   pdfUrl={pdfBlobUrl}
-                  footerConfig={footerConfig}
-                  onPageChange={setCurrentPage}
-                  onFooterConfigChange={handleConfigChange}
+                  templateConfig={templateConfig}
+                  onPageChange={targetFormat === 'svg-lessonplan' ? handleSlideChange : setCurrentPage}
+                  onTemplateConfigChange={handleConfigChange}
                   focusedItem={focusedItem}
-                  currentPage={currentPage}
+                  currentPage={targetFormat === 'svg-lessonplan' ? currentSlideIndex + 1 : currentPage}
+                  numPages={targetFormat === 'svg-lessonplan' ? totalSlides : undefined}
                   groups={groups}
                   targetFormat={targetFormat} // Pass format for correct display dimensions
                   templateType={templateType} // Pass template type for correct rendering
+                  showFileContent={showFileContent} // Pass file content visibility state
+                  showTemplateElements={showTemplateElements} // Pass template elements visibility state
+                  currentUser={currentUser} // Pass current user for email template resolution
+                  fileId={fileEntityId} // Pass file ID for template content resolution
                 />
               ) : (isLoadingSettings || isLoadingPdf) ? (
                 <div className="flex items-center justify-center h-full">
-                  <LudoraLoadingSpinner />
-                  <span className="mr-2">
-                    {isLoadingPdf ? 'טוען קובץ PDF...' : 'טוען הגדרות...'}
-                  </span>
+                  <LudoraLoadingSpinner
+                    message={targetFormat === 'svg-lessonplan'
+                      ? 'טוען עורך תבניות SVG...'
+                      : 'טוען עורך תבניות PDF...'
+                    }
+                  />
                 </div>
               ) : (
                 <div className="flex items-center justify-center h-full">
                   <div className="text-center p-8 bg-white rounded-lg shadow-sm border border-gray-200 max-w-md">
-                    <div className="text-6xl mb-4">📄</div>
+                    <div className="text-6xl mb-4">
+                      {targetFormat === 'svg-lessonplan' ? '📐' : '📄'}
+                    </div>
                     <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                      {fileEntityId === null ? 'טוען תבנית עיצוב...' : 'אין קובץ PDF להצגה'}
+                      {fileEntityId === null
+                        ? 'טוען תבנית עיצוב...'
+                        : targetFormat === 'svg-lessonplan'
+                          ? 'אין שקפי SVG להצגה'
+                          : 'אין קובץ PDF להצגה'
+                      }
                     </h3>
                     <p className="text-sm text-gray-600 mb-4">
                       {fileEntityId === null
-                        ? 'טוען קובץ PDF לדוגמה עבור עיצוב התבנית...'
-                        : 'תוכל לערוך את הגדרות הכותרת התחתונה באמצעות הפאנל מצד ימין. לאחר שתעלה קובץ PDF תוכל לראות תצוגה מקדימה מלאה.'
+                        ? targetFormat === 'svg-lessonplan'
+                          ? 'טוען שקף SVG לדוגמה עבור עיצוב התבנית...'
+                          : 'טוען קובץ PDF לדוגמה עבור עיצוב התבנית...'
+                        : targetFormat === 'svg-lessonplan'
+                          ? 'תוכל לערוך את הגדרות המיתוג באמצעות הפאנל מצד ימין. לאחר שתעלה שקפי SVG תוכל לראות תצוגה מקדימה מלאה.'
+                          : 'תוכל לערוך את הגדרות הכותרת התחתונה באמצעות הפאנל מצד ימין. לאחר שתעלה קובץ PDF תוכל לראות תצוגה מקדימה מלאה.'
                       }
                     </p>
                     <p className="text-xs text-gray-500">
-                      השינויים יישמרו גם ללא קובץ PDF קיים
+                      {targetFormat === 'svg-lessonplan'
+                        ? 'השינויים יישמרו גם ללא שקפי SVG קיימים'
+                        : 'השינויים יישמרו גם ללא קובץ PDF קיים'
+                      }
                     </p>
                   </div>
                 </div>
@@ -1898,7 +2258,7 @@ const VisualTemplateEditor = ({
             {/* Enhanced Sidebar - modern tabbed interface */}
             <div className="w-full lg:w-80">
               <EnhancedSidebar
-                footerConfig={footerConfig}
+                templateConfig={templateConfig}
                 onItemClick={handleItemClick}
                 selectedItem={selectedItem}
                 userRole={userRole}
@@ -1938,7 +2298,7 @@ const VisualTemplateEditor = ({
           {/* Floating Settings Menu */}
           <FloatingSettingsMenu
             selectedItem={selectedItem}
-            footerConfig={footerConfig}
+            templateConfig={templateConfig}
             onConfigChange={updateConfig}
             onStyleChange={updateStyle}
             userRole={userRole}
@@ -1992,6 +2352,30 @@ const VisualTemplateEditor = ({
               </Button>
               <Button onClick={handleCustomConfirmCreate} className="bg-orange-600 hover:bg-orange-700">
                 צור תבנית מותאמת אישית
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Clear All Elements Confirmation Dialog */}
+      {showClearAllConfirmation && (
+        <Dialog open={showClearAllConfirmation} onOpenChange={handleCancelClearAll}>
+          <DialogContent className="max-w-md" dir="rtl">
+            <DialogTitle>ניקוי התבנית</DialogTitle>
+            <DialogDescription>
+              פעולה זו תמחק את כל האלמנטים מהתבנית.
+              <br /><br />
+              תוכל לבטל את הפעולה באמצעות כפתור הביטול (Undo).
+              <br /><br />
+              האם תרצה להמשיך?
+            </DialogDescription>
+            <div className="flex justify-end gap-3 mt-4">
+              <Button variant="outline" onClick={handleCancelClearAll}>
+                ביטול
+              </Button>
+              <Button variant="destructive" onClick={handleConfirmClearAll}>
+                נקה את כל האלמנטים
               </Button>
             </div>
           </DialogContent>

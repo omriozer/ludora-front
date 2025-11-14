@@ -53,7 +53,8 @@ const LessonPlanProductSection = ({
   updateFormData,
   editingProduct,
   isFieldValid,
-  getFieldError
+  getFieldError,
+  currentUser
 }) => {
   const navigate = useNavigate();
   const [uploadingFiles, setUploadingFiles] = useState({});
@@ -1248,6 +1249,11 @@ const LessonPlanProductSection = ({
               <AccessControlEditor
                 entityType="lessonplan"
                 entityId={editingProduct?.entity_id}
+                currentUser={currentUser} // Pass current user for email template resolution
+                fileEntity={{
+                  ...editingProduct,
+                  target_format: formData.target_format || editingProduct?.target_format || 'svg-lessonplan'
+                }} // Pass file entity for template filtering and context
                 onUpdate={(updatedEntity) => {
                   // Update the form data with the new access control settings
                   updateFormData({
@@ -1288,6 +1294,11 @@ const LessonPlanProductSection = ({
             }}
             fileExists={svgSlides.length > 0}
             userRole={editingProduct?.user?.role || 'user'}
+            currentUser={currentUser} // Pass current user for email template resolution
+            fileEntity={{
+              ...editingProduct,
+              target_format: formData.target_format || editingProduct?.target_format || 'svg-lessonplan'
+            }} // Pass file entity for template filtering and context
           />
         </div>
       )}

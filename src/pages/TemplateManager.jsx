@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import VisualTemplateEditor from "@/components/templates/VisualTemplateEditor";
 import logo from "@/assets/images/logo.png";
 import {
   FileText,
@@ -26,7 +27,8 @@ import {
   Monitor,
   Layout,
   RectangleHorizontal,
-  RectangleVertical
+  RectangleVertical,
+  Paintbrush
 } from "lucide-react";
 
 export default function TemplateManager() {
@@ -42,6 +44,8 @@ export default function TemplateManager() {
   const [message, setMessage] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [showTemplateTypeSelector, setShowTemplateTypeSelector] = useState(false);
+  const [showVisualEditor, setShowVisualEditor] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState(null);
 
   // Target format options
   const targetFormats = [
@@ -302,6 +306,71 @@ export default function TemplateManager() {
     });
   };
 
+  // Handle opening visual editor for existing template
+  const handleOpenVisualEditor = (template) => {
+    const supportedFormats = ['pdf-a4-portrait', 'pdf-a4-landscape', 'svg-lessonplan'];
+    const supportedTypes = ['branding', 'watermark'];
+
+    if (!supportedTypes.includes(template.template_type)) {
+      toast({
+        title: "עורך ויזואלי לא זמין",
+        description: "סוג תבנית לא נתמך",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!supportedFormats.includes(template.target_format)) {
+      toast({
+        title: "עורך ויזואלי לא זמין",
+        description: "פורמט תבנית לא נתמך",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setEditingTemplate(template);
+    setShowVisualEditor(true);
+  };
+
+  // Handle saving from visual editor
+  const handleSaveFromVisualEditor = async (templateConfig) => {
+    if (!editingTemplate) return;
+
+    setIsUpdating(true);
+    try {
+      const updatedTemplate = {
+        ...editingTemplate,
+        template_data: templateConfig
+      };
+
+      const result = await apiRequest(`/system-templates/${editingTemplate.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(updatedTemplate)
+      });
+
+      setMessage({ type: 'success', text: 'תבנית עודכנה בהצלחה בעורך הויזואלי' });
+      await loadTemplates();
+      setShowVisualEditor(false);
+      setEditingTemplate(null);
+    } catch (error) {
+      cerror('Error saving template from visual editor:', error);
+      toast({
+        title: "שגיאה בשמירת התבנית",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+    setIsUpdating(false);
+    setTimeout(() => setMessage(null), 3000);
+  };
+
+  // Handle closing visual editor
+  const handleCloseVisualEditor = () => {
+    setShowVisualEditor(false);
+    setEditingTemplate(null);
+  };
+
   if (userLoading || isLoading) {
     return (
       <div className="p-4 md:p-8 bg-gray-50 min-h-screen flex items-center justify-center">
@@ -488,26 +557,34 @@ export default function TemplateManager() {
                         <Button
                           variant="outline"
                           size="sm"
+                          onClick={() => handleOpenVisualEditor(template)}
+                          disabled={isUpdating || !(['branding', 'watermark'].includes(template.template_type) && ['pdf-a4-portrait', 'pdf-a4-landscape', 'svg-lessonplan'].includes(template.target_format))}
+                          className="text-purple-600 hover:bg-purple-50 disabled:text-gray-400"
+                          title={(['branding', 'watermark'].includes(template.template_type) && ['pdf-a4-portrait', 'pdf-a4-landscape', 'svg-lessonplan'].includes(template.target_format)) ? "עורך ויזואלי" : "עורך ויזואלי לא זמין"}
+                        >
+                          <Paintbrush className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() => handleDuplicateTemplate(template.id, template.name)}
                           disabled={isUpdating}
                           className="text-green-600 hover:bg-green-50"
                         >
                           <Copy className="w-4 h-4" />
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDeleteTemplate(template.id)}
-                          disabled={isUpdating || (template.is_default && template.created_by === 'system_migration')}
-                          className={`${(template.is_default && template.created_by === 'system_migration')
-                            ? 'text-gray-400 cursor-not-allowed'
-                            : 'text-red-600 hover:bg-red-50'}`}
-                          title={(template.is_default && template.created_by === 'system_migration')
-                            ? 'לא ניתן למחוק תבניות ברירת מחדל של המערכת'
-                            : 'מחק תבנית'}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        {!template.is_default && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeleteTemplate(template.id)}
+                            disabled={isUpdating}
+                            className="text-red-600 hover:bg-red-50"
+                            title="מחק תבנית"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -560,6 +637,16 @@ export default function TemplateManager() {
                         <Button
                           variant="outline"
                           size="sm"
+                          onClick={() => handleOpenVisualEditor(template)}
+                          disabled={isUpdating || !(['branding', 'watermark'].includes(template.template_type) && ['pdf-a4-portrait', 'pdf-a4-landscape', 'svg-lessonplan'].includes(template.target_format))}
+                          className="text-purple-600 hover:bg-purple-50 disabled:text-gray-400"
+                          title={(['branding', 'watermark'].includes(template.template_type) && ['pdf-a4-portrait', 'pdf-a4-landscape', 'svg-lessonplan'].includes(template.target_format)) ? "עורך ויזואלי" : "עורך ויזואלי לא זמין"}
+                        >
+                          <Paintbrush className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() => handleSetDefault(template.id)}
                           disabled={isUpdating}
                           className="text-yellow-600 hover:bg-yellow-50"
@@ -576,15 +663,18 @@ export default function TemplateManager() {
                         >
                           <Copy className="w-4 h-4" />
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDeleteTemplate(template.id)}
-                          disabled={isUpdating}
-                          className="text-red-600 hover:bg-red-50"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        {!template.is_default && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeleteTemplate(template.id)}
+                            disabled={isUpdating}
+                            className="text-red-600 hover:bg-red-50"
+                            title="מחק תבנית"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -647,6 +737,22 @@ export default function TemplateManager() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Visual Editor Modal */}
+        {showVisualEditor && editingTemplate && (
+          <VisualTemplateEditor
+            isOpen={showVisualEditor}
+            onClose={handleCloseVisualEditor}
+            onSave={handleSaveFromVisualEditor}
+            fileEntityId={null} // No file - template mode
+            userRole={currentUser?.role}
+            currentUser={currentUser} // Pass full user object for email resolution
+            initialTemplateConfig={editingTemplate.template_data}
+            targetFormat={editingTemplate.target_format}
+            templateType={editingTemplate.template_type}
+            currentTemplateId={editingTemplate.id} // Pass template ID for auto-application and title context
+          />
+        )}
 
       </div>
     </div>

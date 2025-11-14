@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { apiUploadWithProgress, apiRequest } from '@/services/apiClient';
 import { getApiBase } from '@/utils/api.js';
 import { toast } from '@/components/ui/use-toast';
+import { clog, cerror } from '@/lib/utils';
 
 /**
  * Unified Asset Upload Hook
@@ -84,7 +85,7 @@ export const useUnifiedAssetUploads = (editingProduct = null) => {
    * - System assets (logo, audio): Use direct entity access
    */
   const getEntityMapping = useCallback((product, assetType, originalFileType = null) => {
-    console.log(`🔍 START getEntityMapping:`, {
+    clog('START getEntityMapping:', {
       assetType,
       originalFileType,
       productType: product?.product_type,
@@ -94,7 +95,7 @@ export const useUnifiedAssetUploads = (editingProduct = null) => {
     });
 
     if (!product) {
-      console.log(`❌ No product provided to getEntityMapping`);
+      clog('No product provided to getEntityMapping');
       return null;
     }
 
@@ -102,7 +103,7 @@ export const useUnifiedAssetUploads = (editingProduct = null) => {
     // Use originalFileType if provided (before API mapping), otherwise use assetType
     const typeForClassification = originalFileType || assetType;
     const assetLayer = getAssetLayer(typeForClassification);
-    console.log(`🎯 Asset layer classification:`, { typeForClassification, assetLayer });
+    clog('Asset layer classification:', { typeForClassification, assetLayer });
 
     let entityType;
     let entityId;
@@ -110,7 +111,7 @@ export const useUnifiedAssetUploads = (editingProduct = null) => {
     switch (assetLayer) {
       case 'marketing':
         // Marketing assets: ALWAYS use product.id + actual product_type (NOT mapped)
-        console.log(`📸 Processing MARKETING asset:`, assetType);
+        clog('Processing MARKETING asset:', assetType);
         entityType = product.product_type; // Use actual product_type for marketing assets
         entityId = product.id; // ALWAYS use product.id for marketing assets
 
@@ -119,7 +120,7 @@ export const useUnifiedAssetUploads = (editingProduct = null) => {
           throw new Error(`Invalid product ID for marketing asset: ${entityId}`);
         }
 
-        console.log(`📸 Marketing asset result:`, {
+        clog('Marketing asset result:', {
           productType: product.product_type,
           entityType: entityType, // Uses actual product_type for marketing assets
           entityId,
@@ -129,7 +130,7 @@ export const useUnifiedAssetUploads = (editingProduct = null) => {
 
       case 'content':
         // Content assets: Use entity layer (entity_id + entity_type)
-        console.log(`📄 Processing CONTENT asset:`, assetType);
+        clog('Processing CONTENT asset:', assetType);
         switch (product.product_type) {
           case 'file':
           case 'lesson_plan':
@@ -159,7 +160,7 @@ export const useUnifiedAssetUploads = (editingProduct = null) => {
           throw new Error(`Invalid entity ID for content asset: ${entityId}`);
         }
 
-        console.log(`📄 Content asset result:`, {
+        clog('Content asset result:', {
           entityType,
           entityId,
           source: 'product.entity_id'
@@ -168,7 +169,7 @@ export const useUnifiedAssetUploads = (editingProduct = null) => {
 
       case 'system':
         // System assets: Direct entity access
-        console.log(`⚙️ Processing SYSTEM asset:`, assetType);
+        clog('Processing SYSTEM asset:', assetType);
         entityType = assetType; // 'logo', 'audio', etc.
         entityId = product.entity_id || product.id;
 
@@ -177,7 +178,7 @@ export const useUnifiedAssetUploads = (editingProduct = null) => {
           throw new Error(`Invalid entity ID for system asset: ${entityId}`);
         }
 
-        console.log(`⚙️ System asset result:`, {
+        clog('System asset result:', {
           entityType,
           entityId,
           source: 'direct entity'
@@ -191,12 +192,12 @@ export const useUnifiedAssetUploads = (editingProduct = null) => {
     // Final validation
     if (!entityId) {
       const error = `Missing entity ID for ${product.product_type} product (${assetLayer} asset)`;
-      console.error(`❌ ${error}`);
+      cerror(error);
       throw new Error(error);
     }
 
     const result = { entityType, entityId, assetLayer };
-    console.log(`✅ FINAL getEntityMapping result:`, {
+    clog('FINAL getEntityMapping result:', {
       ...result,
       assetType,
       productType: product.product_type
@@ -294,7 +295,7 @@ export const useUnifiedAssetUploads = (editingProduct = null) => {
         return { exists: false };
       }
 
-      console.error(`Error checking ${assetType} existence:`, error);
+      cerror(`Error checking ${assetType} existence:`, error);
       return { exists: false };
     }
   }, []);
@@ -320,7 +321,7 @@ export const useUnifiedAssetUploads = (editingProduct = null) => {
             [assetType]: info
           }));
         } catch (error) {
-          console.error(`Error checking ${assetType}:`, error);
+          cerror(`Error checking ${assetType}:`, error);
         }
       });
     }
@@ -368,7 +369,7 @@ export const useUnifiedAssetUploads = (editingProduct = null) => {
       const mappedAssetType = getAssetType(fileType, isPublic);
 
       // Get enhanced entity mapping with validation
-      console.log(`🚀 UPLOAD: About to call getEntityMapping with:`, {
+      clog('UPLOAD: About to call getEntityMapping with:', {
         productType: editingProduct.product_type,
         productId: editingProduct.id,
         entityId: editingProduct.entity_id,
@@ -378,7 +379,7 @@ export const useUnifiedAssetUploads = (editingProduct = null) => {
 
       const mapping = getEntityMapping(editingProduct, mappedAssetType, fileType);
 
-      console.log(`📋 UPLOAD: Enhanced getEntityMapping result:`, mapping);
+      clog('UPLOAD: Enhanced getEntityMapping result:', mapping);
 
       if (!mapping) {
         throw new Error('לא ניתן לקבוע את סוג הישות עבור מוצר זה');
@@ -391,7 +392,7 @@ export const useUnifiedAssetUploads = (editingProduct = null) => {
         throw new Error(`Missing required entity information: entityType=${entityType}, entityId=${entityId}`);
       }
 
-      console.log(`🎯 UPLOAD: Final entity info for API call:`, { entityType, entityId, fileType });
+      clog('UPLOAD: Final entity info for API call:', { entityType, entityId, fileType });
 
       // Validate business rules
       // Note: File replacement should always be allowed, even for published products
@@ -442,7 +443,7 @@ export const useUnifiedAssetUploads = (editingProduct = null) => {
           throw new Error(`סוג קובץ לא נתמך: ${fileType}`);
       }
 
-      console.log(`📤 Standardized upload: ${endpoint}`);
+      clog('Standardized upload:', endpoint);
 
       // Perform upload with progress tracking
       const result = await apiUploadWithProgress(
@@ -465,18 +466,18 @@ export const useUnifiedAssetUploads = (editingProduct = null) => {
 
         // Update product in database with standardized fields
         if (Object.keys(updateData).length > 0) {
-          console.log(`🔄 Updating product ${editingProduct.id} with:`, updateData);
+          clog(`Updating product ${editingProduct.id} with:`, updateData);
           try {
             const updateResponse = await apiRequest(`/entities/product/${editingProduct.id}`, {
               method: 'PUT',
               body: JSON.stringify(updateData)
             });
 
-            console.log(`📊 Database update response:`, updateResponse);
+            clog('Database update response:', updateResponse);
 
             // Check if update was successful - API returns updated product object directly
             if (!updateResponse || !updateResponse.id) {
-              console.error('❌ Failed to update product after asset upload:', {
+              cerror('Failed to update product after asset upload:', {
                 response: updateResponse,
                 updateData,
                 productId: editingProduct.id
@@ -487,14 +488,14 @@ export const useUnifiedAssetUploads = (editingProduct = null) => {
                 variant: "destructive"
               });
             } else {
-              console.log(`✅ Product database update successful:`, {
+              clog('Product database update successful:', {
                 productId: updateResponse.id,
                 hasImage: updateResponse.has_image,
                 imageFilename: updateResponse.image_filename
               });
             }
           } catch (dbError) {
-            console.error('❌ Database update error after asset upload:', {
+            cerror('Database update error after asset upload:', {
               error: dbError,
               updateData,
               productId: editingProduct.id
@@ -506,7 +507,7 @@ export const useUnifiedAssetUploads = (editingProduct = null) => {
             });
           }
         } else {
-          console.log(`ℹ️ No database update needed - no updateData fields`);
+          clog('No database update needed - no updateData fields');
         }
 
         toast({
@@ -521,7 +522,7 @@ export const useUnifiedAssetUploads = (editingProduct = null) => {
       }
 
     } catch (error) {
-      console.error(`❌ Upload error for ${fileType}:`, error);
+      cerror(`Upload error for ${fileType}:`, error);
       toast({
         title: "שגיאה בהעלאה",
         description: error.message || 'אירעה שגיאה בהעלאת הקובץ',
@@ -612,7 +613,7 @@ export const useUnifiedAssetUploads = (editingProduct = null) => {
           throw new Error(`סוג קובץ לא נתמך למחיקה: ${fileType}`);
       }
 
-      console.log(`🗑️ Standardized delete: ${endpoint}`);
+      clog('Standardized delete:', endpoint);
 
       const result = await apiRequest(endpoint, {
         method: 'DELETE'
@@ -633,10 +634,10 @@ export const useUnifiedAssetUploads = (editingProduct = null) => {
           });
 
           if (!updateResponse.success) {
-            console.error('Failed to update product after asset deletion:', updateResponse.error);
+            cerror('Failed to update product after asset deletion:', updateResponse.error);
           }
         } catch (dbError) {
-          console.error('Database update error after asset deletion:', dbError);
+          cerror('Database update error after asset deletion:', dbError);
         }
       }
 
@@ -649,7 +650,7 @@ export const useUnifiedAssetUploads = (editingProduct = null) => {
       return { success: true, updateData };
 
     } catch (error) {
-      console.error(`❌ Delete error for ${fileType}:`, error);
+      cerror(`Delete error for ${fileType}:`, error);
       toast({
         title: "שגיאה במחיקה",
         description: error.message || 'אירעה שגיאה במחיקת הקובץ',

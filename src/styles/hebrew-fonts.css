@@ -1,7 +1,26 @@
 /**
- * Hebrew Fonts for PDF Footer Editor
+ * Fonts for PDF Template Editor
  * These fonts match exactly what the backend uses for PDF generation
+ * - Inter: For English/Latin text
+ * - NotoSansHebrew: For Hebrew text
  */
+
+/* Inter Font Declarations - Match backend PDF generation */
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/Inter-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/Inter-Bold.ttf') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
 
 @font-face {
   font-family: 'NotoSansHebrew';
@@ -32,12 +51,36 @@
   font-family: 'NotoSansHebrew', 'Arial Unicode MS', 'Segoe UI', Arial, sans-serif;
   direction: rtl;
   unicode-bidi: bidi-override;
+  font-synthesis: none; /* Disable synthetic italic/bold for Hebrew fonts */
+  font-style: normal !important; /* Force normal style for Hebrew text */
 }
 
 /* Hebrew Text with Bold */
 .hebrew-text.font-bold {
   font-family: 'NotoSansHebrew', 'Arial Unicode MS', 'Segoe UI', Arial, sans-serif;
   font-weight: bold;
+  font-synthesis: none; /* Disable synthetic italic for Hebrew bold text */
+  font-style: normal !important; /* Force normal style even when bold */
+}
+
+/* Globally disable synthetic italic for all elements */
+* {
+  font-synthesis: weight; /* Allow synthetic bold but disable synthetic italic */
+}
+
+/* More aggressive targeting of Hebrew fonts */
+[style*="'NotoSansHebrew'"],
+[style*='"NotoSansHebrew"'],
+[style*="NotoSansHebrew"] {
+  font-style: normal !important;
+  font-synthesis: none !important;
+}
+
+/* Target any element whose computed font family contains NotoSansHebrew */
+@supports selector(*:has(*)) {
+  * {
+    font-synthesis: weight !important;
+  }
 }
 
 /* Fallback for systems without Hebrew font support */

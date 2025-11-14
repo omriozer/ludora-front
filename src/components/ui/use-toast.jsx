@@ -1,5 +1,6 @@
 // Inspired by react-hot-toast library
 import { useState, useEffect, createContext, useContext } from "react";
+import { clog } from "@/lib/utils";
 
 const TOAST_LIMIT = 20;
 const TOAST_REMOVE_DELAY = 5000; // 5 seconds - default auto-close duration
@@ -125,7 +126,7 @@ function toast({ position = 'bottom-right', variant = 'default', duration, ...pr
   );
 
   if (isDuplicate) {
-    console.log('Duplicate toast prevented:', props.title);
+    clog('Duplicate toast prevented:', props.title);
 
     // Find the existing toast and return its methods
     const existingToast = memoryState.toasts.find(t =>

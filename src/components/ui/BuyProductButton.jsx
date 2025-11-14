@@ -59,7 +59,9 @@ export default function BuyProductButton({
 
     // Check authentication
     if (!isAuthenticated()) {
-      openLoginModal(() => handlePurchase());
+      openLoginModal(() => {
+        handlePurchase(e);
+      });
       return;
     }
 
@@ -81,15 +83,6 @@ export default function BuyProductButton({
       const entityType = productType;
       const entityId = product.entity_id || product.id;
 
-      console.log('💰 BuyProductButton: Purchase data being sent:', {
-        productId: product.id,
-        entityType,
-        entityId,
-        productPrice: product.price,
-        productTitle: product.title,
-        productType: product.product_type
-      });
-
       // Create purchase using new API
       const result = await paymentClient.createPurchase(entityType, entityId, {
         product_title: product.title,
@@ -105,7 +98,6 @@ export default function BuyProductButton({
 
         if (isCompleted || isFreeItem) {
           // Free item - completed immediately
-          console.log('🛒 BuyProductButton: Taking FREE/COMPLETED path - calling refreshCart()');
           refreshCart(); // Sync state to update ProductActionBar immediately
 
           toast({
@@ -121,16 +113,13 @@ export default function BuyProductButton({
           // Redirect based on product type
           if (entityType === 'file') {
             // Use product ID for redirect, not entity ID
-            console.log('🛒 BuyProductButton: Redirecting to product details with product ID:', product.id);
             navigate(`/product-details?product=${product.id}`);
           } else {
             // For other types, let the UI update naturally without reload
             // Our event system will handle the UI updates
-            console.log('🛒 BuyProductButton: Skipping reload - letting event system handle UI updates');
           }
         } else {
           // Paid item - added to cart
-          console.log('🛒 BuyProductButton: Taking PAID CART path - calling addToCart() and refreshCart()');
           addToCart();
           refreshCart(); // Sync cart state to update ProductActionBar
 

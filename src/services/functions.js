@@ -1,6 +1,5 @@
 // Import functions from apiClient.js (our new API client)
 import {
-  testPayplusConnection,
   applyCoupon,
   updateExistingRegistrations,
   sendRegistrationEmail,
@@ -20,7 +19,6 @@ import {
 
 // Re-export all functions
 export {
-  testPayplusConnection,
   applyCoupon,
   updateExistingRegistrations,
   sendRegistrationEmail,

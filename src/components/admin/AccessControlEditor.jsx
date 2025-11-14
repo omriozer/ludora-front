@@ -38,7 +38,9 @@ const AccessControlEditor = ({
   entityType,
   entityId,
   onUpdate,
-  className = ''
+  className = '',
+  currentUser = null, // Current user object for email template resolution
+  fileEntity = null // File entity object for template filtering and context
 }) => {
   const [entity, setEntity] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -431,7 +433,7 @@ const AccessControlEditor = ({
                 entityType={entityType}
                 entityId={entityId}
                 templateType="watermark"
-                targetFormat="pdf-a4-portrait" // TODO: Detect format from file
+                targetFormat={isLessonPlan ? "svg-lessonplan" : (entity?.target_format || "pdf-a4-portrait")}
                 currentTemplateId={getCurrentValue('watermark_template_id')}
                 customTemplateData={getCurrentValue('watermark_settings')}
                 enabled={true} // Always enabled in watermarks tab
@@ -451,6 +453,8 @@ const AccessControlEditor = ({
                 onEnabledChange={() => {}} // No-op since it's automatically managed
                 fileExists={true} // Always show when in access control
                 userRole="admin" // Assume admin for access control context
+                currentUser={currentUser} // Pass current user for email template resolution
+                fileEntity={fileEntity} // Pass file entity for template filtering and context
                 className="mt-0"
               />
 

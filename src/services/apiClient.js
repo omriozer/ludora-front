@@ -71,6 +71,7 @@ export async function apiRequest(endpoint, options = {}) {
   clog('📊 API Base:', API_BASE);
   clog('🔑 Auth Token:', currentToken ? `${currentToken.substring(0, 20)}...` : 'None');
 
+
   const headers = {
     'Content-Type': 'application/json',
     ...options.headers
@@ -115,11 +116,16 @@ export async function apiRequest(endpoint, options = {}) {
   } catch (error) {
     cerror('🚫 API Request Failed:', error);
 
-    // Show user-friendly error for network failures
+    // Show user-friendly error for specific error types
     if (error.message.includes('fetch') || error.message.includes('network') || error.message.includes('Failed to fetch')) {
       showError(
         "בעיית חיבור",
         "לא הצלחנו להתחבר לשרת. אנא בדוק את החיבור לאינטרנט ונסה שוב."
+      );
+    } else if (error.message.includes('Access token required') || error.message.includes('Unauthorized')) {
+      showError(
+        "שגיאת הרשאה",
+        "נדרשת התחברות מחדש. אנא רענן את הדף והתחבר שוב."
       );
     }
 
@@ -135,6 +141,22 @@ export async function apiDownload(endpoint, options = {}) {
   clog(`📥 API Download: ${options.method || 'GET'} ${url}`);
   clog('📊 API Base:', API_BASE);
   clog('🔑 Auth Token:', currentToken ? `${currentToken.substring(0, 20)}...` : 'None');
+
+  // DEBUG: Log full token temporarily
+  if (currentToken) {
+    clog('🔍 FULL AUTH TOKEN FOR DOWNLOAD:', currentToken);
+    if (currentToken.startsWith('eyJ')) {
+      try {
+        const [header, payload, signature] = currentToken.split('.');
+        const decodedPayload = JSON.parse(atob(payload));
+        clog('🔍 DECODED TOKEN PAYLOAD:', decodedPayload);
+        clog('🔍 TOKEN EXPIRY:', new Date(decodedPayload.exp * 1000));
+        clog('🔍 IS TOKEN EXPIRED?', new Date() > new Date(decodedPayload.exp * 1000));
+      } catch (e) {
+        cerror('🔍 TOKEN DECODE ERROR:', e);
+      }
+    }
+  }
 
   const headers = {
     ...options.headers
@@ -462,6 +484,11 @@ export const ClassroomMembership = new EntityAPI('classroommembership');
 export const Curriculum = new EntityAPI('curriculum');
 export const CurriculumItem = new EntityAPI('curriculumitem');
 
+// Content Topic entities
+export const ContentTopic = new EntityAPI('contenttopic');
+export const ContentTopicProduct = new EntityAPI('contenttopicproduct');
+export const CurriculumItemContentTopic = new EntityAPI('curriculumitemcontenttopic');
+
 // User entity API with auth methods
 const UserEntityAPI = new EntityAPI('user');
 
@@ -574,12 +601,6 @@ export const ProductAPI = {
 };
 
 // Function APIs
-export async function testPayplusConnection(data) {
-  return apiRequest('/functions/testPayplusConnection', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  });
-}
 
 export async function applyCoupon(data) {
   return apiRequest('/functions/applyCoupon', {

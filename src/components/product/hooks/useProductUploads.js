@@ -3,6 +3,7 @@ import { apiUploadWithProgress, apiRequest } from '@/services/apiClient';
 import { getApiBase } from '@/utils/api.js';
 import { toast } from '@/components/ui/use-toast';
 import { useGlobalAuthErrorHandler } from '@/components/providers/AuthErrorProvider';
+import { clog, cerror } from '@/lib/utils';
 
 /**
  * Maps product types to backend-supported entity types for content assets
@@ -56,13 +57,13 @@ export const useProductUploads = (editingProduct = null) => {
 
     try {
       const result = await apiRequest(`/assets/check/file/${product.entity_id}?assetType=document`);
-      console.log('📁 File check API result:', result);
+      clog('File check API result:', result);
 
       if (result.exists === true && result.filename) {
         return { exists: true, filename: result.filename };
       }
     } catch (error) {
-      console.error('Error checking file upload:', error);
+      cerror('Error checking file upload:', error);
     }
 
     return null;
@@ -71,10 +72,10 @@ export const useProductUploads = (editingProduct = null) => {
   // Check for uploaded file info on mount (for file products)
   useEffect(() => {
     if (editingProduct && editingProduct.product_type === 'file' && editingProduct.entity_id) {
-      console.log('🔍 Checking file existence for entity_id:', editingProduct.entity_id);
+      clog('Checking file existence for entity_id:', editingProduct.entity_id);
 
       checkFileUploadExists(editingProduct).then(fileInfo => {
-        console.log('📁 File check result:', fileInfo);
+        clog('File check result:', fileInfo);
         setUploadedFileInfo(fileInfo);
       });
     }
@@ -223,7 +224,7 @@ export const useProductUploads = (editingProduct = null) => {
 
         // Immediately update the product in database to prevent orphaned files
         if (editingProduct?.id && Object.keys(updateData).length > 0) {
-          console.log('🔄 Attempting database update:', {
+          clog('Attempting database update:', {
             productId: editingProduct.id,
             updateData,
             fileType,
@@ -235,13 +236,13 @@ export const useProductUploads = (editingProduct = null) => {
               method: 'PUT',
               body: JSON.stringify(updateData)
             });
-            console.log('✅ Database update successful:', {
+            clog('Database update successful:', {
               productId: editingProduct.id,
               updateData,
               dbResult: dbUpdateResult
             });
           } catch (dbError) {
-            console.error('❌ Database update error after file upload:', {
+            cerror('Database update error after file upload:', {
               productId: editingProduct.id,
               updateData,
               error: dbError,
@@ -263,7 +264,7 @@ export const useProductUploads = (editingProduct = null) => {
                   variant: "default"
                 });
               } catch (retryError) {
-                console.error('Retry failed:', retryError);
+                cerror('Retry failed:', retryError);
                 toast({
                   title: "שגיאה בעדכון",
                   description: "לא ניתן לעדכן את המוצר. הקובץ הועלה אך המוצר לא עודכן",
@@ -295,7 +296,7 @@ export const useProductUploads = (editingProduct = null) => {
       }
 
     } catch (error) {
-      console.error(`❌ Upload error for ${fileType}:`, error);
+      cerror(`Upload error for ${fileType}:`, error);
       toast({
         title: "שגיאה בהעלאה",
         description: error.message || 'אירעה שגיאה בהעלאת הקובץ',
@@ -372,7 +373,7 @@ export const useProductUploads = (editingProduct = null) => {
       return { success: true, updateData };
 
     } catch (error) {
-      console.error(`❌ Delete error for ${fileType}:`, error);
+      cerror(`Delete error for ${fileType}:`, error);
 
       // Check if this is an auth error and handle it
       const wasHandled = handleAuthError(error, async () => {
@@ -387,7 +388,7 @@ export const useProductUploads = (editingProduct = null) => {
             variant: "default"
           });
         } catch (retryError) {
-          console.error('Delete retry failed:', retryError);
+          cerror('Delete retry failed:', retryError);
           toast({
             title: "שגיאה במחיקה",
             description: "לא ניתן למחוק את הקובץ גם לאחר התחברות מחדש",

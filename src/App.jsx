@@ -1,5 +1,4 @@
 import './App.css';
-import './styles/tutorial.css';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useEffect, Suspense } from 'react';
 // Core pages - loaded immediately for better UX
@@ -13,7 +12,6 @@ import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import AdminRoute from '@/components/auth/AdminRoute';
 import ConditionalRoute from '@/components/auth/ConditionalRoute';
 import OnboardingRedirect from '@/components/auth/OnboardingRedirect';
-import TutorialOverlay from '@/components/TutorialOverlay';
 import { ConfirmationProvider } from '@/components/ui/ConfirmationProvider';
 import { AuthErrorProvider } from '@/components/providers/AuthErrorProvider';
 import { AudioCacheProvider } from '@/contexts/AudioCacheContext';
@@ -38,7 +36,6 @@ function App() {
 		const params = new URLSearchParams(location.search);
 
 		if (params.get('subscription_success') === 'true') {
-			console.log('🎉 Subscription payment success detected via URL parameter');
 			toast({
 				variant: "default",
 				title: "תשלום המנוי הושלם בהצלחה!",
@@ -50,7 +47,6 @@ function App() {
 		}
 
 		if (params.get('subscription_failed') === 'true') {
-			console.log('❌ Subscription payment failure detected via URL parameter');
 			toast({
 				variant: "destructive",
 				title: "תשלום המנוי נכשל",
@@ -407,16 +403,6 @@ function App() {
 
 					{/* Admin-only routes */}
 					<Route
-						path='/admin'
-						element={
-							<AdminRoute>
-								<Suspense fallback={<SuspenseLoader />}>
-									<LazyPages.AdminPanel />
-								</Suspense>
-							</AdminRoute>
-						}
-					/>
-					<Route
 						path='/products'
 						element={
 							<ProtectedRoute>
@@ -547,21 +533,21 @@ function App() {
 						}
 					/>
 					<Route
-						path='/dev-tools'
-						element={
-							<AdminRoute>
-								<Suspense fallback={<SuspenseLoader />}>
-									<LazyPages.DevelopmentTools />
-								</Suspense>
-							</AdminRoute>
-						}
-					/>
-					<Route
 						path='/categories'
 						element={
 							<AdminRoute>
 								<Suspense fallback={<SuspenseLoader />}>
 									<LazyPages.CategoryManagement />
+								</Suspense>
+							</AdminRoute>
+						}
+					/>
+					<Route
+						path='/content-topics'
+						element={
+							<AdminRoute>
+								<Suspense fallback={<SuspenseLoader />}>
+									<LazyPages.ContentTopicsManagement />
 								</Suspense>
 							</AdminRoute>
 						}
@@ -727,7 +713,6 @@ function App() {
 					/>
 				</Routes>
 					<EnhancedToaster />
-					<TutorialOverlay />
 					</Layout>
 				</AuthErrorProvider>
 			</ConfirmationProvider>

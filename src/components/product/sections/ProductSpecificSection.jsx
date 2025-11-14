@@ -430,14 +430,14 @@ export const ProductSpecificSection = ({
       <VisualTemplateEditor
         isOpen={showFooterPreview}
         onClose={() => setShowFooterPreview(false)}
-        onSave={async (footerConfig) => {
+        onSave={async (templateConfig) => {
           try {
             // Save footer settings using the proper handler
             if (handleSaveFooterSettings) {
-              await handleSaveFooterSettings(footerConfig);
+              await handleSaveFooterSettings(templateConfig);
             } else {
               // Fallback to form data update
-              updateFormData({ footer_settings: footerConfig });
+              updateFormData({ footer_settings: templateConfig });
             }
             setShowFooterPreview(false);
           } catch (error) {
@@ -447,7 +447,8 @@ export const ProductSpecificSection = ({
         }}
         fileEntityId={editingProduct?.entity_id}
         userRole={currentUser?.role}
-        initialFooterConfig={editingProduct?.footer_settings || formData.footer_settings}
+        currentUser={currentUser} // Pass full user object for email resolution
+        initialTemplateConfig={editingProduct?.footer_settings || formData.footer_settings}
         targetFormat="pdf-a4-portrait" // TODO: Detect format from file
         templateType="branding" // This modal is specifically for branding editing
       />

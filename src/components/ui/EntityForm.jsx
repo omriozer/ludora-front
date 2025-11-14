@@ -302,6 +302,17 @@ export default function EntityForm({
               {field.required && <span className="text-red-500 mr-1">*</span>}
             </Label>
             {field.render && field.render(value, (newValue) => handleFieldChange(field.key, newValue), error)}
+            {field.component && (
+              <field.component
+                value={value}
+                onValueChange={(newValue) => handleFieldChange(field.key, newValue)}
+                disabled={loading || field.disabled}
+                placeholder={field.placeholder}
+                allowCreate={field.allowCreate}
+                mode={field.mode}
+                {...field.componentProps}
+              />
+            )}
             {field.description && (
               <p className="text-sm text-gray-600">{field.description}</p>
             )}

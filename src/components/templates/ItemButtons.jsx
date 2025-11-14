@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Square, Minus, MoreHorizontal, Plus, Layers } from 'lucide-react';
+import { Square, Minus, MoreHorizontal, Plus, Layers, Circle, Type, Link, Copyright, User } from 'lucide-react';
+import logo from '@/assets/images/logo_sm.png';
 import ElementCard from './ElementCard';
 
 const ItemButtons = ({
-  footerConfig,
+  templateConfig,
   onItemClick,
   selectedItem,
   userRole,
@@ -32,73 +33,188 @@ const ItemButtons = ({
   // Built-in elements configuration - same for all template types
   const builtInElements = {
     logo: {
-      ...footerConfig?.logo,
-      visible: footerConfig?.logo?.visible
-    },
-    text: {
-      ...footerConfig?.text,
-      visible: footerConfig?.text?.visible
+      ...templateConfig?.logo,
+      visible: templateConfig?.logo?.visible,
+      isPlaced: false // Always show as "add" button - built-ins are added as custom elements
     },
     url: {
-      ...footerConfig?.url,
-      visible: footerConfig?.url?.visible
+      ...templateConfig?.url,
+      visible: templateConfig?.url?.visible,
+      isPlaced: false // Always show as "add" button - built-ins are added as custom elements
+    },
+    'copyright-text': {
+      ...templateConfig?.['copyright-text'],
+      visible: templateConfig?.['copyright-text']?.visible,
+      isPlaced: false // Always show as "add" button - built-ins are added as custom elements
     }
   };
 
-  // Custom elements from footerConfig
-  const customElements = footerConfig?.customElements || {};
+  // Custom elements from templateConfig
+  const customElements = templateConfig?.customElements || {};
 
-  // Tools - same for all template types
-  const getNewTools = () => {
-    return [
-      {
-        key: 'free-text',
-        name: 'טקסט חופשי',
-        icon: <Plus className="w-4 h-4" />,
-        color: 'border-blue-300 bg-blue-50 hover:bg-blue-100'
-      },
-      {
-        key: 'logo',
-        name: 'לוגו',
-        icon: <Square className="w-4 h-4" />,
-        color: 'border-purple-300 bg-purple-50 hover:bg-purple-100'
-      },
-      {
-        key: 'box',
-        name: 'תיבה',
-        icon: <Square className="w-4 h-4" />,
-        color: 'border-green-300 bg-green-50 hover:bg-green-100'
-      },
-      {
-        key: 'line',
-        name: 'קו',
-        icon: <Minus className="w-4 h-4" />,
-        color: 'border-yellow-300 bg-yellow-50 hover:bg-yellow-100'
-      },
-      {
-        key: 'dotted-line',
-        name: 'קו מנוקד',
-        icon: <MoreHorizontal className="w-4 h-4" />,
-        color: 'border-orange-300 bg-orange-50 hover:bg-orange-100'
-      }
-    ];
+  // All available element types with their metadata - reordered as requested
+  const allElementTypes = {
+    // First section: Built-in elements in requested order
+    logo: {
+      name: 'לוגו',
+      icon: <img src={logo} alt="לוגו" className="w-4 h-4" />,
+      color: 'border-purple-300 bg-purple-50 hover:bg-purple-100',
+      isBuiltIn: true
+    },
+    'copyright-text': {
+      name: 'זכויות יוצרים',
+      icon: <Copyright className="w-4 h-4" />,
+      color: 'border-gray-300 bg-gray-50 hover:bg-gray-100',
+      isBuiltIn: true
+    },
+    url: {
+      name: 'קישור לאתר',
+      icon: <Link className="w-4 h-4" />,
+      color: 'border-cyan-300 bg-cyan-50 hover:bg-cyan-100',
+      isBuiltIn: true
+    },
+    'free-text': {
+      name: 'טקסט חופשי',
+      icon: <Type className="w-4 h-4" />,
+      color: 'border-blue-300 bg-blue-50 hover:bg-blue-100',
+      isBuiltIn: false
+    },
+    'user-info': {
+      name: 'פרטי משתמש',
+      icon: <User className="w-4 h-4" />,
+      color: 'border-violet-300 bg-violet-50 hover:bg-violet-100',
+      isBuiltIn: false
+    },
+    // Second section: Shapes at the bottom as requested
+    box: {
+      name: 'תיבה',
+      icon: <Square className="w-4 h-4" />,
+      color: 'border-green-300 bg-green-50 hover:bg-green-100',
+      isBuiltIn: false
+    },
+    circle: {
+      name: 'עיגול',
+      icon: <Circle className="w-4 h-4" />,
+      color: 'border-pink-300 bg-pink-50 hover:bg-pink-100',
+      isBuiltIn: false
+    },
+    line: {
+      name: 'קו',
+      icon: <Minus className="w-4 h-4" />,
+      color: 'border-yellow-300 bg-yellow-50 hover:bg-yellow-100',
+      isBuiltIn: false
+    },
+    'dotted-line': {
+      name: 'קו מנוקד',
+      icon: <MoreHorizontal className="w-4 h-4" />,
+      color: 'border-orange-300 bg-orange-50 hover:bg-orange-100',
+      isBuiltIn: false
+    }
   };
 
-  const newTools = getNewTools();
+  // Create separate lists for placed items and available elements
+  const createElementLists = () => {
+    const placedItems = [];
+    const availableElements = [];
 
-  // Handle element selection
-  const handleElementClick = (elementKey) => {
+    // Add placed built-in elements to placed items if they exist and are visible
+    ['logo', 'url', 'copyright-text'].forEach(builtInKey => {
+      const builtInElement = templateConfig?.[builtInKey];
+      // Use backend-compatible visibility logic: visible !== false && hidden !== true
+      if (builtInElement && builtInElement.visible !== false && builtInElement.hidden !== true) {
+        const elementMeta = allElementTypes[builtInKey];
+
+        placedItems.push({
+          key: builtInKey,
+          name: elementMeta.name,
+          icon: elementMeta.icon,
+          color: elementMeta.color,
+          isBuiltIn: true,
+          isPlaced: true,
+          element: builtInElement,
+          type: 'builtin'
+        });
+      }
+    });
+
+    // Add placed custom elements to placed items (only if visible)
+    Object.entries(customElements).forEach(([elementId, element]) => {
+      // Use backend-compatible visibility logic: visible !== false && hidden !== true
+      if (element && element.visible !== false && element.hidden !== true) {
+        const elementType = element.type || 'free-text';
+        const elementMeta = allElementTypes[elementType] || allElementTypes['free-text'];
+
+        placedItems.push({
+          key: elementId,
+          name: element.name || elementMeta.name,
+          icon: elementMeta.icon,
+          color: elementMeta.color,
+          isBuiltIn: false,
+          isPlaced: true,
+          element: element,
+          type: 'custom'
+        });
+      }
+    });
+
+    // Add available element types (only show as add buttons for non-placed built-ins)
+    Object.entries(allElementTypes).forEach(([elementKey, elementMeta]) => {
+      // For built-in elements, only show as available if not already placed
+      if (elementMeta.isBuiltIn) {
+        const builtInElement = templateConfig?.[elementKey];
+        const isAlreadyPlaced = builtInElement && builtInElement.visible;
+
+        if (!isAlreadyPlaced) {
+          availableElements.push({
+            key: elementKey,
+            name: elementMeta.name,
+            icon: elementMeta.icon,
+            color: elementMeta.color,
+            isBuiltIn: true,
+            isPlaced: false,
+            element: builtInElement || null,
+            type: 'available'
+          });
+        }
+      } else {
+        // For custom elements, always show as available (they can be added multiple times)
+        availableElements.push({
+          key: elementKey,
+          name: elementMeta.name,
+          icon: elementMeta.icon,
+          color: elementMeta.color,
+          isBuiltIn: false,
+          isPlaced: false,
+          element: null,
+          type: 'available'
+        });
+      }
+    });
+
+    return { placedItems, availableElements };
+  };
+
+  const { placedItems, availableElements } = createElementLists();
+
+  // Handle element selection or addition
+  const handleElementClick = (unifiedElement) => {
     if (multiSelectMode) {
       const currentSelection = new Set(parentSelectedItems);
-      if (currentSelection.has(elementKey)) {
-        currentSelection.delete(elementKey);
+      if (currentSelection.has(unifiedElement.key)) {
+        currentSelection.delete(unifiedElement.key);
       } else {
-        currentSelection.add(elementKey);
+        currentSelection.add(unifiedElement.key);
       }
       // Convert Set back to Array and notify parent
       onSelectionChange?.(Array.from(currentSelection));
     } else {
-      onItemClick(elementKey);
+      // If element is not placed yet, add it to canvas and open its menu
+      if (!unifiedElement.isPlaced) {
+        onAddElement?.(unifiedElement.key);
+      } else {
+        // If element is already placed, select it
+        onItemClick(unifiedElement.key);
+      }
     }
   };
 
@@ -133,14 +249,63 @@ const ItemButtons = ({
     }
   };
 
+  // Render unified element card
+  const renderUnifiedElementCard = (unifiedElement) => {
+    const isSelected = selectedItem === unifiedElement.key;
+    const isMultiSelected = selectedItems.has(unifiedElement.key);
+
+    if (unifiedElement.isPlaced) {
+      // Show as ElementCard for placed elements
+      return (
+        <ElementCard
+          key={unifiedElement.key}
+          element={unifiedElement.element}
+          elementKey={unifiedElement.key}
+          elementName={unifiedElement.name}
+          isSelected={isSelected}
+          isMultiSelected={isMultiSelected}
+          isGrouped={false}
+          groupColor=""
+          userRole={userRole}
+          onClick={() => handleElementClick(unifiedElement)}
+          onToggleVisibility={onToggleVisibility}
+          onCenterX={onCenterX}
+          onCenterY={onCenterY}
+          onDuplicate={onDuplicate}
+          onDelete={onDelete}
+          onLockToggle={onLockToggle}
+          isDraggable={false}
+        />
+      );
+    } else {
+      // Show as add button for unplaced elements
+      return (
+        <Button
+          key={unifiedElement.key}
+          onClick={() => handleElementClick(unifiedElement)}
+          variant="outline"
+          className={`h-auto p-2 border-2 transition-all hover:shadow-md hover:scale-105 ${unifiedElement.color}
+            ${isSelected ? 'border-blue-500 bg-blue-100' : ''}
+            ${isMultiSelected ? 'border-green-500 bg-green-100' : ''}`}
+        >
+          <div className="flex flex-col items-center gap-1">
+            {unifiedElement.icon}
+            <span className="text-xs font-medium">{unifiedElement.name}</span>
+            <span className="text-xs text-gray-500">לחץ להוספה</span>
+          </div>
+        </Button>
+      );
+    }
+  };
+
   return (
     <div className="w-full lg:w-80 border-t lg:border-t-0 lg:border-l bg-white flex flex-col h-full">
-      {/* Modern Header */}
+      {/* Simplified Header */}
       <div className="p-4 border-b bg-gradient-to-r from-slate-50 to-gray-50">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="font-bold text-lg text-gray-800">{getHeaderText()}</h3>
-            <p className="text-xs text-gray-600 mt-1">{getSubHeaderText()}</p>
+            <h3 className="font-bold text-lg text-gray-800">אלמנטים</h3>
+            <p className="text-xs text-gray-600 mt-1">לחץ להוספה או לעריכה</p>
           </div>
 
           {/* Multi-select toggle */}
@@ -165,86 +330,52 @@ const ItemButtons = ({
         )}
       </div>
 
-      {/* Elements List */}
+      {/* Split Elements List */}
       <div className="flex-1 overflow-y-auto min-h-0">
-        <div className="p-2 space-y-2">
+        <div className="p-2 space-y-4">
+          {/* Placed Items Section */}
+          <div>
+            <h4 className="font-medium text-gray-700 mb-2 text-sm flex items-center gap-2">
+              <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+              פריטים מוצבים ({placedItems.length})
+            </h4>
+            {placedItems.length > 0 ? (
+              <div className="grid grid-cols-1 gap-2">
+                {placedItems.map((placedItem) => renderUnifiedElementCard(placedItem))}
+              </div>
+            ) : (
+              <div className="text-center py-4 text-gray-500 text-sm bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+                <span className="text-2xl block mb-1">📋</span>
+                אין פריטים מוצבים על הקנבס
+              </div>
+            )}
+          </div>
 
-          {/* Built-in Elements */}
-          {Object.keys(builtInElements).length > 0 && (
-            <div className="space-y-1">
-              <h4 className="font-semibold text-sm text-gray-700 mb-1 flex items-center gap-2">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                אלמנטים מובנים
-              </h4>
-
-              {Object.entries(builtInElements).map(([elementKey, element]) => (
-                <ElementCard
-                  key={elementKey}
-                  element={element}
-                  elementKey={elementKey}
-                  isSelected={selectedItem === elementKey}
-                  isMultiSelected={selectedItems.has(elementKey)}
-                  isGrouped={false}
-                  groupColor=""
-                  userRole={userRole}
-                  onClick={() => handleElementClick(elementKey)}
-                  onToggleVisibility={onToggleVisibility}
-                  onCenterX={onCenterX}
-                  onCenterY={onCenterY}
-                  onDuplicate={onDuplicate}
-                  onDelete={onDelete}
-                  onLockToggle={onLockToggle}
-                  isDraggable={false}
-                />
-              ))}
+          {/* Available Elements Section */}
+          <div>
+            <h4 className="font-medium text-gray-700 mb-2 text-sm flex items-center gap-2">
+              <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+              הוסף אלמנטים
+            </h4>
+            <div className="grid grid-cols-2 gap-2">
+              {availableElements.map((availableElement) => renderUnifiedElementCard(availableElement))}
             </div>
-          )}
+          </div>
 
-          {/* Custom Elements */}
-          {Object.keys(customElements).length > 0 && (
-            <div className="space-y-1">
-              <h4 className="font-semibold text-sm text-gray-700 mb-1 flex items-center gap-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                אלמנטים מותאמים
-              </h4>
-
-              {Object.entries(customElements).map(([elementId, element]) => (
-                <ElementCard
-                  key={elementId}
-                  element={element}
-                  elementKey={elementId}
-                  isSelected={selectedItem === elementId}
-                  isMultiSelected={selectedItems.has(elementId)}
-                  isGrouped={false}
-                  groupColor=""
-                  userRole={userRole}
-                  onClick={() => handleElementClick(elementId)}
-                  onToggleVisibility={onToggleVisibility}
-                  onCenterX={onCenterX}
-                  onCenterY={onCenterY}
-                  onDuplicate={onDuplicate}
-                  onDelete={onDelete}
-                  onLockToggle={onLockToggle}
-                  isDraggable={false}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Instructions at bottom of scrollable area */}
+          {/* Instructions */}
           <div className="mt-4 mb-2">
             <div className="p-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
               <h4 className="font-medium text-blue-900 mb-2 text-sm">💡 עצות שימוש:</h4>
               <ul className="text-xs text-blue-800 space-y-1">
-                <li>• לחץ על כרטיס לעריכת אלמנט</li>
-                <li>• השתמש בכפתורי הפעולות המהירות</li>
+                <li>• לחץ על אלמנט לא מוצב להוספתו לקנבס</li>
+                <li>• לחץ על אלמנט מוצב לעריכתו</li>
                 <li>• הפעל בחירה מרובה לפעולות קבוצתיות</li>
                 <li>• גרור אלמנטים ישירות על הקנבס</li>
               </ul>
             </div>
           </div>
 
-          {/* User role info at bottom of scrollable area */}
+          {/* User role info */}
           {!isAdmin && (
             <div className="mb-2">
               <div className="p-3 bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg">
@@ -255,39 +386,10 @@ const ItemButtons = ({
             </div>
           )}
 
-          {/* Add Element Tools in scrollable area */}
-          <div className="mt-4 mb-2">
-            <div className="p-3 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-lg">
-        <div className="flex items-center justify-between mb-2">
-          <h4 className="font-semibold text-sm text-gray-800 flex items-center gap-2">
-            <Plus className="w-4 h-4 text-emerald-600" />
-            הוסף אלמנט
-          </h4>
-        </div>
-
-              <div className="grid grid-cols-3 gap-1">
-                {newTools.map((tool) => (
-                  <Button
-                    key={tool.key}
-                    onClick={() => onAddElement?.(tool.key)}
-                    variant="outline"
-                    className={`h-auto p-2 border-2 transition-all hover:shadow-md hover:scale-105 ${tool.color}`}
-                  >
-                    <div className="flex flex-col items-center gap-1">
-                      {tool.icon}
-                      <span className="text-xs font-medium">{tool.name}</span>
-                    </div>
-                  </Button>
-                ))}
-              </div>
-            </div>
-          </div>
-
           {/* Bottom padding for scrolling clearance */}
           <div className="pb-20"></div>
         </div>
       </div>
-
     </div>
   );
 };

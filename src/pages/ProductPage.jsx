@@ -19,6 +19,7 @@ import { ProductAPI } from '@/services/apiClient';
 import { PRODUCT_TYPES, getProductTypeName } from '@/config/productTypes';
 import { clog, cerror } from '@/lib/utils';
 import FeatureFlagService from '@/services/FeatureFlagService';
+import { contentTopicService } from '@/services/contentTopicService';
 
 export default function ProductPage() {
   const { productId } = useParams();
@@ -132,55 +133,80 @@ export default function ProductPage() {
       }
 
       setEnabledProductTypes(visibleTypes);
-      clog('📝 Enabled product types:', visibleTypes);
 
       // Load product if editing
       if (productId) {
         try {
           const product = await ProductAPI.findById(productId);
-          // If this is a lesson plan product, also load the lesson plan data and integrate into formData
+
+          // Load entity-specific data based on product type
           if (product.product_type === 'lesson_plan') {
-            clog('🔍 Product is lesson plan type, attempting to load lesson plan data for entity_id:', product.entity_id);
             try {
-              clog('🔍 Calling LessonPlan.findById with entity_id:', product.entity_id);
               const lessonPlan = await LessonPlan.findById(product.entity_id);
-              clog('🔍 LessonPlan.findById response:', lessonPlan);
 
               // Store complete lesson plan for reference but integrate file_configs into product
               setEditingLessonPlan(lessonPlan);
 
               if (lessonPlan) {
-                // Integrate lesson plan file_configs into product data like File products do
+                // Integrate lesson plan data into product
                 product.file_configs = lessonPlan.file_configs;
                 product.estimated_duration = lessonPlan.estimated_duration;
                 product.total_slides = lessonPlan.total_slides;
                 product.teacher_notes = lessonPlan.teacher_notes;
                 product.slide_configs = lessonPlan.slide_configs;
-                clog('📝 Integrated lesson plan file_configs into product:', {
-                  lessonPlan_file_configs: lessonPlan.file_configs,
-                  product_file_configs: product.file_configs,
-                  fileCount: lessonPlan.file_configs?.files?.length || 0
-                });
-              } else {
-                clog('⚠️ No lesson plan found, file_configs will be null');
-              }
-
-              clog('📝 Loaded lesson plan data:', lessonPlan);
-              if (!lessonPlan) {
-                clog('⚠️ No lesson plan found for entity_id:', product.entity_id);
+                product.target_format = lessonPlan.target_format;
+                product.branding_template_id = lessonPlan.branding_template_id;
+                product.branding_settings = lessonPlan.branding_settings;
+                product.watermark_template_id = lessonPlan.watermark_template_id;
               }
             } catch (error) {
               cerror('❌ Failed to load lesson plan data:', error);
               // Don't fail the whole loading process, just log the error
               // Some lesson plans may not have been created yet
             }
-          } else {
-            clog('📝 Product is not lesson plan type:', product.product_type);
+          } else if (product.product_type === 'file') {
+            try {
+              const { File } = await import('@/services/entities');
+              const file = await File.findById(product.entity_id);
+
+              if (file) {
+                // Integrate file data into product
+                product.target_format = file.target_format;
+                product.branding_template_id = file.branding_template_id;
+                product.branding_settings = file.branding_settings;
+                product.watermark_template_id = file.watermark_template_id;
+                product.accessible_pages = file.accessible_pages;
+                product.allow_preview = file.allow_preview;
+                product.footer_settings = file.footer_settings;
+              }
+            } catch (error) {
+              cerror('❌ Failed to load file data:', error);
+              // Don't fail the whole loading process, just log the error
+              // Some files may not have been created yet
+            }
           }
 
-          // Set editing product AFTER lesson plan integration
+          // Load content topic associations
+          try {
+            console.log('Loading content topics for product:', productId);
+            const productTopics = await contentTopicService.getProductTopics(productId);
+            console.log('Loaded product topics response:', productTopics);
+
+            if (productTopics && productTopics.topics && productTopics.topics.length > 0) {
+              product.content_topic_id = productTopics.topics[0].id;
+              console.log('Set content_topic_id to:', productTopics.topics[0].id);
+            } else {
+              product.content_topic_id = null;
+              console.log('No content topics found, setting content_topic_id to null');
+            }
+          } catch (error) {
+            cerror('Failed to load product content topics:', error);
+            console.log('Error loading content topics:', error);
+            product.content_topic_id = null;
+          }
+
+          // Set editing product AFTER entity data integration
           setEditingProduct(product);
-          clog('📝 Loaded product for editing (after integration):', product);
         } catch (error) {
           cerror('Failed to load product:', error);
           showMessage('error', 'שגיאה בטעינת המוצר');
@@ -251,19 +277,41 @@ export default function ProductPage() {
     try {
       let result;
 
+      // Extract content topic ID from form data - we handle this separately
+      const { content_topic_id, ...productData } = data;
+
       if (isNewProduct) {
         // Create new product
         // Transform creator_user_id to is_ludora_creator for backend compatibility
         const createData = {
-          ...data,
-          is_ludora_creator: data.creator_user_id === null
+          ...productData,
+          is_ludora_creator: productData.creator_user_id === null
         };
         result = await ProductAPI.create(createData);
-        clog('✅ Product created:', result);
+
+        // Save entity-specific data for new products if entity was created
+        if (result.entity_id) {
+          if (result.product_type === 'file') {
+            await saveFileEntityData(result.entity_id, data);
+          } else if (result.product_type === 'lesson_plan') {
+            await saveLessonPlanEntityData(result.entity_id, data);
+          }
+        }
+
+        // Save content topic association for new products
+        if (result.id && content_topic_id) {
+          try {
+            await contentTopicService.updateProductTopics(result.id, [content_topic_id]);
+            clog('✅ Content topic association saved for new product');
+          } catch (error) {
+            cerror('Failed to save content topic association for new product:', error);
+            // Don't fail the whole operation for topic association errors
+          }
+        }
 
         // Update URL to include the new product ID and transition to edit mode
         if (result.id) {
-          setEditingProduct(result);
+          setEditingProduct({ ...result, content_topic_id: content_topic_id || null });
           // Use navigate replace to update URL and trigger React Router to re-parse params
           navigate(`/products/edit/${result.id}`, { replace: true });
         }
@@ -276,12 +324,34 @@ export default function ProductPage() {
         // Update existing product
         // Transform creator_user_id to is_ludora_creator for backend compatibility
         const updateData = {
-          ...data,
-          is_ludora_creator: data.creator_user_id === null
+          ...productData,
+          is_ludora_creator: productData.creator_user_id === null
         };
         result = await ProductAPI.update(productId, updateData);
-        clog('✅ Product updated:', result);
+
+        // Save content topic association for existing products
+        if (content_topic_id !== undefined) {
+          try {
+            await contentTopicService.updateProductTopics(productId, content_topic_id ? [content_topic_id] : []);
+            clog('✅ Content topic association updated for existing product');
+            // Update result to include topic ID for state management
+            result.content_topic_id = content_topic_id || null;
+          } catch (error) {
+            cerror('Failed to update content topic association:', error);
+            // Don't fail the whole operation for topic association errors
+          }
+        }
+
         setEditingProduct(result);
+
+        // Save entity-specific data if this is a File or LessonPlan product
+        if (result.entity_id) {
+          if (result.product_type === 'file') {
+            await saveFileEntityData(result.entity_id, data);
+          } else if (result.product_type === 'lesson_plan') {
+            await saveLessonPlanEntityData(result.entity_id, data);
+          }
+        }
 
         showMessage('success', continueEditing ?
           'המוצר עודכן בהצלחה! ניתן להמשיך לערוך' :
@@ -299,6 +369,97 @@ export default function ProductPage() {
     } catch (error) {
       cerror('Error saving product:', error);
       throw error;
+    }
+  };
+
+  // Helper function to save File entity specific data
+  const saveFileEntityData = async (entityId, formData) => {
+    try {
+      // Extract File-specific fields from form data
+      const fileSpecificFields = {};
+
+      // Only add fields that exist in formData and are File-specific
+      if (formData.target_format !== undefined) {
+        fileSpecificFields.target_format = formData.target_format;
+      }
+      if (formData.branding_template_id !== undefined) {
+        fileSpecificFields.branding_template_id = formData.branding_template_id;
+      }
+      if (formData.branding_settings !== undefined) {
+        fileSpecificFields.branding_settings = formData.branding_settings;
+      }
+      if (formData.watermark_template_id !== undefined) {
+        fileSpecificFields.watermark_template_id = formData.watermark_template_id;
+      }
+      if (formData.accessible_pages !== undefined) {
+        fileSpecificFields.accessible_pages = formData.accessible_pages;
+      }
+      if (formData.allow_preview !== undefined) {
+        fileSpecificFields.allow_preview = formData.allow_preview;
+      }
+
+      // Only make API call if there are File-specific fields to update
+      if (Object.keys(fileSpecificFields).length > 0) {
+        const { File } = await import('@/services/entities');
+        await File.update(entityId, fileSpecificFields);
+
+        // Update the editingProduct state to reflect the changes
+        setEditingProduct(prev => ({
+          ...prev,
+          ...fileSpecificFields
+        }));
+      }
+    } catch (error) {
+      cerror('❌ Error saving File entity data:', error);
+      // Don't throw error - we don't want to fail the whole save process
+      // Just log the error and continue
+    }
+  };
+
+  // Helper function to save LessonPlan entity specific data
+  const saveLessonPlanEntityData = async (entityId, formData) => {
+    try {
+      // Extract LessonPlan-specific fields from form data
+      const lessonPlanSpecificFields = {};
+
+      // Only add fields that exist in formData and are LessonPlan-specific
+      if (formData.target_format !== undefined) {
+        lessonPlanSpecificFields.target_format = formData.target_format;
+      }
+      if (formData.branding_template_id !== undefined) {
+        lessonPlanSpecificFields.branding_template_id = formData.branding_template_id;
+      }
+      if (formData.branding_settings !== undefined) {
+        lessonPlanSpecificFields.branding_settings = formData.branding_settings;
+      }
+      if (formData.watermark_template_id !== undefined) {
+        lessonPlanSpecificFields.watermark_template_id = formData.watermark_template_id;
+      }
+      if (formData.estimated_duration !== undefined) {
+        lessonPlanSpecificFields.estimated_duration = formData.estimated_duration;
+      }
+      if (formData.total_slides !== undefined) {
+        lessonPlanSpecificFields.total_slides = formData.total_slides;
+      }
+      if (formData.teacher_notes !== undefined) {
+        lessonPlanSpecificFields.teacher_notes = formData.teacher_notes;
+      }
+
+      // Only make API call if there are LessonPlan-specific fields to update
+      if (Object.keys(lessonPlanSpecificFields).length > 0) {
+        const { LessonPlan } = await import('@/services/entities');
+        await LessonPlan.update(entityId, lessonPlanSpecificFields);
+
+        // Update the editingProduct state to reflect the changes
+        setEditingProduct(prev => ({
+          ...prev,
+          ...lessonPlanSpecificFields
+        }));
+      }
+    } catch (error) {
+      cerror('❌ Error saving LessonPlan entity data:', error);
+      // Don't throw error - we don't want to fail the whole save process
+      // Just log the error and continue
     }
   };
 
@@ -358,11 +519,9 @@ export default function ProductPage() {
           ...prev,
           footer_settings: footerConfig
         }));
-
-        console.log('✅ Footer settings saved successfully:', footerConfig);
       }
     } catch (error) {
-      console.error('❌ Error saving footer settings:', error);
+      console.error('Error saving footer settings:', error);
       throw error;
     }
   };

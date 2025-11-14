@@ -8,12 +8,6 @@ export const useProductForm = (editingProduct = null, currentUser = null) => {
   // Initial form data based on editing vs creating
   const getInitialFormData = useCallback(() => {
     if (editingProduct) {
-      console.log('🔍 useProductForm initializing with editingProduct:', {
-        id: editingProduct.id,
-        product_type: editingProduct.product_type,
-        hasFileConfigs: !!editingProduct.file_configs,
-        fileConfigs: editingProduct.file_configs
-      });
       return {
         product_type: editingProduct.product_type || '',
         title: editingProduct.title || '',
@@ -26,6 +20,7 @@ export const useProductForm = (editingProduct = null, currentUser = null) => {
         access_days: editingProduct.access_days,
         total_duration_minutes: editingProduct.total_duration_minutes || 0,
         target_audience: editingProduct.target_audience || '',
+        content_topic_id: editingProduct.content_topic_id || null,
         // Marketing fields
         has_image: editingProduct.has_image ?? false,
         image_url: editingProduct.image_url || '',
@@ -42,8 +37,13 @@ export const useProductForm = (editingProduct = null, currentUser = null) => {
         file_extension: editingProduct.file_extension || '',
         file_size: editingProduct.file_size || '',
         file_type: editingProduct.file_type || 'pdf',
+        target_format: editingProduct.target_format || 'pdf-a4-portrait',
         allow_preview: editingProduct.allow_preview ?? true,
         add_branding: editingProduct.add_branding ?? true,
+        branding_template_id: editingProduct.branding_template_id || null,
+        branding_settings: editingProduct.branding_settings || null,
+        watermark_template_id: editingProduct.watermark_template_id || null,
+        accessible_pages: editingProduct.accessible_pages || null,
         creator_user_id: editingProduct.creator_user_id,
         image_is_private: editingProduct.image_is_private ?? false,
         // Lesson plan specific
@@ -82,6 +82,7 @@ export const useProductForm = (editingProduct = null, currentUser = null) => {
       access_days: null,
       total_duration_minutes: 0,
       target_audience: '',
+      content_topic_id: null,
       // Marketing fields
       has_image: false,
       image_url: '',
@@ -98,8 +99,13 @@ export const useProductForm = (editingProduct = null, currentUser = null) => {
       file_extension: '',
       file_size: '',
       file_type: 'pdf',
+      target_format: 'pdf-a4-portrait',
       allow_preview: true,
       add_branding: true,
+      branding_template_id: null,
+      branding_settings: null,
+      watermark_template_id: null,
+      accessible_pages: null,
       creator_user_id: (currentUser?.role === 'admin' || currentUser?.role === 'sysadmin') ? null : currentUser?.uid || null, // Default to Ludora for admins, user for others
       image_is_private: false,
       // Lesson plan specific
@@ -133,18 +139,8 @@ export const useProductForm = (editingProduct = null, currentUser = null) => {
 
   // Helper function to update form data
   const updateFormData = useCallback((updates) => {
-    // Debug logging for image-related updates
-    if (updates.has_image !== undefined || updates.image_url !== undefined || updates.image_filename !== undefined) {
-      console.log('🔄 FormData image update:', {
-        currentHasImage: formData.has_image,
-        currentImageUrl: formData.image_url,
-        currentImageFilename: formData.image_filename,
-        updates,
-        newHasImage: updates.has_image !== undefined ? updates.has_image : formData.has_image
-      });
-    }
     setFormData(prev => ({ ...prev, ...updates }));
-  }, [formData.has_image, formData.image_url, formData.image_filename]);
+  }, []);
 
   // Helper function to update nested form data (like arrays)
   const updateNestedFormData = useCallback((path, value) => {

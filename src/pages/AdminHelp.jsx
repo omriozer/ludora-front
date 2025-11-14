@@ -24,18 +24,6 @@ export default function AdminHelp() {
 
   const helpTopics = [
     {
-      id: 'game-creation-az',
-      title: 'יצירת משחק מאפס עד סוף',
-      description: 'מדריך מקיף המלמד איך ליצור משחק חדש בצעדים פשוטים, כולל יצירת תוכן, הגדרת כללים ופרסום',
-      icon: <Gamepad2 className="w-6 h-6" />,
-      estimatedTime: '15-20 דקות',
-      difficulty: 'מתחיל',
-      sections: 8,
-      url: '/admin/help/game-creation-tutorial',
-      color: 'from-blue-500 to-purple-600',
-      featured: true
-    },
-    {
       id: 'content-management',
       title: 'ניהול תוכן מתקדם',
       description: 'איך ליצור ולנהל תוכן למשחקים: מילים, תמונות, שאלות ותבניות',
@@ -147,55 +135,6 @@ export default function AdminHelp() {
         </Card>
       </div>
 
-      {/* Featured Tutorial */}
-      {helpTopics.filter(topic => topic.featured).map(topic => (
-        <Card key={topic.id} className="mb-8 border-primary/20 bg-gradient-to-r from-blue-50 to-purple-50">
-          <CardContent className="p-6">
-            <div className="flex items-start gap-4">
-              <div className={`w-16 h-16 bg-gradient-to-r ${topic.color} rounded-xl flex items-center justify-center text-white shadow-lg`}>
-                {topic.icon}
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
-                  <h2 className="text-xl font-bold">{topic.title}</h2>
-                  <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200">
-                    <Star className="w-3 h-3 mr-1" />
-                    מומלץ
-                  </Badge>
-                </div>
-                <p className="text-muted-foreground mb-4">{topic.description}</p>
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="flex items-center gap-1 text-sm text-gray-600">
-                    <Clock className="w-4 h-4" />
-                    {topic.estimatedTime}
-                  </div>
-                  <Badge className={getDifficultyColor(topic.difficulty)}>
-                    {topic.difficulty}
-                  </Badge>
-                  <div className="text-sm text-gray-600">
-                    {topic.sections} {typeof topic.sections === 'string' ? '' : 'שלבים'}
-                  </div>
-                </div>
-                <Link to={topic.url}>
-                  <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                    {topic.isExternal ? (
-                      <>
-                        <ExternalLink className="w-4 h-4 mr-2" />
-                        צפה בתיעוד
-                      </>
-                    ) : (
-                      <>
-                        <Play className="w-4 h-4 mr-2" />
-                        התחל מדריך
-                      </>
-                    )}
-                  </Button>
-                </Link>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
 
       {/* All Topics Grid */}
       <div>
@@ -272,11 +211,6 @@ export default function AdminHelp() {
             <Link to="/support">
               <Button variant="outline">
                 צור קשר עם התמיכה
-              </Button>
-            </Link>
-            <Link to="/chat">
-              <Button variant="outline">
-                שאל את הצ'אט AI
               </Button>
             </Link>
           </div>

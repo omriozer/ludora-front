@@ -1,5 +1,6 @@
 import { useMemo, useCallback } from 'react';
 import { getProductTypeName, getAttributeSchema, validateTypeAttributes } from '@/config/productTypes';
+import { clog } from '@/lib/utils';
 
 /**
  * Custom hook for managing product access control and validation
@@ -176,7 +177,7 @@ export const useProductAccess = (editingProduct, formData, uploadedFileInfo, pro
     const { isValid } = validateForm();
 
     // Debug logging to understand why publishing might be disabled
-    console.log('🔍 canPublish Debug:', {
+    clog('canPublish Debug:', {
       isValid,
       isNewProduct,
       isFileProduct,
@@ -189,19 +190,19 @@ export const useProductAccess = (editingProduct, formData, uploadedFileInfo, pro
     });
 
     if (!isValid) {
-      console.log('❌ canPublish: Form validation failed');
+      clog('canPublish: Form validation failed');
       return false;
     }
     if (isNewProduct) {
-      console.log('❌ canPublish: Product is new (not saved yet)');
+      clog('canPublish: Product is new (not saved yet)');
       return false;
     }
     if (isFileProduct && !hasUploadedFile) {
-      console.log('❌ canPublish: File product missing uploaded file');
+      clog('canPublish: File product missing uploaded file');
       return false;
     }
 
-    console.log('✅ canPublish: All conditions passed');
+    clog('canPublish: All conditions passed');
     return true;
   }, [validateForm, isNewProduct, isFileProduct, hasUploadedFile, editingProduct, uploadedFileInfo]);
 

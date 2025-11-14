@@ -1,19 +1,18 @@
 import React from "react";
 
-export const Slider = React.forwardRef(({ 
-  value = [0], 
-  onValueChange, 
-  min = 0, 
-  max = 1, 
-  step = 0.01, 
+export const Slider = React.forwardRef(({
+  value = [0],
+  onValueChange,
+  min = 0,
+  max = 1,
+  step = 0.01,
   className = "",
-  ...props 
+  ...props
 }, ref) => {
   const currentValue = Array.isArray(value) ? value[0] : value;
 
   const handleChange = (e) => {
     const newValue = parseFloat(e.target.value);
-    console.log('Slider handleChange:', newValue); // Debug
     if (onValueChange && !isNaN(newValue)) {
       onValueChange([newValue]);
     }
@@ -22,13 +21,10 @@ export const Slider = React.forwardRef(({
   const handleInput = (e) => {
     // Handle real-time changes during drag
     const newValue = parseFloat(e.target.value);
-    console.log('Slider handleInput:', newValue); // Debug
     if (onValueChange && !isNaN(newValue)) {
       onValueChange([newValue]);
     }
   };
-
-  console.log('Slider render - current value:', currentValue); // Debug
 
   return (
     <div className={`relative w-full ${className}`}>

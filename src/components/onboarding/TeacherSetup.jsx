@@ -166,14 +166,10 @@ export default function TeacherSetup({ onComplete, onBack, onboardingData, curre
   }, []);
 
   const handleSpecializationToggle = useCallback((specializationName) => {
-    console.log('[TeacherSetup] handleSpecializationToggle called for:', specializationName);
-
     setFormData(prev => {
       const newSpecializations = prev.specializations.includes(specializationName)
         ? prev.specializations.filter(s => s !== specializationName)
         : [...prev.specializations, specializationName];
-
-      console.log('[TeacherSetup] Current:', prev.specializations, '→ New:', newSpecializations);
 
       return {
         ...prev,

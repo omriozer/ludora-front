@@ -82,7 +82,6 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
   const checkPendingSubscription = useCallback(async () => {
     if (!currentUser) return;
 
-    console.log('[SUBSCRIPTION_MODAL] Checking payment status for user:', currentUser.email);
 
     // Clear any existing interval before starting a new one
     if (intervalRef.current) {
@@ -97,11 +96,8 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
         const now = new Date();
         const minutesElapsed = Math.floor((now.getTime() - lastUpdate.getTime()) / 60000);
 
-        console.log(`[SUBSCRIPTION_MODAL] User has pending subscription - ${minutesElapsed} minutes elapsed`);
-
         if (minutesElapsed >= 5) {
           // More than 5 minutes - reset subscription data
-          console.log('[SUBSCRIPTION_MODAL] Resetting expired pending subscription');
 
           await User.updateMyUserData({
             current_subscription_plan_id: null,
@@ -133,12 +129,10 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
 
         const intervalId = setInterval(async () => {
           try {
-            console.log('[SUBSCRIPTION_MODAL] Checking for processed subscription...');
 
             // Check if subscription was processed via callback
             // Note: This should ideally be handled by webhook, but keeping for backwards compatibility
             if (currentUser?.subscription_status === 'active') {
-              console.log('[SUBSCRIPTION_MODAL] Subscription processed successfully!');
 
               // Payment was processed!
               setPaymentInProgress(false);
@@ -168,11 +162,9 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
               const newLastUpdate = currentUser?.subscription_status_updated_at ? new Date(currentUser.subscription_status_updated_at) : lastUpdate;
               const newMinutesElapsed = Math.floor((new Date().getTime() - newLastUpdate.getTime()) / 60000);
               setPendingMessage(`התשלום שלך נמצא בתהליך עיבוד (${newMinutesElapsed} דקות)...`);
-              console.log('[SUBSCRIPTION_MODAL] Subscription still pending...');
 
               // Check for timeout within the interval loop as well
               if (newMinutesElapsed >= 5) {
-                console.log('[SUBSCRIPTION_MODAL] Subscription pending timeout - resetting from inside interval');
                 if (intervalRef.current) {
                   clearInterval(intervalRef.current);
                   intervalRef.current = null;
@@ -213,7 +205,6 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
           clearInterval(intervalRef.current);
           intervalRef.current = null;
         }
-        console.log('No active pending subscriptions found on user object.');
       }
     } catch (error) {
       cerror('Error checking payment status:', error);
@@ -225,42 +216,25 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
     }
   }, [currentUser, onSubscriptionChange, onClose]);
 
-  // Handle iframe messages from PayPlus (enhanced with better logging and immediate feedback)
+  // Handle iframe messages from PayPlus
   useEffect(() => {
     const handleMessage = async (event) => {
-      // Log ALL messages for debugging
-      console.log('🎯 SubscriptionModal: Raw message received:', {
-        origin: event.origin,
-        data: event.data,
-        source: event.source
-      });
-
       // Filter out non-PayPlus messages (React DevTools, etc.)
       if (!event.data ||
           event.data.source === 'react-devtools-bridge' ||
           event.data.source === 'react-devtools-content-script' ||
           event.data.source === 'react-devtools-inject-script') {
-        console.log('🎯 SubscriptionModal: Filtered out non-PayPlus message');
         return;
       }
-
-      console.log('🎯 SubscriptionModal: Processing potential PayPlus message:', event.data);
 
       if (typeof event.data === 'string') {
         try {
           const data = JSON.parse(event.data);
-          console.log('🎯 SubscriptionModal: Parsed message data:', data);
 
           if (data.type === 'payplus_payment_complete') {
-            console.log('🎯 SubscriptionModal: Payment completed via PostMessage with status:', data.status);
-
             if (data.status === 'success') {
-              // Payment was successful - provide immediate feedback like checkout
-              console.log('✅ Subscription payment completed via PostMessage - providing immediate feedback');
               await handleSubscriptionPaymentSuccessImmediate();
             } else {
-              // Payment failed/cancelled - close modal and show message
-              console.log('❌ Subscription payment failed via PostMessage:', data.status);
               handlePaymentModalClose();
 
               toast({
@@ -269,23 +243,16 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
                 description: "התשלום בוטל או נכשל. אנא נסה שוב."
               });
             }
-          } else {
-            console.log('🎯 SubscriptionModal: Message type not recognized:', data.type);
           }
         } catch (e) {
-          console.log('🎯 SubscriptionModal: Failed to parse message as JSON:', e.message);
           return;
         }
-      } else {
-        console.log('🎯 SubscriptionModal: Message data is not a string:', typeof event.data);
       }
     };
 
     if (showPaymentModal && paymentUrl) {
-      console.log('🎯 SubscriptionModal: Adding message listener for PayPlus iframe');
       window.addEventListener('message', handleMessage);
       return () => {
-        console.log('🎯 SubscriptionModal: Removing message listener for PayPlus iframe');
         window.removeEventListener('message', handleMessage);
       };
     }
@@ -532,7 +499,6 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
     if (!planToCancel) return;
 
     try {
-      console.log('✅ Subscription marked for cancellation');
         
         // Record subscription history for the cancelled paid subscription
         await recordSubscriptionHistory(currentUser, planToCancel, 'cancelled');
@@ -562,7 +528,7 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
           onClose();
         }, 3000); // Give more time to read the message
     } catch (error) {
-      console.error('❌ Error cancelling subscription:', error);
+      cerror('Error cancelling subscription:', error);
       const errorMessage = error.message || 'שגיאה לא ידועה';
       toast({
         variant: "destructive",
@@ -577,7 +543,6 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
 
   // Handle payment modal close
   const handlePaymentModalClose = () => {
-    console.log('🎯 SubscriptionModal: Closing payment modal and cleaning up state');
     setShowPaymentModal(false);
     setPaymentUrl('');
     setSelectedPlanForPayment(null);
@@ -589,16 +554,11 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
       title: "תשלום בוטל",
       description: "התשלום בוטל. ניתן לנסות שוב בכל עת."
     });
-
-    // Main subscription modal will automatically reappear due to the condition change
-    console.log('🎯 SubscriptionModal: Main modal will reappear automatically');
   };
 
   // Handle successful subscription payment with immediate feedback (like checkout)
   const handleSubscriptionPaymentSuccessImmediate = async () => {
     try {
-      console.log('🎯 SubscriptionModal: Processing successful subscription payment with immediate feedback');
-
       // Close payment modal immediately
       setShowPaymentModal(false);
       setPaymentUrl('');
@@ -616,8 +576,6 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
       // Do backend processing asynchronously without blocking user
       setTimeout(async () => {
         try {
-          console.log('🎯 SubscriptionModal: Starting background subscription processing');
-
           // Set user to pending status
           await User.updateMyUserData({
             current_subscription_plan_id: selectedPlanForPayment?.id,
@@ -632,8 +590,6 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
           if (onSubscriptionChange) {
             onSubscriptionChange();
           }
-
-          console.log('🎯 SubscriptionModal: Background subscription processing completed');
         } catch (error) {
           cerror('Error in background subscription processing:', error);
           // Show another toast for backend issues, but don't block user
@@ -646,7 +602,7 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
       }, 500); // Brief delay to let the success message show
 
     } catch (error) {
-      console.error('Error handling immediate subscription payment success:', error);
+      cerror('Error handling immediate subscription payment success:', error);
       toast({
         variant: "destructive",
         title: "שגיאה בעדכון המנוי",
@@ -675,7 +631,7 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
         notes: `${actionType} via subscription modal`
       });
     } catch (error) {
-      console.error('Error recording subscription history:', error);
+      cerror('Error recording subscription history:', error);
       toast({
         variant: "destructive",
         title: "שגיאה בתיעוד היסטוריית מנוי",
@@ -866,12 +822,6 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
                           // Check if this plan has a pending payment that needs completion
                           const hasPendingPayment = (() => {
                             try {
-                              // Debug logging to see what data we have
-                              clog('Checking pending payment for plan:', plan.name, 'Plan ID:', plan.id);
-                              clog('Current user:', currentUser?.email);
-                              clog('Summary purchases:', summary?.purchases);
-                              clog('Available plans:', plans?.map(p => ({id: p.id, name: p.name})));
-
                               const actionDecision = SubscriptionBusinessLogic.determineSubscriptionAction(
                                 currentUser,
                                 plan,
@@ -880,10 +830,7 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
                                 summary?.subscriptions || []
                               );
 
-                              clog('Action decision for plan', plan.name, ':', actionDecision);
-
                               const isPendingPayment = actionDecision?.actionType === SubscriptionBusinessLogic.ACTION_TYPES.RETRY_PAYMENT;
-                              clog('Has pending payment for plan', plan.name, ':', isPendingPayment);
 
                               return isPendingPayment;
                             } catch (error) {
@@ -1285,7 +1232,7 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
           onClick={(e) => {
             // Close modal if clicking on backdrop
             if (e.target === e.currentTarget) {
-              console.log('🎯 SubscriptionModal: Backdrop click detected, closing payment modal');
+              clog('SubscriptionModal: Backdrop click detected, closing payment modal');
               handlePaymentModalClose();
             }
           }}
@@ -1324,11 +1271,10 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
                 className="w-full h-full border-0"
                 title="PayPlus Subscription Payment"
                 onLoad={() => {
-                  console.log('🎯 SubscriptionModal: PayPlus iframe loaded successfully');
                   setIsIframeLoading(false);
                 }}
                 onError={(e) => {
-                  console.error('🎯 SubscriptionModal: PayPlus iframe error:', e);
+                  cerror('PayPlus iframe error:', e);
                   setIsIframeLoading(false);
                 }}
               />

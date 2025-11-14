@@ -6,31 +6,23 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { X, Loader2, AlertCircle } from "lucide-react";
+import { cerror } from "@/lib/utils";
 
-export default function LoginModal({ onClose, onLogin }) {
+export default function LoginModal({ onClose, onLogin, message }) {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [error, setError] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
 
   const handleGoogleSignIn = async () => {
-    console.log('🔵 LoginModal: handleGoogleSignIn clicked');
     setIsLoggingIn(true);
     setError('');
 
     try {
-      console.log('🔵 LoginModal: Calling onLogin function...');
       await onLogin(rememberMe);
-      console.log('🔵 LoginModal: onLogin completed successfully');
-      onClose();
+      // Don't call onClose() here - let the parent component handle modal closing
     } catch (err) {
-      console.error('❌ Google sign-in error:', err);
-      console.error('❌ Error details:', {
-        message: err.message,
-        code: err.code,
-        name: err.name,
-        stack: err.stack
-      });
-      
+      cerror('Google sign-in error:', err);
+
       let errorMessage = 'שגיאה בכניסה. נסו שוב.';
       
       if (err.message) {
@@ -70,7 +62,7 @@ export default function LoginModal({ onClose, onLogin }) {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="text-center text-gray-600 mb-6">
-            השתמשו בחשבון הגוגל שלכם כדי להתחבר
+            {message || "השתמשו בחשבון הגוגל שלכם כדי להתחבר"}
           </div>
           
           {error && (

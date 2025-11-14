@@ -8,6 +8,7 @@ import FileAccessButton from '@/components/ui/FileAccessButton';
 import LessonPlanAccessButton from '@/components/ui/LessonPlanAccessButton';
 import CourseAccessButton from '@/components/ui/CourseAccessButton';
 import WorkshopAccessButton from '@/components/ui/WorkshopAccessButton';
+import { clog } from '@/lib/utils';
 
 /**
  * Product Action Bar - Smart container that shows appropriate buttons based on product state
@@ -49,7 +50,7 @@ export default function ProductActionBar({
   } = useProductAccess(product);
 
   // DEBUG: Log ProductActionBar data
-  console.log('🎯 ProductActionBar Debug:', {
+  clog('ProductActionBar Debug:', {
     productId: product?.id,
     productTitle: product?.title,
     embeddedPurchase: product?.purchase,

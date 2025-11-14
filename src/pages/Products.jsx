@@ -129,12 +129,6 @@ export default function Products() {
 
         const allProducts = allProductsData || [];
 
-        // Debug: Log any products with missing or invalid IDs
-        const invalidProducts = allProducts.filter(p => !p.id || typeof p.id !== 'string');
-        if (invalidProducts.length > 0) {
-          console.warn('⚠️ Found products with invalid IDs:', invalidProducts);
-        }
-
         // Sort by creation date (newest first)
         allProducts.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
@@ -208,7 +202,6 @@ export default function Products() {
   };
 
   const handleRefresh = () => {
-    console.log('🔄 Manual refresh triggered');
     toast({
       title: "מרענן רשימת מוצרים",
       description: "טוען נתונים עדכניים...",
@@ -219,13 +212,6 @@ export default function Products() {
 
   // Extract deletion logic into separate async function
   const performProductDeletion = async (product) => {
-    console.log('🗑️ Starting deletion for product:', {
-      id: product.id,
-      title: product.title,
-      product_type: product.product_type,
-      entity_id: product.entity_id
-    });
-
     // Delete associated assets first
     const filesToDelete = [];
 
@@ -248,9 +234,7 @@ export default function Products() {
     for (const fileToDelete of filesToDelete) {
       try {
         await deleteFile({ file_uri: fileToDelete.file_uri });
-        console.log(`${fileToDelete.type} deleted successfully:`, fileToDelete.file_uri);
       } catch (fileError) {
-        console.warn(`Failed to delete ${fileToDelete.type}:`, fileError);
         // Continue with product deletion even if file deletion fails
       }
     }
@@ -262,7 +246,6 @@ export default function Products() {
           try {
             await Workshop.delete(product.entity_id);
           } catch (error) {
-            console.warn('Failed to delete workshop entity (might not exist):', error);
             // Continue with product deletion even if entity deletion fails
           }
         }
@@ -272,7 +255,6 @@ export default function Products() {
           try {
             await Course.delete(product.entity_id);
           } catch (error) {
-            console.warn('Failed to delete course entity (might not exist):', error);
             // Continue with product deletion even if entity deletion fails
           }
         }
@@ -282,7 +264,6 @@ export default function Products() {
           try {
             await File.delete(product.entity_id);
           } catch (error) {
-            console.warn('Failed to delete file entity (might not exist for draft products):', error);
             // Continue with product deletion even if entity deletion fails
           }
         }
@@ -292,7 +273,6 @@ export default function Products() {
           try {
             await Tool.delete(product.entity_id);
           } catch (error) {
-            console.warn('Failed to delete tool entity (might not exist):', error);
             // Continue with product deletion even if entity deletion fails
           }
         }
@@ -302,7 +282,6 @@ export default function Products() {
           try {
             await Game.delete(product.entity_id);
           } catch (error) {
-            console.warn('Failed to delete game entity (might not exist):', error);
             // Continue with product deletion even if entity deletion fails
           }
         }
@@ -312,7 +291,6 @@ export default function Products() {
           try {
             await LessonPlan.delete(product.entity_id);
           } catch (error) {
-            console.warn('Failed to delete lesson plan entity (might not exist):', error);
             // Continue with product deletion even if entity deletion fails
           }
         }
@@ -322,12 +300,9 @@ export default function Products() {
     }
 
     // Finally, delete the product record itself
-    console.log('🗑️ Attempting to delete product with ID:', product.id);
     try {
       await Product.delete(product.id);
-      console.log('✅ Product deleted successfully');
     } catch (productError) {
-      console.warn('❌ Failed to delete product record (might already be deleted):', productError);
       // Don't throw error if product doesn't exist - it might have been deleted already
       if (!productError.message?.includes('not found')) {
         throw productError; // Re-throw if it's not a "not found" error

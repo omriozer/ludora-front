@@ -26,11 +26,11 @@ export function getTextFontFamily(text, isBold = false) {
     // Use Hebrew fonts for Hebrew text (same as backend)
     return "'NotoSansHebrew', 'Arial Unicode MS', 'Segoe UI', Arial, sans-serif";
   } else {
-    // Use standard fonts for non-Hebrew text (same as backend Helvetica family)
+    // Use Helvetica fonts for non-Hebrew text (matches backend PDF standard fonts exactly)
     if (isBold) {
-      return "'Helvetica Neue', Helvetica, Arial, sans-serif";
+      return "Helvetica, 'Helvetica Neue', Arial, sans-serif";
     }
-    return "'Helvetica Neue', Helvetica, Arial, sans-serif";
+    return "Helvetica, 'Helvetica Neue', Arial, sans-serif";
   }
 }
 
@@ -57,14 +57,19 @@ export function getHebrewTextClasses(text, isBold = false) {
  * Apply Hebrew font styling to a React element style object
  * @param {string} text - Text content
  * @param {boolean} isBold - Whether text should be bold
+ * @param {boolean} isItalic - Whether text should be italic
  * @param {Object} existingStyle - Existing style object
  * @returns {Object} Updated style object with Hebrew font settings
  */
-export function applyHebrewFontStyle(text, isBold = false, existingStyle = {}) {
+export function applyHebrewFontStyle(text, isBold = false, isItalic = false, existingStyle = {}) {
+  const hasHebrew = containsHebrew(text);
+
   return {
     ...existingStyle,
     fontFamily: getTextFontFamily(text, isBold),
-    direction: containsHebrew(text) ? 'rtl' : 'ltr',
-    fontWeight: isBold ? 'bold' : existingStyle.fontWeight || 'normal'
+    direction: hasHebrew ? 'rtl' : 'ltr',
+    fontWeight: isBold ? 'bold' : existingStyle.fontWeight || 'normal',
+    // Hebrew fonts don't support italic - disable for consistency with PDF
+    fontStyle: hasHebrew ? 'normal' : (isItalic ? 'italic' : existingStyle.fontStyle || 'normal')
   };
 }

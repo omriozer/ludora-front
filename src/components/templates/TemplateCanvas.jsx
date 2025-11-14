@@ -2,85 +2,81 @@ import React, { useState, useEffect } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
-import { getTextFontFamily, containsHebrew } from '@/utils/hebrewUtils';
+import { getTextFontFamily, containsHebrew, applyHebrewFontStyle } from '@/utils/hebrewUtils';
+import { getCanvasDimensions, isSVGFormat } from '@/utils/canvasDimensions';
+import { getElementTransformStyle, getElementShadowStyle } from '@/utils/elementHelpers.js';
+import {
+  fetchResolvedTemplateContent,
+  getElementDisplayContent,
+  getElementDisplayHref
+} from '@/utils/templateContentResolver.js';
 import logo from '@/assets/images/logo.png';
+import { clog, cerror } from '@/lib/utils';
 
 // Configure PDF.js worker - use CDN for compatibility
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 const TemplateCanvas = ({
   pdfUrl,
-  footerConfig,
+  templateConfig,
   onPageChange,
-  onFooterConfigChange,
+  onTemplateConfigChange,
   focusedItem,
   currentPage = 1,
+  numPages: propNumPages, // Accept numPages as prop for SVG slides
   groups = {},
   targetFormat = 'pdf-a4-portrait', // Add target format prop
-  templateType = 'branding' // Add template type prop
+  templateType = 'branding', // Add template type prop
+  showFileContent = true, // Add file content visibility prop
+  showTemplateElements = true, // Add template elements visibility prop
+  currentUser = null, // Current user object for email template resolution
+  fileId = null // File ID for fetching resolved template content
 }) => {
-  const [numPages, setNumPages] = useState(null);
+  const [numPages, setNumPages] = useState(propNumPages || null);
   const [pageWidth, setPageWidth] = useState(() => {
-    // Set initial width based on format
-    if (targetFormat === 'pdf-a4-landscape') {
-      return 842;
-    } else if (targetFormat === 'svg-lessonplan') {
-      return 800;
-    } else {
-      return 595;
-    }
+    // Set initial width based on format using centralized dimensions
+    const dimensions = getCanvasDimensions(targetFormat);
+    // Scale down SVG slides to fit in reasonable screen space (800px width)
+    return isSVGFormat(targetFormat) ? 800 : dimensions.width;
   });
   const [isDragging, setIsDragging] = useState(null);
   const [dragStart, setDragStart] = useState(null);
   const [actualPdfDimensions, setActualPdfDimensions] = useState(null);
   const [scaleFactor, setScaleFactor] = useState(1);
   const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [isPanning, setIsPanning] = useState(false);
-  const [lastPanPoint, setLastPanPoint] = useState({ x: 0, y: 0 });
+  const [pan, setPan] = useState({ x: 0, y: 0 }); // Allow pan via scroll
+  const [isPanning] = useState(false); // Drag panning disabled, scroll panning enabled
   const [showInstructions, setShowInstructions] = useState(() => {
     // Check localStorage for user preference, default to true for first-time users
     const stored = localStorage.getItem('pdfViewer.showInstructions');
     return stored === null ? true : stored === 'true';
   });
+  const [resolvedTemplateContent, setResolvedTemplateContent] = useState(null);
+  const [isLoadingResolvedContent, setIsLoadingResolvedContent] = useState(false);
   const overlayRef = React.useRef(null);
   const containerRef = React.useRef(null);
 
   // Helper function to check if we're working with SVG
   const isSvgFormat = () => {
-    return targetFormat === 'svg-lessonplan';
+    return isSVGFormat(targetFormat);
   };
 
   // Helper function to get correct dimensions based on format
   const getPageDimensions = () => {
-    if (targetFormat === 'pdf-a4-landscape') {
-      return {
-        width: 842,
-        height: 595,
-        aspectRatio: 595 / 842 // height / width for landscape
-      };
-    } else if (targetFormat === 'svg-lessonplan') {
-      return {
-        width: 800,
-        height: 600,
-        aspectRatio: 600 / 800 // height / width for SVG lesson plans
-      };
-    } else {
-      return {
-        width: 595,
-        height: 842,
-        aspectRatio: 842 / 595 // height / width for portrait
-      };
-    }
+    const dimensions = getCanvasDimensions(targetFormat);
+    return {
+      width: dimensions.width,
+      height: dimensions.height,
+      aspectRatio: dimensions.height / dimensions.width // height / width
+    };
   };
 
-  const onDocumentLoadSuccess = async ({ numPages, getDocument }) => {
-    setNumPages(numPages);
+  const onDocumentLoadSuccess = async (pdf) => {
+    setNumPages(pdf.numPages);
 
     // Extract actual PDF page dimensions for scaling calculations
     try {
-      const pdfDocument = await getDocument();
-      const page = await pdfDocument.getPage(currentPage);
+      const page = await pdf.getPage(currentPage);
       const viewport = page.getViewport({ scale: 1.0 });
 
       const actualDimensions = {
@@ -90,75 +86,22 @@ const TemplateCanvas = ({
 
       setActualPdfDimensions(actualDimensions);
 
-      console.log('📐 PDF Dimensions extracted:', {
-        actualWidth: actualDimensions.width,
-        actualHeight: actualDimensions.height,
-        note: 'These are the real PDF units that backend uses'
-      });
     } catch (error) {
-      console.error('Failed to extract PDF dimensions:', error);
+      cerror('Failed to extract PDF dimensions:', error);
     }
   };
 
-  // Pan handlers for canvas movement
-  const handlePanStart = (event) => {
-    // Start panning unless clicking on draggable footer elements
-    const target = event.target;
-    const isFooterElement = target.closest('[data-footer-element]') ||
-                           target.closest('.pointer-events-auto');
-
-    if (!isFooterElement) {
-      setIsPanning(true);
-      setLastPanPoint({ x: event.clientX, y: event.clientY });
-      event.preventDefault();
-    }
+  // Pan handlers disabled - canvas is no longer draggable
+  const handlePanStart = () => {
+    // Panning disabled - do nothing
   };
 
-  const handlePanMove = (event) => {
-    if (isPanning && containerRef.current) {
-      const deltaX = event.clientX - lastPanPoint.x;
-      const deltaY = event.clientY - lastPanPoint.y;
-
-      // Get container dimensions for boundary calculations
-      const containerRect = containerRef.current.getBoundingClientRect();
-      const containerWidth = containerRect.width;
-      const containerHeight = containerRect.height;
-
-      // Calculate document dimensions at current zoom
-      const pageDimensions = getPageDimensions();
-      const documentHeight = pageWidth * pageDimensions.aspectRatio;
-      const scaledDocWidth = pageWidth * zoom;
-      const scaledDocHeight = documentHeight * zoom;
-
-      // Calculate maximum pan values to keep document partially visible
-      const minVisiblePx = 100; // Minimum pixels that must remain visible
-      const maxPanX = Math.max(0, (scaledDocWidth - minVisiblePx) / 2);
-      const maxPanY = Math.max(0, (scaledDocHeight - minVisiblePx) / 2);
-      const minPanX = -maxPanX;
-      const minPanY = -maxPanY;
-
-      // Apply natural pan sensitivity for smooth navigation
-      const sensitivity = 1.0; // Good sensitivity for natural panning
-      const zoomCompensation = 1 / zoom; // Compensate for zoom scaling
-      const compensatedDeltaX = deltaX * sensitivity * zoomCompensation;
-      const compensatedDeltaY = deltaY * sensitivity * zoomCompensation;
-
-      // Calculate new pan position with boundaries
-      const newPanX = Math.max(minPanX / zoom, Math.min(maxPanX / zoom, prev.x + compensatedDeltaX));
-      const newPanY = Math.max(minPanY / zoom, Math.min(maxPanY / zoom, prev.y + compensatedDeltaY));
-
-      setPan(prev => ({
-        x: newPanX,
-        y: newPanY
-      }));
-
-      setLastPanPoint({ x: event.clientX, y: event.clientY });
-      event.preventDefault();
-    }
+  const handlePanMove = () => {
+    // Panning disabled - do nothing
   };
 
   const handlePanEnd = () => {
-    setIsPanning(false);
+    // Panning disabled - do nothing
   };
 
   // Zoom handlers
@@ -176,7 +119,7 @@ const TemplateCanvas = ({
   };
 
 
-  // Enhanced wheel handler for both zoom and scroll
+  // Wheel handler for zoom and scroll-based panning
   const handleWheel = (event) => {
     if (event.ctrlKey || event.metaKey) {
       // Zoom when holding Ctrl/Cmd
@@ -210,6 +153,36 @@ const TemplateCanvas = ({
     }
   };
 
+  // Update pageWidth when targetFormat changes
+  useEffect(() => {
+    const dimensions = getCanvasDimensions(targetFormat);
+    // Scale down SVG slides to fit in reasonable screen space (800px width)
+    const width = isSVGFormat(targetFormat) ? 800 : dimensions.width;
+    setPageWidth(width);
+
+    // For SVG slides, set the actual dimensions to the full 1920x1080 for coordinate calculations
+    if (isSVGFormat(targetFormat)) {
+      setActualPdfDimensions({
+        width: dimensions.width,  // 1920
+        height: dimensions.height // 1080
+      });
+    } else {
+      // For PDF formats, set the actual A4 dimensions for coordinate calculations
+      setActualPdfDimensions({
+        width: dimensions.width,   // 595 for A4 portrait
+        height: dimensions.height  // 842 for A4 portrait
+      });
+    }
+
+  }, [targetFormat]);
+
+  // Update numPages when propNumPages changes (for SVG slides)
+  useEffect(() => {
+    if (propNumPages !== undefined) {
+      setNumPages(propNumPages);
+    }
+  }, [propNumPages]);
+
   // Calculate scale factor when both dimensions are available
   useEffect(() => {
     if (actualPdfDimensions && pageWidth) {
@@ -219,13 +192,6 @@ const TemplateCanvas = ({
 
       setScaleFactor(calculatedScaleFactor);
 
-      console.log('📏 Scale Factor calculated:', {
-        actualPdfWidth: actualPdfDimensions.width,
-        actualPdfHeight: actualPdfDimensions.height,
-        previewWidth: pageWidth,
-        scaleFactor: calculatedScaleFactor,
-        note: 'Frontend positions × scaleFactor = Backend positions'
-      });
     }
   }, [actualPdfDimensions, pageWidth]);
 
@@ -234,13 +200,44 @@ const TemplateCanvas = ({
     localStorage.setItem('pdfViewer.showInstructions', showInstructions.toString());
   }, [showInstructions]);
 
+  // Fetch resolved template content when fileId changes
+  useEffect(() => {
+    if (fileId && templateType === 'branding') {
+      setIsLoadingResolvedContent(true);
+      fetchResolvedTemplateContent(fileId)
+        .then((resolvedData) => {
+          if (resolvedData) {
+            setResolvedTemplateContent(resolvedData.resolvedTemplate);
+            clog('Template content resolved successfully', {
+              fileId,
+              hasText: !!resolvedData.resolvedTemplate?.text,
+              hasUrl: !!resolvedData.resolvedTemplate?.url,
+              variables: resolvedData.variables
+            });
+          } else {
+            setResolvedTemplateContent(null);
+            clog('Failed to resolve template content - using fallback display');
+          }
+        })
+        .catch((error) => {
+          cerror('Error fetching resolved template content:', error);
+          setResolvedTemplateContent(null);
+        })
+        .finally(() => {
+          setIsLoadingResolvedContent(false);
+        });
+    } else {
+      setResolvedTemplateContent(null);
+    }
+  }, [fileId, templateType]);
+
   // Group helper functions
   const getElementGroup = (elementKey) => {
     let element;
-    if (footerConfig.customElements?.[elementKey]) {
-      element = footerConfig.customElements[elementKey];
-    } else if (footerConfig[elementKey]) {
-      element = footerConfig[elementKey];
+    if (templateConfig.customElements?.[elementKey]) {
+      element = templateConfig.customElements[elementKey];
+    } else if (templateConfig[elementKey]) {
+      element = templateConfig[elementKey];
     }
 
     if (element?.groupId && groups[element.groupId]) {
@@ -253,16 +250,16 @@ const TemplateCanvas = ({
     const elements = [];
 
     // Check custom elements
-    Object.entries(footerConfig.customElements || {}).forEach(([elementId, element]) => {
+    Object.entries(templateConfig.customElements || {}).forEach(([elementId, element]) => {
       if (element.groupId === groupId) {
         elements.push([elementId, element]);
       }
     });
 
     // Check built-in elements
-    ['logo', 'text', 'url'].forEach(elementKey => {
-      if (footerConfig[elementKey]?.groupId === groupId) {
-        elements.push([elementKey, footerConfig[elementKey]]);
+    ['logo', 'text', 'url', 'copyright-text', 'user-info', 'watermark-logo'].forEach(elementKey => {
+      if (templateConfig[elementKey]?.groupId === groupId) {
+        elements.push([elementKey, templateConfig[elementKey]]);
       }
     });
 
@@ -286,7 +283,6 @@ const TemplateCanvas = ({
     // Check if element is in a locked group
     const elementGroup = getElementGroup(element);
     if (elementGroup && isGroupLocked(elementGroup.id)) {
-      console.log(`🔒 Cannot drag element ${element} - group ${elementGroup.name} is locked`);
       return; // Prevent dragging locked groups
     }
 
@@ -294,12 +290,12 @@ const TemplateCanvas = ({
 
     // Get element position from correct location
     let elementPosition;
-    if (footerConfig.customElements?.[element]) {
-      elementPosition = footerConfig.customElements[element].position;
-    } else if (footerConfig[element]) {
-      elementPosition = footerConfig[element].position;
+    if (templateConfig.customElements?.[element]) {
+      elementPosition = templateConfig.customElements[element].position;
+    } else if (templateConfig[element]) {
+      elementPosition = templateConfig[element].position;
     } else {
-      console.error('Element not found:', element);
+      cerror('Element not found:', element);
       return;
     }
 
@@ -337,78 +333,50 @@ const TemplateCanvas = ({
       newX = (pdfMouseX / actualPdfDimensions.width) * 100;
       newY = (pdfMouseY / actualPdfDimensions.height) * 100;
 
-      console.log('🎯 PDF-NORMALIZED Coordinate Calculation:', {
-        mousePosition: { x: mouseX, y: mouseY },
-        displayDimensions: { width: rect.width, height: rect.height },
-        actualPdfDimensions: actualPdfDimensions,
-        displayScale: displayScale,
-        pdfMousePosition: { x: pdfMouseX, y: pdfMouseY },
-        finalPercentages: { x: newX, y: newY },
-        verification: {
-          backToPdfCoords: {
-            x: actualPdfDimensions.width * newX / 100,
-            y: actualPdfDimensions.height * newY / 100
-          },
-          shouldMatch: { x: pdfMouseX, y: pdfMouseY }
-        },
-        note: 'These percentages are now consistent across all screen sizes and match actual PDF positioning'
-      });
 
     } else {
       // Fallback to basic calculation if PDF dimensions not available yet
       newX = (mouseX / rect.width) * 100;
       newY = (mouseY / rect.height) * 100;
 
-      console.warn('⚠️ PDF dimensions not available, using fallback coordinate calculation');
+      clog('PDF dimensions not available, using fallback coordinate calculation');
     }
 
-    // Add boundary constraints with padding to keep elements fully inside
-    const padding = 5; // 5% padding from edges
-    newX = Math.max(padding, Math.min(100 - padding, newX));
-    newY = Math.max(padding, Math.min(100 - padding, newY));
+    // Add boundary constraints with minimal padding to allow full page coverage
+    // Use smaller padding for better element placement freedom, especially for A4 templates
+    const paddingX = 2; // 2% horizontal padding (minimal constraint)
+    const paddingY = 1; // 1% vertical padding (allows near-edge positioning)
+    newX = Math.max(paddingX, Math.min(100 - paddingX, newX));
+    newY = Math.max(paddingY, Math.min(100 - paddingY, newY));
 
-    // DETAILED COORDINATE DEBUGGING
-    console.log('🎯 FINAL Frontend Coordinates (PDF-Normalized):', {
-      inputMouse: { x: mouseX, y: mouseY },
-      canvasSize: { width: rect.width, height: rect.height },
-      outputPercentages: { x: newX, y: newY },
-      pdfEquivalent: actualPdfDimensions ? {
-        x: (actualPdfDimensions.width * newX / 100),
-        y: actualPdfDimensions.height - (actualPdfDimensions.height * newY / 100)
-      } : 'PDF dimensions not loaded',
-      consistency: 'These percentages will produce the same PDF position on any screen size',
-      note: 'Y=0 at top, Y=100 at bottom (CSS coordinate system)'
-    });
 
     // Update position during drag
-    if (onFooterConfigChange) {
-      let newConfig = { ...footerConfig };
+    if (onTemplateConfigChange) {
+      let newConfig = { ...templateConfig };
 
       // Check if the dragged element is in a group
       const draggedElementGroup = getElementGroup(isDragging);
 
       if (draggedElementGroup) {
         // Group movement: move all elements in the group together
-        console.log(`👥 Moving group ${draggedElementGroup.name} with element ${isDragging}`);
 
         // Calculate movement delta
         let currentElement;
-        if (footerConfig.customElements?.[isDragging]) {
-          currentElement = footerConfig.customElements[isDragging];
+        if (templateConfig.customElements?.[isDragging]) {
+          currentElement = templateConfig.customElements[isDragging];
         } else {
-          currentElement = footerConfig[isDragging];
+          currentElement = templateConfig[isDragging];
         }
 
         const deltaX = Math.round(newX) - currentElement.position.x;
         const deltaY = Math.round(newY) - currentElement.position.y;
 
-        console.log(`📐 Group movement delta: x=${deltaX}, y=${deltaY}`);
 
         // Move all elements in the group by the same delta
         const groupElements = getGroupElements(draggedElementGroup.id);
         groupElements.forEach(([elementId, element]) => {
-          const newElementX = Math.max(5, Math.min(95, element.position.x + deltaX));
-          const newElementY = Math.max(5, Math.min(95, element.position.y + deltaY));
+          const newElementX = Math.max(2, Math.min(98, element.position.x + deltaX));
+          const newElementY = Math.max(1, Math.min(99, element.position.y + deltaY));
 
           if (newConfig.customElements?.[elementId]) {
             newConfig.customElements[elementId] = {
@@ -433,7 +401,7 @@ const TemplateCanvas = ({
 
       } else {
         // Single element movement
-        if (footerConfig.customElements?.[isDragging]) {
+        if (templateConfig.customElements?.[isDragging]) {
           // Handle custom elements
           newConfig.customElements = {
             ...newConfig.customElements,
@@ -459,7 +427,7 @@ const TemplateCanvas = ({
         }
       }
 
-      onFooterConfigChange(newConfig, {
+      onTemplateConfigChange(newConfig, {
         actualPdfDimensions,
         scaleFactor,
         previewDimensions: {
@@ -475,39 +443,103 @@ const TemplateCanvas = ({
     setDragStart(null);
   };
 
-  // Add global event listeners for drag and pan operations
+  // Function to handle element duplication
+  const handleDuplicateElement = (elementId) => {
+    const element = templateConfig.customElements[elementId];
+    if (!element) return;
+
+    const newElementId = `${elementId}_copy_${Date.now()}`;
+    const newElement = {
+      ...element,
+      id: newElementId,
+      position: {
+        x: element.position.x + 5, // Offset by 5% to make it visible
+        y: element.position.y + 5
+      }
+    };
+
+    const newConfig = {
+      ...templateConfig,
+      customElements: {
+        ...templateConfig.customElements,
+        [newElementId]: newElement
+      }
+    };
+
+    onTemplateConfigChange(newConfig);
+  };
+
+  // Helper function to render duplicate button
+  const renderDuplicateButton = (elementId) => {
+    return (
+      <button
+        className="absolute -top-2 -right-2 w-6 h-6 bg-blue-500 hover:bg-blue-600 text-white rounded-full
+                   flex items-center justify-center text-xs shadow-lg opacity-0 group-hover:opacity-100
+                   transition-opacity duration-200 z-20 border-2 border-white"
+        onClick={(e) => {
+          e.stopPropagation();
+          handleDuplicateElement(elementId);
+        }}
+        title="שכפל אלמנט"
+        style={{ pointerEvents: 'auto' }}
+      >
+        📋
+      </button>
+    );
+  };
+
+  // Add global event listeners for drag operations only (pan drag disabled)
   useEffect(() => {
     if (isDragging) {
       document.addEventListener('mousemove', handleMouseMove);
       document.addEventListener('mouseup', handleMouseUp);
     }
-    if (isPanning) {
-      document.addEventListener('mousemove', handlePanMove);
-      document.addEventListener('mouseup', handlePanEnd);
-    }
+    // Note: Pan drag event listeners removed - only scroll-based panning available
 
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
-      document.removeEventListener('mousemove', handlePanMove);
-      document.removeEventListener('mouseup', handlePanEnd);
     };
-  }, [isDragging, dragStart, isPanning]);
+  }, [isDragging, dragStart]);
 
+  // Add wheel event listener with non-passive option to allow preventDefault
+  useEffect(() => {
+    const containerElement = containerRef.current;
+    if (containerElement) {
+      containerElement.addEventListener('wheel', handleWheel, { passive: false });
+
+      return () => {
+        containerElement.removeEventListener('wheel', handleWheel, { passive: false });
+      };
+    }
+  }, []);
+
+  // Helper function to resolve user email templates
+  const resolveUserEmailTemplate = (content) => {
+    if (!content || typeof content !== 'string') {
+      return 'משתמש@דוגמה.com';
+    }
+
+    // Check if content contains user email template
+    if (content.includes('{{user.email}}') && currentUser?.email) {
+      return content.replace(/\{\{user\.email\}\}/g, currentUser.email);
+    }
+
+    // Return original content if no template or no user
+    return content;
+  };
 
   const renderTemplateOverlay = () => {
-    if (!footerConfig) return null;
+    if (!templateConfig || !showTemplateElements) return null;
 
     // Unified rendering for all template types
     return renderUnifiedElements();
   };
 
   const renderUnifiedElements = () => {
-    const { logo, text, url } = footerConfig;
+    // Add null checks and defaults to prevent errors during initial load
+    if (!templateConfig) return null;
 
-    // Debug logging
-    console.log('🖼️ Rendering unified overlay for templateType:', templateType);
-    console.log('🖼️ Footer config:', footerConfig);
 
     return (
       <div
@@ -521,131 +553,214 @@ const TemplateCanvas = ({
           zIndex: 10
         }}
       >
-        {/* Logo */}
-        {logo.visible && logo.url && (
-          <div
-            className={`absolute pointer-events-auto select-none transition-all duration-200 ${
-              isDragging === 'logo' ? 'cursor-grabbing scale-105 z-50' : 'cursor-grab hover:scale-105'
-            } ${
-              focusedItem === 'logo' ? 'ring-4 ring-blue-400 ring-opacity-75 rounded-lg' : ''
-            } ${
-              logo.groupId ? 'ring-2 ring-purple-300' : ''
-            }`}
-            style={{
-              left: `${logo.position.x}%`,
-              top: `${logo.position.y}%`,
-              transform: 'translate(-50%, -50%)',
-              opacity: logo.style.opacity / 100
-            }}
-            onMouseDown={(e) => handleMouseDown('logo', e)}
-          >
-            <img
-              src={logo.url}
-              alt="Logo"
-              style={{
-                width: `${logo.style.size}px`,
-                height: 'auto'
-              }}
-              draggable={false}
-            />
-          </div>
-        )}
 
-        {/* Copyright Text */}
-        {text.visible && text.content && text.content.length > 0 && (
-          <div
-            className={`absolute pointer-events-auto select-none transition-all duration-200 ${
-              isDragging === 'text' ? 'cursor-grabbing scale-105 z-50' : 'cursor-grab hover:scale-105'
-            } ${
-              focusedItem === 'text' ? 'ring-4 ring-blue-400 ring-opacity-75 rounded-lg' : ''
-            } ${
-              text.groupId ? 'ring-2 ring-purple-300' : ''
-            }`}
-            style={{
-              left: `${text.position.x}%`,
-              top: `${text.position.y}%`,
-              transform: 'translate(-50%, -50%)',
-              fontSize: `${text.style.fontSize}px`,
-              fontFamily: getTextFontFamily(text.content, text.style.bold),
-              color: text.style.color,
-              fontWeight: text.style.bold ? 'bold' : 'normal',
-              fontStyle: text.style.italic ? 'italic' : 'normal',
-              opacity: text.style.opacity / 100,
-              textAlign: 'center',
-              direction: containsHebrew(text.content) ? 'rtl' : 'ltr',
-              width: `${text.style.width || 300}px`,
-              wordWrap: 'break-word',
-              overflow: 'visible'
-            }}
-            onMouseDown={(e) => handleMouseDown('text', e)}
-            ref={(el) => {
-              if (el) {
-                // Log frontend text rendering details for comparison with backend
-                console.log('📝 FRONTEND Text Rendering Details:', {
-                  text: text.content,
-                  fontSize: text.style.fontSize,
-                  containerWidth: text.style.width || 300,
-                  actualRenderedWidth: el.getBoundingClientRect().width,
-                  actualRenderedHeight: el.getBoundingClientRect().height,
-                  computedStyle: {
-                    fontSize: window.getComputedStyle(el).fontSize,
-                    fontFamily: window.getComputedStyle(el).fontFamily,
-                    lineHeight: window.getComputedStyle(el).lineHeight,
-                    width: window.getComputedStyle(el).width
-                  },
-                  lineCount: el.innerHTML.split('<br>').length,
-                  note: 'Compare with backend wrapping analysis'
-                });
-              }
-            }}
-          >
-            {text.content}
-          </div>
-        )}
+        {/* Built-in Elements (logo, text, url, copyright-text, user-info, watermark-logo) */}
+        {['logo', 'text', 'url', 'copyright-text', 'user-info', 'watermark-logo'].map(builtInKey => {
+          const builtInElement = templateConfig[builtInKey];
+          if (!builtInElement || !builtInElement.visible || builtInElement.hidden) return null;
 
-        {/* URL Link */}
-        {url.visible && (
-          <div
-            className={`absolute pointer-events-auto select-none transition-all duration-200 ${
-              isDragging === 'url' ? 'cursor-grabbing scale-105 z-50' : 'cursor-grab hover:scale-105'
-            } ${
-              focusedItem === 'url' ? 'ring-4 ring-blue-400 ring-opacity-75 rounded-lg' : ''
-            } ${
-              url.groupId ? 'ring-2 ring-purple-300' : ''
-            }`}
-            style={{
-              left: `${url.position.x}%`,
-              top: `${url.position.y}%`,
-              transform: 'translate(-50%, -50%)',
-              fontSize: `${url.style.fontSize}px`,
-              fontFamily: getTextFontFamily(url.href, url.style.bold),
-              color: url.style.color,
-              fontWeight: url.style.bold ? 'bold' : 'normal',
-              fontStyle: url.style.italic ? 'italic' : 'normal',
-              opacity: url.style.opacity / 100,
-              direction: containsHebrew(url.href) ? 'rtl' : 'ltr',
-              textDecoration: 'underline'
-            }}
-            onMouseDown={(e) => handleMouseDown('url', e)}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (!isDragging) {
-                window.open(url.href, '_blank');
-              }
-            }}
-          >
-            {url.href}
-          </div>
-        )}
+          const isFocused = focusedItem === builtInKey;
+          const isDraggingThis = isDragging === builtInKey;
+
+          const commonClasses = `absolute pointer-events-auto select-none transition-all duration-200 group ${
+            isDraggingThis ? 'cursor-grabbing scale-105 z-50' : 'cursor-grab hover:scale-105'
+          } ${isFocused ? 'ring-4 ring-blue-400 ring-opacity-75 rounded-lg' : ''} ${
+            builtInElement.groupId ? 'ring-2 ring-purple-300' : ''
+          }`;
+
+          const commonStyle = {
+            left: `${builtInElement.position.x}%`,
+            top: `${builtInElement.position.y}%`,
+            transform: 'translate(-50%, -50%)',
+            opacity: (builtInElement.style?.opacity || 100) / 100
+          };
+
+          switch (builtInKey) {
+            case 'logo':
+              return (
+                <div
+                  key={builtInKey}
+                  className={commonClasses}
+                  style={{
+                    ...commonStyle,
+                    transform: getElementTransformStyle(builtInElement, builtInKey)
+                  }}
+                  onMouseDown={(e) => handleMouseDown(builtInKey, e)}
+                >
+                  <img
+                    src={logo}
+                    alt="Logo"
+                    style={{
+                      width: `${builtInElement.style?.size || 60}px`,
+                      height: 'auto',
+                      filter: `drop-shadow(${getElementShadowStyle(builtInElement, builtInKey)})`
+                    }}
+                    draggable={false}
+                  />
+                </div>
+              );
+
+            case 'text':
+              const displayContent = getElementDisplayContent(builtInElement, builtInKey, resolvedTemplateContent);
+              return (
+                <div
+                  key={builtInKey}
+                  className={commonClasses}
+                  style={{
+                    ...commonStyle,
+                    ...applyHebrewFontStyle(
+                      displayContent,
+                      builtInElement.style?.bold,
+                      builtInElement.style?.italic,
+                      {
+                        fontSize: `${builtInElement.style?.fontSize || 12}px`,
+                        color: builtInElement.style?.color || '#000000',
+                        textAlign: 'center',
+                        width: `${builtInElement.style?.width || 300}px`,
+                        wordWrap: 'break-word',
+                        overflow: 'visible',
+                        transform: getElementTransformStyle(builtInElement, builtInKey),
+                        textShadow: getElementShadowStyle(builtInElement, builtInKey, true)
+                      }
+                    )
+                  }}
+                  onMouseDown={(e) => handleMouseDown(builtInKey, e)}
+                  title={isLoadingResolvedContent ? 'טוען תוכן...' : ''}
+                >
+                  {displayContent || 'Your copyright text here'}
+                </div>
+              );
+
+            case 'url':
+              const displayHref = getElementDisplayHref(builtInElement, resolvedTemplateContent);
+              return (
+                <div
+                  key={builtInKey}
+                  className={commonClasses}
+                  style={{
+                    ...commonStyle,
+                    ...applyHebrewFontStyle(
+                      displayHref,
+                      builtInElement.style?.bold,
+                      builtInElement.style?.italic,
+                      {
+                        fontSize: `${builtInElement.style?.fontSize || 12}px`,
+                        color: builtInElement.style?.color || '#0066cc',
+                        textAlign: 'center',
+                        textDecoration: 'underline',
+                        cursor: 'pointer',
+                        transform: getElementTransformStyle(builtInElement, builtInKey),
+                        textShadow: getElementShadowStyle(builtInElement, builtInKey, true)
+                      }
+                    )
+                  }}
+                  onMouseDown={(e) => handleMouseDown(builtInKey, e)}
+                  title={isLoadingResolvedContent ? 'טוען תוכן...' : ''}
+                >
+                  {displayHref || 'https://ludora.app'}
+                </div>
+              );
+
+            case 'copyright-text':
+              const copyrightContent = getElementDisplayContent(builtInElement, builtInKey, resolvedTemplateContent);
+              return (
+                <div
+                  key={builtInKey}
+                  className={commonClasses}
+                  style={{
+                    ...commonStyle,
+                    ...applyHebrewFontStyle(
+                      copyrightContent,
+                      builtInElement.style?.bold,
+                      builtInElement.style?.italic,
+                      {
+                        fontSize: `${builtInElement.style?.fontSize || 12}px`,
+                        color: builtInElement.style?.color || '#000000',
+                        textAlign: 'center',
+                        width: `${builtInElement.style?.width || 300}px`,
+                        wordWrap: 'break-word',
+                        overflow: 'visible',
+                        transform: getElementTransformStyle(builtInElement, builtInKey),
+                        textShadow: getElementShadowStyle(builtInElement, builtInKey, true)
+                      }
+                    )
+                  }}
+                  onMouseDown={(e) => handleMouseDown(builtInKey, e)}
+                  title={isLoadingResolvedContent ? 'טוען תוכן...' : ''}
+                >
+                  {copyrightContent || 'זכויות יוצרים'}
+                </div>
+              );
+
+            case 'user-info':
+              const userInfoBuiltInContent = getElementDisplayContent(builtInElement, builtInKey, resolvedTemplateContent) ||
+                                           resolveUserEmailTemplate(builtInElement.content);
+              return (
+                <div
+                  key={builtInKey}
+                  className={commonClasses}
+                  style={{
+                    ...commonStyle,
+                    ...applyHebrewFontStyle(
+                      userInfoBuiltInContent,
+                      builtInElement.style?.bold,
+                      builtInElement.style?.italic,
+                      {
+                        fontSize: `${builtInElement.style?.fontSize || 12}px`,
+                        color: builtInElement.style?.color || '#000000',
+                        textAlign: 'center',
+                        width: `${builtInElement.style?.width || 300}px`,
+                        wordWrap: 'break-word',
+                        overflow: 'visible',
+                        transform: getElementTransformStyle(builtInElement, builtInKey),
+                        textShadow: getElementShadowStyle(builtInElement, builtInKey, true)
+                      }
+                    )
+                  }}
+                  onMouseDown={(e) => handleMouseDown(builtInKey, e)}
+                  title={isLoadingResolvedContent ? 'טוען תוכן...' : ''}
+                >
+                  {userInfoBuiltInContent}
+                </div>
+              );
+
+            case 'watermark-logo':
+              return (
+                <div
+                  key={builtInKey}
+                  className={commonClasses}
+                  style={{
+                    ...commonStyle,
+                    transform: getElementTransformStyle(builtInElement, builtInKey)
+                  }}
+                  onMouseDown={(e) => handleMouseDown(builtInKey, e)}
+                >
+                  <img
+                    src={logo}
+                    alt="Watermark Logo"
+                    style={{
+                      width: `${builtInElement.style?.size || 60}px`,
+                      height: 'auto',
+                      filter: `drop-shadow(${getElementShadowStyle(builtInElement, builtInKey)})`
+                    }}
+                    draggable={false}
+                  />
+                </div>
+              );
+
+            default:
+              return null;
+          }
+        })}
 
         {/* Custom Elements */}
-        {footerConfig.customElements && Object.entries(footerConfig.customElements).map(([elementId, element]) => {
+        {templateConfig.customElements && Object.entries(templateConfig.customElements).map(([elementId, element]) => {
           if (!element.visible) return null;
 
           const isFocused = focusedItem === elementId;
           const isDraggingThis = isDragging === elementId;
 
-          const commonClasses = `absolute pointer-events-auto select-none transition-all duration-200 ${
+          const commonClasses = `absolute pointer-events-auto select-none transition-all duration-200 group ${
             isDraggingThis ? 'cursor-grabbing scale-105 z-50' : 'cursor-grab hover:scale-105'
           } ${isFocused ? 'ring-4 ring-blue-400 ring-opacity-75 rounded-lg' : ''} ${
             element.groupId ? 'ring-2 ring-purple-300' : ''
@@ -655,7 +770,7 @@ const TemplateCanvas = ({
             left: `${element.position.x}%`,
             top: `${element.position.y}%`,
             transform: 'translate(-50%, -50%)',
-            opacity: element.style.opacity / 100
+            opacity: (element.style?.opacity || 100) / 100
           };
 
           switch (element.type) {
@@ -666,13 +781,21 @@ const TemplateCanvas = ({
                   className={commonClasses}
                   style={{
                     ...commonStyle,
-                    width: `${element.style.width}px`,
-                    height: `${element.style.height}px`,
-                    border: `${element.style.borderWidth}px solid ${element.style.borderColor}`,
-                    backgroundColor: element.style.backgroundColor === 'transparent' ? 'transparent' : element.style.backgroundColor
+                    transform: getElementTransformStyle(element, element.type)
                   }}
                   onMouseDown={(e) => handleMouseDown(elementId, e)}
-                />
+                >
+                  <div
+                    style={{
+                      width: `${element.style.width}px`,
+                      height: `${element.style.height}px`,
+                      border: `${element.style.borderWidth}px solid ${element.style.borderColor}`,
+                      backgroundColor: element.style.backgroundColor === 'transparent' ? 'transparent' : element.style.backgroundColor,
+                      boxShadow: getElementShadowStyle(element, element.type)
+                    }}
+                  />
+                  {renderDuplicateButton(elementId)}
+                </div>
               );
 
             case 'line':
@@ -682,12 +805,20 @@ const TemplateCanvas = ({
                   className={commonClasses}
                   style={{
                     ...commonStyle,
-                    width: `${element.style.width}px`,
-                    height: `${element.style.height}px`,
-                    backgroundColor: element.style.color
+                    transform: getElementTransformStyle(element, element.type)
                   }}
                   onMouseDown={(e) => handleMouseDown(elementId, e)}
-                />
+                >
+                  <div
+                    style={{
+                      width: `${element.style.width}px`,
+                      height: `${element.style.height}px`,
+                      backgroundColor: element.style.color,
+                      boxShadow: getElementShadowStyle(element, element.type)
+                    }}
+                  />
+                  {renderDuplicateButton(elementId)}
+                </div>
               );
 
             case 'dotted-line':
@@ -697,37 +828,82 @@ const TemplateCanvas = ({
                   className={commonClasses}
                   style={{
                     ...commonStyle,
-                    width: `${element.style.width}px`,
-                    height: `${element.style.height}px`,
-                    backgroundColor: element.style.color,
-                    backgroundImage: `repeating-linear-gradient(90deg, ${element.style.color} 0px, ${element.style.color} 5px, transparent 5px, transparent 10px)`
+                    transform: getElementTransformStyle(element, element.type)
                   }}
                   onMouseDown={(e) => handleMouseDown(elementId, e)}
-                />
+                >
+                  <div
+                    style={{
+                      width: `${element.style.width}px`,
+                      height: `${element.style.height}px`,
+                      backgroundColor: element.style.color,
+                      backgroundImage: `repeating-linear-gradient(90deg, ${element.style.color} 0px, ${element.style.color} 5px, transparent 5px, transparent 10px)`,
+                      boxShadow: getElementShadowStyle(element, element.type)
+                    }}
+                  />
+                  {renderDuplicateButton(elementId)}
+                </div>
               );
 
             case 'free-text':
+            case 'copyright-text':
               return (
                 <div
                   key={elementId}
                   className={commonClasses}
                   style={{
                     ...commonStyle,
-                    fontSize: `${element.style?.fontSize || 16}px`,
-                    fontFamily: getTextFontFamily(element.content, element.style?.bold),
-                    color: element.style?.color || '#000000',
-                    fontWeight: element.style?.bold ? 'bold' : 'normal',
-                    fontStyle: element.style?.italic ? 'italic' : 'normal',
-                    textAlign: 'center',
-                    direction: containsHebrew(element.content) ? 'rtl' : 'ltr',
-                    width: `${element.style?.width || 200}px`,
-                    wordWrap: 'break-word',
-                    overflow: 'visible',
-                    transform: `translate(-50%, -50%) rotate(${element.style?.rotation || 0}deg)`
+                    ...applyHebrewFontStyle(
+                      element.content,
+                      element.style?.bold,
+                      element.style?.italic,
+                      {
+                        fontSize: `${element.style?.fontSize || 16}px`,
+                        color: element.style?.color || '#000000',
+                        textAlign: 'center',
+                        width: `${element.style?.width || 200}px`,
+                        wordWrap: 'break-word',
+                        overflow: 'visible',
+                        transform: getElementTransformStyle(element, element.type),
+                        textShadow: getElementShadowStyle(element, element.type, true)
+                      }
+                    )
                   }}
                   onMouseDown={(e) => handleMouseDown(elementId, e)}
                 >
-                  {element.content || 'לתצוגה בלבד'}
+                  {element.content || (element.type === 'copyright-text' ? 'טקסט זכויות יוצרים' : 'טקסט חופשי')}
+                  {renderDuplicateButton(elementId)}
+                </div>
+              );
+
+            case 'url':
+              const customUrlContent = getElementDisplayContent(element, element.type, resolvedTemplateContent);
+              return (
+                <div
+                  key={elementId}
+                  className={commonClasses}
+                  style={{
+                    ...commonStyle,
+                    ...applyHebrewFontStyle(
+                      customUrlContent,
+                      element.style?.bold,
+                      element.style?.italic,
+                      {
+                        fontSize: `${element.style?.fontSize || 12}px`,
+                        color: element.style?.color || '#0066cc',
+                        textAlign: 'center',
+                        textDecoration: 'underline',
+                        cursor: 'pointer',
+                        transform: getElementTransformStyle(element, element.type),
+                        textShadow: getElementShadowStyle(element, element.type, true)
+                      }
+                    )
+                  }}
+                  onMouseDown={(e) => handleMouseDown(elementId, e)}
+                  title={isLoadingResolvedContent ? 'טוען תוכן...' : ''}
+                >
+                  {customUrlContent || 'https://ludora.app'}
+                  {renderDuplicateButton(elementId)}
                 </div>
               );
 
@@ -739,19 +915,80 @@ const TemplateCanvas = ({
                   className={commonClasses}
                   style={{
                     ...commonStyle,
-                    transform: `translate(-50%, -50%) rotate(${element.style?.rotation || 0}deg)`
+                    transform: getElementTransformStyle(element, element.type)
                   }}
                   onMouseDown={(e) => handleMouseDown(elementId, e)}
                 >
                   <img
-                    src={element.url || logo}
-                    alt={element.alt || 'Logo'}
+                    src={logo}
+                    alt="Logo"
                     style={{
                       width: `${element.style?.size || 60}px`,
-                      height: 'auto'
+                      height: 'auto',
+                      filter: `drop-shadow(${getElementShadowStyle(element, element.type)})`
                     }}
                     draggable={false}
                   />
+                  {renderDuplicateButton(elementId)}
+                </div>
+              );
+
+            case 'circle':
+              return (
+                <div
+                  key={elementId}
+                  className={commonClasses}
+                  style={{
+                    ...commonStyle,
+                    transform: getElementTransformStyle(element, element.type)
+                  }}
+                  onMouseDown={(e) => handleMouseDown(elementId, e)}
+                >
+                  <div
+                    style={{
+                      width: `${element.style?.size || 50}px`,
+                      height: `${element.style?.size || 50}px`,
+                      borderRadius: '50%',
+                      border: `${element.style?.borderWidth || 2}px solid ${element.style?.borderColor || '#000000'}`,
+                      backgroundColor: element.style?.backgroundColor === 'transparent' ? 'transparent' : (element.style?.backgroundColor || 'transparent'),
+                      boxShadow: getElementShadowStyle(element, element.type)
+                    }}
+                  />
+                  {renderDuplicateButton(elementId)}
+                </div>
+              );
+
+            case 'user-info':
+              // Use resolved content from API if available, otherwise fall back to local resolution
+              const userInfoContent = getElementDisplayContent(element, element.type, resolvedTemplateContent) ||
+                                     resolveUserEmailTemplate(element.content);
+              return (
+                <div
+                  key={elementId}
+                  className={commonClasses}
+                  style={{
+                    ...commonStyle,
+                    ...applyHebrewFontStyle(
+                      userInfoContent,
+                      element.style?.bold,
+                      element.style?.italic,
+                      {
+                        fontSize: `${element.style?.fontSize || 16}px`,
+                        color: element.style?.color || '#000000',
+                        textAlign: 'center',
+                        width: `${element.style?.width || 200}px`,
+                        wordWrap: 'break-word',
+                        overflow: 'visible',
+                        transform: getElementTransformStyle(element, element.type),
+                        textShadow: getElementShadowStyle(element, element.type, true)
+                      }
+                    )
+                  }}
+                  onMouseDown={(e) => handleMouseDown(elementId, e)}
+                  title={isLoadingResolvedContent ? 'טוען תוכן...' : ''}
+                >
+                  {userInfoContent}
+                  {renderDuplicateButton(elementId)}
                 </div>
               );
 
@@ -765,53 +1002,84 @@ const TemplateCanvas = ({
 
   return (
     <div className="relative w-full h-full flex flex-col">
-      {/* Zoom Controls */}
-      <div className="absolute top-4 left-4 z-50 bg-white rounded-lg shadow-lg border border-gray-200 p-2 flex items-center gap-2">
-        <button
-          onClick={handleZoomOut}
-          className="w-8 h-8 flex items-center justify-center rounded border border-gray-300 hover:bg-gray-50 text-sm font-bold"
-          title="הקטן תצוגה"
-        >
-          −
-        </button>
-        <span className="text-sm font-medium min-w-[50px] text-center">
-          {Math.round(zoom * 100)}%
-        </span>
-        <button
-          onClick={handleZoomIn}
-          className="w-8 h-8 flex items-center justify-center rounded border border-gray-300 hover:bg-gray-50 text-sm font-bold"
-          title="הגדל תצוגה"
-        >
-          +
-        </button>
-        <button
-          onClick={handleZoomReset}
-          className="px-2 py-1 text-xs rounded border border-gray-300 hover:bg-gray-50"
-          title="איפוס תצוגה ומיקום"
-        >
-          🎯 מרכז
-        </button>
-        {!showInstructions && (
-          <button
-            onClick={() => setShowInstructions(true)}
-            className="w-8 h-8 flex items-center justify-center rounded border border-blue-300 bg-blue-50 hover:bg-blue-100 text-blue-700 text-sm"
-            title="הצג הוראות ניווט"
-          >
-            ?
-          </button>
-        )}
+      {/* Unified Toolbar - Sticks to header */}
+      <div className="bg-white border-b border-gray-200 px-4 py-2 z-50">
+        <div className="flex items-center justify-between">
+          {/* Left side - Zoom Controls */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleZoomOut}
+              className="w-8 h-8 flex items-center justify-center rounded border border-gray-300 hover:bg-gray-50 text-sm font-bold"
+              title="הקטן תצוגה"
+            >
+              −
+            </button>
+            <span className="text-sm font-medium min-w-[60px] text-center px-2 py-1 bg-gray-50 rounded">
+              {Math.round(zoom * 100)}%
+            </span>
+            <button
+              onClick={handleZoomIn}
+              className="w-8 h-8 flex items-center justify-center rounded border border-gray-300 hover:bg-gray-50 text-sm font-bold"
+              title="הגדל תצוגה"
+            >
+              +
+            </button>
+            <div className="mx-2 h-5 w-px bg-gray-300"></div>
+            <button
+              onClick={handleZoomReset}
+              className="px-3 py-1 text-sm rounded border border-gray-300 hover:bg-gray-50"
+              title="איפוס תצוגה ומיקום"
+            >
+              🎯 מרכז
+            </button>
+            {!showInstructions && (
+              <>
+                <div className="mx-2 h-5 w-px bg-gray-300"></div>
+                <button
+                  onClick={() => setShowInstructions(true)}
+                  className="w-8 h-8 flex items-center justify-center rounded border border-blue-300 bg-blue-50 hover:bg-blue-100 text-blue-700 text-sm"
+                  title="הצג הוראות ניווט"
+                >
+                  ?
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* Right side - Page Navigation */}
+          {numPages && numPages > 1 && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => onPageChange?.(Math.max(1, currentPage - 1))}
+                disabled={currentPage <= 1}
+                className="px-3 py-1 bg-gray-100 hover:bg-gray-200 disabled:bg-gray-50 disabled:text-gray-400 rounded disabled:cursor-not-allowed text-sm"
+              >
+                הקודם
+              </button>
+              <span className="text-sm font-medium text-gray-700 px-3 py-1 bg-gray-50 rounded min-w-[120px] text-center">
+                {isSvgFormat() ? `שקף ${currentPage} מתוך ${numPages}` : `עמוד ${currentPage} מתוך ${numPages}`}
+              </span>
+              <button
+                onClick={() => onPageChange?.(Math.min(numPages, currentPage + 1))}
+                disabled={currentPage >= numPages}
+                className="px-3 py-1 bg-gray-100 hover:bg-gray-200 disabled:bg-gray-50 disabled:text-gray-400 rounded disabled:cursor-not-allowed text-sm"
+              >
+                הבא
+              </button>
+            </div>
+          )}
+        </div>
       </div>
+
 
       {/* Fixed PDF Viewport - This is the "window" that NEVER changes size */}
       <div
         ref={containerRef}
         className="flex-1 bg-gray-100 relative"
         style={{
-          cursor: isPanning ? 'grabbing' : 'grab',
+          cursor: 'default', // No drag cursor - drag panning disabled
           overflow: 'hidden' // CRITICAL: This clips content that goes outside
         }}
-        onMouseDown={handlePanStart}
-        onWheel={handleWheel}
       >
         {/* PDF Content - ONLY this zooms/moves, viewport stays fixed */}
         <div
@@ -830,16 +1098,18 @@ const TemplateCanvas = ({
                 height: `${pageWidth * getPageDimensions().aspectRatio}px`
               }}
             >
-              {/* SVG Content */}
-              <div
-                className="absolute inset-0"
-                style={{
-                  backgroundImage: `url(${pdfUrl})`,
-                  backgroundSize: 'contain',
-                  backgroundRepeat: 'no-repeat',
-                  backgroundPosition: 'center'
-                }}
-              />
+              {/* SVG Content - conditionally rendered based on showFileContent */}
+              {showFileContent && (
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    backgroundImage: `url(${pdfUrl})`,
+                    backgroundSize: 'contain', // Use 'contain' to show full slide without cropping
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'center'
+                  }}
+                />
+              )}
               {renderTemplateOverlay()}
             </div>
           ) : (
@@ -865,41 +1135,21 @@ const TemplateCanvas = ({
                   height: `${pageWidth * getPageDimensions().aspectRatio}px`
                 }}
               >
-                <Page
-                  pageNumber={currentPage}
-                  width={pageWidth}
-                  renderTextLayer={true}
-                  renderAnnotationLayer={true}
-                />
+                {/* PDF Page Content - conditionally rendered based on showFileContent */}
+                {showFileContent && (
+                  <Page
+                    pageNumber={currentPage}
+                    width={pageWidth}
+                    renderTextLayer={true}
+                    renderAnnotationLayer={true}
+                  />
+                )}
                 {renderTemplateOverlay()}
               </div>
             </Document>
           )}
         </div>
       </div>
-
-      {/* Page Navigation */}
-      {numPages && (
-        <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur rounded-lg shadow-lg border border-gray-200 p-2 flex items-center gap-4">
-          <button
-            onClick={() => onPageChange?.(Math.max(1, currentPage - 1))}
-            disabled={currentPage <= 1}
-            className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-          >
-            הקודם
-          </button>
-          <span className="text-sm font-medium">
-            עמוד {currentPage} מתוך {numPages}
-          </span>
-          <button
-            onClick={() => onPageChange?.(Math.min(numPages, currentPage + 1))}
-            disabled={currentPage >= numPages}
-            className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-          >
-            הבא
-          </button>
-        </div>
-      )}
 
       {/* Instructions */}
       {showInstructions && (
@@ -916,7 +1166,6 @@ const TemplateCanvas = ({
           </div>
           <ul className="space-y-1">
             <li>• <strong>גלילה</strong>: גלגלת עכבר למעלה/מטה</li>
-            <li>• <strong>גרירה</strong>: גרור על הרקע להזזת הקנבס</li>
             <li>• <strong>זום</strong>: Ctrl + גלגלת עכבר</li>
             <li>• <strong>עריכה</strong>: לחץ על אלמנטים לגרירה</li>
           </ul>

@@ -1,40 +1,9 @@
-import React, { useState, useEffect, useCallback, Suspense } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useState, useEffect, useCallback, Suspense } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useUser } from "@/contexts/UserContext";
 import { isStaff } from "@/lib/userUtils";
-import {
-  BookOpen,
-  Users,
-  Calendar,
-  Settings as SettingsIcon,
-  Mail,
-  BarChart3,
-  Menu,
-  X,
-  GraduationCap,
-  Home,
-  Crown,
-  LogIn,
-  LogOut,
-  User as UserIcon,
-  ShieldAlert,
-  MessageSquare,
-  Shield,
-  Code,
-  FileText,
-  Move,
-  Play,
-  Edit,
-  Monitor,
-  Award,
-  Globe,
-  ArrowLeft,
-  UserCheck
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { SkipLink } from "@/components/ui/skip-link";
 import Footer from "../components/layout/Footer";
-import NotificationBell from "../components/NotificationBell";
 import FloatingAdminMenu from "../components/FloatingAdminMenu";
 import SubscriptionModal from "../components/SubscriptionModal";
 import { ParentConsent } from "./lazy.jsx";
@@ -53,7 +22,7 @@ import LudoraLoadingSpinner from "@/components/ui/LudoraLoadingSpinner";
 function LayoutContent({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { showLoginModal, openLoginModal, closeLoginModal, executeCallback } = useLoginModal();
+  const { showLoginModal, openLoginModal, closeLoginModal, executeCallback, modalMessage } = useLoginModal();
 
   // Use UserContext instead of local state
   const { currentUser, settings, isLoading, isAuthenticated, settingsLoading, settingsLoadFailed, login, logout } = useUser();
@@ -92,14 +61,9 @@ function LayoutContent({ children }) {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Debug logging for Layout
+  // Track layout state changes
   useEffect(() => {
-    console.log('Layout render state:', {
-      isDesktop,
-      hideNav,
-      windowWidth: window.innerWidth,
-      applyingMargin: !hideNav && isDesktop
-    });
+    // Layout state updated
   }, [isDesktop, hideNav]);
 
   // Initialize accessibility and other settings
@@ -208,32 +172,26 @@ function LayoutContent({ children }) {
 
   // Login handler
   const handleLoginSubmit = async (rememberMe = false) => {
-    console.log('🟢 Layout: handleLoginSubmit started');
     try {
       // Use the firebaseAuth helper for Google sign-in
       const { user, idToken } = await firebaseAuth.signInWithGoogle();
-      console.log('🟢 Layout: Firebase user:', user);
-      console.log('🟢 Layout: Got ID token:', idToken ? 'Present' : 'Missing');
 
       const firebaseResult = { user, idToken };
-      console.log('🟢 Layout: Calling loginWithFirebase API...');
       const apiResult = await loginWithFirebase({ idToken: firebaseResult.idToken });
-      console.log('🟢 Layout: API result:', apiResult);
 
       if (apiResult.valid && apiResult.user) {
-        console.log('🟢 Layout: Login successful, setting user...');
         await login(apiResult.user, rememberMe);
+
         showSuccess('התחברת בהצלחה!');
         closeLoginModal();
+        setTimeout(() => {
+          executeCallback();
+        }, 500);
 
-        // Execute any pending callback after successful login
-        setTimeout(() => executeCallback(), 100); // Small delay to ensure state is updated
       } else {
-        console.log('❌ Layout: API result invalid');
         throw new Error('Authentication failed');
       }
     } catch (error) {
-      console.error('❌ Layout: Login error:', error);
       let errorMessage = 'שגיאה בכניסה. נסו שוב.';
       if (error.message) {
         if (error.message.includes('popup-closed-by-user')) {
@@ -255,7 +213,7 @@ function LayoutContent({ children }) {
       await logout();
       navigate('/');
     } catch (error) {
-      console.error('Logout error:', error);
+      showError('שגיאה בהתנתקות');
     }
   };
 
@@ -302,6 +260,7 @@ function LayoutContent({ children }) {
           <LoginModal
             onClose={closeLoginModal}
             onLogin={handleLoginSubmit}
+            message={modalMessage}
           />
         )}
       </>
@@ -436,6 +395,7 @@ function LayoutContent({ children }) {
           <LoginModal
             onClose={closeLoginModal}
             onLogin={handleLoginSubmit}
+            message={modalMessage}
           />
         )}
       </div>

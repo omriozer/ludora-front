@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Purchase } from "@/services/entities";
 import { useUser } from "@/contexts/UserContext";
@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { clog, cerror } from '@/lib/utils';
 import {
   Calendar,
   Clock,
@@ -45,10 +46,12 @@ import PriceDisplayTag from "@/components/ui/PriceDisplayTag";
 import ProductActionBar from "@/components/ui/ProductActionBar";
 import PdfViewer from "@/components/pdf/PdfViewer";
 import GameDetailsSection from "@/components/game/details/GameDetailsSection";
+import { useLoginModal } from "@/hooks/useLoginModal";
 
 export default function ProductDetails() {
   const navigate = useNavigate();
   const { currentUser, settings, isLoading: userLoading } = useUser();
+  const { openLoginModal } = useLoginModal();
 
   const [item, setItem] = useState(null); // Renamed from product to item for generic use
   const [itemType, setItemType] = useState(null); // Track what type of entity we're viewing
@@ -60,8 +63,29 @@ export default function ProductDetails() {
   const [detailsTexts, setDetailsTexts] = useState({});
   const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
 
+  // Track if component is mounted to avoid calling setState on unmounted component
+  const isMountedRef = useRef(true);
+
+  // Track component mount/unmount
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   useEffect(() => {
     loadTexts();
+
+    // Check for openPdf URL parameter (from post-login redirect)
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('openPdf') === 'true') {
+      // Remove the parameter from URL
+      urlParams.delete('openPdf');
+      window.history.replaceState({}, '', `${window.location.pathname}?${urlParams.toString()}`);
+      // Open PDF viewer
+      setPdfViewerOpen(true);
+    }
   }, []);
 
   const loadTexts = async () => {
@@ -124,13 +148,38 @@ export default function ProductDetails() {
         // Clean up blob URL after a delay
         setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
       } catch (error) {
-        console.error('Error downloading file:', error);
+        cerror('Error downloading file:', error);
       }
     }
   };
 
   // Handle PDF preview for users without access
   const handlePdfPreview = () => {
+    // Check if user is authenticated
+    if (!currentUser) {
+      const pdfCallback = () => {
+        // Add a small delay to ensure all state updates from login are complete
+        setTimeout(() => {
+          if (!isMountedRef.current) {
+            // Component was unmounted, use navigation approach instead
+            const currentUrl = new URL(window.location.href);
+            currentUrl.searchParams.set('openPdf', 'true');
+            window.location.href = currentUrl.toString();
+            return;
+          }
+
+          setPdfViewerOpen(true);
+        }, 100);
+      };
+
+      openLoginModal(
+        pdfCallback,
+        'אפשרות זו זמינה למשתמשים רשומים בלבד. יש להתחבר / להרשם כדי להמשיך'
+      );
+      return;
+    }
+
+    // User is authenticated, open preview directly
     setPdfViewerOpen(true);
   };
 
@@ -164,6 +213,11 @@ export default function ProductDetails() {
 
 
   const loadData = useCallback(async () => {
+    // Skip loading if PDF viewer is about to open/is open to prevent interference
+    if (pdfViewerOpen) {
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     try {
@@ -211,7 +265,7 @@ export default function ProductDetails() {
           setUserPurchases(purchases);
         }
       } catch (e) {
-        console.warn("User not logged in or cannot fetch user data:", e);
+        // User not logged in or cannot fetch user data
       }
 
       // Load item data based on type
@@ -238,51 +292,34 @@ export default function ProductDetails() {
       const userPurchase = productDetails.purchase || null;
       const hasUserAccess = hasActiveAccess(userPurchase);
 
-      // DEBUG: Log access calculation with more detail
-      console.log('🔐 ProductDetails Access Debug:', {
-        productId: productDetails.id,
-        productTitle: productDetails.title,
-        productPrice: productDetails.price,
-        userPurchase,
-        hasUserAccess,
-        paymentStatus: userPurchase?.payment_status,
-        paymentAmount: userPurchase?.payment_amount,
-        isFreeProduct: !productDetails.price || productDetails.price === 0,
-        purchaseType: userPurchase?.purchasable_type,
-        purchaseId: userPurchase?.id
-      });
-
       setHasAccess(hasUserAccess);
       setPurchase(userPurchase);
 
       // Ensure the item includes the purchase data immediately
       setItem({...productDetails, purchase: userPurchase});
     } catch (e) {
-      console.error("Error loading product:", e);
+      cerror("Error loading product:", e);
       setError("שגיאה בטעינת הנתונים");
     }
     setIsLoading(false);
-  }, []);
+  }, [pdfViewerOpen, currentUser]);
 
   useEffect(() => {
-    if (currentUser && !userLoading) {
+    if (!userLoading) {
       loadData();
     }
-  }, [currentUser, userLoading, loadData]);
+  }, [userLoading, loadData]);
 
   // Listen for cart changes to refresh purchase data
   useEffect(() => {
     const handleCartChange = () => {
-      console.log('🎧 ProductDetails: Received cart change event - refreshing data');
       loadData();
     };
 
-    console.log('🎧 ProductDetails: Setting up cart change listener');
     // Listen for cart change events
     window.addEventListener('ludora-cart-changed', handleCartChange);
 
     return () => {
-      console.log('🎧 ProductDetails: Removing cart change listener');
       window.removeEventListener('ludora-cart-changed', handleCartChange);
     };
   }, [loadData]);
@@ -461,15 +498,6 @@ export default function ProductDetails() {
                     const isPdf = item.file_type === 'pdf' || item.file_name?.toLowerCase().endsWith('.pdf');
                     const shouldShow = !hasAccess && isFile && isPdf && item.allow_preview;
 
-                    // DEBUG: Log preview button logic
-                    console.log('Preview Button Debug:', {
-                      hasAccess,
-                      isFile,
-                      isPdf,
-                      allowPreview: item.allow_preview,
-                      shouldShow
-                    });
-
                     return shouldShow;
                   })() && (
                     <Button
@@ -496,12 +524,6 @@ export default function ProductDetails() {
                     onWorkshopAccess={handleWorkshopAccess}
                     onLessonPlanAccess={handleLessonPlanAccess}
                   />
-                  {/* DEBUG: Log what we're passing to ProductActionBar */}
-                  {console.log('🚀 ProductDetails passing to ProductActionBar:', {
-                    productId: item?.id,
-                    itemPurchase: item?.purchase,
-                    embeddedPurchase: item?.purchase
-                  })}
                 </div>
               </div>
             </div>
@@ -1299,19 +1321,6 @@ export default function ProductDetails() {
               const hasCourseModules = item.product_type === 'course' && item.course_modules;
               const hasTags = item.tags && item.tags.length > 0 && item.tags.some(tag => tag && tag.trim());
 
-              // Debug: Log what fields are available
-              console.log('Product Info Debug:', {
-                target_audience: item.target_audience,
-                duration_minutes: item.duration_minutes,
-                product_type: item.product_type,
-                course_modules: item.course_modules,
-                tags: item.tags,
-                hasTargetAudience,
-                hasDuration,
-                hasCourseModules,
-                hasTags
-              });
-
               return hasTargetAudience || hasDuration || hasCourseModules || hasTags;
             })() && (
               <Card className="shadow-xl bg-white/95 backdrop-blur-xl border-0 rounded-2xl sm:rounded-3xl overflow-hidden w-full max-w-full">
@@ -1461,14 +1470,19 @@ export default function ProductDetails() {
       </div>
 
       {/* PDF Viewer Modal */}
-      {pdfViewerOpen && (item.product_type === 'file' || itemType === 'file') && (
-        <PdfViewer
-          fileId={item.entity_id || item.id}
-          fileName={item.file_name || `${item.title}.pdf`}
-          hasAccess={hasAccess}
-          allowPreview={item.allow_preview}
-          onClose={() => setPdfViewerOpen(false)}
-        />
+      {(() => {
+        const shouldShowModal = pdfViewerOpen && (item.product_type === 'file' || itemType === 'file');
+        return shouldShowModal;
+      })() && (
+        <div data-testid="pdf-viewer-modal">
+          <PdfViewer
+            fileId={item.entity_id || item.id}
+            fileName={item.file_name || `${item.title}.pdf`}
+            hasAccess={hasAccess}
+            allowPreview={item.allow_preview}
+            onClose={() => setPdfViewerOpen(false)}
+          />
+        </div>
       )}
     </div>
   );

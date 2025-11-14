@@ -32,7 +32,7 @@ const PdfViewer = ({
 }) => {
   const [numPages, setNumPages] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [scale, setScale] = useState(1.2);
+  const [scale, setScale] = useState(1.0);
   const [rotation, setRotation] = useState(0);
   const [pdfBlobUrl, setPdfBlobUrl] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -295,7 +295,7 @@ const PdfViewer = ({
     return (
       <Dialog open={true} onOpenChange={onClose}>
         <DialogContent
-          className={`max-w-[95vw] max-h-[95vh] p-0 overflow-hidden ${isFullscreen ? 'w-[95vw] h-[95vh]' : 'w-[80vw] h-[80vh]'}`}
+          className={`max-w-[95vw] max-h-[95vh] p-0 overflow-hidden ${isFullscreen ? 'w-[95vw] h-[95vh]' : 'w-[90vw] h-[90vh]'}`}
           hideCloseButton={true}
         >
           <PdfContent />

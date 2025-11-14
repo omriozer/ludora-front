@@ -240,6 +240,11 @@ const FileProductSection = ({
                 <AccessControlEditor
                   entityType="file"
                   entityId={editingProduct?.entity_id}
+                  currentUser={currentUser} // Pass current user for email template resolution
+                  fileEntity={{
+                    ...editingProduct,
+                    target_format: formData.target_format || editingProduct?.target_format
+                  }} // Pass file entity for template filtering and context
                   onUpdate={(updatedEntity) => {
                     // Update the form data with the new access control settings
                     updateFormData({
@@ -281,6 +286,11 @@ const FileProductSection = ({
               }}
               fileExists={uploadedFileInfo?.exists}
               userRole={currentUser?.role}
+              currentUser={currentUser} // Pass full user object for email resolution
+              fileEntity={{
+                ...editingProduct,
+                target_format: formData.target_format || editingProduct?.target_format
+              }}
             />
           </div>
         )}

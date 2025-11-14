@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Sparkles, HandMetal, GripHorizontal, MicOff } from 'lucide-react';
+import { clog, cerror } from '@/lib/utils';
 
 // Import sound files
 import clappingSound from '@/assets/sounds/effects/clapping.mp3';
@@ -172,20 +173,20 @@ const ClassroomEffectMenu = ({
 			}
 
 			audio.play().catch(error => {
-				console.warn('Could not play sound:', error);
+				cerror('Could not play sound:', error);
 				// Reset reference if play failed
 				currentAudioRef.current = null;
 			});
 
 			return audio;
 		} catch (error) {
-			console.warn('Error creating audio:', error);
+			cerror('Error creating audio:', error);
 			return null;
 		}
 	};
 
 	const triggerClappingEffect = () => {
-		console.log('🎉 Triggering clapping effect!');
+		clog('Triggering clapping effect');
 		setActiveEffect('clapping');
 
 		// Create improved clapping visual effect with 3 emojis from bottom
@@ -197,7 +198,7 @@ const ClassroomEffectMenu = ({
 			// onLoadedMetadata: Use actual audio duration
 			function() {
 				const duration = this.duration * 1000; // Convert to milliseconds
-				console.log(`Clapping audio duration: ${duration}ms`);
+				clog(`Clapping audio duration: ${duration}ms`);
 
 				// Clear any existing timeout
 				if (effectTimeoutRef.current) {
@@ -211,53 +212,53 @@ const ClassroomEffectMenu = ({
 			},
 			// onEnded: Clean up when audio ends
 			() => {
-				console.log('Clapping audio ended');
+				clog('Clapping audio ended');
 				stopCurrentEffect();
 			}
 		);
 
-		        // Store animation elements for cleanup
-				currentAnimationElementsRef.current = animationElements;
-			};
-		
-			const triggerShhhhEffect = () => {
-				console.log('🤫 Triggering shhhh effect!');
-				setActiveEffect('shhhh');
-		
-				// Create shhhh visual effect
-				const animationElements = createShhhhVisualEffect();
-		
-				// Play shhh sound with proper event handling
-				const audio = playSound(
-					shhhSound,
-					// onLoadedMetadata: Use actual audio duration
-					function() {
-						const duration = this.duration * 1000; // Convert to milliseconds
-						console.log(`Shhh audio duration: ${duration}ms`);
-		
-						// Clear any existing timeout
-						if (effectTimeoutRef.current) {
-							clearTimeout(effectTimeoutRef.current);
-						}
-		
-						// Set timeout based on actual audio duration
-						effectTimeoutRef.current = setTimeout(() => {
-							stopCurrentEffect();
-						}, duration);
-					},
-					// onEnded: Clean up when audio ends
-					() => {
-						console.log('Shhh audio ended');
-						stopCurrentEffect();
-					}
-				);
-		
-				// Store animation elements for cleanup
-				currentAnimationElementsRef.current = animationElements;
-			};
+		// Store animation elements for cleanup
+		currentAnimationElementsRef.current = animationElements;
+	};
+
+	const triggerShhhhEffect = () => {
+		clog('Triggering shhhh effect');
+		setActiveEffect('shhhh');
+
+		// Create shhhh visual effect
+		const animationElements = createShhhhVisualEffect();
+
+		// Play shhh sound with proper event handling
+		const audio = playSound(
+			shhhSound,
+			// onLoadedMetadata: Use actual audio duration
+			function() {
+				const duration = this.duration * 1000; // Convert to milliseconds
+				clog(`Shhh audio duration: ${duration}ms`);
+
+				// Clear any existing timeout
+				if (effectTimeoutRef.current) {
+					clearTimeout(effectTimeoutRef.current);
+				}
+
+				// Set timeout based on actual audio duration
+				effectTimeoutRef.current = setTimeout(() => {
+					stopCurrentEffect();
+				}, duration);
+			},
+			// onEnded: Clean up when audio ends
+			() => {
+				clog('Shhh audio ended');
+				stopCurrentEffect();
+			}
+		);
+
+		// Store animation elements for cleanup
+		currentAnimationElementsRef.current = animationElements;
+	};
 		
 	const triggerFireworksEffect = () => {
-		console.log('🎆 Triggering fireworks effect!');
+		clog('Triggering fireworks effect');
 		setActiveEffect('fireworks');
 
 		// Create enhanced fireworks visual effect
@@ -269,7 +270,7 @@ const ClassroomEffectMenu = ({
 			// onLoadedMetadata: Use actual audio duration
 			function() {
 				const duration = this.duration * 1000; // Convert to milliseconds
-				console.log(`Fireworks audio duration: ${duration}ms`);
+				clog(`Fireworks audio duration: ${duration}ms`);
 
 				// Clear any existing timeout
 				if (effectTimeoutRef.current) {
@@ -283,7 +284,7 @@ const ClassroomEffectMenu = ({
 			},
 			// onEnded: Clean up when audio ends
 			() => {
-				console.log('Fireworks audio ended');
+				clog('Fireworks audio ended');
 				stopCurrentEffect();
 			}
 		);

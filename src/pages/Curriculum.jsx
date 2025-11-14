@@ -203,7 +203,7 @@ export default function Curriculum() {
       setCurrentCurriculum(curriculum);
       clog('Selected curriculum:', curriculum);
 
-      // Now fetch curriculum items
+      // Now fetch curriculum items (content topics will be loaded through products)
       const items = await CurriculumItem.find({
         curriculum_id: curriculum.id
       });
@@ -318,10 +318,10 @@ export default function Curriculum() {
             const productIds = associations.map(assoc => assoc.product_id);
             const products = [];
 
-            // Fetch each product
+            // Fetch each product with content topics
             for (const productId of productIds) {
               try {
-                const product = await Product.findById(productId);
+                const product = await apiRequest(`/entities/product/${productId}?include=contentTopic`);
                 if (product) {
                   products.push(product);
                 }
@@ -598,7 +598,6 @@ export default function Curriculum() {
         id: generateId(),
         curriculum_id: currentCurriculum.id,
         study_topic: formData.study_topic,
-        content_topic: formData.content_topic,
         is_mandatory: isMandatory,
         mandatory_order: isMandatory ? nextOrder : null,
         custom_order: null, // Always start with null, can be customized later
@@ -606,7 +605,8 @@ export default function Curriculum() {
         is_completed: false
       };
 
-      await CurriculumItem.create(itemData);
+      const newItem = await CurriculumItem.create(itemData);
+
 
       // SUCCESS - Only now reset form and show success message
       toast({
@@ -691,7 +691,6 @@ export default function Curriculum() {
       const itemData = {
         ...editingItem,
         study_topic: formData.study_topic,
-        content_topic: formData.content_topic,
         is_mandatory: newIsMandatory,
         mandatory_order: newMandatoryOrder,
         custom_order: newCustomOrder,
@@ -944,6 +943,21 @@ export default function Curriculum() {
       [curriculumItemId]: !prev[curriculumItemId] // Default is false (closed)
     }));
   };
+
+  // Helper to extract unique content topics from linked products
+  const getContentTopicsFromProducts = (curriculumItemId) => {
+    const products = linkedProducts[curriculumItemId] || [];
+    const topicsMap = new Map();
+
+    products.forEach(product => {
+      if (product.contentTopic) {
+        topicsMap.set(product.contentTopic.id, product.contentTopic);
+      }
+    });
+
+    return Array.from(topicsMap.values());
+  };
+
 
 
   // Show loading spinner while essential data is being loaded
@@ -1388,9 +1402,33 @@ export default function Curriculum() {
                                   <h4 className="text-xl font-bold text-gray-900 group-hover:text-green-700 transition-colors duration-300">
                                     {item.study_topic}
                                   </h4>
-                                  <p className="text-gray-600 mt-1 text-lg">
-                                    {item.content_topic}
-                                  </p>
+                                  <div className="mt-1">
+                                    {(() => {
+                                      const contentTopics = getContentTopicsFromProducts(item.id);
+                                      return contentTopics.length > 0 ? (
+                                        <div className="flex flex-wrap gap-2">
+                                          {contentTopics.map((topic) => (
+                                            <Badge
+                                              key={topic.id}
+                                              variant="outline"
+                                              className="bg-blue-50 text-blue-700 border-blue-200 text-sm"
+                                            >
+                                              {topic.name}
+                                            </Badge>
+                                          ))}
+                                        </div>
+                                      ) : (
+                                        <div className="flex items-center gap-2">
+                                          <Badge variant="outline" className="bg-gray-50 text-gray-500 border-gray-200 text-sm">
+                                            ללא נושאי תוכן
+                                          </Badge>
+                                          {isAdmin && (
+                                            <span className="text-xs text-gray-400">קשר מוצרים עם נושאי תוכן לנושא זה</span>
+                                          )}
+                                        </div>
+                                      );
+                                    })()}
+                                  </div>
                                 </div>
                                 {item.description && (
                                   <p className="text-sm text-gray-500 bg-gray-50 rounded-lg p-3 border-r-4 border-green-200">
@@ -1529,6 +1567,7 @@ export default function Curriculum() {
                               </div>
                             </div>
                           )}
+
                         </div>
                       </CardContent>
                     </Card>
@@ -1756,13 +1795,6 @@ export default function Curriculum() {
                       placeholder: 'לדוגמה: חיבור וחיסור עד 20'
                     },
                     {
-                      key: 'content_topic',
-                      type: 'text',
-                      label: 'נושא התוכן',
-                      required: true,
-                      placeholder: 'לדוגמה: חנוכה'
-                    },
-                    {
                       key: 'description',
                       type: 'textarea',
                       label: 'תיאור נוסף',
@@ -1806,13 +1838,6 @@ export default function Curriculum() {
                         placeholder: 'לדוגמה: חיבור וחיסור עד 20'
                       },
                       {
-                        key: 'content_topic',
-                        type: 'text',
-                        label: 'נושא התוכן',
-                        required: true,
-                        placeholder: 'לדוגמה: חנוכה'
-                      },
-                      {
                         key: 'description',
                         type: 'textarea',
                         label: 'תיאור נוסף',
@@ -1828,7 +1853,6 @@ export default function Curriculum() {
                     ]}
                     initialData={{
                       study_topic: editingItem.study_topic,
-                      content_topic: editingItem.content_topic,
                       description: editingItem.description || '',
                       is_mandatory: editingItem.is_mandatory
                     }}

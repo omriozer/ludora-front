@@ -65,18 +65,6 @@ export default function ProductCard({
 
       const isMobileDevice = width || (touchDevice && mobileUserAgent);
 
-      // Debug logging to understand what's happening in production
-      if (process.env.NODE_ENV === 'development' || window.location.hostname.includes('ludora.app')) {
-        console.log('🔍 Mobile Detection Debug:', {
-          width,
-          touchDevice,
-          mobileUserAgent,
-          maxTouchPoints: navigator.maxTouchPoints,
-          userAgent: navigator.userAgent.substring(0, 50),
-          finalResult: isMobileDevice
-        });
-      }
-
       setIsMobile(isMobileDevice);
     };
 
@@ -86,8 +74,8 @@ export default function ProductCard({
   }, []);
 
   // Handle successful purchase for ProductActionBar
-  const handlePurchaseSuccess = (newPurchase) => {
-    console.log('Purchase successful:', newPurchase);
+  const handlePurchaseSuccess = () => {
+    // Purchase handled successfully
   };
 
   const handleDetailsClick = () => {
@@ -232,15 +220,9 @@ export default function ProductCard({
     <div
       className="group transition-all duration-300 hover:scale-[1.02] break-inside-avoid mb-4 cursor-pointer"
       onMouseEnter={() => {
-        if (process.env.NODE_ENV === 'development' || window.location.hostname.includes('ludora.app')) {
-          console.log('🖱️ Mouse Enter - isMobile:', isMobile, 'Product:', product.title.substring(0, 20));
-        }
         !isMobile && setIsHovered(true);
       }}
       onMouseLeave={() => {
-        if (process.env.NODE_ENV === 'development' || window.location.hostname.includes('ludora.app')) {
-          console.log('🖱️ Mouse Leave - isMobile:', isMobile, 'Product:', product.title.substring(0, 20));
-        }
         !isMobile && setIsHovered(false);
       }}
       onClick={handleCardClick}
@@ -277,14 +259,6 @@ export default function ProductCard({
 
           {/* Edit Button - Only visible to admin users */}
           {(() => {
-            // Debug logging
-            console.log('ProductCard Debug:', {
-              currentUser,
-              userRole: currentUser?.role,
-              isAdminResult: isAdmin(currentUser),
-              productId: product.id,
-              productTitle: product.title
-            });
             return isAdmin(currentUser);
           })() && (
             <Button

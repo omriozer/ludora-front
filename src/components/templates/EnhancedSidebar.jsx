@@ -20,7 +20,7 @@ import BulkOperationsToolbar from './BulkOperationsToolbar';
 
 const EnhancedSidebar = ({
   // Props from original components
-  footerConfig,
+  templateConfig,
   onItemClick,
   selectedItem,
   userRole,
@@ -65,16 +65,38 @@ const EnhancedSidebar = ({
 
   // Combine built-in and custom elements for layer/bulk operations
   const allElements = {
-    ...footerConfig,
-    ...footerConfig?.customElements
+    ...templateConfig,
+    ...templateConfig?.customElements
   };
 
   // Remove customElements from the root level to avoid duplication
-  const { customElements, ...builtInElements } = footerConfig || {};
+  const { customElements, ...builtInElements } = templateConfig || {};
 
   const combinedElements = {
     ...builtInElements,
     ...customElements
+  };
+
+  // Calculate visible elements count (same logic as ItemButtons.jsx)
+  const getVisibleElementsCount = () => {
+    let count = 0;
+
+    // Count visible built-in elements (backend-compatible logic)
+    ['logo', 'url', 'copyright-text'].forEach(builtInKey => {
+      const builtInElement = templateConfig?.[builtInKey];
+      if (builtInElement && builtInElement.visible !== false && builtInElement.hidden !== true) {
+        count++;
+      }
+    });
+
+    // Count visible custom elements (backend-compatible logic)
+    Object.entries(customElements || {}).forEach(([elementId, element]) => {
+      if (element && element.visible !== false && element.hidden !== true) {
+        count++;
+      }
+    });
+
+    return count;
   };
 
   // Tab configuration
@@ -83,7 +105,7 @@ const EnhancedSidebar = ({
       key: 'elements',
       icon: Grid,
       label: 'אלמנטים',
-      count: Object.keys(combinedElements).length
+      count: getVisibleElementsCount()
     },
     {
       key: 'groups',
@@ -109,7 +131,7 @@ const EnhancedSidebar = ({
       case 'elements':
         return (
           <ItemButtons
-            footerConfig={footerConfig}
+            templateConfig={templateConfig}
             onItemClick={onItemClick}
             selectedItem={selectedItem}
             userRole={userRole}

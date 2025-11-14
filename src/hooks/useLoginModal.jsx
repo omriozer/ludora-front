@@ -1,25 +1,34 @@
-import { useState, createContext, useContext } from 'react';
+import { useState, createContext, useContext, useRef } from 'react';
+import { cerror } from '@/lib/utils';
 
 const LoginModalContext = createContext();
 
 export function LoginModalProvider({ children }) {
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [loginCallback, setLoginCallback] = useState(null);
+  const loginCallbackRef = useRef(null);
+  const [modalMessage, setModalMessage] = useState('');
 
-  const openLoginModal = (callback = null) => {
-    setLoginCallback(() => callback); // Wrap in function to store function reference
+  const openLoginModal = (callback, message = '') => {
+    loginCallbackRef.current = callback;
+    setModalMessage(message);
     setShowLoginModal(true);
   };
 
   const closeLoginModal = () => {
     setShowLoginModal(false);
-    setLoginCallback(null);
+    // DON'T clear the callback ref here - let executeCallback() handle it
+    setModalMessage('');
   };
 
   const executeCallback = () => {
-    if (loginCallback && typeof loginCallback === 'function') {
-      loginCallback();
-      setLoginCallback(null);
+    if (loginCallbackRef.current) {
+      const callback = loginCallbackRef.current;
+      loginCallbackRef.current = null; // Clear it after storing locally
+      try {
+        callback();
+      } catch (error) {
+        cerror('Error executing login callback:', error);
+      }
     }
   };
 
@@ -28,7 +37,8 @@ export function LoginModalProvider({ children }) {
       showLoginModal,
       openLoginModal,
       closeLoginModal,
-      executeCallback
+      executeCallback,
+      modalMessage
     }}>
       {children}
     </LoginModalContext.Provider>

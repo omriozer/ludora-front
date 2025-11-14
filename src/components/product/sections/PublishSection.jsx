@@ -97,10 +97,7 @@ export const PublishSection = ({
               <div className="flex flex-col items-end gap-2">
                 <Switch
                   checked={isPublished}
-                  onCheckedChange={(checked) => {
-                    console.log('📌 Publish toggle changed to:', checked);
-                    updateFormData({ is_published: checked });
-                  }}
+                  onCheckedChange={(checked) => updateFormData({ is_published: checked })}
                   disabled={!canPublishProduct}
                 />
                 {!canPublishProduct && (
@@ -142,19 +139,6 @@ export const PublishSection = ({
 
               {(() => {
                 const validation = validateForm ? validateForm() : { isValid: true, errors: {} };
-
-                // Debug logging to understand why validation is failing
-                if (!validation.isValid) {
-                  console.log('🐛 PublishSection: Validation failed, errors:', validation.errors);
-                  console.log('🐛 PublishSection: canPublish result:', canPublishProduct);
-                }
-
-                // Debug the file upload status
-                console.log('📁 PublishSection file status:', {
-                  hasUploadedFile,
-                  'formData.product_type': formData.product_type,
-                  'editingProduct exists': !!editingProduct
-                });
 
                 const requirements = [
                   {

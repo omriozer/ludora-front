@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { Purchase } from "@/services/entities";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,9 +9,9 @@ import { applyCoupon } from "@/services/functions";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getCartPurchases } from "@/utils/purchaseHelpers";
+import { cerror } from "@/lib/utils";
 
 export default function PaymentModal({ product, user, settings, isTestMode = (import.meta.env.VITE_API_BASE?.includes('localhost') || import.meta.env.DEV), onClose }) {
-  const navigate = useNavigate();
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [couponError, setCouponError] = useState('');
@@ -52,7 +51,7 @@ export default function PaymentModal({ product, user, settings, isTestMode = (im
         setCouponError('');
       }
     } catch (error) {
-      console.error('Error applying coupon:', error);
+      cerror('Error applying coupon:', error);
       setCouponError('שגיאה בהפעלת הקופון');
     }
     
@@ -70,7 +69,6 @@ export default function PaymentModal({ product, user, settings, isTestMode = (im
   const handlePayment = async () => {
     setIsCreatingPayment(true);
     setError(null);
-    console.log('🎯 PaymentModal: Starting payment process...');
 
     try {
       // Calculate access details based on product settings
@@ -116,7 +114,6 @@ export default function PaymentModal({ product, user, settings, isTestMode = (im
 
       if (existingCartPurchase) {
         // Update existing cart purchase with discount info but keep in cart status
-        console.log('Found existing cart purchase, updating with discount info:', existingCartPurchase.id);
 
         const updateData = {
           payment_amount: finalPrice,
@@ -136,7 +133,6 @@ export default function PaymentModal({ product, user, settings, isTestMode = (im
         purchase = await Purchase.update(existingCartPurchase.id, updateData);
       } else {
         // Create new purchase record in cart status
-        console.log('No cart purchase found, creating new purchase in cart status');
 
         const purchaseData = {
           buyer_user_id: user.id,
@@ -172,14 +168,7 @@ export default function PaymentModal({ product, user, settings, isTestMode = (im
         totalDiscount: discountAmount
       });
 
-      console.log('🎯 PaymentModal: Payment response received:', {
-        success: paymentResponse.data?.success,
-        hasPaymentUrl: !!paymentResponse.data?.payment_url,
-        paymentUrl: paymentResponse.data?.payment_url
-      });
-
       if (paymentResponse.data?.success && paymentResponse.data?.payment_url) {
-        console.log('🎯 PaymentModal: Setting iframe to show with URL:', paymentResponse.data.payment_url);
         setPaymentUrl(paymentResponse.data.payment_url);
         setShowIframe(true);
       } else {
@@ -187,7 +176,7 @@ export default function PaymentModal({ product, user, settings, isTestMode = (im
       }
 
     } catch (error) {
-      console.error('Payment error:', error);
+      cerror('Payment error:', error);
       setError(error.message || 'שגיאה בעיבוד התשלום');
     }
     
@@ -197,16 +186,12 @@ export default function PaymentModal({ product, user, settings, isTestMode = (im
   // Handle iframe messages from PayPlus
   useEffect(() => {
     const handleMessage = async (event) => {
-      console.log('🎯 PaymentModal: Received message from iframe:', event.data);
 
       if (event.data && typeof event.data === 'string') {
         try {
           const data = JSON.parse(event.data);
-          console.log('🎯 PaymentModal: Parsed message data:', data);
 
           if (data.type === 'payplus_payment_complete') {
-            console.log('🎯 PaymentModal: Payment completed with status:', data.status);
-
             // Update purchases to pending status since payment was submitted
             if (data.status === 'success') {
               try {
@@ -229,9 +214,8 @@ export default function PaymentModal({ product, user, settings, isTestMode = (im
                   });
                 }
 
-                console.log(`🎯 PaymentModal: Updated ${purchasesToUpdate.length} purchases to pending status`);
               } catch (error) {
-                console.error('🎯 PaymentModal: Error updating purchase status:', error);
+                cerror('PaymentModal: Error updating purchase status:', error);
               }
             } else {
               // Payment failed/cancelled - reset payment_in_progress flag
@@ -250,9 +234,8 @@ export default function PaymentModal({ product, user, settings, isTestMode = (im
                   });
                 }
 
-                console.log(`🎯 PaymentModal: Reset ${purchasesToReset.length} purchases after payment failure`);
               } catch (error) {
-                console.error('🎯 PaymentModal: Error resetting purchase status:', error);
+                cerror('PaymentModal: Error resetting purchase status:', error);
               }
             }
 
@@ -260,23 +243,20 @@ export default function PaymentModal({ product, user, settings, isTestMode = (im
             window.location.href = `/PaymentResult?status=${data.status}&purchaseId=${data.purchaseId || data.orderNumber}`;
           }
         } catch (e) {
-          console.log('🎯 PaymentModal: Message not JSON or not PayPlus message, ignoring');
+          // Non-JSON message or not PayPlus message, ignore
         }
       }
     };
 
     if (showIframe) {
-      console.log('🎯 PaymentModal: Adding message listener for iframe');
       window.addEventListener('message', handleMessage);
       return () => {
-        console.log('🎯 PaymentModal: Removing message listener for iframe');
         window.removeEventListener('message', handleMessage);
       };
     }
   }, [showIframe, user.id]);
 
   if (showIframe && paymentUrl) {
-    console.log('🎯 PaymentModal: Rendering iframe with URL:', paymentUrl);
     return (
       <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
         <div className="bg-white rounded-lg w-full max-w-4xl h-[90vh] flex flex-col">
@@ -286,7 +266,6 @@ export default function PaymentModal({ product, user, settings, isTestMode = (im
               variant="ghost"
               size="icon"
               onClick={() => {
-                console.log('🎯 PaymentModal: Close button clicked, resetting payment_in_progress');
                 // Reset payment_in_progress when modal is closed
                 const resetPaymentFlags = async () => {
                   try {
@@ -303,9 +282,8 @@ export default function PaymentModal({ product, user, settings, isTestMode = (im
                         }
                       });
                     }
-                    console.log(`🎯 PaymentModal: Reset ${purchasesToReset.length} purchases after modal close`);
                   } catch (error) {
-                    console.error('🎯 PaymentModal: Error resetting purchases on close:', error);
+                    cerror('PaymentModal: Error resetting purchases on close:', error);
                   }
                 };
                 resetPaymentFlags();
@@ -320,8 +298,6 @@ export default function PaymentModal({ product, user, settings, isTestMode = (im
               src={paymentUrl}
               className="w-full h-full border-0"
               title="PayPlus Payment"
-              onLoad={() => console.log('🎯 PaymentModal: Iframe loaded successfully')}
-              onError={(e) => console.error('🎯 PaymentModal: Iframe error:', e)}
             />
           </div>
         </div>

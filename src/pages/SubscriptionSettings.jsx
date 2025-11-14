@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { cerror } from "@/lib/utils";
 import {
   CreditCard,
   Plus,
@@ -96,7 +97,7 @@ export default function SubscriptionSettings() {
         setSubscriptionPlans(plans);
       }
     } catch (error) {
-      console.error("Error loading data:", error);
+      cerror("Error loading data:", error);
       setMessage({ type: 'error', text: 'שגיאה בטעינת נתונים' });
     }
     setIsLoading(false);
@@ -121,7 +122,7 @@ export default function SubscriptionSettings() {
       // Settings are updated on the server - no need to update local state
       showMessage('success', enabled ? 'תוכנית המנויים הופעלה' : 'תוכנית המנויים הושבתה');
     } catch (error) {
-      console.error("Error updating subscription system setting:", error);
+      cerror("Error updating subscription system setting:", error);
       showMessage('error', 'שגיאה בעדכון הגדרת תוכנית המנויים');
     }
     setIsSavingSettings(false);
@@ -278,40 +279,31 @@ export default function SubscriptionSettings() {
   };
 
   const handleSave = async () => {
-    console.log('🔍 HandleSave called:', { formData, editingPlan });
-
     if (isSavingPlan) {
-      console.log('⏳ Already saving, ignoring click');
       return;
     }
 
     // Run form validation
     if (!validateForm()) {
-      console.log('❌ Validation failed:', validationErrors);
       showMessage('error', 'יש לתקן את השגיאות בטופס לפני השמירה');
       return;
     }
 
-    console.log('✅ Validation passed, attempting to save...');
     setIsSavingPlan(true);
 
     try {
       if (editingPlan) {
-        console.log('📝 Updating existing plan:', editingPlan.id);
         await SubscriptionPlan.update(editingPlan.id, formData);
         showMessage('success', 'תוכנית המנוי עודכנה בהצלחה');
       } else {
-        console.log('➕ Creating new plan');
-        const result = await SubscriptionPlan.create(formData);
-        console.log('✅ Plan created successfully:', result);
+        await SubscriptionPlan.create(formData);
         showMessage('success', 'תוכנית המנוי נוצרה בהצלחה');
       }
 
       resetForm();
       loadData();
     } catch (error) {
-      console.error("❌ Error saving subscription plan:", error);
-      console.error("Error details:", error.message, error.stack);
+      cerror("Error saving subscription plan:", error);
       showMessage('error', `שגיאה בשמירת תוכנית המנוי: ${error.message || 'שגיאה לא ידועה'}`);
     } finally {
       setIsSavingPlan(false);
@@ -333,7 +325,7 @@ export default function SubscriptionSettings() {
       showMessage('success', 'תוכנית המנוי נמחקה בהצלחה');
       loadData();
     } catch (error) {
-      console.error("Error deleting subscription plan:", error);
+      cerror("Error deleting subscription plan:", error);
       showMessage('error', 'שגיאה במחיקת תוכנית המנוי');
     }
   };
@@ -1217,10 +1209,7 @@ export default function SubscriptionSettings() {
                     ביטול
                   </Button>
                   <Button
-                    onClick={(e) => {
-                      console.log('🖱️ Save button clicked!', e);
-                      handleSave();
-                    }}
+                    onClick={handleSave}
                     className="bg-blue-600 hover:bg-blue-700"
                     disabled={isSavingPlan}
                   >

@@ -33,7 +33,9 @@ const TemplateSelector = ({
   onEnabledChange,
   fileExists = false,
   userRole,
-  className = ""
+  currentUser = null, // Current user object for email template resolution
+  className = "",
+  fileEntity = null // File entity object for template filtering
 }) => {
   // State
   const [availableTemplates, setAvailableTemplates] = useState([]);
@@ -94,13 +96,15 @@ const TemplateSelector = ({
     if (enabled || fileExists) { // Load templates when enabled OR when file exists (for preview/configuration)
       fetchAvailableTemplates();
     }
-  }, [enabled, templateType, targetFormat, fileExists]);
+  }, [enabled, templateType, targetFormat, fileExists, fileEntity?.target_format]);
 
   const fetchAvailableTemplates = async () => {
     setIsLoadingTemplates(true);
     try {
-      clog(`🎨 Fetching ${templateType} templates for ${targetFormat}... (enabled: ${enabled}, fileExists: ${fileExists})`);
-      const response = await apiRequest(`/system-templates?type=${templateType}&format=${targetFormat}`);
+      // Use fileEntity target_format if available, fallback to targetFormat prop
+      const effectiveFormat = fileEntity?.target_format || targetFormat;
+      clog(`🎨 Fetching ${templateType} templates for ${effectiveFormat}... (enabled: ${enabled}, fileExists: ${fileExists}, fileEntity format: ${fileEntity?.target_format})`);
+      const response = await apiRequest(`/system-templates?type=${templateType}&format=${effectiveFormat}`);
       clog('🎨 Raw API response:', response);
 
       // Handle different response formats
@@ -119,16 +123,39 @@ const TemplateSelector = ({
       setAvailableTemplates(templates);
       clog(`✅ Loaded ${templates.length} ${templateType} templates:`, templates);
 
-      // Auto-select default template if none selected
-      if (!selectedTemplateId && templates.length > 0) {
-        const defaultTemplate = templates.find(t => t.is_default) || templates[0];
-        if (defaultTemplate) {
-          clog(`🎯 Auto-selecting default template: ${defaultTemplate.name} (ID: ${defaultTemplate.id})`);
-          setSelectedTemplateId(defaultTemplate.id.toString());
-          onTemplateChange?.(defaultTemplate.id, defaultTemplate);
-        }
+      // Handle template selection logic based on availability
+      if (templates.length === 0) {
+        // No templates available for this format - force custom mode
+        clog(`⚠️ No ${templateType} templates available for ${effectiveFormat} - switching to custom mode`);
+        setIsCustomMode(true);
+        setSelectedTemplateId('');
+        onTemplateChange?.(null, null);
+
+        // Clear any custom data to ensure clean state
+        onCustomTemplateChange?.(null);
       } else {
-        clog(`🎯 Not auto-selecting template. selectedTemplateId: ${selectedTemplateId}, templates.length: ${templates.length}`);
+        // Templates available - auto-select default if none selected
+        if (!selectedTemplateId) {
+          const defaultTemplate = templates.find(t => t.is_default) || templates[0];
+          if (defaultTemplate) {
+            clog(`🎯 Auto-selecting default template: ${defaultTemplate.name} (ID: ${defaultTemplate.id})`);
+            setSelectedTemplateId(defaultTemplate.id.toString());
+            setIsCustomMode(false);
+            onTemplateChange?.(defaultTemplate.id, defaultTemplate);
+          }
+        } else {
+          // Check if currently selected template is still available for this format
+          const currentTemplate = templates.find(t => t.id.toString() === selectedTemplateId);
+          if (!currentTemplate) {
+            clog(`⚠️ Current template ${selectedTemplateId} not available for ${effectiveFormat} - auto-selecting new default`);
+            const defaultTemplate = templates.find(t => t.is_default) || templates[0];
+            if (defaultTemplate) {
+              setSelectedTemplateId(defaultTemplate.id.toString());
+              setIsCustomMode(false);
+              onTemplateChange?.(defaultTemplate.id, defaultTemplate);
+            }
+          }
+        }
       }
     } catch (error) {
       cerror('Error fetching templates:', error);
@@ -264,21 +291,28 @@ const TemplateSelector = ({
             <div className="flex-1">
               <Label className="text-sm font-medium text-gray-900">אופן עיצוב</Label>
               <div className="flex items-center gap-4 mt-2">
-                <label className="flex items-center gap-2 cursor-pointer">
+                <label className={`flex items-center gap-2 ${availableTemplates.length === 0 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
                   <input
                     type="radio"
                     name={`template-mode-${templateType}`}
-                    checked={!isCustomMode}
+                    checked={!isCustomMode && availableTemplates.length > 0}
                     onChange={() => {
-                      setIsCustomMode(false);
-                      if (selectedTemplateId) {
-                        handleTemplateSelect(selectedTemplateId);
+                      if (availableTemplates.length > 0) {
+                        setIsCustomMode(false);
+                        if (selectedTemplateId) {
+                          handleTemplateSelect(selectedTemplateId);
+                        }
                       }
                     }}
                     className={`text-${config.color}-600`}
-                    disabled={!enabled}
+                    disabled={!enabled || availableTemplates.length === 0}
                   />
-                  <span className="text-sm">השתמש בתבנית קיימת</span>
+                  <span className="text-sm">
+                    השתמש בתבנית קיימת
+                    {availableTemplates.length === 0 && (
+                      <span className="text-xs text-gray-500 mr-1">(לא זמין)</span>
+                    )}
+                  </span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -303,47 +337,72 @@ const TemplateSelector = ({
                 <Palette className={`w-4 h-4 text-${config.color}-600`} />
               </div>
 
-              <Select
-                value={selectedTemplateId}
-                onValueChange={handleTemplateSelect}
-                disabled={isLoadingTemplates || !enabled}
-              >
-                <SelectTrigger className={`border-${config.color}-300 focus:ring-${config.color}-500`}>
-                  <SelectValue placeholder={isLoadingTemplates ? "טוען תבניות..." : enabled ? "בחר תבנית" : "בחר תבנית (יופעל עם הפעלת המיתוג)"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableTemplates.length > 0 ? (
-                    availableTemplates.map((template) => (
-                      <SelectItem key={template.id} value={template.id.toString()}>
-                        <div className="flex items-center gap-2">
-                          <span>{template.name}</span>
-                          {template.is_default && (
-                            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
-                              ברירת מחדל
-                            </span>
-                          )}
-                        </div>
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="no-templates" disabled>
-                      {isLoadingTemplates ? 'טוען תבניות...' : 'אין תבניות זמינות'}
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
+              {availableTemplates.length > 0 ? (
+                <>
+                  <Select
+                    value={selectedTemplateId}
+                    onValueChange={handleTemplateSelect}
+                    disabled={isLoadingTemplates || !enabled}
+                  >
+                    <SelectTrigger className={`border-${config.color}-300 focus:ring-${config.color}-500`}>
+                      <SelectValue placeholder={isLoadingTemplates ? "טוען תבניות..." : enabled ? "בחר תבנית" : "בחר תבנית (יופעל עם הפעלת המיתוג)"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableTemplates.map((template) => (
+                        <SelectItem key={template.id} value={template.id.toString()}>
+                          <div className="flex items-center gap-2">
+                            <span>{template.name}</span>
+                            {template.is_default && (
+                              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                                ברירת מחדל
+                              </span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
 
-              {selectedTemplateId && (
-                <div className="flex items-center gap-2">
+                  {selectedTemplateId && (
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowTemplateEditor(true)}
+                        className={`border-${config.color}-300 text-${config.color}-700 hover:bg-${config.color}-100`}
+                      >
+                        <Eye className="w-4 h-4 mr-2" />
+                        תצוגה מקדימה ועריכה
+                      </Button>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className={`p-4 bg-amber-50 rounded-lg border border-amber-200`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Info className="w-4 h-4 text-amber-600" />
+                    <span className="text-sm font-medium text-amber-900">
+                      אין תבניות זמינות
+                    </span>
+                  </div>
+                  <p className="text-xs text-amber-800 mb-3">
+                    לא נמצאו תבניות {config.name} עבור הפורמט הנוכחי של הקובץ.
+                    תוכל ליצור תבנית מותאמת אישית במקום.
+                  </p>
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => setShowTemplateEditor(true)}
-                    className={`border-${config.color}-300 text-${config.color}-700 hover:bg-${config.color}-100`}
+                    onClick={() => {
+                      setIsCustomMode(true);
+                      onTemplateChange?.(null, null);
+                    }}
+                    className="border-amber-300 text-amber-700 hover:bg-amber-100"
+                    disabled={!enabled}
                   >
-                    <Eye className="w-4 h-4 mr-2" />
-                    תצוגה מקדימה ועריכה
+                    <Plus className="w-4 h-4 mr-2" />
+                    צור תבנית מותאמת אישית
                   </Button>
                 </div>
               )}
@@ -421,10 +480,12 @@ const TemplateSelector = ({
           onSave={handleCustomTemplateSave}
           fileEntityId={entityId}
           userRole={userRole}
-          initialFooterConfig={getInitialTemplateData()}
+          currentUser={currentUser} // Pass current user for email template resolution
+          initialTemplateConfig={getInitialTemplateData()}
           targetFormat={targetFormat}
           templateType={templateType}
           currentTemplateId={isCustomMode ? null : selectedTemplateId}
+          fileEntity={fileEntity}
           onTemplateChange={(templateId, templateData) => {
             // Handle template change from within the editor
             if (templateId) {

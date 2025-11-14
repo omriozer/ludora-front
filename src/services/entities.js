@@ -39,6 +39,9 @@ import {
   ClassroomMembership,
   Curriculum,
   CurriculumItem,
+  ContentTopic,
+  ContentTopicProduct,
+  CurriculumItemContentTopic,
   User as ApiUser
 } from './apiClient.js';
 
@@ -83,6 +86,9 @@ export {
   ClassroomMembership,
   Curriculum,
   CurriculumItem,
+  ContentTopic,
+  ContentTopicProduct,
+  CurriculumItemContentTopic,
   ApiUser as User // Ensure latest User object is re-exported
 };
 

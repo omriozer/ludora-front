@@ -67,15 +67,6 @@ export default function AddToCartButton({
       const entityType = productType;
       const entityId = product.entity_id || product.id;
 
-      console.log('💰 AddToCartButton: Purchase data being sent:', {
-        productId: product.id,
-        entityType,
-        entityId,
-        productPrice: product.price,
-        productTitle: product.title,
-        productType: product.product_type
-      });
-
       // Create purchase using new API
       const result = await paymentClient.createPurchase(entityType, entityId, {
         product_title: product.title,
@@ -89,16 +80,8 @@ export default function AddToCartButton({
         const isCompleted = data.completed || data.purchase?.payment_status === 'completed';
         const isFreeItem = data.isFree;
 
-        console.log('🛒 AddToCartButton: Analyzing result data:', {
-          data,
-          isCompleted,
-          isFreeItem,
-          paymentStatus: data.purchase?.payment_status
-        });
-
         if (isCompleted || isFreeItem) {
           // Free item - completed immediately (shouldn't happen with AddToCartButton but handle it)
-          console.log('🛒 AddToCartButton: Taking FREE/COMPLETED path - calling refreshCart()');
           refreshCart(); // Sync state to update ProductActionBar immediately
 
           toast({
@@ -108,7 +91,6 @@ export default function AddToCartButton({
           });
         } else {
           // Paid item - added to cart
-          console.log('🛒 AddToCartButton: Taking PAID CART path - calling addToCart() and refreshCart()');
           addToCart();
           refreshCart(); // Sync cart state to update ProductActionBar
 

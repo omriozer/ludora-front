@@ -2,7 +2,6 @@
 import Home from './Home';
 import Dashboard from './Dashboard';
 import Registration from './Registration';
-import AdminPanel from './AdminPanel';
 import MyAccount from './MyAccount';
 import Participants from './Participants';
 import Emails from './Emails';
@@ -61,7 +60,6 @@ export {
   Home,
   Dashboard,
   Registration,
-  AdminPanel,
   MyAccount,
   Participants,
   Emails,

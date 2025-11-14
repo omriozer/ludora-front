@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 import { getApiBase } from '@/utils/api.js';
+import { clog, cerror } from '@/lib/utils';
 
 const AudioCacheContext = createContext();
 
@@ -79,7 +80,7 @@ export const AudioCacheProvider = ({ children }) => {
         // Construct download URL with auth token
         const downloadUrl = `${getApiBase()}/media/download/audiofile/${audioFileId}?authToken=${encodeURIComponent(token)}`;
 
-        console.log(`🎵 Downloading audio file: ${audioFileId}`);
+        clog(`🎵 Downloading audio file: ${audioFileId}`);
 
         // Fetch the audio file
         const response = await fetch(downloadUrl);
@@ -104,11 +105,11 @@ export const AudioCacheProvider = ({ children }) => {
         // Cache the blob URL
         setAudioCache(prev => new Map(prev.set(audioFileId, blobUrl)));
 
-        console.log(`✅ Audio file cached: ${audioFileId}`);
+        clog(`✅ Audio file cached: ${audioFileId}`);
         return blobUrl;
 
       } catch (error) {
-        console.error(`❌ Failed to download audio file ${audioFileId}:`, error);
+        cerror(`Failed to download audio file ${audioFileId}:`, error);
         throw error;
       } finally {
         // Clear loading state
@@ -142,7 +143,7 @@ export const AudioCacheProvider = ({ children }) => {
         newMap.delete(audioFileId);
         return newMap;
       });
-      console.log(`🗑️ Audio file removed from cache: ${audioFileId}`);
+      clog(`🗑️ Audio file removed from cache: ${audioFileId}`);
     }
   }, [audioCache]);
 
@@ -156,7 +157,7 @@ export const AudioCacheProvider = ({ children }) => {
     setAudioCache(new Map());
     setLoadingStates(new Map());
     downloadPromises.current.clear();
-    console.log('🗑️ All audio cache cleared');
+    clog('🗑️ All audio cache cleared');
   }, [audioCache]);
 
   /**

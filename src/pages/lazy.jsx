@@ -47,7 +47,6 @@ export const ProductPage = lazy(() => import('./ProductPage'));
 export const GameSettings = lazy(() => import('./GameSettings'));
 
 // Admin-only pages (heavily lazy loaded to reduce bundle size)
-export const AdminPanel = lazy(() => import('./AdminPanel'));
 export const Participants = lazy(() => import('./Participants'));
 export const Emails = lazy(() => import('./Emails'));
 export const SupportMessages = lazy(() => import('./SupportMessages'));
@@ -57,8 +56,8 @@ export const Users = lazy(() => import('./Users'));
 export const FeatureControl = lazy(() => import('./FeatureControl'));
 export const BrandSettings = lazy(() => import('./BrandSettings'));
 export const ProductSettings = lazy(() => import('./ProductSettings'));
-export const DevelopmentTools = lazy(() => import('./DevelopmentTools'));
 export const CategoryManagement = lazy(() => import('./CategoryManagement'));
+export const ContentTopicsManagement = lazy(() => import('./ContentTopicsManagement'));
 export const AudioManagement = lazy(() => import('./AudioManagement'));
 export const SubscriptionSettings = lazy(() => import('./SubscriptionSettings'));
 export const SchoolManagement = lazy(() => import('./SchoolManagement'));

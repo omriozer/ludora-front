@@ -4,6 +4,7 @@ import { useUser } from "@/contexts/UserContext";
 import { clog, cerror } from "@/lib/utils";
 import { toast } from "@/components/ui/use-toast";
 import { apiRequest } from "@/services/apiClient.js";
+import { getTextFontFamily } from "@/utils/hebrewUtils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,7 +33,7 @@ export default function TemplateEditor() {
   const [template, setTemplate] = useState({
     name: '',
     description: '',
-    template_type: 'footer',
+    template_type: 'branding',
     target_format: 'pdf-a4-portrait',
     is_default: false,
     template_data: {}
@@ -67,8 +68,7 @@ export default function TemplateEditor() {
   ];
 
   const templateTypes = [
-    { value: 'footer', label: 'תחתית עמוד' },
-    { value: 'header', label: 'ראש עמוד' },
+    { value: 'branding', label: 'מיתוג' },
     { value: 'watermark', label: 'סימן מים' }
   ];
 
@@ -79,6 +79,7 @@ export default function TemplateEditor() {
       setTemplate(prev => ({
         ...prev,
         template_type: templateType,
+        target_format: getDefaultTargetFormat(templateType),
         template_data: getDefaultTemplateData(templateType)
       }));
     }
@@ -92,20 +93,46 @@ export default function TemplateEditor() {
     }
   }, [templateId, userLoading]);
 
+  const getDefaultTargetFormat = (templateType) => {
+    if (templateType === 'watermark') {
+      return 'svg-lessonplan'; // Watermarks are primarily for lesson plans
+    } else if (templateType === 'branding') {
+      return 'pdf-a4-portrait'; // Branding templates default to portrait PDFs
+    }
+    return 'pdf-a4-portrait'; // Fallback
+  };
+
+  const getAvailableTargetFormats = (templateType) => {
+    if (templateType === 'watermark') {
+      // Watermarks work on all formats but are primarily for lesson plans
+      return targetFormats;
+    } else if (templateType === 'branding') {
+      // Branding templates work on all formats
+      return targetFormats;
+    }
+    return targetFormats; // All formats available by default
+  };
+
+  const getTemplateTypeLabel = (templateType) => {
+    const typeObj = templateTypes.find(t => t.value === templateType);
+    return typeObj ? typeObj.label : templateType;
+  };
+
   const getDefaultTemplateData = (templateType) => {
     if (templateType === 'watermark') {
+      const watermarkContent = 'PREVIEW ONLY';
       return {
         textElements: [
           {
             id: 'watermark-text',
-            content: 'PREVIEW ONLY',
+            content: watermarkContent,
             position: { x: 50, y: 50 },
             style: {
               fontSize: 24,
               color: '#FF6B6B',
               opacity: 40,
               rotation: 45,
-              fontFamily: 'Arial, sans-serif',
+              fontFamily: getTextFontFamily(watermarkContent, true),
               bold: true
             },
             pattern: 'single',
@@ -118,7 +145,7 @@ export default function TemplateEditor() {
           preserveReadability: true
         }
       };
-    } else {
+    } else if (templateType === 'branding') {
       return {
         logo: {
           visible: true,
@@ -140,7 +167,8 @@ export default function TemplateEditor() {
             bold: false,
             italic: false,
             opacity: 80,
-            width: 300
+            width: 300,
+            fontFamily: getTextFontFamily('Your copyright text here', false)
           }
         },
         url: {
@@ -154,15 +182,39 @@ export default function TemplateEditor() {
             color: '#0066cc',
             bold: false,
             italic: false,
-            opacity: 100
+            opacity: 100,
+            fontFamily: getTextFontFamily('https://ludora.app', false)
           }
         },
         customElements: {}
       };
+    } else {
+      // Fallback for any other template types
+      return {};
     }
   };
 
   const loadTemplate = async () => {
+    // Validate template ID format before attempting to load
+    if (!templateId || typeof templateId !== 'string') {
+      clog('Invalid template ID format, redirecting to template manager:', templateId);
+      navigate('/template-manager');
+      return;
+    }
+
+    // Check if ID looks like a valid template ID (not a short code)
+    // Template IDs are 6+ characters (system generates 6-char IDs)
+    if (templateId.length < 6) {
+      clog('Template ID too short, likely invalid, redirecting:', templateId);
+      toast({
+        title: "מזהה תבנית לא תקין",
+        description: "מזהה התבנית שנמצא בכתובת אינו תקין",
+        variant: "destructive"
+      });
+      navigate('/template-manager');
+      return;
+    }
+
     setIsLoading(true);
     try {
       const result = await apiRequest(`/system-templates/${templateId}`);
@@ -170,11 +222,22 @@ export default function TemplateEditor() {
       setIsCreateMode(false);
     } catch (error) {
       cerror("Error loading template:", error);
-      toast({
-        title: "שגיאה בטעינת התבנית",
-        description: "לא ניתן לטעון את נתוני התבנית",
-        variant: "destructive"
-      });
+
+      // Check if it's a 404 error - template not found
+      if (error.status === 404) {
+        clog('Template not found, redirecting to template manager:', templateId);
+        toast({
+          title: "התבנית לא נמצאה",
+          description: "התבנית המבוקשת לא קיימת במערכת",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "שגיאה בטעינת התבנית",
+          description: "לא ניתן לטעון את נתוני התבנית",
+          variant: "destructive"
+        });
+      }
       navigate('/template-manager');
     }
     setIsLoading(false);
@@ -222,7 +285,7 @@ export default function TemplateEditor() {
   const handleOpenVisualEditor = () => {
     // Visual editor now supports all template types and formats
     const supportedFormats = ['pdf-a4-portrait', 'pdf-a4-landscape', 'svg-lessonplan'];
-    const supportedTypes = ['footer', 'header', 'watermark'];
+    const supportedTypes = ['branding', 'watermark'];
 
     if (!supportedTypes.includes(template.template_type)) {
       toast({
@@ -245,10 +308,10 @@ export default function TemplateEditor() {
     setShowVisualEditor(true);
   };
 
-  const handleSaveFromVisualEditor = (footerConfig) => {
+  const handleSaveFromVisualEditor = (templateConfig) => {
     setTemplate(prev => ({
       ...prev,
-      template_data: footerConfig
+      template_data: templateConfig
     }));
     setShowVisualEditor(false);
     toast({
@@ -289,10 +352,16 @@ export default function TemplateEditor() {
             </Button>
           </div>
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
-            {isCreateMode ? 'יצירת תבנית חדשה' : 'עריכת תבנית'}
+            {isCreateMode
+              ? `יצירת תבנית ${getTemplateTypeLabel(template.template_type)}`
+              : `תבנית מערכת ${template.is_default ? '⭐' : ''}`
+            }
           </h1>
           <p className="text-gray-500">
-            {isCreateMode ? 'צור תבנית חדשה למערכת' : `עריכת תבנית: ${template.name}`}
+            {isCreateMode
+              ? `צור תבנית ${getTemplateTypeLabel(template.template_type)} חדשה למערכת`
+              : `עריכת תבנית: ${template.name}`
+            }
           </p>
         </div>
 
@@ -325,27 +394,13 @@ export default function TemplateEditor() {
               />
             </div>
 
-            {/* Template Type and Target Format */}
+            {/* Template Type (Display Only) and Target Format */}
             <div className="grid md:grid-cols-2 gap-6">
               <div>
                 <Label htmlFor="template-type">סוג התבנית</Label>
-                <select
-                  id="template-type"
-                  value={template.template_type}
-                  onChange={(e) => {
-                    const newType = e.target.value;
-                    setTemplate(prev => ({
-                      ...prev,
-                      template_type: newType,
-                      template_data: getDefaultTemplateData(newType)
-                    }));
-                  }}
-                  className="w-full px-3 py-2 border rounded-lg mt-1"
-                >
-                  {templateTypes.map(type => (
-                    <option key={type.value} value={type.value}>{type.label}</option>
-                  ))}
-                </select>
+                <div className="w-full px-3 py-2 border rounded-lg mt-1 bg-gray-50 text-gray-700">
+                  {getTemplateTypeLabel(template.template_type)}
+                </div>
               </div>
 
               <div>
@@ -356,7 +411,7 @@ export default function TemplateEditor() {
                   onChange={(e) => setTemplate(prev => ({...prev, target_format: e.target.value}))}
                   className="w-full px-3 py-2 border rounded-lg mt-1"
                 >
-                  {targetFormats.map(format => (
+                  {getAvailableTargetFormats(template.template_type).map(format => (
                     <option key={format.value} value={format.value}>{format.label}</option>
                   ))}
                 </select>
@@ -398,13 +453,13 @@ export default function TemplateEditor() {
                 <Button
                   onClick={handleOpenVisualEditor}
                   disabled={
-                    !(['footer', 'header', 'watermark'].includes(template.template_type) &&
+                    !(['branding', 'watermark'].includes(template.template_type) &&
                       ['pdf-a4-portrait', 'pdf-a4-landscape', 'svg-lessonplan'].includes(template.target_format))
                   }
                   className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300"
                 >
                   <Palette className="w-4 h-4 ml-2" />
-                  {(['footer', 'header', 'watermark'].includes(template.template_type) &&
+                  {(['branding', 'watermark'].includes(template.template_type) &&
                     ['pdf-a4-portrait', 'pdf-a4-landscape', 'svg-lessonplan'].includes(template.target_format))
                     ? 'פתח עורך ויזואלי'
                     : 'לא נתמך'}
@@ -440,9 +495,11 @@ export default function TemplateEditor() {
             onSave={handleSaveFromVisualEditor}
             fileEntityId={null} // No file - blank canvas mode
             userRole={currentUser?.role}
-            initialFooterConfig={template.template_data}
+            currentUser={currentUser} // Pass full user object for email resolution
+            initialTemplateConfig={template.template_data}
             targetFormat={template.target_format} // Pass format for correct placeholder
             templateType={template.template_type} // Pass type for correct editor mode
+            currentTemplateId={!isCreateMode ? templateId : null} // Pass template ID for auto-apply
           />
         )}
       </div>

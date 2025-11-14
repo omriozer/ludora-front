@@ -44,12 +44,9 @@ export function CartProvider({ children }) {
 
   // Refresh cart data and notify other components
   const refreshCart = useCallback(() => {
-    console.log('🔄 CartContext: Starting refreshCart()');
     loadCartItems();
     // Emit custom event to notify other components (like product catalog)
-    console.log('📢 CartContext: Emitting cart change event');
     window.dispatchEvent(new CustomEvent(CART_CHANGE_EVENT));
-    console.log('✅ CartContext: Cart refreshed and event emitted');
     clog('Cart refreshed - notified other components');
   }, [loadCartItems]);
 

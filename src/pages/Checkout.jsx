@@ -47,6 +47,7 @@ import { useCart } from "@/contexts/CartContext";
 import CouponInput from "@/components/CouponInput";
 import couponClient from "@/services/couponClient";
 import PayPlusEnvironmentSelector from "@/components/PayPlusEnvironmentSelector";
+import { clog, cerror } from "@/lib/utils";
 
 
 export default function Checkout() {
@@ -112,14 +113,14 @@ export default function Checkout() {
             productMap[purchase.id] = product;
           }
         } catch (error) {
-          console.error(`Error loading product for purchase ${purchase.id}:`, error);
+          cerror(`Error loading product for purchase ${purchase.id}:`, error);
           // Continue loading other products even if one fails
         }
       }
 
       setCartItemProducts(productMap);
     } catch (error) {
-      console.error('Error loading cart item products:', error);
+      cerror('Error loading cart item products:', error);
     }
   }, []);
 
@@ -156,7 +157,7 @@ export default function Checkout() {
       calculatePricing(cartPurchases);
 
     } catch (err) {
-      console.error('Error loading checkout data:', err);
+      cerror('Error loading checkout data:', err);
       setError('שגיאה בטעינת נתוני העגלה');
     }
 
@@ -203,42 +204,31 @@ export default function Checkout() {
         return;
       }
 
-      console.log('🎯 Checkout: Received message from PayPlus iframe:', event.data);
-
       if (typeof event.data === 'string') {
         try {
           const data = JSON.parse(event.data);
-          console.log('🎯 Checkout: Parsed message data:', data);
 
           if (data.type === 'payplus_payment_complete') {
-            console.log('🎯 Checkout: Payment completed via PostMessage with status:', data.status);
 
             // Payment detected via immediate notification (no polling needed)
 
             // NEW: Notify API that payment was submitted (regardless of success/failure)
             if (currentTransactionId) {
               try {
-                console.log('📤 Checkout: Confirming payment submission to API for transaction:', currentTransactionId);
-
                 await apiRequest(`/payments/confirm/${currentTransactionId}`, {
                   method: 'POST'
                 });
-
-                console.log('✅ Checkout: Payment confirmation sent to API successfully');
-
               } catch (confirmError) {
-                console.error('❌ Checkout: Error sending payment confirmation to API:', confirmError);
+                cerror('Error sending payment confirmation to API:', confirmError);
                 // Continue with normal flow even if confirmation fails
               }
             }
 
             if (data.status === 'success') {
               // Payment was successful - trigger success handler
-              console.log('✅ PaymentIntent completed via PostMessage');
               await handlePaymentSuccess();
             } else {
               // Payment failed/cancelled - just close modal
-              console.log('❌ PaymentIntent failed via PostMessage:', data.status);
               handlePaymentModalClose();
 
               toast({
@@ -256,10 +246,8 @@ export default function Checkout() {
     };
 
     if (showPaymentModal && paymentUrl) {
-      console.log('🎯 Checkout: Adding message listener for PayPlus iframe');
       window.addEventListener('message', handleMessage);
       return () => {
-        console.log('🎯 Checkout: Removing message listener for PayPlus iframe');
         window.removeEventListener('message', handleMessage);
       };
     }
@@ -311,7 +299,7 @@ export default function Checkout() {
       calculatePricing(cartItems, updatedCoupons);
 
     } catch (error) {
-      console.error('Error handling coupon application:', error);
+      cerror('Error handling coupon application:', error);
       showPurchaseErrorToast(error, 'בהחלת הקופון');
     }
   };
@@ -328,7 +316,7 @@ export default function Checkout() {
       calculatePricing(cartItems, updatedCoupons);
 
     } catch (error) {
-      console.error('Error handling coupon removal:', error);
+      cerror('Error handling coupon removal:', error);
       showPurchaseErrorToast(error, 'בהסרת הקופון');
     }
   };
@@ -352,25 +340,28 @@ export default function Checkout() {
       });
 
       if (paymentResponse.success && paymentResponse.paymentUrl) {
-        console.log('🎯 PaymentPage created successfully:', {
-          paymentUrl: paymentResponse.paymentUrl,
-          transactionId: paymentResponse.transactionId,
-          environment: paymentResponse.environment
-        });
-
         // Set payment URL and transaction ID, then show modal
         setPaymentUrl(paymentResponse.paymentUrl);
         setCurrentTransactionId(paymentResponse.transactionId);
         setIsIframeLoading(true); // Reset loading state for new iframe
         setShowPaymentModal(true);
       } else {
-        console.log('🎯 PaymentPage creation failed or no URL returned:', paymentResponse);
         setIsProcessingPayment(false);
+        toast({
+          title: "שגיאה ביצירת תשלום",
+          description: "לא ניתן היה ליצור דף תשלום. נסה שוב מאוחר יותר.",
+          variant: "destructive"
+        });
       }
 
     } catch (error) {
-      console.log('🎯 PaymentIntent error:', error);
+      cerror('PaymentIntent error:', error);
       setIsProcessingPayment(false);
+      toast({
+        title: "שגיאה בתשלום",
+        description: "אירעה שגיאה בעת יצירת התשלום. נסה שוב מאוחר יותר.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -416,7 +407,7 @@ export default function Checkout() {
       }, 1000);
 
     } catch (error) {
-      console.error('Error handling payment success:', error);
+      cerror('Error handling payment success:', error);
     }
   };
 
@@ -737,11 +728,10 @@ export default function Checkout() {
                 className="w-full h-full border-0"
                 title="PayPlus Payment"
                 onLoad={() => {
-                  console.log('🎯 Checkout: PayPlus iframe loaded successfully');
                   setIsIframeLoading(false);
                 }}
                 onError={(e) => {
-                  console.error('🎯 Checkout: PayPlus iframe error:', e);
+                  cerror('PayPlus iframe error:', e);
                   setIsIframeLoading(false);
                 }}
               />

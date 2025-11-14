@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Settings } from "@/services/entities";
 import { useUser } from "@/contexts/UserContext";
 import LudoraLoadingSpinner from "@/components/ui/LudoraLoadingSpinner";
+import { cerror } from "@/lib/utils";
 import {
   Package,
   Save,
@@ -111,7 +112,7 @@ export default function ProductSettings() {
       setFormData(newFormData);
 
     } catch (error) {
-      console.error('Error loading data:', error);
+      cerror('Error loading data:', error);
       showMessage('error', 'שגיאה בטעינת הנתונים');
     }
     setIsLoading(false);
@@ -164,7 +165,7 @@ export default function ProductSettings() {
         setSaveStatus("idle");
       }, 2500);
     } catch (error) {
-      console.error('Error saving settings:', error);
+      cerror('Error saving settings:', error);
       setSaveStatus("error");
       showMessage('error', 'שגיאה בשמירת ההגדרות');
 

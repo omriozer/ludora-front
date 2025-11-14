@@ -31,6 +31,7 @@ import {
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { createPayplusPaymentPage } from '@/services/functions';
+import { cerror, clog } from "@/lib/utils";
 
 export default function Registration() {
   const navigate = useNavigate();
@@ -120,7 +121,7 @@ export default function Registration() {
       }
 
     } catch (error) {
-      console.error("Error loading data:", error);
+      cerror("Error loading data:", error);
       setMessage({ type: 'error', text: `שגיאה בטעינת נתוני ה${getProductTypeName('workshop', 'singular')}` });
     }
     setIsLoading(false);
@@ -166,26 +167,19 @@ export default function Registration() {
 
       const newPurchase = await Purchase.create(purchaseData);
 
-      console.log('✅ Purchase created:', newPurchase.id);
-
       // Create payment page
-      console.log('🔄 Creating PayPlus payment page...');
       const { data: paymentData, error: paymentError } = await createPayplusPaymentPage({
         registrationId: newRegistration.id,
         environment: isTestMode ? 'test' : 'production',
         frontendOrigin: window.location.origin
       });
 
-      console.log('📥 PayPlus response:', { data: paymentData, error: paymentError });
-
       if (paymentError || !paymentData?.payment_url) {
-        console.error('❌ PayPlus error:', paymentError, paymentData);
+        cerror('PayPlus error:', paymentError, paymentData);
         setMessage({ type: 'error', text: paymentData?.error || 'שגיאה ביצירת דף התשלום' });
         setIsProcessing(false);
         return;
       }
-
-      console.log('✅ Payment URL created:', paymentData.payment_url);
 
       // Open payment modal
       setPaymentUrl(paymentData.payment_url);
@@ -194,7 +188,7 @@ export default function Registration() {
       setIsProcessing(false);
 
     } catch (error) {
-      console.error("Error creating registration:", error);
+      cerror("Error creating registration:", error);
       setMessage({ type: 'error', text: 'שגיאה ביצירת ההרשמה' });
       setIsProcessing(false);
     }
@@ -227,21 +221,18 @@ export default function Registration() {
       setIsProcessing(false);
 
     } catch (error) {
-      console.error("Error creating payment page:", error);
+      cerror("Error creating payment page:", error);
       setMessage({ type: 'error', text: 'שגיאה ביצירת דף התשלום' });
       setIsProcessing(false);
     }
   };
 
   const handlePaymentSuccess = async (paymentData) => {
-    console.log('🎉 Payment successful!', paymentData);
-    
     try {
       let registrationToUpdate = existingRegistration;
 
       // If this is a new purchase, find the purchase by order number
       if (!existingRegistration && currentOrderNumber) {
-        console.log('🔄 Attempting to find new purchase by order number...');
         const purchases = await Purchase.filter({ purchase_id: currentOrderNumber });
         if (purchases.length > 0) {
           registrationToUpdate = purchases[0];
@@ -249,7 +240,6 @@ export default function Registration() {
       }
 
       if (registrationToUpdate) {
-        console.log('🔄 Updating purchase status to paid...');
         await Purchase.update(registrationToUpdate.id, { payment_status: 'paid' });
 
         if (existingRegistration && existingRegistration.id === registrationToUpdate.id) {
@@ -259,9 +249,9 @@ export default function Registration() {
           }));
         }
       }
-      
+
     } catch (error) {
-      console.error('Error handling payment success:', error);
+      cerror('Error handling payment success:', error);
     }
     
     setMessage({ type: 'success', text: 'התשלום בוצע בהצלחה! ההרשמה אושרה.' });
