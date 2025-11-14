@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { X, Loader2, AlertCircle } from "lucide-react";
 import { cerror } from "@/lib/utils";
+import { APP_VERSION } from "@/constants/version";
 
 export default function LoginModal({ onClose, onLogin, message }) {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -131,6 +132,10 @@ export default function LoginModal({ onClose, onLogin, message }) {
               מדיניות הפרטיות
             </Link>
             שלנו
+          </div>
+
+          <div className="text-center text-xs text-gray-400 mt-4">
+            גרסה {APP_VERSION}
           </div>
         </CardContent>
       </Card>
