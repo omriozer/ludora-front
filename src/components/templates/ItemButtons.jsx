@@ -112,84 +112,138 @@ const ItemButtons = ({
     }
   };
 
-  // Create separate lists for placed items and available elements
+  // Create separate lists for placed items and available elements - support both structures
   const createElementLists = () => {
     const placedItems = [];
     const availableElements = [];
 
-    // Add placed built-in elements to placed items if they exist and are visible
-    ['logo', 'url', 'copyright-text'].forEach(builtInKey => {
-      const builtInElement = templateConfig?.[builtInKey];
-      // Use backend-compatible visibility logic: visible !== false && hidden !== true
-      if (builtInElement && builtInElement.visible !== false && builtInElement.hidden !== true) {
-        const elementMeta = allElementTypes[builtInKey];
+    // Support both unified and legacy structures
+    const hasUnifiedStructure = templateConfig?.elements;
 
-        placedItems.push({
-          key: builtInKey,
-          name: elementMeta.name,
-          icon: elementMeta.icon,
-          color: elementMeta.color,
-          isBuiltIn: true,
-          isPlaced: true,
-          element: builtInElement,
-          type: 'builtin'
-        });
-      }
-    });
+    if (hasUnifiedStructure) {
+      // NEW UNIFIED STRUCTURE: process elements from arrays
+      Object.entries(templateConfig.elements).forEach(([elementType, elementArray]) => {
+        if (Array.isArray(elementArray)) {
+          elementArray.forEach((element, index) => {
+            // Use backend-compatible visibility logic: visible !== false && hidden !== true
+            if (element && element.visible !== false && element.hidden !== true) {
+              const elementKey = element.id || `${elementType}_${index}`;
+              const elementMeta = allElementTypes[elementType] || allElementTypes['free-text'];
 
-    // Add placed custom elements to placed items (only if visible)
-    Object.entries(customElements).forEach(([elementId, element]) => {
-      // Use backend-compatible visibility logic: visible !== false && hidden !== true
-      if (element && element.visible !== false && element.hidden !== true) {
-        const elementType = element.type || 'free-text';
-        const elementMeta = allElementTypes[elementType] || allElementTypes['free-text'];
+              console.log('🏷️ Creating placed item:', {
+                elementType,
+                index,
+                elementKey,
+                elementId: element.id,
+                elementName: element.name || elementMeta.name
+              });
 
-        placedItems.push({
-          key: elementId,
-          name: element.name || elementMeta.name,
-          icon: elementMeta.icon,
-          color: elementMeta.color,
-          isBuiltIn: false,
-          isPlaced: true,
-          element: element,
-          type: 'custom'
-        });
-      }
-    });
-
-    // Add available element types (only show as add buttons for non-placed built-ins)
-    Object.entries(allElementTypes).forEach(([elementKey, elementMeta]) => {
-      // For built-in elements, only show as available if not already placed
-      if (elementMeta.isBuiltIn) {
-        const builtInElement = templateConfig?.[elementKey];
-        const isAlreadyPlaced = builtInElement && builtInElement.visible;
-
-        if (!isAlreadyPlaced) {
-          availableElements.push({
-            key: elementKey,
-            name: elementMeta.name,
-            icon: elementMeta.icon,
-            color: elementMeta.color,
-            isBuiltIn: true,
-            isPlaced: false,
-            element: builtInElement || null,
-            type: 'available'
+              placedItems.push({
+                key: elementKey,
+                name: element.name || elementMeta.name,
+                icon: elementMeta.icon,
+                color: elementMeta.color,
+                isBuiltIn: elementMeta.isBuiltIn,
+                isPlaced: true,
+                element: element,
+                type: elementMeta.isBuiltIn ? 'builtin' : 'custom'
+              });
+            }
           });
         }
-      } else {
-        // For custom elements, always show as available (they can be added multiple times)
+      });
+
+      // In unified structure, show all element types as available (can add multiple instances)
+      Object.entries(allElementTypes).forEach(([elementKey, elementMeta]) => {
         availableElements.push({
           key: elementKey,
           name: elementMeta.name,
           icon: elementMeta.icon,
           color: elementMeta.color,
-          isBuiltIn: false,
+          isBuiltIn: elementMeta.isBuiltIn,
           isPlaced: false,
           element: null,
           type: 'available'
         });
-      }
-    });
+      });
+
+    } else {
+      // LEGACY STRUCTURE: process built-in and custom elements separately
+
+      // Add placed built-in elements to placed items if they exist and are visible
+      ['logo', 'url', 'copyright-text'].forEach(builtInKey => {
+        const builtInElement = templateConfig?.[builtInKey];
+        // Use backend-compatible visibility logic: visible !== false && hidden !== true
+        if (builtInElement && builtInElement.visible !== false && builtInElement.hidden !== true) {
+          const elementMeta = allElementTypes[builtInKey];
+
+          placedItems.push({
+            key: builtInKey,
+            name: elementMeta.name,
+            icon: elementMeta.icon,
+            color: elementMeta.color,
+            isBuiltIn: true,
+            isPlaced: true,
+            element: builtInElement,
+            type: 'builtin'
+          });
+        }
+      });
+
+      // Add placed custom elements to placed items (only if visible)
+      Object.entries(customElements).forEach(([elementId, element]) => {
+        // Use backend-compatible visibility logic: visible !== false && hidden !== true
+        if (element && element.visible !== false && element.hidden !== true) {
+          const elementType = element.type || 'free-text';
+          const elementMeta = allElementTypes[elementType] || allElementTypes['free-text'];
+
+          placedItems.push({
+            key: elementId,
+            name: element.name || elementMeta.name,
+            icon: elementMeta.icon,
+            color: elementMeta.color,
+            isBuiltIn: false,
+            isPlaced: true,
+            element: element,
+            type: 'custom'
+          });
+        }
+      });
+
+      // Add available element types (only show as add buttons for non-placed built-ins)
+      Object.entries(allElementTypes).forEach(([elementKey, elementMeta]) => {
+        // For built-in elements, only show as available if not already placed
+        if (elementMeta.isBuiltIn) {
+          const builtInElement = templateConfig?.[elementKey];
+          const isAlreadyPlaced = builtInElement && builtInElement.visible;
+
+          if (!isAlreadyPlaced) {
+            availableElements.push({
+              key: elementKey,
+              name: elementMeta.name,
+              icon: elementMeta.icon,
+              color: elementMeta.color,
+              isBuiltIn: true,
+              isPlaced: false,
+              element: builtInElement || null,
+              type: 'available'
+            });
+          }
+        } else {
+          // For custom elements, always show as available (they can be added multiple times)
+          availableElements.push({
+            key: elementKey,
+            name: elementMeta.name,
+            icon: elementMeta.icon,
+            color: elementMeta.color,
+            isBuiltIn: false,
+            isPlaced: false,
+            element: null,
+            type: 'available'
+          });
+        }
+      });
+    }
 
     return { placedItems, availableElements };
   };
@@ -198,6 +252,13 @@ const ItemButtons = ({
 
   // Handle element selection or addition
   const handleElementClick = (unifiedElement) => {
+    console.log('🔍 handleElementClick called with:', {
+      key: unifiedElement.key,
+      isPlaced: unifiedElement.isPlaced,
+      name: unifiedElement.name,
+      multiSelectMode
+    });
+
     if (multiSelectMode) {
       const currentSelection = new Set(parentSelectedItems);
       if (currentSelection.has(unifiedElement.key)) {
@@ -208,12 +269,14 @@ const ItemButtons = ({
       // Convert Set back to Array and notify parent
       onSelectionChange?.(Array.from(currentSelection));
     } else {
-      // If element is not placed yet, add it to canvas and open its menu
-      if (!unifiedElement.isPlaced) {
-        onAddElement?.(unifiedElement.key);
-      } else {
-        // If element is already placed, select it
+      if (unifiedElement.isPlaced) {
+        // PLACED ELEMENTS: Click should open settings menu (focus the element)
+        console.log('📞 Calling onItemClick with key:', unifiedElement.key);
         onItemClick(unifiedElement.key);
+      } else {
+        // AVAILABLE ELEMENTS: Click should add new element to canvas
+        console.log('➕ Calling onAddElement with key:', unifiedElement.key);
+        onAddElement?.(unifiedElement.key);
       }
     }
   };

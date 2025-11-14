@@ -271,40 +271,126 @@ const TemplateCanvas = ({
     return groupElements.every(([, element]) => element.locked);
   };
 
-  const handleMouseDown = (element, event) => {
+  // Helper function to find element in both unified and legacy structures
+  const findElement = (elementKey) => {
+    const hasUnifiedStructure = templateConfig?.elements;
+
+    if (hasUnifiedStructure) {
+      // NEW UNIFIED STRUCTURE: search in element arrays
+      for (const [elementType, elementArray] of Object.entries(templateConfig.elements)) {
+        if (Array.isArray(elementArray)) {
+          for (let index = 0; index < elementArray.length; index++) {
+            const element = elementArray[index];
+            const currentElementKey = element.id || `${elementType}_${index}`;
+            if (currentElementKey === elementKey) {
+              return { element, elementType, index };
+            }
+          }
+        }
+      }
+    } else {
+      // LEGACY STRUCTURE: search in customElements and direct properties
+      if (templateConfig.customElements?.[elementKey]) {
+        return { element: templateConfig.customElements[elementKey], isCustom: true };
+      } else if (templateConfig[elementKey]) {
+        return { element: templateConfig[elementKey], isBuiltIn: true };
+      }
+    }
+
+    return null;
+  };
+
+  const handleMouseDown = (elementKey, event) => {
     event.preventDefault();
     event.stopPropagation();
 
     // If a menu is open, only allow dragging of the selected item
-    if (focusedItem && focusedItem !== element) {
+    if (focusedItem && focusedItem !== elementKey) {
       return; // Don't start drag for non-selected items when menu is open
     }
 
+    // Find the element in the appropriate structure
+    const elementInfo = findElement(elementKey);
+    if (!elementInfo) {
+      cerror('Element not found:', elementKey);
+      return;
+    }
+
     // Check if element is in a locked group
-    const elementGroup = getElementGroup(element);
+    const elementGroup = getElementGroup(elementKey);
     if (elementGroup && isGroupLocked(elementGroup.id)) {
       return; // Prevent dragging locked groups
     }
 
-    setIsDragging(element);
+    setIsDragging(elementKey);
 
-    // Get element position from correct location
-    let elementPosition;
-    if (templateConfig.customElements?.[element]) {
-      elementPosition = templateConfig.customElements[element].position;
-    } else if (templateConfig[element]) {
-      elementPosition = templateConfig[element].position;
-    } else {
-      cerror('Element not found:', element);
-      return;
-    }
-
+    const elementPosition = elementInfo.element.position;
     setDragStart({
       x: event.clientX,
       y: event.clientY,
       elementX: elementPosition.x,
       elementY: elementPosition.y
     });
+  };
+
+  // Helper function to update element position in both structures
+  const updateElementPosition = (config, elementKey, newX, newY) => {
+    const hasUnifiedStructure = config?.elements;
+
+    if (hasUnifiedStructure) {
+      // NEW UNIFIED STRUCTURE: update element in array
+      const newConfig = JSON.parse(JSON.stringify(config)); // Deep clone
+
+      for (const [elementType, elementArray] of Object.entries(newConfig.elements)) {
+        if (Array.isArray(elementArray)) {
+          for (let index = 0; index < elementArray.length; index++) {
+            const element = elementArray[index];
+            const currentElementKey = element.id || `${elementType}_${index}`;
+            if (currentElementKey === elementKey) {
+              newConfig.elements[elementType][index] = {
+                ...element,
+                position: {
+                  ...element.position,
+                  x: Math.round(newX),
+                  y: Math.round(newY)
+                }
+              };
+              return newConfig;
+            }
+          }
+        }
+      }
+    } else {
+      // LEGACY STRUCTURE: update in customElements or direct property
+      const newConfig = { ...config };
+
+      if (config.customElements?.[elementKey]) {
+        newConfig.customElements = {
+          ...config.customElements,
+          [elementKey]: {
+            ...config.customElements[elementKey],
+            position: {
+              ...config.customElements[elementKey].position,
+              x: Math.round(newX),
+              y: Math.round(newY)
+            }
+          }
+        };
+      } else if (config[elementKey]) {
+        newConfig[elementKey] = {
+          ...config[elementKey],
+          position: {
+            ...config[elementKey].position,
+            x: Math.round(newX),
+            y: Math.round(newY)
+          }
+        };
+      }
+
+      return newConfig;
+    }
+
+    return config; // Return unchanged if element not found
   };
 
   const handleMouseMove = (event) => {
@@ -332,8 +418,6 @@ const TemplateCanvas = ({
       // Convert to percentages based on actual PDF dimensions
       newX = (pdfMouseX / actualPdfDimensions.width) * 100;
       newY = (pdfMouseY / actualPdfDimensions.height) * 100;
-
-
     } else {
       // Fallback to basic calculation if PDF dimensions not available yet
       newX = (mouseX / rect.width) * 100;
@@ -349,92 +433,52 @@ const TemplateCanvas = ({
     newX = Math.max(paddingX, Math.min(100 - paddingX, newX));
     newY = Math.max(paddingY, Math.min(100 - paddingY, newY));
 
-
     // Update position during drag
     if (onTemplateConfigChange) {
-      let newConfig = { ...templateConfig };
+      // Find the current dragged element
+      const draggedElementInfo = findElement(isDragging);
+      if (!draggedElementInfo) return;
 
       // Check if the dragged element is in a group
       const draggedElementGroup = getElementGroup(isDragging);
 
       if (draggedElementGroup) {
         // Group movement: move all elements in the group together
-
-        // Calculate movement delta
-        let currentElement;
-        if (templateConfig.customElements?.[isDragging]) {
-          currentElement = templateConfig.customElements[isDragging];
-        } else {
-          currentElement = templateConfig[isDragging];
-        }
-
+        const currentElement = draggedElementInfo.element;
         const deltaX = Math.round(newX) - currentElement.position.x;
         const deltaY = Math.round(newY) - currentElement.position.y;
 
-
         // Move all elements in the group by the same delta
+        let newConfig = { ...templateConfig };
         const groupElements = getGroupElements(draggedElementGroup.id);
+
         groupElements.forEach(([elementId, element]) => {
           const newElementX = Math.max(2, Math.min(98, element.position.x + deltaX));
           const newElementY = Math.max(1, Math.min(99, element.position.y + deltaY));
-
-          if (newConfig.customElements?.[elementId]) {
-            newConfig.customElements[elementId] = {
-              ...newConfig.customElements[elementId],
-              position: {
-                ...newConfig.customElements[elementId].position,
-                x: newElementX,
-                y: newElementY
-              }
-            };
-          } else if (newConfig[elementId]) {
-            newConfig[elementId] = {
-              ...newConfig[elementId],
-              position: {
-                ...newConfig[elementId].position,
-                x: newElementX,
-                y: newElementY
-              }
-            };
-          }
+          newConfig = updateElementPosition(newConfig, elementId, newElementX, newElementY);
         });
 
+        onTemplateConfigChange(newConfig, {
+          actualPdfDimensions,
+          scaleFactor,
+          previewDimensions: {
+            width: overlayElement.clientWidth,
+            height: overlayElement.clientHeight
+          }
+        });
       } else {
         // Single element movement
-        if (templateConfig.customElements?.[isDragging]) {
-          // Handle custom elements
-          newConfig.customElements = {
-            ...newConfig.customElements,
-            [isDragging]: {
-              ...newConfig.customElements[isDragging],
-              position: {
-                ...newConfig.customElements[isDragging].position,
-                x: Math.round(newX),
-                y: Math.round(newY)
-              }
-            }
-          };
-        } else {
-          // Handle built-in elements (logo, text, url)
-          newConfig[isDragging] = {
-            ...newConfig[isDragging],
-            position: {
-              ...newConfig[isDragging].position,
-              x: Math.round(newX),
-              y: Math.round(newY)
-            }
-          };
-        }
-      }
+        const newConfig = updateElementPosition(templateConfig, isDragging, newX, newY);
 
-      onTemplateConfigChange(newConfig, {
-        actualPdfDimensions,
-        scaleFactor,
-        previewDimensions: {
-          width: overlayElement.clientWidth,
-          height: overlayElement.clientHeight
-        }
-      });
+        onTemplateConfigChange(newConfig, {
+          actualPdfDimensions,
+          scaleFactor,
+          previewDimensions: {
+            width: overlayElement.clientWidth,
+            height: overlayElement.clientHeight
+          }
+        });
+      }
     }
   };
 
@@ -540,6 +584,8 @@ const TemplateCanvas = ({
     // Add null checks and defaults to prevent errors during initial load
     if (!templateConfig) return null;
 
+    // Support both new unified structure and legacy structure during transition
+    const hasUnifiedStructure = templateConfig.elements;
 
     return (
       <div
@@ -554,450 +600,311 @@ const TemplateCanvas = ({
         }}
       >
 
-        {/* Built-in Elements (logo, text, url, copyright-text, user-info, watermark-logo) */}
-        {['logo', 'text', 'url', 'copyright-text', 'user-info', 'watermark-logo'].map(builtInKey => {
-          const builtInElement = templateConfig[builtInKey];
-          if (!builtInElement || !builtInElement.visible || builtInElement.hidden) return null;
+        {/* Render all elements from unified array structure */}
+        {hasUnifiedStructure ? (
+          // NEW UNIFIED STRUCTURE: elements.logo[], elements.url[], etc.
+          Object.entries(templateConfig.elements).flatMap(([elementType, elementArray]) => {
+            if (!Array.isArray(elementArray)) return [];
 
-          const isFocused = focusedItem === builtInKey;
-          const isDraggingThis = isDragging === builtInKey;
+            return elementArray.map((element, index) => {
+              if (!element || !element.visible || element.hidden) return null;
 
-          const commonClasses = `absolute pointer-events-auto select-none transition-all duration-200 group ${
-            isDraggingThis ? 'cursor-grabbing scale-105 z-50' : 'cursor-grab hover:scale-105'
-          } ${isFocused ? 'ring-4 ring-blue-400 ring-opacity-75 rounded-lg' : ''} ${
-            builtInElement.groupId ? 'ring-2 ring-purple-300' : ''
-          }`;
+              // Generate unique element key for arrays: use element.id or fallback to type_index
+              const elementKey = element.id || `${elementType}_${index}`;
+              const isFocused = focusedItem === elementKey;
+              const isDraggingThis = isDragging === elementKey;
 
-          const commonStyle = {
-            left: `${builtInElement.position.x}%`,
-            top: `${builtInElement.position.y}%`,
-            transform: 'translate(-50%, -50%)',
-            opacity: (builtInElement.style?.opacity || 100) / 100
-          };
+              return renderElementByType(elementType, element, elementKey, isFocused, isDraggingThis);
+            }).filter(Boolean);
+          })
+        ) : (
+          // LEGACY STRUCTURE SUPPORT: Direct built-in elements + customElements
+          <>
+            {['logo', 'text', 'url', 'copyright-text', 'user-info', 'watermark-logo'].map(builtInKey => {
+              const builtInElement = templateConfig[builtInKey];
+              if (!builtInElement || !builtInElement.visible || builtInElement.hidden) return null;
 
-          switch (builtInKey) {
-            case 'logo':
-              return (
-                <div
-                  key={builtInKey}
-                  className={commonClasses}
-                  style={{
-                    ...commonStyle,
-                    transform: getElementTransformStyle(builtInElement, builtInKey)
-                  }}
-                  onMouseDown={(e) => handleMouseDown(builtInKey, e)}
-                >
-                  <img
-                    src={logo}
-                    alt="Logo"
-                    style={{
-                      width: `${builtInElement.style?.size || 60}px`,
-                      height: 'auto',
-                      filter: `drop-shadow(${getElementShadowStyle(builtInElement, builtInKey)})`
-                    }}
-                    draggable={false}
-                  />
-                </div>
-              );
+              const isFocused = focusedItem === builtInKey;
+              const isDraggingThis = isDragging === builtInKey;
 
-            case 'text':
-              const displayContent = getElementDisplayContent(builtInElement, builtInKey, resolvedTemplateContent);
-              return (
-                <div
-                  key={builtInKey}
-                  className={commonClasses}
-                  style={{
-                    ...commonStyle,
-                    ...applyHebrewFontStyle(
-                      displayContent,
-                      builtInElement.style?.bold,
-                      builtInElement.style?.italic,
-                      {
-                        fontSize: `${builtInElement.style?.fontSize || 12}px`,
-                        color: builtInElement.style?.color || '#000000',
-                        textAlign: 'center',
-                        width: `${builtInElement.style?.width || 300}px`,
-                        wordWrap: 'break-word',
-                        overflow: 'visible',
-                        transform: getElementTransformStyle(builtInElement, builtInKey),
-                        textShadow: getElementShadowStyle(builtInElement, builtInKey, true)
-                      }
-                    )
-                  }}
-                  onMouseDown={(e) => handleMouseDown(builtInKey, e)}
-                  title={isLoadingResolvedContent ? 'טוען תוכן...' : ''}
-                >
-                  {displayContent || 'Your copyright text here'}
-                </div>
-              );
+              return renderElementByType(builtInKey, builtInElement, builtInKey, isFocused, isDraggingThis);
+            })}
 
-            case 'url':
-              const displayHref = getElementDisplayHref(builtInElement, resolvedTemplateContent);
-              return (
-                <div
-                  key={builtInKey}
-                  className={commonClasses}
-                  style={{
-                    ...commonStyle,
-                    ...applyHebrewFontStyle(
-                      displayHref,
-                      builtInElement.style?.bold,
-                      builtInElement.style?.italic,
-                      {
-                        fontSize: `${builtInElement.style?.fontSize || 12}px`,
-                        color: builtInElement.style?.color || '#0066cc',
-                        textAlign: 'center',
-                        textDecoration: 'underline',
-                        cursor: 'pointer',
-                        transform: getElementTransformStyle(builtInElement, builtInKey),
-                        textShadow: getElementShadowStyle(builtInElement, builtInKey, true)
-                      }
-                    )
-                  }}
-                  onMouseDown={(e) => handleMouseDown(builtInKey, e)}
-                  title={isLoadingResolvedContent ? 'טוען תוכן...' : ''}
-                >
-                  {displayHref || 'https://ludora.app'}
-                </div>
-              );
+            {templateConfig.customElements && Object.entries(templateConfig.customElements).map(([elementId, element]) => {
+              if (!element || !element.visible || element.hidden) return null;
 
-            case 'copyright-text':
-              const copyrightContent = getElementDisplayContent(builtInElement, builtInKey, resolvedTemplateContent);
-              return (
-                <div
-                  key={builtInKey}
-                  className={commonClasses}
-                  style={{
-                    ...commonStyle,
-                    ...applyHebrewFontStyle(
-                      copyrightContent,
-                      builtInElement.style?.bold,
-                      builtInElement.style?.italic,
-                      {
-                        fontSize: `${builtInElement.style?.fontSize || 12}px`,
-                        color: builtInElement.style?.color || '#000000',
-                        textAlign: 'center',
-                        width: `${builtInElement.style?.width || 300}px`,
-                        wordWrap: 'break-word',
-                        overflow: 'visible',
-                        transform: getElementTransformStyle(builtInElement, builtInKey),
-                        textShadow: getElementShadowStyle(builtInElement, builtInKey, true)
-                      }
-                    )
-                  }}
-                  onMouseDown={(e) => handleMouseDown(builtInKey, e)}
-                  title={isLoadingResolvedContent ? 'טוען תוכן...' : ''}
-                >
-                  {copyrightContent || 'זכויות יוצרים'}
-                </div>
-              );
+              const isFocused = focusedItem === elementId;
+              const isDraggingThis = isDragging === elementId;
 
-            case 'user-info':
-              const userInfoBuiltInContent = getElementDisplayContent(builtInElement, builtInKey, resolvedTemplateContent) ||
-                                           resolveUserEmailTemplate(builtInElement.content);
-              return (
-                <div
-                  key={builtInKey}
-                  className={commonClasses}
-                  style={{
-                    ...commonStyle,
-                    ...applyHebrewFontStyle(
-                      userInfoBuiltInContent,
-                      builtInElement.style?.bold,
-                      builtInElement.style?.italic,
-                      {
-                        fontSize: `${builtInElement.style?.fontSize || 12}px`,
-                        color: builtInElement.style?.color || '#000000',
-                        textAlign: 'center',
-                        width: `${builtInElement.style?.width || 300}px`,
-                        wordWrap: 'break-word',
-                        overflow: 'visible',
-                        transform: getElementTransformStyle(builtInElement, builtInKey),
-                        textShadow: getElementShadowStyle(builtInElement, builtInKey, true)
-                      }
-                    )
-                  }}
-                  onMouseDown={(e) => handleMouseDown(builtInKey, e)}
-                  title={isLoadingResolvedContent ? 'טוען תוכן...' : ''}
-                >
-                  {userInfoBuiltInContent}
-                </div>
-              );
-
-            case 'watermark-logo':
-              return (
-                <div
-                  key={builtInKey}
-                  className={commonClasses}
-                  style={{
-                    ...commonStyle,
-                    transform: getElementTransformStyle(builtInElement, builtInKey)
-                  }}
-                  onMouseDown={(e) => handleMouseDown(builtInKey, e)}
-                >
-                  <img
-                    src={logo}
-                    alt="Watermark Logo"
-                    style={{
-                      width: `${builtInElement.style?.size || 60}px`,
-                      height: 'auto',
-                      filter: `drop-shadow(${getElementShadowStyle(builtInElement, builtInKey)})`
-                    }}
-                    draggable={false}
-                  />
-                </div>
-              );
-
-            default:
-              return null;
-          }
-        })}
-
-        {/* Custom Elements */}
-        {templateConfig.customElements && Object.entries(templateConfig.customElements).map(([elementId, element]) => {
-          if (!element.visible) return null;
-
-          const isFocused = focusedItem === elementId;
-          const isDraggingThis = isDragging === elementId;
-
-          const commonClasses = `absolute pointer-events-auto select-none transition-all duration-200 group ${
-            isDraggingThis ? 'cursor-grabbing scale-105 z-50' : 'cursor-grab hover:scale-105'
-          } ${isFocused ? 'ring-4 ring-blue-400 ring-opacity-75 rounded-lg' : ''} ${
-            element.groupId ? 'ring-2 ring-purple-300' : ''
-          }`;
-
-          const commonStyle = {
-            left: `${element.position.x}%`,
-            top: `${element.position.y}%`,
-            transform: 'translate(-50%, -50%)',
-            opacity: (element.style?.opacity || 100) / 100
-          };
-
-          switch (element.type) {
-            case 'box':
-              return (
-                <div
-                  key={elementId}
-                  className={commonClasses}
-                  style={{
-                    ...commonStyle,
-                    transform: getElementTransformStyle(element, element.type)
-                  }}
-                  onMouseDown={(e) => handleMouseDown(elementId, e)}
-                >
-                  <div
-                    style={{
-                      width: `${element.style.width}px`,
-                      height: `${element.style.height}px`,
-                      border: `${element.style.borderWidth}px solid ${element.style.borderColor}`,
-                      backgroundColor: element.style.backgroundColor === 'transparent' ? 'transparent' : element.style.backgroundColor,
-                      boxShadow: getElementShadowStyle(element, element.type)
-                    }}
-                  />
-                  {renderDuplicateButton(elementId)}
-                </div>
-              );
-
-            case 'line':
-              return (
-                <div
-                  key={elementId}
-                  className={commonClasses}
-                  style={{
-                    ...commonStyle,
-                    transform: getElementTransformStyle(element, element.type)
-                  }}
-                  onMouseDown={(e) => handleMouseDown(elementId, e)}
-                >
-                  <div
-                    style={{
-                      width: `${element.style.width}px`,
-                      height: `${element.style.height}px`,
-                      backgroundColor: element.style.color,
-                      boxShadow: getElementShadowStyle(element, element.type)
-                    }}
-                  />
-                  {renderDuplicateButton(elementId)}
-                </div>
-              );
-
-            case 'dotted-line':
-              return (
-                <div
-                  key={elementId}
-                  className={commonClasses}
-                  style={{
-                    ...commonStyle,
-                    transform: getElementTransformStyle(element, element.type)
-                  }}
-                  onMouseDown={(e) => handleMouseDown(elementId, e)}
-                >
-                  <div
-                    style={{
-                      width: `${element.style.width}px`,
-                      height: `${element.style.height}px`,
-                      backgroundColor: element.style.color,
-                      backgroundImage: `repeating-linear-gradient(90deg, ${element.style.color} 0px, ${element.style.color} 5px, transparent 5px, transparent 10px)`,
-                      boxShadow: getElementShadowStyle(element, element.type)
-                    }}
-                  />
-                  {renderDuplicateButton(elementId)}
-                </div>
-              );
-
-            case 'free-text':
-            case 'copyright-text':
-              return (
-                <div
-                  key={elementId}
-                  className={commonClasses}
-                  style={{
-                    ...commonStyle,
-                    ...applyHebrewFontStyle(
-                      element.content,
-                      element.style?.bold,
-                      element.style?.italic,
-                      {
-                        fontSize: `${element.style?.fontSize || 16}px`,
-                        color: element.style?.color || '#000000',
-                        textAlign: 'center',
-                        width: `${element.style?.width || 200}px`,
-                        wordWrap: 'break-word',
-                        overflow: 'visible',
-                        transform: getElementTransformStyle(element, element.type),
-                        textShadow: getElementShadowStyle(element, element.type, true)
-                      }
-                    )
-                  }}
-                  onMouseDown={(e) => handleMouseDown(elementId, e)}
-                >
-                  {element.content || (element.type === 'copyright-text' ? 'טקסט זכויות יוצרים' : 'טקסט חופשי')}
-                  {renderDuplicateButton(elementId)}
-                </div>
-              );
-
-            case 'url':
-              const customUrlContent = getElementDisplayContent(element, element.type, resolvedTemplateContent);
-              return (
-                <div
-                  key={elementId}
-                  className={commonClasses}
-                  style={{
-                    ...commonStyle,
-                    ...applyHebrewFontStyle(
-                      customUrlContent,
-                      element.style?.bold,
-                      element.style?.italic,
-                      {
-                        fontSize: `${element.style?.fontSize || 12}px`,
-                        color: element.style?.color || '#0066cc',
-                        textAlign: 'center',
-                        textDecoration: 'underline',
-                        cursor: 'pointer',
-                        transform: getElementTransformStyle(element, element.type),
-                        textShadow: getElementShadowStyle(element, element.type, true)
-                      }
-                    )
-                  }}
-                  onMouseDown={(e) => handleMouseDown(elementId, e)}
-                  title={isLoadingResolvedContent ? 'טוען תוכן...' : ''}
-                >
-                  {customUrlContent || 'https://ludora.app'}
-                  {renderDuplicateButton(elementId)}
-                </div>
-              );
-
-            case 'logo':
-            case 'watermark-logo':
-              return (
-                <div
-                  key={elementId}
-                  className={commonClasses}
-                  style={{
-                    ...commonStyle,
-                    transform: getElementTransformStyle(element, element.type)
-                  }}
-                  onMouseDown={(e) => handleMouseDown(elementId, e)}
-                >
-                  <img
-                    src={logo}
-                    alt="Logo"
-                    style={{
-                      width: `${element.style?.size || 60}px`,
-                      height: 'auto',
-                      filter: `drop-shadow(${getElementShadowStyle(element, element.type)})`
-                    }}
-                    draggable={false}
-                  />
-                  {renderDuplicateButton(elementId)}
-                </div>
-              );
-
-            case 'circle':
-              return (
-                <div
-                  key={elementId}
-                  className={commonClasses}
-                  style={{
-                    ...commonStyle,
-                    transform: getElementTransformStyle(element, element.type)
-                  }}
-                  onMouseDown={(e) => handleMouseDown(elementId, e)}
-                >
-                  <div
-                    style={{
-                      width: `${element.style?.size || 50}px`,
-                      height: `${element.style?.size || 50}px`,
-                      borderRadius: '50%',
-                      border: `${element.style?.borderWidth || 2}px solid ${element.style?.borderColor || '#000000'}`,
-                      backgroundColor: element.style?.backgroundColor === 'transparent' ? 'transparent' : (element.style?.backgroundColor || 'transparent'),
-                      boxShadow: getElementShadowStyle(element, element.type)
-                    }}
-                  />
-                  {renderDuplicateButton(elementId)}
-                </div>
-              );
-
-            case 'user-info':
-              // Use resolved content from API if available, otherwise fall back to local resolution
-              const userInfoContent = getElementDisplayContent(element, element.type, resolvedTemplateContent) ||
-                                     resolveUserEmailTemplate(element.content);
-              return (
-                <div
-                  key={elementId}
-                  className={commonClasses}
-                  style={{
-                    ...commonStyle,
-                    ...applyHebrewFontStyle(
-                      userInfoContent,
-                      element.style?.bold,
-                      element.style?.italic,
-                      {
-                        fontSize: `${element.style?.fontSize || 16}px`,
-                        color: element.style?.color || '#000000',
-                        textAlign: 'center',
-                        width: `${element.style?.width || 200}px`,
-                        wordWrap: 'break-word',
-                        overflow: 'visible',
-                        transform: getElementTransformStyle(element, element.type),
-                        textShadow: getElementShadowStyle(element, element.type, true)
-                      }
-                    )
-                  }}
-                  onMouseDown={(e) => handleMouseDown(elementId, e)}
-                  title={isLoadingResolvedContent ? 'טוען תוכן...' : ''}
-                >
-                  {userInfoContent}
-                  {renderDuplicateButton(elementId)}
-                </div>
-              );
-
-            default:
-              return null;
-          }
-        })}
+              return renderElementByType(element.type, element, elementId, isFocused, isDraggingThis);
+            })}
+          </>
+        )}
       </div>
     );
+  };
+
+  // Unified element rendering function - handles any element type
+  const renderElementByType = (elementType, element, elementKey, isFocused, isDraggingThis) => {
+    const commonClasses = `absolute pointer-events-auto select-none transition-all duration-200 group ${
+      isDraggingThis ? 'cursor-grabbing scale-105 z-50' : 'cursor-grab hover:scale-105'
+    } ${isFocused ? 'ring-4 ring-blue-400 ring-opacity-75 rounded-lg' : ''} ${
+      element.groupId ? 'ring-2 ring-purple-300' : ''
+    }`;
+
+    const commonStyle = {
+      left: `${element.position.x}%`,
+      top: `${element.position.y}%`,
+      transform: 'translate(-50%, -50%)',
+      opacity: (element.style?.opacity || 100) / 100
+    };
+
+    switch (elementType) {
+      case 'logo':
+      case 'watermark-logo':
+        return (
+          <div
+            key={elementKey}
+            className={commonClasses}
+            style={{
+              ...commonStyle,
+              transform: getElementTransformStyle(element, elementType)
+            }}
+            onMouseDown={(e) => handleMouseDown(elementKey, e)}
+          >
+            <img
+              src={logo}
+              alt={elementType === 'watermark-logo' ? 'Watermark Logo' : 'Logo'}
+              style={{
+                width: `${element.style?.size || 60}px`,
+                height: 'auto',
+                filter: `drop-shadow(${getElementShadowStyle(element, elementType)})`
+              }}
+              draggable={false}
+            />
+          </div>
+        );
+
+      case 'text':
+        const displayContent = getElementDisplayContent(element, elementType, resolvedTemplateContent);
+        return (
+          <div
+            key={elementKey}
+            className={commonClasses}
+            style={{
+              ...commonStyle,
+              ...applyHebrewFontStyle(
+                displayContent,
+                element.style?.bold,
+                element.style?.italic,
+                {
+                  fontSize: `${element.style?.fontSize || 12}px`,
+                  color: element.style?.color || '#000000',
+                  textAlign: 'center',
+                  width: `${element.style?.width || 300}px`,
+                  wordWrap: 'break-word',
+                  overflow: 'visible',
+                  transform: getElementTransformStyle(element, elementType),
+                  textShadow: getElementShadowStyle(element, elementType, true)
+                }
+              )
+            }}
+            onMouseDown={(e) => handleMouseDown(elementKey, e)}
+            title={isLoadingResolvedContent ? 'טוען תוכן...' : ''}
+          >
+            {displayContent || 'Your copyright text here'}
+          </div>
+        );
+
+      case 'url':
+        const displayHref = getElementDisplayHref(element, resolvedTemplateContent);
+        return (
+          <div
+            key={elementKey}
+            className={commonClasses}
+            style={{
+              ...commonStyle,
+              ...applyHebrewFontStyle(
+                displayHref,
+                element.style?.bold,
+                element.style?.italic,
+                {
+                  fontSize: `${element.style?.fontSize || 12}px`,
+                  color: element.style?.color || '#0066cc',
+                  textAlign: 'center',
+                  textDecoration: 'underline',
+                  cursor: 'pointer',
+                  transform: getElementTransformStyle(element, elementType),
+                  textShadow: getElementShadowStyle(element, elementType, true)
+                }
+              )
+            }}
+            onMouseDown={(e) => handleMouseDown(elementKey, e)}
+            title={isLoadingResolvedContent ? 'טוען תוכן...' : ''}
+          >
+            {displayHref || 'https://ludora.app'}
+          </div>
+        );
+
+      case 'copyright-text':
+      case 'free-text':
+        const textContent = getElementDisplayContent(element, elementType, resolvedTemplateContent) || element.content;
+        return (
+          <div
+            key={elementKey}
+            className={commonClasses}
+            style={{
+              ...commonStyle,
+              ...applyHebrewFontStyle(
+                textContent,
+                element.style?.bold,
+                element.style?.italic,
+                {
+                  fontSize: `${element.style?.fontSize || 12}px`,
+                  color: element.style?.color || '#000000',
+                  textAlign: 'center',
+                  width: `${element.style?.width || 300}px`,
+                  wordWrap: 'break-word',
+                  overflow: 'visible',
+                  transform: getElementTransformStyle(element, elementType),
+                  textShadow: getElementShadowStyle(element, elementType, true)
+                }
+              )
+            }}
+            onMouseDown={(e) => handleMouseDown(elementKey, e)}
+            title={isLoadingResolvedContent ? 'טוען תוכן...' : ''}
+          >
+            {textContent || (elementType === 'copyright-text' ? 'זכויות יוצרים' : 'טקסט חופשי')}
+          </div>
+        );
+
+      case 'user-info':
+        const userInfoContent = getElementDisplayContent(element, elementType, resolvedTemplateContent) ||
+                               resolveUserEmailTemplate(element.content);
+        return (
+          <div
+            key={elementKey}
+            className={commonClasses}
+            style={{
+              ...commonStyle,
+              ...applyHebrewFontStyle(
+                userInfoContent,
+                element.style?.bold,
+                element.style?.italic,
+                {
+                  fontSize: `${element.style?.fontSize || 12}px`,
+                  color: element.style?.color || '#000000',
+                  textAlign: 'center',
+                  width: `${element.style?.width || 300}px`,
+                  wordWrap: 'break-word',
+                  overflow: 'visible',
+                  transform: getElementTransformStyle(element, elementType),
+                  textShadow: getElementShadowStyle(element, elementType, true)
+                }
+              )
+            }}
+            onMouseDown={(e) => handleMouseDown(elementKey, e)}
+            title={isLoadingResolvedContent ? 'טוען תוכן...' : ''}
+          >
+            {userInfoContent}
+          </div>
+        );
+
+      case 'box':
+        return (
+          <div
+            key={elementKey}
+            className={commonClasses}
+            style={{
+              ...commonStyle,
+              transform: getElementTransformStyle(element, elementType)
+            }}
+            onMouseDown={(e) => handleMouseDown(elementKey, e)}
+          >
+            <div
+              style={{
+                width: `${element.style.width}px`,
+                height: `${element.style.height}px`,
+                border: `${element.style.borderWidth}px solid ${element.style.borderColor}`,
+                backgroundColor: element.style.backgroundColor === 'transparent' ? 'transparent' : element.style.backgroundColor,
+                boxShadow: getElementShadowStyle(element, elementType)
+              }}
+            />
+          </div>
+        );
+
+      case 'line':
+        return (
+          <div
+            key={elementKey}
+            className={commonClasses}
+            style={{
+              ...commonStyle,
+              transform: getElementTransformStyle(element, elementType)
+            }}
+            onMouseDown={(e) => handleMouseDown(elementKey, e)}
+          >
+            <div
+              style={{
+                width: `${element.style.width}px`,
+                height: `${element.style.height}px`,
+                backgroundColor: element.style.color,
+                boxShadow: getElementShadowStyle(element, elementType)
+              }}
+            />
+          </div>
+        );
+
+      case 'dotted-line':
+        return (
+          <div
+            key={elementKey}
+            className={commonClasses}
+            style={{
+              ...commonStyle,
+              transform: getElementTransformStyle(element, elementType)
+            }}
+            onMouseDown={(e) => handleMouseDown(elementKey, e)}
+          >
+            <div
+              style={{
+                width: `${element.style.width}px`,
+                height: `${element.style.height}px`,
+                backgroundColor: element.style.color,
+                backgroundImage: `repeating-linear-gradient(90deg, ${element.style.color} 0px, ${element.style.color} 5px, transparent 5px, transparent 10px)`,
+                boxShadow: getElementShadowStyle(element, elementType)
+              }}
+            />
+          </div>
+        );
+
+      case 'circle':
+        return (
+          <div
+            key={elementKey}
+            className={commonClasses}
+            style={{
+              ...commonStyle,
+              transform: getElementTransformStyle(element, elementType)
+            }}
+            onMouseDown={(e) => handleMouseDown(elementKey, e)}
+          >
+            <div
+              style={{
+                width: `${element.style?.size || 50}px`,
+                height: `${element.style?.size || 50}px`,
+                borderRadius: '50%',
+                border: `${element.style?.borderWidth || 2}px solid ${element.style?.borderColor || '#000000'}`,
+                backgroundColor: element.style?.backgroundColor === 'transparent' ? 'transparent' : (element.style?.backgroundColor || 'transparent'),
+                boxShadow: getElementShadowStyle(element, elementType)
+              }}
+            />
+          </div>
+        );
+
+      default:
+        return null;
+    }
   };
 
   return (

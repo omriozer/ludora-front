@@ -524,7 +524,7 @@ export default function FloatingAdminMenu({ currentUser }) {
             {/* Footer */}
             <div className="px-4 md:px-6 py-3 md:py-4 border-t border-gray-200 bg-gray-50/50 rounded-b-2xl md:rounded-b-3xl sticky bottom-0">
               <p className="text-xs md:text-sm text-gray-500 text-center">
-                מרכז הניהול מיועד למנהלי המערכת בלבד
+                מרכז הניהול מיועד למנהלי המערכת בלבד • גרסה 2.1
               </p>
             </div>
           </div>

@@ -63,38 +63,71 @@ const EnhancedSidebar = ({
   const [isMinimized, setIsMinimized] = useState(false);
   const [menuWidth, setMenuWidth] = useState(320);
 
-  // Combine built-in and custom elements for layer/bulk operations
-  const allElements = {
-    ...templateConfig,
-    ...templateConfig?.customElements
+  // Support both unified and legacy structures
+  const hasUnifiedStructure = templateConfig?.elements;
+
+  // Combine elements for layer/bulk operations - support both structures
+  const getCombinedElements = () => {
+    if (hasUnifiedStructure) {
+      // NEW UNIFIED STRUCTURE: flatten all element arrays
+      const combined = {};
+
+      Object.entries(templateConfig.elements).forEach(([elementType, elementArray]) => {
+        if (Array.isArray(elementArray)) {
+          elementArray.forEach((element, index) => {
+            const elementKey = element.id || `${elementType}_${index}`;
+            combined[elementKey] = { ...element, type: elementType };
+          });
+        }
+      });
+
+      return combined;
+    } else {
+      // LEGACY STRUCTURE: combine built-in and custom elements
+      const { customElements, ...builtInElements } = templateConfig || {};
+      return {
+        ...builtInElements,
+        ...customElements
+      };
+    }
   };
 
-  // Remove customElements from the root level to avoid duplication
-  const { customElements, ...builtInElements } = templateConfig || {};
+  const combinedElements = getCombinedElements();
 
-  const combinedElements = {
-    ...builtInElements,
-    ...customElements
-  };
-
-  // Calculate visible elements count (same logic as ItemButtons.jsx)
+  // Calculate visible elements count - support both structures
   const getVisibleElementsCount = () => {
     let count = 0;
 
-    // Count visible built-in elements (backend-compatible logic)
-    ['logo', 'url', 'copyright-text'].forEach(builtInKey => {
-      const builtInElement = templateConfig?.[builtInKey];
-      if (builtInElement && builtInElement.visible !== false && builtInElement.hidden !== true) {
-        count++;
-      }
-    });
+    if (hasUnifiedStructure) {
+      // NEW UNIFIED STRUCTURE: count all visible elements from arrays
+      Object.entries(templateConfig.elements).forEach(([elementType, elementArray]) => {
+        if (Array.isArray(elementArray)) {
+          elementArray.forEach(element => {
+            if (element && element.visible !== false && element.hidden !== true) {
+              count++;
+            }
+          });
+        }
+      });
+    } else {
+      // LEGACY STRUCTURE: count built-in and custom elements separately
+      const { customElements } = templateConfig || {};
 
-    // Count visible custom elements (backend-compatible logic)
-    Object.entries(customElements || {}).forEach(([elementId, element]) => {
-      if (element && element.visible !== false && element.hidden !== true) {
-        count++;
-      }
-    });
+      // Count visible built-in elements (backend-compatible logic)
+      ['logo', 'url', 'copyright-text'].forEach(builtInKey => {
+        const builtInElement = templateConfig?.[builtInKey];
+        if (builtInElement && builtInElement.visible !== false && builtInElement.hidden !== true) {
+          count++;
+        }
+      });
+
+      // Count visible custom elements (backend-compatible logic)
+      Object.entries(customElements || {}).forEach(([elementId, element]) => {
+        if (element && element.visible !== false && element.hidden !== true) {
+          count++;
+        }
+      });
+    }
 
     return count;
   };
