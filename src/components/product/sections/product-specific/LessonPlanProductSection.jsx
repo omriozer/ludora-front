@@ -71,8 +71,6 @@ const LessonPlanProductSection = ({
   // SVG slides state
   const [svgSlides, setSvgSlides] = useState([]);
 
-  // Access control editor state
-  const [showAccessControlEditor, setShowAccessControlEditor] = useState(false);
 
   // Initialize file configs from formData
   const initializeFileConfigs = () => {
@@ -1217,10 +1215,10 @@ const LessonPlanProductSection = ({
         </div>
       )}
 
-      {/* Selective Access Control - Only for lesson plans with slides and when preview is enabled */}
+      {/* Access Control and Watermarks - Only for lesson plans with slides and when preview is enabled */}
       {svgSlides.length > 0 && formData.allow_slide_preview && (
         <div className="space-y-3">
-          <div className="flex items-center justify-between p-4 bg-purple-50 rounded-lg border border-purple-200">
+          <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
             <div className="space-y-0.5">
               <Label className="text-sm font-medium text-purple-900 flex items-center gap-2">
                 <Shield className="w-4 h-4" />
@@ -1230,40 +1228,27 @@ const LessonPlanProductSection = ({
                 נהל איזה שקפים זמינים בתצוגה מקדימה והוסף סימני מים לתוכן מוגבל
               </p>
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setShowAccessControlEditor(!showAccessControlEditor)}
-              className="border-purple-300 text-purple-700 hover:bg-purple-100"
-            >
-              <Settings className="w-4 h-4 ml-2" />
-              {showAccessControlEditor ? 'הסתר הגדרות' : 'נהל גישה'}
-            </Button>
           </div>
 
-          {/* Access Control Editor */}
-          {showAccessControlEditor && (
-            <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-              {/* Slide Selection */}
-              <AccessControlEditor
-                entityType="lessonplan"
-                entityId={editingProduct?.entity_id}
-                currentUser={currentUser} // Pass current user for email template resolution
-                fileEntity={{
-                  ...editingProduct,
-                  target_format: formData.target_format || editingProduct?.target_format || 'svg-lessonplan'
-                }} // Pass file entity for template filtering and context
-                onUpdate={(updatedEntity) => {
-                  // Update the form data with the new access control settings
-                  updateFormData({
-                    accessible_slides: updatedEntity.accessible_slides,
-                    watermark_template_id: updatedEntity.watermark_template_id
-                  });
-                }}
-              />
-            </div>
-          )}
+          {/* Access Control Editor - Always visible when preview is enabled */}
+          <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+            <AccessControlEditor
+              entityType="lessonplan"
+              entityId={editingProduct?.entity_id}
+              currentUser={currentUser} // Pass current user for email template resolution
+              fileEntity={{
+                ...editingProduct,
+                target_format: formData.target_format || editingProduct?.target_format || 'svg-lessonplan'
+              }} // Pass file entity for template filtering and context
+              onUpdate={(updatedEntity) => {
+                // Update the form data with the new access control settings
+                updateFormData({
+                  accessible_slides: updatedEntity.accessible_slides,
+                  watermark_template_id: updatedEntity.watermark_template_id
+                });
+              }}
+            />
+          </div>
         </div>
       )}
 

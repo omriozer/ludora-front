@@ -8,6 +8,7 @@ import { Eye, Settings, Palette, Plus, Info, Sparkles } from 'lucide-react';
 import { apiRequest } from '@/services/apiClient';
 import { clog, cerror } from '@/lib/utils';
 import { toast } from '@/components/ui/use-toast';
+import { showConfirm } from '@/utils/messaging';
 import VisualTemplateEditor from '@/components/templates/VisualTemplateEditor';
 
 /**
@@ -43,9 +44,11 @@ const TemplateSelector = ({
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
   const [showTemplateEditor, setShowTemplateEditor] = useState(false);
   const [isCustomMode, setIsCustomMode] = useState(!!customTemplateData);
+  const [pendingCustomData, setPendingCustomData] = useState(null); // Store initialized custom data locally
 
   // Derived state
   const isAdmin = userRole === 'admin' || userRole === 'sysadmin';
+  const [isSaving, setIsSaving] = useState(false);
 
   // Template type configuration
   const getTemplateConfig = () => {
@@ -98,6 +101,55 @@ const TemplateSelector = ({
     }
   }, [enabled, templateType, targetFormat, fileExists, fileEntity?.target_format]);
 
+  // Immediate save function to persist template changes to database
+  const saveTemplateSettingsImmediately = async (templateId, customData) => {
+    if (!entityId) {
+      clog('⚠️ No entityId provided, cannot save template settings immediately');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const updateData = {};
+
+      // Set template fields based on templateType
+      if (templateType === 'branding') {
+        updateData.branding_template_id = templateId;
+        updateData.branding_settings = customData;
+      } else if (templateType === 'watermark') {
+        updateData.watermark_template_id = templateId;
+        updateData.watermark_settings = customData;
+      }
+
+      // Make API call to update the entity immediately
+      const endpoint = entityType === 'file'
+        ? `/entities/file/${entityId}`
+        : `/entities/lessonplan/${entityId}`;
+
+      await apiRequest(endpoint, {
+        method: 'PUT',
+        body: JSON.stringify(updateData)
+      });
+
+      clog(`✅ Template settings saved immediately for ${entityType} ${entityId}:`, updateData);
+      toast({
+        title: "הגדרות נשמרו",
+        description: `הגדרות ${config.name} נשמרו בהצלחה`,
+        variant: "default"
+      });
+    } catch (error) {
+      cerror('Error saving template settings immediately:', error);
+      toast({
+        title: "שגיאה בשמירה",
+        description: `לא הצלחנו לשמור את הגדרות ה${config.name}. נסה שוב.`,
+        variant: "destructive"
+      });
+      throw error; // Re-throw to let caller handle the error
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const fetchAvailableTemplates = async () => {
     setIsLoadingTemplates(true);
     try {
@@ -134,8 +186,18 @@ const TemplateSelector = ({
         // Clear any custom data to ensure clean state
         onCustomTemplateChange?.(null);
       } else {
-        // Templates available - auto-select default if none selected
-        if (!selectedTemplateId) {
+        // Templates available - but check for custom template data first
+        const hasCustomData = !!customTemplateData;
+
+        if (hasCustomData) {
+          // Custom template data exists - stay in custom mode regardless of selectedTemplateId
+          clog(`🎨 Custom template data detected - staying in custom mode`);
+          setIsCustomMode(true);
+          setSelectedTemplateId(''); // Clear any system template selection
+          onTemplateChange?.(null, null); // Clear system template
+          // Don't change customTemplateData - let parent handle that
+        } else if (!selectedTemplateId) {
+          // No custom data and no selected template - auto-select default
           const defaultTemplate = templates.find(t => t.is_default) || templates[0];
           if (defaultTemplate) {
             clog(`🎯 Auto-selecting default template: ${defaultTemplate.name} (ID: ${defaultTemplate.id})`);
@@ -181,22 +243,121 @@ const TemplateSelector = ({
     }
   };
 
-  // Handle template selection
-  const handleTemplateSelect = (templateId) => {
-    setSelectedTemplateId(templateId);
+  // Handle template selection with confirmation and immediate saving
+  const handleTemplateSelect = async (templateId) => {
     const selectedTemplate = availableTemplates.find(t => t.id.toString() === templateId);
 
-    if (selectedTemplate) {
-      setIsCustomMode(false);
-      onTemplateChange?.(selectedTemplate.id, selectedTemplate);
-      onCustomTemplateChange?.(null); // Clear custom data when using system template
-      clog(`📋 Selected system template: ${selectedTemplate.name}`);
+    // Check if user has custom template data and warn before switching
+    if (customTemplateData && isCustomMode) {
+      const confirmed = await showConfirm(
+        `עבור לתבנית מערכת?`,
+        `יש לך תבנית מותאמת אישית של ${config.name}. העברה לתבנית "${selectedTemplate?.name}" תמחק את ההתאמות שלך. האם להמשיך?`,
+        {
+          confirmText: "כן, החלף לתבנית מערכת",
+          cancelText: "ביטול",
+          variant: "warning"
+        }
+      );
+
+      if (!confirmed) {
+        return; // User cancelled, keep current selection
+      }
+    }
+
+    try {
+      setSelectedTemplateId(templateId);
+
+      if (selectedTemplate) {
+        setIsCustomMode(false);
+        setPendingCustomData(null); // Clear pending custom data when switching to system template
+
+        // Call parent callbacks
+        onTemplateChange?.(selectedTemplate.id, selectedTemplate);
+        onCustomTemplateChange?.(null); // Clear custom data when using system template
+
+        // Save immediately to database
+        await saveTemplateSettingsImmediately(selectedTemplate.id, null);
+
+        clog(`📋 Selected system template: ${selectedTemplate.name}`);
+      }
+    } catch (error) {
+      // If save failed, revert the UI state
+      cerror('Failed to save template selection, reverting UI state');
+      setIsCustomMode(true);
+      if (customTemplateData) {
+        onCustomTemplateChange?.(customTemplateData);
+      }
     }
   };
 
-  // Handle custom template editing
-  const handleCustomEdit = () => {
-    setIsCustomMode(true);
+  // Handle custom template editing with confirmation
+  const handleCustomEdit = async () => {
+    // Check if user has selected system template and warn before switching to custom
+    if (selectedTemplateId && !customTemplateData) {
+      const selectedTemplate = availableTemplates.find(t => t.id.toString() === selectedTemplateId);
+      const confirmed = await showConfirm(
+        `צור תבנית מותאמת אישית?`,
+        `אתה עובר מהתבנית "${selectedTemplate?.name}" לעיצוב מותאם אישית. זה יבטל את השימוש בתבנית המערכת. האם להמשיך?`,
+        {
+          confirmText: "כן, צור תבנית מותאמת",
+          cancelText: "ביטול",
+          variant: "warning"
+        }
+      );
+
+      if (!confirmed) {
+        return; // User cancelled, keep current template
+      }
+
+      // Initialize custom template with base template data when switching from system template
+      try {
+        setIsCustomMode(true);
+
+        // Use selected template as base for custom template
+        const baseTemplate = availableTemplates.find(t => t.id.toString() === selectedTemplateId);
+        let initialCustomData = null;
+
+        if (baseTemplate) {
+          // Use the selected template's data as base for custom template
+          initialCustomData = JSON.parse(JSON.stringify(baseTemplate.template_data));
+          clog(`🎨 Initializing custom template with data from: ${baseTemplate.name}`);
+        }
+
+        // If no base template, try to use default template
+        if (!initialCustomData) {
+          const defaultTemplate = availableTemplates.find(t => t.is_default) || availableTemplates[0];
+          if (defaultTemplate) {
+            initialCustomData = JSON.parse(JSON.stringify(defaultTemplate.template_data));
+            clog(`🎨 Initializing custom template with default template data: ${defaultTemplate.name}`);
+          }
+        }
+
+        // Store pending data locally for immediate use in editor
+        setPendingCustomData(initialCustomData);
+
+        // Call parent callbacks
+        onTemplateChange?.(null, null); // Clear system template
+        onCustomTemplateChange?.(initialCustomData); // Set initial custom data
+
+        // Save immediately to database with initial custom data
+        await saveTemplateSettingsImmediately(null, initialCustomData);
+        setSelectedTemplateId(''); // Clear selected template ID
+
+        clog(`📋 Initialized custom mode via button with template data`);
+      } catch (error) {
+        // If save failed, revert UI state
+        cerror('Failed to initialize custom template, reverting UI state');
+        setIsCustomMode(false);
+        if (selectedTemplateId) {
+          const template = availableTemplates.find(t => t.id.toString() === selectedTemplateId);
+          onTemplateChange?.(template?.id, template);
+        }
+        onCustomTemplateChange?.(null);
+        return; // Don't open editor if initialization failed
+      }
+    }
+
+    // Open the template editor
     setShowTemplateEditor(true);
 
     // Use selected template as base or create new custom template
@@ -209,27 +370,54 @@ const TemplateSelector = ({
     }
   };
 
-  // Handle custom template save
-  const handleCustomTemplateSave = (customData) => {
-    setIsCustomMode(true);
-    onCustomTemplateChange?.(customData);
-    onTemplateChange?.(null, null); // Clear system template when using custom
-    setShowTemplateEditor(false);
-    clog('💾 Custom template data saved for specific entity');
+  // Handle custom template save with immediate saving
+  const handleCustomTemplateSave = async (customData) => {
+    try {
+      setIsCustomMode(true);
 
-    toast({
-      title: "תבנית מותאמת נשמרה",
-      description: `התבנית המותאמת אישית ל${config.name} נשמרה בהצלחה`,
-      variant: "default"
-    });
+      // Clear pending data since we now have the final saved data
+      setPendingCustomData(null);
+
+      // Call parent callbacks
+      onCustomTemplateChange?.(customData);
+      onTemplateChange?.(null, null); // Clear system template when using custom
+
+      // Save immediately to database
+      await saveTemplateSettingsImmediately(null, customData);
+
+      setShowTemplateEditor(false);
+      clog('💾 Custom template data saved for specific entity');
+
+      toast({
+        title: "תבנית מותאמת נשמרה",
+        description: `התבנית המותאמת אישית ל${config.name} נשמרה בהצלחה`,
+        variant: "default"
+      });
+    } catch (error) {
+      // If save failed, revert UI state
+      cerror('Failed to save custom template, reverting UI state');
+      setIsCustomMode(false);
+      setPendingCustomData(null); // Clear pending data on error
+      if (selectedTemplateId) {
+        onTemplateChange?.(selectedTemplateId, availableTemplates.find(t => t.id.toString() === selectedTemplateId));
+      }
+      onCustomTemplateChange?.(null);
+    }
   };
 
   // Get initial template data for editor
   const getInitialTemplateData = () => {
+    // Use pending custom data if available (from recent initialization)
+    if (pendingCustomData) {
+      return pendingCustomData;
+    }
+
+    // Fall back to prop from parent component
     if (customTemplateData) {
       return customTemplateData;
     }
 
+    // Fall back to system template data if in preview mode
     if (selectedTemplateId) {
       const template = availableTemplates.find(t => t.id.toString() === selectedTemplateId);
       return template?.template_data || null;
@@ -285,22 +473,78 @@ const TemplateSelector = ({
 
       {/* Template Selection - Show when file exists (allow configuration even when disabled) */}
       {fileExists && (
-        <div className={`space-y-3 ${!enabled ? 'opacity-60' : ''}`}>
+        <div className={`space-y-3 ${!enabled ? 'opacity-60' : ''} ${isSaving ? 'opacity-70 pointer-events-none' : ''}`}>
           {/* Template Mode Selection */}
           <div className="flex items-center gap-4 p-3 bg-white rounded-lg border border-gray-200">
             <div className="flex-1">
               <Label className="text-sm font-medium text-gray-900">אופן עיצוב</Label>
               <div className="flex items-center gap-4 mt-2">
+                {isSaving && (
+                  <div className="flex items-center gap-2 text-blue-600 text-xs">
+                    <div className="w-3 h-3 border border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                    <span>שומר...</span>
+                  </div>
+                )}
                 <label className={`flex items-center gap-2 ${availableTemplates.length === 0 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
                   <input
                     type="radio"
                     name={`template-mode-${templateType}`}
                     checked={!isCustomMode && availableTemplates.length > 0}
-                    onChange={() => {
+                    onChange={async (e) => {
                       if (availableTemplates.length > 0) {
-                        setIsCustomMode(false);
-                        if (selectedTemplateId) {
-                          handleTemplateSelect(selectedTemplateId);
+                        // Check if user has custom template data and warn before switching
+                        if (customTemplateData && isCustomMode) {
+                          const confirmed = await showConfirm(
+                            `עבור לתבנית מערכת?`,
+                            `יש לך תבנית מותאמת אישית של ${config.name}. העברה לתבנית מערכת תמחק את ההתאמות שלך. האם להמשיך?`,
+                            {
+                              confirmText: "כן, עבור לתבנית מערכת",
+                              cancelText: "ביטול",
+                              variant: "warning"
+                            }
+                          );
+
+                          if (!confirmed) {
+                            e.preventDefault(); // Prevent radio button state change
+                            return; // User cancelled, keep current selection
+                          }
+                        }
+
+                        // Proceed with switch to system template
+                        try {
+                          setIsCustomMode(false);
+                          setPendingCustomData(null); // Clear pending custom data when switching to system template
+
+                          // Auto-select default template if none selected
+                          let templateToSelect = selectedTemplateId;
+                          if (!templateToSelect) {
+                            const defaultTemplate = availableTemplates.find(t => t.is_default) || availableTemplates[0];
+                            if (defaultTemplate) {
+                              templateToSelect = defaultTemplate.id.toString();
+                              setSelectedTemplateId(templateToSelect);
+                            }
+                          }
+
+                          if (templateToSelect) {
+                            const template = availableTemplates.find(t => t.id.toString() === templateToSelect);
+                            if (template) {
+                              // Call parent callbacks
+                              onTemplateChange?.(template.id, template);
+                              onCustomTemplateChange?.(null);
+
+                              // Save immediately to database
+                              await saveTemplateSettingsImmediately(template.id, null);
+
+                              clog(`📋 Switched to system template via radio button: ${template.name}`);
+                            }
+                          }
+                        } catch (error) {
+                          // If save failed, revert UI state
+                          cerror('Failed to save template selection via radio button, reverting UI state');
+                          setIsCustomMode(true);
+                          if (customTemplateData) {
+                            onCustomTemplateChange?.(customTemplateData);
+                          }
                         }
                       }
                     }}
@@ -319,7 +563,72 @@ const TemplateSelector = ({
                     type="radio"
                     name={`template-mode-${templateType}`}
                     checked={isCustomMode}
-                    onChange={() => setIsCustomMode(true)}
+                    onChange={async (e) => {
+                      // Check if user has selected system template and warn before switching
+                      if (selectedTemplateId && !customTemplateData) {
+                        const selectedTemplate = availableTemplates.find(t => t.id.toString() === selectedTemplateId);
+                        const confirmed = await showConfirm(
+                          `עבור לעיצוב מותאם אישית?`,
+                          `אתה עובר מהתבנית "${selectedTemplate?.name}" לעיצוב מותאם אישית. זה יבטל את השימוש בתבנית המערכת. האם להמשיך?`,
+                          {
+                            confirmText: "כן, עבור לעיצוב מותאם",
+                            cancelText: "ביטול",
+                            variant: "warning"
+                          }
+                        );
+
+                        if (!confirmed) {
+                          e.preventDefault(); // Prevent radio button state change
+                          return; // User cancelled, keep current selection
+                        }
+                      }
+
+                      // Proceed with switch to custom mode
+                      try {
+                        setIsCustomMode(true);
+
+                        // Initialize custom template with base template data if switching from system template
+                        let initialCustomData = null;
+                        if (selectedTemplateId) {
+                          const baseTemplate = availableTemplates.find(t => t.id.toString() === selectedTemplateId);
+                          if (baseTemplate) {
+                            // Use the selected template's data as base for custom template
+                            initialCustomData = JSON.parse(JSON.stringify(baseTemplate.template_data));
+                            clog(`🎨 Initializing custom template with data from: ${baseTemplate.name}`);
+                          }
+                        }
+
+                        // If no base template, try to use default template
+                        if (!initialCustomData) {
+                          const defaultTemplate = availableTemplates.find(t => t.is_default) || availableTemplates[0];
+                          if (defaultTemplate) {
+                            initialCustomData = JSON.parse(JSON.stringify(defaultTemplate.template_data));
+                            clog(`🎨 Initializing custom template with default template data: ${defaultTemplate.name}`);
+                          }
+                        }
+
+                        // Store pending data locally for immediate use in editor
+                        setPendingCustomData(initialCustomData);
+
+                        // Call parent callbacks
+                        onTemplateChange?.(null, null); // Clear system template
+                        onCustomTemplateChange?.(initialCustomData); // Set initial custom data
+
+                        // Save immediately to database with initial custom data
+                        await saveTemplateSettingsImmediately(null, initialCustomData);
+                        setSelectedTemplateId(''); // Clear selected template ID
+
+                        clog(`📋 Switched to custom mode via radio button with initialized data`);
+                      } catch (error) {
+                        // If save failed, revert UI state
+                        cerror('Failed to save custom mode selection via radio button, reverting UI state');
+                        setIsCustomMode(false);
+                        if (selectedTemplateId) {
+                          const template = availableTemplates.find(t => t.id.toString() === selectedTemplateId);
+                          onTemplateChange?.(template?.id, template);
+                        }
+                      }
+                    }}
                     className={`text-${config.color}-600`}
                     disabled={!enabled}
                   />

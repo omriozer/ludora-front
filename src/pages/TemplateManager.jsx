@@ -333,15 +333,94 @@ export default function TemplateManager() {
     setShowVisualEditor(true);
   };
 
+  // Convert legacy template structure to unified structure
+  const convertLegacyToUnifiedStructure = (legacyConfig) => {
+    // If it's already unified structure, return as-is
+    if (legacyConfig.elements && typeof legacyConfig.elements === 'object') {
+      return legacyConfig;
+    }
+
+    const elements = {};
+
+    // Convert built-in elements from legacy structure (branding templates)
+    if (legacyConfig.logo) {
+      elements.logo = [{
+        ...legacyConfig.logo,
+        deletable: legacyConfig.logo.deletable ?? true,
+        type: 'logo'
+      }];
+    }
+
+    if (legacyConfig.text) {
+      elements['copyright-text'] = [{
+        ...legacyConfig.text,
+        deletable: legacyConfig.text.deletable ?? true,
+        type: 'copyright-text'
+      }];
+    }
+
+    if (legacyConfig.url) {
+      elements.url = [{
+        ...legacyConfig.url,
+        deletable: legacyConfig.url.deletable ?? true,
+        type: 'url'
+      }];
+    }
+
+    // Convert watermark templates legacy structure
+    if (legacyConfig.textElements && Array.isArray(legacyConfig.textElements)) {
+      elements['watermark-text'] = legacyConfig.textElements.map(element => ({
+        ...element,
+        type: 'watermark-text',
+        deletable: element.deletable ?? true
+      }));
+    }
+
+    if (legacyConfig.logoElements && Array.isArray(legacyConfig.logoElements)) {
+      elements['watermark-logo'] = legacyConfig.logoElements.map(element => ({
+        ...element,
+        type: 'watermark-logo',
+        deletable: element.deletable ?? true
+      }));
+    }
+
+    // Convert custom elements from legacy structure
+    if (legacyConfig.customElements && typeof legacyConfig.customElements === 'object') {
+      Object.entries(legacyConfig.customElements).forEach(([elementId, element]) => {
+        if (element && typeof element === 'object') {
+          const elementType = element.type || 'free-text';
+
+          if (!elements[elementType]) {
+            elements[elementType] = [];
+          }
+
+          elements[elementType].push({
+            ...element,
+            id: element.id || elementId,
+            type: elementType,
+            deletable: element.deletable ?? true
+          });
+        }
+      });
+    }
+
+    return {
+      elements,
+      globalSettings: legacyConfig.globalSettings || {}
+    };
+  };
+
   // Handle saving from visual editor
   const handleSaveFromVisualEditor = async (templateConfig) => {
     if (!editingTemplate) return;
 
     setIsUpdating(true);
     try {
+      const unifiedConfig = convertLegacyToUnifiedStructure(templateConfig);
+
       const updatedTemplate = {
         ...editingTemplate,
-        template_data: templateConfig
+        template_data: unifiedConfig
       };
 
       const result = await apiRequest(`/system-templates/${editingTemplate.id}`, {
@@ -349,7 +428,7 @@ export default function TemplateManager() {
         body: JSON.stringify(updatedTemplate)
       });
 
-      setMessage({ type: 'success', text: 'תבנית עודכנה בהצלחה בעורך הויזואלי' });
+      setMessage({ type: 'success', text: 'תבנית עודכנה בהצלחה בעורך הויזואלי (מבנה מאוחד)' });
       await loadTemplates();
       setShowVisualEditor(false);
       setEditingTemplate(null);

@@ -158,6 +158,7 @@ export default function ProductPage() {
                 product.branding_template_id = lessonPlan.branding_template_id;
                 product.branding_settings = lessonPlan.branding_settings;
                 product.watermark_template_id = lessonPlan.watermark_template_id;
+                product.watermark_settings = lessonPlan.watermark_settings;
               }
             } catch (error) {
               cerror('❌ Failed to load lesson plan data:', error);
@@ -175,6 +176,7 @@ export default function ProductPage() {
                 product.branding_template_id = file.branding_template_id;
                 product.branding_settings = file.branding_settings;
                 product.watermark_template_id = file.watermark_template_id;
+                product.watermark_settings = file.watermark_settings;
                 product.accessible_pages = file.accessible_pages;
                 product.allow_preview = file.allow_preview;
                 product.footer_settings = file.footer_settings;
@@ -391,6 +393,9 @@ export default function ProductPage() {
       if (formData.watermark_template_id !== undefined) {
         fileSpecificFields.watermark_template_id = formData.watermark_template_id;
       }
+      if (formData.watermark_settings !== undefined) {
+        fileSpecificFields.watermark_settings = formData.watermark_settings;
+      }
       if (formData.accessible_pages !== undefined) {
         fileSpecificFields.accessible_pages = formData.accessible_pages;
       }
@@ -434,6 +439,9 @@ export default function ProductPage() {
       }
       if (formData.watermark_template_id !== undefined) {
         lessonPlanSpecificFields.watermark_template_id = formData.watermark_template_id;
+      }
+      if (formData.watermark_settings !== undefined) {
+        lessonPlanSpecificFields.watermark_settings = formData.watermark_settings;
       }
       if (formData.estimated_duration !== undefined) {
         lessonPlanSpecificFields.estimated_duration = formData.estimated_duration;

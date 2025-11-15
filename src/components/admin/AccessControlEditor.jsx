@@ -112,7 +112,7 @@ const AccessControlEditor = ({
     return pageNumbers;
   };
 
-  const addAccessiblePage = () => {
+  const addAccessiblePage = async () => {
     if (!newPageInput.trim()) return;
 
     const pageNumbers = parsePageRanges(newPageInput);
@@ -129,22 +129,35 @@ const AccessControlEditor = ({
     const currentPages = getCurrentValue('accessible_pages') || [];
     const newPages = [...new Set([...currentPages, ...pageNumbers])].sort((a, b) => a - b);
 
-    updateField('accessible_pages', newPages);
+    // Immediately save changes to database
+    const changeToSave = { accessible_pages: newPages };
+    await saveChanges(changeToSave);
+
     setNewPageInput('');
 
     toast({
-      title: "עמודים נוספו",
-      description: `נוספו ${pageNumbers.length} עמודים לרשימת הגישה`,
+      title: "עמודים נוספו ונשמרו",
+      description: `נוספו ${pageNumbers.length} עמודים לרשימת הגישה ונשמרו בבסיס הנתונים`,
       variant: "default"
     });
   };
 
-  const removeAccessiblePage = (pageNumber) => {
+  const removeAccessiblePage = async (pageNumber) => {
     const currentPages = getCurrentValue('accessible_pages') || [];
-    updateField('accessible_pages', currentPages.filter(p => p !== pageNumber));
+    const newPages = currentPages.filter(p => p !== pageNumber);
+
+    // Immediately save changes to database
+    const changeToSave = { accessible_pages: newPages };
+    await saveChanges(changeToSave);
+
+    toast({
+      title: "עמוד הוסר ונשמר",
+      description: `עמוד ${pageNumber} הוסר מרשימת הגישה ונשמר בבסיס הנתונים`,
+      variant: "default"
+    });
   };
 
-  const addAccessibleSlide = () => {
+  const addAccessibleSlide = async () => {
     if (!newSlideInput.trim()) return;
 
     const slideNumbers = parsePageRanges(newSlideInput);
@@ -161,19 +174,32 @@ const AccessControlEditor = ({
     const currentSlides = getCurrentValue('accessible_slides') || [];
     const newSlides = [...new Set([...currentSlides, ...slideNumbers])].sort((a, b) => a - b);
 
-    updateField('accessible_slides', newSlides);
+    // Immediately save changes to database
+    const changeToSave = { accessible_slides: newSlides };
+    await saveChanges(changeToSave);
+
     setNewSlideInput('');
 
     toast({
-      title: "שקופיות נוספו",
-      description: `נוספו ${slideNumbers.length} שקופיות לרשימת הגישה`,
+      title: "שקופיות נוספו ונשמרו",
+      description: `נוספו ${slideNumbers.length} שקופיות לרשימת הגישה ונשמרו בבסיס הנתונים`,
       variant: "default"
     });
   };
 
-  const removeAccessibleSlide = (slideId) => {
+  const removeAccessibleSlide = async (slideId) => {
     const currentSlides = getCurrentValue('accessible_slides') || [];
-    updateField('accessible_slides', currentSlides.filter(s => s !== slideId));
+    const newSlides = currentSlides.filter(s => s !== slideId);
+
+    // Immediately save changes to database
+    const changeToSave = { accessible_slides: newSlides };
+    await saveChanges(changeToSave);
+
+    toast({
+      title: "שקופית הוסרה ונשמרה",
+      description: `שקופית ${slideId} הוסרה מרשימת הגישה ונשמרה בבסיס הנתונים`,
+      variant: "default"
+    });
   };
 
   const saveChanges = async (specificChanges = null) => {
@@ -266,34 +292,11 @@ const AccessControlEditor = ({
   return (
     <Card className={`${className}`}>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Shield className="w-5 h-5 text-blue-600" />
-            <CardTitle className="text-lg">
-              בקרת גישה - {isFile ? 'קובץ' : 'מצגת'}
-            </CardTitle>
-          </div>
-
-          <div className="flex gap-2">
-            {hasChanges && (
-              <Button onClick={resetChanges} variant="outline" size="sm">
-                <X className="w-4 h-4 ml-1" />
-                ביטול שינויים
-              </Button>
-            )}
-            <Button
-              onClick={saveChanges}
-              disabled={!hasChanges || saving}
-              size="sm"
-            >
-              {saving ? (
-                <LudoraLoadingSpinner className="w-4 h-4 ml-1" />
-              ) : (
-                <Save className="w-4 h-4 ml-1" />
-              )}
-              שמירה
-            </Button>
-          </div>
+        <div className="flex items-center gap-2">
+          <Shield className="w-5 h-5 text-blue-600" />
+          <CardTitle className="text-lg">
+            בקרת גישה - {isFile ? 'קובץ' : 'מצגת'}
+          </CardTitle>
         </div>
       </CardHeader>
 
@@ -314,15 +317,33 @@ const AccessControlEditor = ({
           <TabsContent value="access" className="space-y-4">
             {isFile && (
               <div className="space-y-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <FileText className="w-5 h-5 text-green-600" />
-                  <h3 className="font-medium">עמודים נגישים בתצוגה מקדימה</h3>
+                {/* File Page Count Header */}
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-5 h-5 text-blue-600" />
+                      <h3 className="font-medium text-blue-900">עמודים נגישים בתצוגה מקדימה</h3>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-blue-700">סה"כ עמודים בקובץ:</span>
+                      <span className="bg-blue-200 text-blue-900 px-2 py-1 rounded font-bold">
+                        {entity?.page_count || fileEntity?.page_count || entity?.total_pages || fileEntity?.total_pages || 'לא זוהה'}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-sm text-blue-700 mt-2">
+                    📄 בחר אילו עמודים יהיו זמינים לצפייה בתצוגה מקדימה. אם לא נבחר אף עמוד - כל הקובץ יהיה זמין
+                  </p>
                 </div>
 
                 <div className="space-y-2">
                   <div className="flex gap-2">
                     <Input
-                      placeholder="עמודים: 1, 3-5, 7 (מספרים בודדים או טווחים)"
+                      placeholder={(() => {
+                        const totalPages = entity?.page_count || fileEntity?.page_count || entity?.total_pages || fileEntity?.total_pages;
+                        const base = "עמודים: 1, 3-5, 7 (מספרים בודדים או טווחים)";
+                        return totalPages ? `${base} - טווח: 1-${totalPages}` : base;
+                      })()}
                       value={newPageInput}
                       onChange={(e) => setNewPageInput(e.target.value)}
                       onKeyPress={(e) => e.key === 'Enter' && addAccessiblePage()}
@@ -358,27 +379,55 @@ const AccessControlEditor = ({
                 </div>
 
                 {(!getCurrentValue('accessible_pages') || getCurrentValue('accessible_pages').length === 0) && (
-                  <p className="text-sm text-gray-500 italic">
-                    {getCurrentValue('allow_preview')
-                      ? 'לא הוגדרו עמודים נגישים - כל הקובץ יהיה זמין'
-                      : 'תצוגה מקדימה מבוטלת'
-                    }
-                  </p>
+                  <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 mt-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <AlertTriangle className="w-5 h-5 text-yellow-600" />
+                      <span className="font-medium text-yellow-900">
+                        {getCurrentValue('allow_preview')
+                          ? 'כל הקובץ זמין לתצוגה מקדימה'
+                          : 'תצוגה מקדימה מבוטלת'
+                        }
+                      </span>
+                    </div>
+                    {getCurrentValue('allow_preview') && (
+                      <p className="text-sm text-yellow-800">
+                        🔓 לא הוגדרו עמודים מוגבלים - כל {entity?.page_count || fileEntity?.page_count || entity?.total_pages || fileEntity?.total_pages || ''} העמודים יהיו זמינים לצפייה בתצוגה מקדימה
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
             )}
 
             {isLessonPlan && (
               <div className="space-y-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <Image className="w-5 h-5 text-purple-600" />
-                  <h3 className="font-medium">שקופיות נגישות בתצוגה מקדימה</h3>
+                {/* Lesson Plan Slide Count Header */}
+                <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Image className="w-5 h-5 text-purple-600" />
+                      <h3 className="font-medium text-purple-900">שקופיות נגישות בתצוגה מקדימה</h3>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-purple-700">סה"כ שקופיות במצגת:</span>
+                      <span className="bg-purple-200 text-purple-900 px-2 py-1 rounded font-bold">
+                        {entity?.total_slides || fileEntity?.total_slides || entity?.slide_count || fileEntity?.slide_count || 'לא זוהה'}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-sm text-purple-700 mt-2">
+                    🎭 בחר אילו שקופיות יהיו זמינות לצפייה בתצוגה מקדימה. אם לא נבחרה אף שקופית - כל המצגת תהיה זמינה
+                  </p>
                 </div>
 
                 <div className="space-y-2">
                   <div className="flex gap-2">
                     <Input
-                      placeholder="שקופיות: 1, 3-5, 7 (מספרים בודדים או טווחים)"
+                      placeholder={(() => {
+                        const totalSlides = entity?.total_slides || fileEntity?.total_slides || entity?.slide_count || fileEntity?.slide_count;
+                        const base = "שקופיות: 1, 3-5, 7 (מספרים בודדים או טווחים)";
+                        return totalSlides ? `${base} - טווח: 1-${totalSlides}` : base;
+                      })()}
                       value={newSlideInput}
                       onChange={(e) => setNewSlideInput(e.target.value)}
                       onKeyPress={(e) => e.key === 'Enter' && addAccessibleSlide()}
@@ -414,12 +463,22 @@ const AccessControlEditor = ({
                 </div>
 
                 {(!getCurrentValue('accessible_slides') || getCurrentValue('accessible_slides').length === 0) && (
-                  <p className="text-sm text-gray-500 italic">
-                    {getCurrentValue('allow_slide_preview')
-                      ? 'לא הוגדרו שקופיות נגישות - כל המצגת תהיה זמינה'
-                      : 'תצוגה מקדימה מבוטלת'
-                    }
-                  </p>
+                  <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 mt-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <AlertTriangle className="w-5 h-5 text-yellow-600" />
+                      <span className="font-medium text-yellow-900">
+                        {getCurrentValue('allow_slide_preview')
+                          ? 'כל המצגת זמינה לתצוגה מקדימה'
+                          : 'תצוגה מקדימה מבוטלת'
+                        }
+                      </span>
+                    </div>
+                    {getCurrentValue('allow_slide_preview') && (
+                      <p className="text-sm text-yellow-800">
+                        🔓 לא הוגדרו שקופיות מוגבלות - כל {entity?.total_slides || fileEntity?.total_slides || entity?.slide_count || fileEntity?.slide_count || ''} השקופיות יהיו זמינות לצפייה בתצוגה מקדימה
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
             )}

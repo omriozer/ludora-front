@@ -246,11 +246,17 @@ export default function TemplateEditor() {
   const handleSave = async () => {
     setIsSaving(true);
     try {
+      // Convert legacy structure to unified structure before sending to API
+      const templateToSave = {
+        ...template,
+        template_data: convertLegacyToUnifiedStructure(template.template_data)
+      };
+
       let result;
       if (isCreateMode) {
         result = await apiRequest('/system-templates', {
           method: 'POST',
-          body: JSON.stringify(template)
+          body: JSON.stringify(templateToSave)
         });
 
         // Switch to edit mode and update URL
@@ -262,7 +268,7 @@ export default function TemplateEditor() {
       } else {
         result = await apiRequest(`/system-templates/${templateId}`, {
           method: 'PUT',
-          body: JSON.stringify(template)
+          body: JSON.stringify(templateToSave)
         });
 
         setTemplate(result.data);
@@ -308,15 +314,94 @@ export default function TemplateEditor() {
     setShowVisualEditor(true);
   };
 
+  // Convert legacy template structure to unified structure
+  const convertLegacyToUnifiedStructure = (legacyConfig) => {
+    // If it's already unified structure, return as-is
+    if (legacyConfig.elements && typeof legacyConfig.elements === 'object') {
+      return legacyConfig;
+    }
+
+    const elements = {};
+
+    // Convert built-in elements from legacy structure (branding templates)
+    if (legacyConfig.logo) {
+      elements.logo = [{
+        ...legacyConfig.logo,
+        deletable: legacyConfig.logo.deletable ?? true,
+        type: 'logo'
+      }];
+    }
+
+    if (legacyConfig.text) {
+      elements['copyright-text'] = [{
+        ...legacyConfig.text,
+        deletable: legacyConfig.text.deletable ?? true,
+        type: 'copyright-text'
+      }];
+    }
+
+    if (legacyConfig.url) {
+      elements.url = [{
+        ...legacyConfig.url,
+        deletable: legacyConfig.url.deletable ?? true,
+        type: 'url'
+      }];
+    }
+
+    // Convert watermark templates legacy structure
+    if (legacyConfig.textElements && Array.isArray(legacyConfig.textElements)) {
+      elements['watermark-text'] = legacyConfig.textElements.map(element => ({
+        ...element,
+        type: 'watermark-text',
+        deletable: element.deletable ?? true
+      }));
+    }
+
+    if (legacyConfig.logoElements && Array.isArray(legacyConfig.logoElements)) {
+      elements['watermark-logo'] = legacyConfig.logoElements.map(element => ({
+        ...element,
+        type: 'watermark-logo',
+        deletable: element.deletable ?? true
+      }));
+    }
+
+    // Convert custom elements from legacy structure
+    if (legacyConfig.customElements && typeof legacyConfig.customElements === 'object') {
+      Object.entries(legacyConfig.customElements).forEach(([elementId, element]) => {
+        if (element && typeof element === 'object') {
+          const elementType = element.type || 'free-text';
+
+          if (!elements[elementType]) {
+            elements[elementType] = [];
+          }
+
+          elements[elementType].push({
+            ...element,
+            id: element.id || elementId,
+            type: elementType,
+            deletable: element.deletable ?? true
+          });
+        }
+      });
+    }
+
+    return {
+      elements,
+      globalSettings: legacyConfig.globalSettings || {}
+    };
+  };
+
   const handleSaveFromVisualEditor = (templateConfig) => {
+    const unifiedConfig = convertLegacyToUnifiedStructure(templateConfig);
+
     setTemplate(prev => ({
       ...prev,
-      template_data: templateConfig
+      template_data: unifiedConfig
     }));
     setShowVisualEditor(false);
     toast({
       title: "העיצוב נשמר",
-      description: "העיצוב הויזואלי של התבנית נשמר בהצלחה",
+      description: "העיצוב הויזואלי של התבנית נשמר בהצלחה (מבנה מאוחד)",
       variant: "default"
     });
   };

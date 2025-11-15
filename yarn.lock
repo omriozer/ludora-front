@@ -2831,7 +2831,7 @@ didyoumean@^1.2.2:
 
 "dimple@git+https://github.com/PMSI-AlignAlytics/dimple.git#2.3.0":
   version "2.3.0"
-  resolved "git+ssh://git@github.com/PMSI-AlignAlytics/dimple.git#65f69857f5e64f3a49f0898fa00799a530607a41"
+  resolved "git+ssh://git@github.com/PMSI-AlignAlytics/dimple.git"
   integrity sha512-1ocxMn0x3C0OhcKOL5j30Yqmv1KtzdyJrZmns6rXSoibs+uqqV2JqDlJH2qJH2y/Q0iedkQaG1L0VNwu7RlFSA==
 
 dir-glob@^3.0.1:
@@ -3552,6 +3552,11 @@ fs-extra@^9.1.0:
     graceful-fs "^4.2.0"
     jsonfile "^6.0.1"
     universalify "^2.0.0"
+
+fsevents@~2.3.2, fsevents@~2.3.3:
+  version "2.3.3"
+  resolved "https://registry.npmjs.org/fsevents/-/fsevents-2.3.3.tgz"
+  integrity sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==
 
 function-bind@^1.1.2:
   version "1.1.2"

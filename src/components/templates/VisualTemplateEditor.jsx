@@ -915,41 +915,67 @@ const VisualTemplateEditor = ({
   };
 
   const handleAddElement = (elementType) => {
-    // Check if this is a built-in element type
-    const builtInElements = ['logo', 'text', 'url', 'copyright-text', 'user-info', 'watermark-logo'];
+    // Support both unified and legacy structures
+    const hasUnifiedStructure = templateConfig?.elements;
 
-    if (builtInElements.includes(elementType)) {
-      // Handle built-in elements - add directly to template config
-      const newElement = getDefaultElementConfig(elementType, elementType);
-
-      const newConfig = {
-        ...templateConfig,
-        [elementType]: newElement
-      };
-
-      setTemplateConfig(newConfig);
-      setSelectedItem(elementType);
-      setFocusedItem(elementType);
-      // Reduced logging: clog(`✨ Added new built-in ${elementType} element`);
-    } else {
-      // Handle custom elements - add to customElements
+    if (hasUnifiedStructure) {
+      // NEW UNIFIED STRUCTURE: Add elements to arrays
       const timestamp = Date.now();
       const elementId = `${elementType}-${timestamp}`;
-
       const newElement = getDefaultElementConfig(elementType, elementId);
 
       const newConfig = {
         ...templateConfig,
-        customElements: {
-          ...templateConfig.customElements,
-          [elementId]: newElement
+        elements: {
+          ...templateConfig.elements,
+          [elementType]: [
+            ...(templateConfig.elements[elementType] || []),
+            newElement
+          ]
         }
       };
 
       setTemplateConfig(newConfig);
       setSelectedItem(elementId);
       setFocusedItem(elementId);
-      // Reduced logging: clog(`✨ Added new custom ${elementType} element:`, elementId);
+      clog(`✨ Added new ${elementType} element to unified structure:`, elementId);
+    } else {
+      // LEGACY STRUCTURE: Support backward compatibility
+      const builtInElements = ['logo', 'text', 'url', 'copyright-text', 'user-info', 'watermark-logo'];
+
+      if (builtInElements.includes(elementType)) {
+        // Handle built-in elements - add directly to template config
+        const newElement = getDefaultElementConfig(elementType, elementType);
+
+        const newConfig = {
+          ...templateConfig,
+          [elementType]: newElement
+        };
+
+        setTemplateConfig(newConfig);
+        setSelectedItem(elementType);
+        setFocusedItem(elementType);
+        clog(`✨ Added new built-in ${elementType} element to legacy structure`);
+      } else {
+        // Handle custom elements - add to customElements
+        const timestamp = Date.now();
+        const elementId = `${elementType}-${timestamp}`;
+
+        const newElement = getDefaultElementConfig(elementType, elementId);
+
+        const newConfig = {
+          ...templateConfig,
+          customElements: {
+            ...templateConfig.customElements,
+            [elementId]: newElement
+          }
+        };
+
+        setTemplateConfig(newConfig);
+        setSelectedItem(elementId);
+        setFocusedItem(elementId);
+        clog(`✨ Added new custom ${elementType} element to legacy structure:`, elementId);
+      }
     }
   };
 
@@ -1507,13 +1533,59 @@ const VisualTemplateEditor = ({
     try {
       let configToSave;
 
+      // VALIDATION: Ensure all elements have required 'type' field
+      const validateAndFixElementTypes = (config) => {
+        const fixedConfig = JSON.parse(JSON.stringify(config)); // Deep clone
+        let hasChanges = false;
+
+        // Check unified structure elements (new format)
+        if (fixedConfig.elements) {
+          Object.entries(fixedConfig.elements).forEach(([elementType, elementArray]) => {
+            if (Array.isArray(elementArray)) {
+              elementArray.forEach((element, index) => {
+                if (!element.type || typeof element.type !== 'string') {
+                  element.type = elementType;
+                  hasChanges = true;
+                  clog(`🔧 Fixed missing type field for ${elementType}[${index}]: added type="${elementType}"`);
+                }
+              });
+            }
+          });
+        }
+
+        // Check custom elements (legacy format)
+        if (fixedConfig.customElements) {
+          Object.entries(fixedConfig.customElements).forEach(([elementId, element]) => {
+            if (!element.type || typeof element.type !== 'string') {
+              // Try to infer type from element ID or use 'free-text' as default
+              const inferredType = elementId.includes('logo') ? 'logo' :
+                                 elementId.includes('text') ? 'free-text' :
+                                 elementId.includes('url') ? 'url' :
+                                 elementId.includes('user-info') ? 'user-info' :
+                                 elementId.includes('copyright') ? 'copyright-text' :
+                                 elementId.includes('watermark') ? 'watermark-logo' :
+                                 'free-text'; // Default fallback
+              element.type = inferredType;
+              hasChanges = true;
+              clog(`🔧 Fixed missing type field for custom element ${elementId}: inferred type="${inferredType}"`);
+            }
+          });
+        }
+
+        if (hasChanges) {
+          clog('✅ Template validation: Fixed missing type fields');
+        }
+
+        return fixedConfig;
+      };
+
       if (templateType === 'watermark') {
         // Save watermark config using same structure as footer/header
-        configToSave = templateConfig;
+        configToSave = validateAndFixElementTypes(templateConfig);
         clog('💾 Save: watermark config being saved (same structure):', configToSave);
       } else {
         // Save footer/header config as-is
-        configToSave = templateConfig;
+        configToSave = validateAndFixElementTypes(templateConfig);
         clog('💾 Save: templateConfig being saved:', configToSave);
         clog('💾 Save: text content being saved:', templateConfig.text?.content);
 

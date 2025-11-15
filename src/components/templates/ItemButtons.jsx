@@ -130,13 +130,6 @@ const ItemButtons = ({
               const elementKey = element.id || `${elementType}_${index}`;
               const elementMeta = allElementTypes[elementType] || allElementTypes['free-text'];
 
-              console.log('🏷️ Creating placed item:', {
-                elementType,
-                index,
-                elementKey,
-                elementId: element.id,
-                elementName: element.name || elementMeta.name
-              });
 
               placedItems.push({
                 key: elementKey,
@@ -252,13 +245,6 @@ const ItemButtons = ({
 
   // Handle element selection or addition
   const handleElementClick = (unifiedElement) => {
-    console.log('🔍 handleElementClick called with:', {
-      key: unifiedElement.key,
-      isPlaced: unifiedElement.isPlaced,
-      name: unifiedElement.name,
-      multiSelectMode
-    });
-
     if (multiSelectMode) {
       const currentSelection = new Set(parentSelectedItems);
       if (currentSelection.has(unifiedElement.key)) {
@@ -271,11 +257,9 @@ const ItemButtons = ({
     } else {
       if (unifiedElement.isPlaced) {
         // PLACED ELEMENTS: Click should open settings menu (focus the element)
-        console.log('📞 Calling onItemClick with key:', unifiedElement.key);
         onItemClick(unifiedElement.key);
       } else {
         // AVAILABLE ELEMENTS: Click should add new element to canvas
-        console.log('➕ Calling onAddElement with key:', unifiedElement.key);
         onAddElement?.(unifiedElement.key);
       }
     }

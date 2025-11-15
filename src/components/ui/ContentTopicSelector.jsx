@@ -198,6 +198,15 @@ export function ContentTopicSelector({
     onValueChange?.(newSelectedIds);
   };
 
+  // Remove all selected topics (clear selection)
+  const clearSelection = () => {
+    if (disabled) return;
+    onValueChange?.([]);
+    if (singleSelection) {
+      setIsOpen(false);
+    }
+  };
+
   // Render topic item
   const renderTopicItem = (topic) => {
     if (singleSelection) {
@@ -342,10 +351,25 @@ export function ContentTopicSelector({
         </div>
       </ScrollArea>
 
-      {/* Selection summary */}
+      {/* Selection summary and actions */}
       {showCount && selectedIds.length > 0 && (
         <div className="text-sm text-gray-600 text-center">
           נבחרו {selectedIds.length} נושאים
+        </div>
+      )}
+
+      {/* Clear selection button for single selection mode when a topic is selected */}
+      {singleSelection && selectedIds.length > 0 && !disabled && (
+        <div className="pt-2 border-t">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={clearSelection}
+            className="w-full text-red-600 border-red-200 hover:bg-red-50"
+          >
+            <X className="w-4 h-4 mr-2" />
+            הסר נושא תוכן
+          </Button>
         </div>
       )}
     </div>

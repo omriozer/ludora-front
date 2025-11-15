@@ -43,6 +43,7 @@ export const useProductForm = (editingProduct = null, currentUser = null) => {
         branding_template_id: editingProduct.branding_template_id || null,
         branding_settings: editingProduct.branding_settings || null,
         watermark_template_id: editingProduct.watermark_template_id || null,
+        watermark_settings: editingProduct.watermark_settings || null,
         accessible_pages: editingProduct.accessible_pages || null,
         creator_user_id: editingProduct.creator_user_id,
         image_is_private: editingProduct.image_is_private ?? false,
@@ -105,6 +106,7 @@ export const useProductForm = (editingProduct = null, currentUser = null) => {
       branding_template_id: null,
       branding_settings: null,
       watermark_template_id: null,
+      watermark_settings: null,
       accessible_pages: null,
       creator_user_id: (currentUser?.role === 'admin' || currentUser?.role === 'sysadmin') ? null : currentUser?.uid || null, // Default to Ludora for admins, user for others
       image_is_private: false,
