@@ -306,7 +306,7 @@ function LayoutContent({ children }) {
         {/* Main Content Area */}
         <div
           className={`flex flex-col flex-1 min-h-screen transition-all duration-300 ${
-            !hideNav && !isDesktop ? 'pt-16' : ''
+            !hideNav && !isDesktop ? 'pt-14' : ''
           }`}
           style={{
             marginRight: !hideNav ? 'var(--nav-width, 0px)' : '0',

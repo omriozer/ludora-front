@@ -457,38 +457,39 @@ export default function ProductDetails() {
   return (
 
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/30 overflow-x-hidden w-full max-w-full">
-      <div className="max-w-7xl mx-auto px-1 sm:px-3 md:px-4 lg:px-6 py-4 sm:py-6 md:py-8 w-full min-w-0 max-w-full">
+      <div className="max-w-7xl mx-auto px-1 sm:px-3 md:px-4 lg:px-6 pb-4 sm:pb-6 md:pb-8 w-full min-w-0 max-w-full">
 
-        {/* Sticky Header with Back Button and Purchase Button */}
+        {/* Enhanced Sticky Header with Back Button and Purchase Button */}
         {!hasAccess && (
-          <div className="sticky top-0 z-40 -mx-1 sm:-mx-3 md:-mx-4 lg:-mx-6 mb-4 sm:mb-6 md:mb-8">
-            <div className="bg-white/95 backdrop-blur-xl border-b border-gray-200 shadow-lg">
-              <div className="max-w-7xl mx-auto px-1 sm:px-3 md:px-4 lg:px-6 py-2 sm:py-3">
-                <div className="flex items-center gap-1 sm:gap-2 md:gap-4">
-                  {/* Back Button */}
+          <div className="sticky top-0 z-50 -mx-1 sm:-mx-3 md:-mx-4 lg:-mx-6 mb-4 sm:mb-6 md:mb-8">
+            <div className="bg-white/95 backdrop-blur-xl border-b border-gray-200/50 shadow-xl shadow-blue-500/5">
+              <div className="max-w-7xl mx-auto px-1 sm:px-3 md:px-4 lg:px-6 py-3 sm:py-4 md:py-5">
+                <div className="flex items-center gap-2 sm:gap-3 md:gap-5">
+                  {/* Enhanced Back Button */}
                   <Button
                     variant="ghost"
                     onClick={() => window.history.back()}
-                    className="text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl px-2 sm:px-3 py-1.5 sm:py-2 flex-shrink-0"
+                    className="text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-xl px-3 sm:px-4 md:px-5 py-2 sm:py-2.5 md:py-3 flex-shrink-0 font-medium transition-all duration-200 hover:scale-[1.02]"
                   >
-                    <ArrowLeft className="w-3 h-3 sm:w-4 sm:h-4 ml-1 sm:ml-2" />
-                    <span className="text-xs sm:text-sm whitespace-nowrap hidden sm:inline">בחזרה ל{getProductTypeName(item.product_type || itemType, 'plural')}</span>
-                    <span className="text-xs sm:text-sm whitespace-nowrap sm:hidden">חזרה</span>
+                    <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 md:w-5 md:h-5 ml-1.5 sm:ml-2" />
+                    <span className="text-sm sm:text-base md:text-base whitespace-nowrap hidden sm:inline">בחזרה ל{getProductTypeName(item.product_type || itemType, 'plural')}</span>
+                    <span className="text-sm whitespace-nowrap sm:hidden">חזרה</span>
                   </Button>
 
-                  {/* Product Title - Takes remaining space */}
+                  {/* Enhanced Product Title - Takes remaining space */}
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm sm:text-base font-semibold text-gray-800 truncate">{item.title}</div>
+                    <div className="text-sm sm:text-base md:text-lg font-bold text-gray-900 truncate leading-tight">{item.title}</div>
                   </div>
 
-                  {/* Price Badge - Hidden on mobile */}
-                  <div className="flex-shrink-0 hidden md:block">
+                  {/* Enhanced Price Badge - Now visible on all screens */}
+                  <div className="flex-shrink-0">
                     <PriceDisplayTag
                       originalPrice={item.price}
                       discount={item.discount}
                       variant="badge"
-                      size="md"
+                      size="lg"
                       showDiscount={false}
+                      className="shadow-md hover:shadow-lg transition-shadow duration-200"
                     />
                   </div>
 
@@ -503,20 +504,20 @@ export default function ProductDetails() {
                     <Button
                       onClick={handlePdfPreview}
                       variant="outline"
-                      className="rounded-full px-3 sm:px-4 py-2 sm:py-3 flex-shrink-0 text-xs sm:text-sm border-blue-200 text-blue-600 hover:bg-blue-50 border-2"
+                      className="rounded-full px-3 sm:px-4 md:px-5 py-2.5 sm:py-3 md:py-3.5 flex-shrink-0 text-sm sm:text-base md:text-base border-blue-300 text-blue-700 hover:bg-blue-50 hover:border-blue-400 border-2 font-medium transition-all duration-200 hover:scale-[1.02] shadow-sm hover:shadow-md"
                       size="sm"
                     >
-                      <Eye className="w-3 h-3 sm:w-4 sm:h-4 ml-1 sm:ml-2" />
+                      <Eye className="w-4 h-4 sm:w-5 sm:h-5 md:w-5 md:h-5 ml-1.5 sm:ml-2" />
                       <span className="hidden sm:inline">תצוגה מקדימה</span>
                       <span className="sm:hidden">תצוגה</span>
                     </Button>
                   )}
 
-                  {/* Purchase Button - Unified Design */}
+                  {/* Enhanced Purchase Button - Unified Design */}
                   <ProductActionBar
                     product={item}
-                    className="px-3 sm:px-6 md:px-8 py-2 sm:py-3 flex-shrink-0 text-xs sm:text-sm md:text-base"
-                    size="sm"
+                    className="px-4 sm:px-6 md:px-8 lg:px-10 py-3 sm:py-3.5 md:py-4 flex-shrink-0 text-sm sm:text-base md:text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02]"
+                    size="lg"
                     showCartButton={false}
                     onFileAccess={handleFileAccess}
                     onPdfPreview={handlePdfPreview}
