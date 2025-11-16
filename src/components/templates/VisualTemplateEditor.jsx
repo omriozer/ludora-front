@@ -106,97 +106,8 @@ const VisualTemplateEditor = ({
     return config;
   };
 
-  // Adapter functions to convert between watermark structure and branding structure
-  const convertWatermarkToBrandingStructure = (watermarkConfig) => {
-    if (!watermarkConfig) return { customElements: {} };
-
-    const customElements = {};
-
-    // Convert text elements
-    if (watermarkConfig.textElements) {
-      watermarkConfig.textElements.forEach((textElement) => {
-        customElements[textElement.id] = {
-          id: textElement.id,
-          type: 'free-text',  // Use free-text as the primary type for UI
-          visible: textElement.visible !== false,
-          position: textElement.position,
-          style: textElement.style,
-          content: textElement.content,
-          deletable: true
-        };
-      });
-    }
-
-    // Convert logo elements
-    if (watermarkConfig.logoElements) {
-      watermarkConfig.logoElements.forEach((logoElement) => {
-        customElements[logoElement.id] = {
-          id: logoElement.id,
-          type: 'watermark-logo',  // Keep watermark-logo for watermark templates
-          visible: logoElement.visible !== false,
-          position: logoElement.position,
-          style: logoElement.style,
-          // Logo uses static file, no URL needed
-          deletable: true
-        };
-      });
-    }
-
-    const result = {
-      // For watermark templates, we don't add hardcoded built-in elements
-      // We only show the custom elements from the watermark template
-      // The branding elements (if any) will come from the backend when skipWatermarks=false
-      customElements,
-      globalSettings: watermarkConfig.globalSettings || {
-        layerBehindContent: false,
-        preserveReadability: true
-      }
-    };
-
-    // Reduced logging: clog('🔄 Converted watermark to footer structure:', { input: watermarkConfig, output: result });
-    return result;
-  };
-
-  const convertBrandingToWatermarkStructure = (templateConfig) => {
-    if (!templateConfig) return getDefaultWatermarkConfig();
-
-    const textElements = [];
-    const logoElements = [];
-
-    // Convert custom elements back to watermark elements
-    Object.entries(templateConfig.customElements || {}).forEach(([id, element]) => {
-      if (element.type === 'watermark-text' || element.type === 'free-text') {
-        textElements.push({
-          id: id,
-          content: element.content || '',
-          position: element.position,
-          style: element.style,
-          pattern: 'single',
-          visible: element.visible !== false
-        });
-      } else if (element.type === 'watermark-logo' || element.type === 'logo') {
-        logoElements.push({
-          id: id,
-          // Logo uses static file, no URL needed
-          position: element.position,
-          style: element.style,
-          visible: element.visible !== false
-        });
-      }
-    });
-
-    const result = {
-      textElements,
-      logoElements,
-      globalSettings: templateConfig.globalSettings || {
-        layerBehindContent: false,
-        preserveReadability: true
-      }
-    };
-
-    // Reduced logging: clog('🔄 Converted footer to watermark structure:', { input: templateConfig, output: result });
-    return result;
-  };
+  // SIMPLIFIED: Only unified structure is supported now
+  // Legacy conversion functions removed - all templates use unified elements structure
 
   const [templateConfig, setTemplateConfig] = useState(getDefaultConfig());
 
@@ -502,16 +413,9 @@ const VisualTemplateEditor = ({
           } else {
             // File editing mode - load existing template configuration
             if (propInitialTemplateConfig && Object.keys(propInitialTemplateConfig).length > 0) {
-              // Convert legacy formats if needed
-              if (templateType === 'watermark' && (propInitialTemplateConfig.textElements || propInitialTemplateConfig.logoElements)) {
-                // Convert old watermark structure to unified structure
-                finalConfig = convertWatermarkToBrandingStructure(propInitialTemplateConfig);
-                clog('🔄 Converted legacy watermark structure to unified format');
-              } else {
-                // Use existing configuration directly
-                finalConfig = propInitialTemplateConfig;
-                clog('✅ Using existing template configuration');
-              }
+              // SIMPLIFIED: Only unified structure is supported - no legacy conversion needed
+              finalConfig = propInitialTemplateConfig;
+              clog('✅ Using unified template configuration');
               setLoadedBrandingSettings(propInitialTemplateConfig);
             } else {
               // No existing config - use blank canvas
@@ -1016,7 +920,7 @@ const VisualTemplateEditor = ({
           }
         };
       case 'url':
-        const urlContent = 'https://ludora.app';
+        const urlContent = '${FRONTEND_URL}'; // Use variable that resolves to configured URL
         return {
           ...baseConfig,
           content: urlContent,

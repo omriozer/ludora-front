@@ -1238,7 +1238,7 @@ const LessonPlanProductSection = ({
               currentUser={currentUser} // Pass current user for email template resolution
               fileEntity={{
                 ...editingProduct,
-                target_format: formData.target_format || editingProduct?.target_format || 'svg-lessonplan'
+                target_format: 'svg-lessonplan' // Always use svg-lessonplan for lesson plans
               }} // Pass file entity for template filtering and context
               onUpdate={(updatedEntity) => {
                 // Update the form data with the new access control settings
@@ -1282,7 +1282,7 @@ const LessonPlanProductSection = ({
             currentUser={currentUser} // Pass current user for email template resolution
             fileEntity={{
               ...editingProduct,
-              target_format: formData.target_format || editingProduct?.target_format || 'svg-lessonplan'
+              target_format: 'svg-lessonplan' // Always use svg-lessonplan for lesson plans
             }} // Pass file entity for template filtering and context
           />
         </div>

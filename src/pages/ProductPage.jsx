@@ -159,6 +159,8 @@ export default function ProductPage() {
                 product.branding_settings = lessonPlan.branding_settings;
                 product.watermark_template_id = lessonPlan.watermark_template_id;
                 product.watermark_settings = lessonPlan.watermark_settings;
+                product.allow_slide_preview = lessonPlan.allow_slide_preview;
+                product.accessible_slides = lessonPlan.accessible_slides;
               }
             } catch (error) {
               cerror('❌ Failed to load lesson plan data:', error);
@@ -451,6 +453,12 @@ export default function ProductPage() {
       }
       if (formData.teacher_notes !== undefined) {
         lessonPlanSpecificFields.teacher_notes = formData.teacher_notes;
+      }
+      if (formData.allow_slide_preview !== undefined) {
+        lessonPlanSpecificFields.allow_slide_preview = formData.allow_slide_preview;
+      }
+      if (formData.accessible_slides !== undefined) {
+        lessonPlanSpecificFields.accessible_slides = formData.accessible_slides;
       }
 
       // Only make API call if there are LessonPlan-specific fields to update

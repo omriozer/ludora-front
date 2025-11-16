@@ -77,13 +77,13 @@ export default function ProductDetails() {
   useEffect(() => {
     loadTexts();
 
-    // Check for openPdf URL parameter (from post-login redirect)
+    // Check for openPdf URL parameter (from post-login redirect for file assets)
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('openPdf') === 'true') {
       // Remove the parameter from URL
       urlParams.delete('openPdf');
       window.history.replaceState({}, '', `${window.location.pathname}?${urlParams.toString()}`);
-      // Open PDF viewer
+      // Open asset viewer for file assets
       setPdfViewerOpen(true);
     }
   }, []);
@@ -125,7 +125,7 @@ export default function ProductDetails() {
   };
 
 
-  // Enhanced file access logic with PDF viewer support
+  // Enhanced file access logic with asset viewer support
   const handleFileAccess = async (file) => {
     if (!file.id) return;
 
@@ -133,7 +133,7 @@ export default function ProductDetails() {
     const isPdf = file.file_type === 'pdf' || file.file_name?.toLowerCase().endsWith('.pdf');
 
     if (isPdf) {
-      // Open PDF in viewer modal
+      // Open file asset in viewer modal
       setPdfViewerOpen(true);
     } else {
       // For non-PDF files, use direct download
@@ -153,34 +153,54 @@ export default function ProductDetails() {
     }
   };
 
-  // Handle PDF preview for users without access
-  const handlePdfPreview = () => {
+  // Handle asset preview for lesson plans and files without access
+  const handleAssetPreview = () => {
     // Check if user is authenticated
     if (!currentUser) {
-      const pdfCallback = () => {
+      const assetPreviewCallback = () => {
         // Add a small delay to ensure all state updates from login are complete
         setTimeout(() => {
           if (!isMountedRef.current) {
             // Component was unmounted, use navigation approach instead
             const currentUrl = new URL(window.location.href);
-            currentUrl.searchParams.set('openPdf', 'true');
-            window.location.href = currentUrl.toString();
+
+            if (item.product_type === 'lesson_plan') {
+              // For lesson plans, redirect to presentation page in preview mode
+              window.location.href = `/lesson-plan-presentation?id=${item.entity_id || item.id}&preview=true`;
+            } else {
+              // For file assets, set openPdf parameter
+              currentUrl.searchParams.set('openPdf', 'true');
+              window.location.href = currentUrl.toString();
+            }
             return;
           }
 
-          setPdfViewerOpen(true);
+          // Component is still mounted, proceed with asset preview
+          if (item.product_type === 'lesson_plan') {
+            // Navigate to lesson plan presentation in preview mode
+            navigate(`/lesson-plan-presentation?id=${item.entity_id || item.id}&preview=true`);
+          } else {
+            // Open asset viewer for file assets
+            setPdfViewerOpen(true);
+          }
         }, 100);
       };
 
       openLoginModal(
-        pdfCallback,
+        assetPreviewCallback,
         'אפשרות זו זמינה למשתמשים רשומים בלבד. יש להתחבר / להרשם כדי להמשיך'
       );
       return;
     }
 
-    // User is authenticated, open preview directly
-    setPdfViewerOpen(true);
+    // User is authenticated, open asset preview directly
+    if (item.product_type === 'lesson_plan') {
+      // Navigate to lesson plan presentation in preview mode
+      navigate(`/lesson-plan-presentation?id=${item.entity_id || item.id}&preview=true`);
+    } else {
+      // Open asset viewer for file assets
+      setPdfViewerOpen(true);
+    }
   };
 
   // Handle course access
@@ -213,7 +233,7 @@ export default function ProductDetails() {
 
 
   const loadData = useCallback(async () => {
-    // Skip loading if PDF viewer is about to open/is open to prevent interference
+    // Skip loading if asset viewer is about to open/is open to prevent interference
     if (pdfViewerOpen) {
       return;
     }
@@ -493,16 +513,24 @@ export default function ProductDetails() {
                     />
                   </div>
 
-                  {/* Preview Button for PDF Files without access but with preview allowed */}
+                  {/* Preview Button for Assets (Files and Lesson Plans) without access but with preview allowed */}
                   {(() => {
                     const isFile = item.product_type === 'file' || itemType === 'file';
                     const isPdf = item.file_type === 'pdf' || item.file_name?.toLowerCase().endsWith('.pdf');
-                    const shouldShow = !hasAccess && isFile && isPdf && item.allow_preview;
+                    const isLessonPlan = item.product_type === 'lesson_plan';
+
+                    // Check if file asset has preview enabled
+                    const filePreviewEnabled = isFile && isPdf && item.allow_preview;
+
+                    // Check if lesson plan asset has preview enabled
+                    const lessonPlanPreviewEnabled = isLessonPlan && item.preview_info?.allow_slide_preview;
+
+                    const shouldShow = !hasAccess && (filePreviewEnabled || lessonPlanPreviewEnabled);
 
                     return shouldShow;
                   })() && (
                     <Button
-                      onClick={handlePdfPreview}
+                      onClick={handleAssetPreview}
                       variant="outline"
                       className="rounded-full px-3 sm:px-4 md:px-5 py-2.5 sm:py-3 md:py-3.5 flex-shrink-0 text-sm sm:text-base md:text-base border-blue-300 text-blue-700 hover:bg-blue-50 hover:border-blue-400 border-2 font-medium transition-all duration-200 hover:scale-[1.02] shadow-sm hover:shadow-md"
                       size="sm"
@@ -520,7 +548,7 @@ export default function ProductDetails() {
                     size="lg"
                     showCartButton={false}
                     onFileAccess={handleFileAccess}
-                    onPdfPreview={handlePdfPreview}
+                    onPdfPreview={handleAssetPreview}
                     onCourseAccess={handleCourseAccess}
                     onWorkshopAccess={handleWorkshopAccess}
                     onLessonPlanAccess={handleLessonPlanAccess}
@@ -628,7 +656,7 @@ export default function ProductDetails() {
                     fullWidth={true}
                     showCartButton={true}
                     onFileAccess={handleFileAccess}
-                    onPdfPreview={handlePdfPreview}
+                    onPdfPreview={handleAssetPreview}
                     onCourseAccess={handleCourseAccess}
                     onWorkshopAccess={handleWorkshopAccess}
                     onLessonPlanAccess={handleLessonPlanAccess}
@@ -710,7 +738,7 @@ export default function ProductDetails() {
                     fullWidth={true}
                     showCartButton={true}
                     onFileAccess={handleFileAccess}
-                    onPdfPreview={handlePdfPreview}
+                    onPdfPreview={handleAssetPreview}
                     onCourseAccess={handleCourseAccess}
                     onWorkshopAccess={handleWorkshopAccess}
                     onLessonPlanAccess={handleLessonPlanAccess}
@@ -785,7 +813,7 @@ export default function ProductDetails() {
                     size="lg"
                     showCartButton={false}
                     onFileAccess={handleFileAccess}
-                    onPdfPreview={handlePdfPreview}
+                    onPdfPreview={handleAssetPreview}
                     onCourseAccess={handleCourseAccess}
                     onWorkshopAccess={handleWorkshopAccess}
                     onLessonPlanAccess={handleLessonPlanAccess}
@@ -1470,12 +1498,12 @@ export default function ProductDetails() {
         </div>
       </div>
 
-      {/* PDF Viewer Modal */}
+      {/* Asset Viewer Modal */}
       {(() => {
         const shouldShowModal = pdfViewerOpen && (item.product_type === 'file' || itemType === 'file');
         return shouldShowModal;
       })() && (
-        <div data-testid="pdf-viewer-modal">
+        <div data-testid="asset-viewer-modal">
           <PdfViewer
             fileId={item.entity_id || item.id}
             fileName={item.file_name || `${item.title}.pdf`}

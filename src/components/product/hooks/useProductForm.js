@@ -53,6 +53,8 @@ export const useProductForm = (editingProduct = null, currentUser = null) => {
         total_slides: editingProduct.total_slides || '',
         teacher_notes: editingProduct.teacher_notes || '',
         slide_configs: editingProduct.slide_configs || [],
+        allow_slide_preview: editingProduct.allow_slide_preview ?? true,
+        accessible_slides: editingProduct.accessible_slides || null,
         // Workshop specific
         workshop_video_url: editingProduct.workshop_video_url || '',
         // Course specific
@@ -116,6 +118,8 @@ export const useProductForm = (editingProduct = null, currentUser = null) => {
       total_slides: '',
       teacher_notes: '',
       slide_configs: [],
+      allow_slide_preview: true,
+      accessible_slides: null,
       // Workshop specific
       workshop_video_url: '',
       // Course specific
