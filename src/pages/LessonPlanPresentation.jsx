@@ -28,7 +28,6 @@ import { getApiBase } from '@/utils/api.js';
 import { apiRequest } from '@/services/apiClient';
 import { clog, cerror } from '@/lib/utils';
 import { useUser } from '@/contexts/UserContext';
-import logoSm from '../assets/images/logo_sm.png';
 import '@/styles/presentation.css';
 
 export default function LessonPlanPresentation() {
@@ -103,7 +102,6 @@ export default function LessonPlanPresentation() {
 		setError(null);
 
 		try {
-			clog('🎭 Loading lesson plan SVG presentation data:', lessonPlanId);
 
 			// Check authentication using UserContext
 			if (!isAuthenticated || !currentUser) {
@@ -115,8 +113,8 @@ export default function LessonPlanPresentation() {
 				throw new Error('נדרשת הרשמה לצפייה בפרזנטציה');
 			}
 
-			// Load SVG slides using the new API with selective access support
-			const slidesData = await apiRequest(`/svg-slides/${lessonPlanId}`, {
+			// Load SVG slides using the preview API that includes template processing
+			const slidesData = await apiRequest(`/svg-slides/${lessonPlanId}/preview`, {
 				method: 'GET',
 			});
 
@@ -132,7 +130,6 @@ export default function LessonPlanPresentation() {
 				setIsLoading(false);
 				return;
 			}
-			clog('🎭 SVG slides data loaded:', slidesData);
 
 			// Parse selective access information from response
 			const slideAccess = slidesData.data.slideAccess || {};
@@ -157,14 +154,6 @@ export default function LessonPlanPresentation() {
 			setAccessibleSlides(userAccessibleSlides);
 			setRestrictedSlideIds(new Set(userRestrictedSlides));
 
-			clog('🔐 Access mode determined:', {
-				mode: userAccessMode,
-				hasFullAccess,
-				allowPreview,
-				accessibleSlides: userAccessibleSlides,
-				restrictedSlides: userRestrictedSlides
-			});
-
 			if (!slidesData.success || !slidesData.data.slides || slidesData.data.slides.length === 0) {
 				setError('לא נמצאו שקפים עבור תוכנית שיעור זו');
 				setIsLoading(false);
@@ -176,10 +165,21 @@ export default function LessonPlanPresentation() {
 				const isRestricted = userRestrictedSlides.includes(slide.slide_number || (index + 1));
 				const slideNumber = slide.slide_number || (index + 1);
 
-				// For restricted slides, use placeholder if user doesn't have access
-				const slideUrl = isRestricted && userAccessMode !== 'full'
-					? `${getApiBase()}/assets/placeholder/slide-not-available.svg`
-					: `${getApiBase()}/assets/download/lesson-plan-slide/${lessonPlanId}/${slide.id}`;
+				// Use processed SVG content with templates if available, otherwise fallback to download URL
+				let slideUrl;
+				let hasProcessedContent = false;
+
+				if (slide.content && slide.content.trim()) {
+					// Create blob URL from processed SVG content (includes templates!)
+					const blob = new Blob([slide.content], { type: 'image/svg+xml' });
+					slideUrl = URL.createObjectURL(blob);
+					hasProcessedContent = true;
+				} else {
+					// Fallback to download URL for restricted slides or when no processed content
+					slideUrl = isRestricted && userAccessMode !== 'full'
+						? `${getApiBase()}/assets/placeholder/slide-not-available.svg`
+						: `${getApiBase()}/assets/download/lesson-plan-slide/${lessonPlanId}/${slide.id}`;
+				}
 
 				return {
 					id: slide.id,
@@ -191,6 +191,8 @@ export default function LessonPlanPresentation() {
 					isRestricted: isRestricted,
 					isAccessible: !isRestricted || userAccessMode === 'full' || userAccessibleSlides.includes(slideNumber),
 					originalUrl: `${getApiBase()}/assets/download/lesson-plan-slide/${lessonPlanId}/${slide.id}`,
+					hasProcessedContent: hasProcessedContent,
+					processedContent: slide.content, // Store for cleanup later
 				};
 			});
 
@@ -198,15 +200,16 @@ export default function LessonPlanPresentation() {
 			let lessonPlanData = null;
 			let audioFilesData = [];
 
+			// Try to get lesson plan metadata from lesson plan entity API
 			try {
-				const lessonPlanResponse = await apiRequest(`/entities/lesson-plan/${lessonPlanId}`, {
+				const lessonPlanResponse = await apiRequest(`/entities/lessonplan/${lessonPlanId}`, {
 					method: 'GET',
 				});
 
 				if (lessonPlanResponse.success) {
-					lessonPlanData = lessonPlanResponse;
+					lessonPlanData = lessonPlanResponse.lessonPlan;
 
-					// Extract audio files from lesson plan data
+					// Extract audio files from lesson plan data if available
 					if (lessonPlanData.file_configs?.files) {
 						const audioFiles = lessonPlanData.file_configs.files
 							.filter((file) => file.file_role === 'audio')
@@ -220,9 +223,8 @@ export default function LessonPlanPresentation() {
 						audioFilesData = audioFiles;
 					}
 				}
-			} catch (audioError) {
-				cerror('Could not load audio files:', audioError);
-				// Continue without audio
+			} catch (lessonPlanError) {
+				// Continue without audio - not critical for presentation
 			}
 
 			setPresentationData({
@@ -260,8 +262,6 @@ export default function LessonPlanPresentation() {
 		setIsPreloadingWindow(true);
 		setPreloadProgress(0);
 
-		clog('🚀 Starting full slide preloading for', slidesToPreload.length, 'slides (blob URLs for instant switching)');
-
 		try {
 			let completedCount = 0;
 			const newBlobUrls = new Map();
@@ -269,7 +269,17 @@ export default function LessonPlanPresentation() {
 
 			const preloadPromises = slidesToPreload.map(async (slide) => {
 				try {
-					// Fetch slide with authentication
+					// If slide already has processed content with templates, use it directly
+					if (slide.hasProcessedContent && slide.url.startsWith('blob:')) {
+						// Already have processed content as blob URL, no need to fetch
+						newBlobUrls.set(slide.id, slide.url);
+						completedCount++;
+						setPreloadedSlides((prev) => new Set([...prev, slide.id]));
+						setPreloadProgress(completedCount / slidesToPreload.length);
+						return { slide, blobUrl: slide.url };
+					}
+
+					// Fetch slide with authentication for non-processed content
 					const response = await fetch(slide.url, {
 						method: 'GET',
 						headers: {
@@ -291,7 +301,6 @@ export default function LessonPlanPresentation() {
 					completedCount++;
 					setPreloadedSlides((prev) => new Set([...prev, slide.id]));
 					setPreloadProgress(completedCount / slidesToPreload.length);
-					clog(`✅ Cached slide in memory ${completedCount}/${slidesToPreload.length}: ${slide.filename}`);
 
 					return { slide, blobUrl };
 				} catch (error) {
@@ -306,8 +315,6 @@ export default function LessonPlanPresentation() {
 
 			// Update blob URLs state
 			setSlideBlobUrls(newBlobUrls);
-
-			clog(`🎉 Full slide preloading completed! ${newBlobUrls.size}/${slidesToPreload.length} slides cached in memory`);
 		} catch (error) {
 			cerror('Error during full slide preloading:', error);
 		} finally {
@@ -637,12 +644,7 @@ export default function LessonPlanPresentation() {
 									cerror(`Error loading SVG slide: ${currentSlide.filename}`, e);
 								}}
 								onLoad={() => {
-									const isCached = slideBlobUrls.has(currentSlide.id);
-									clog(
-										`✅ SVG slide displayed: ${currentSlide.filename} ${
-											isCached ? '(from memory blob)' : '(direct from server)'
-										}`
-									);
+									// Slide loaded successfully
 								}}
 							/>
 						) : (
@@ -685,14 +687,6 @@ export default function LessonPlanPresentation() {
 					</div>
 				)}
 
-				{/* Ludora Logo */}
-				<div className='absolute top-4 right-4'>
-					<img
-						src={logoSm}
-						alt='Ludora'
-						className='h-24 w-auto opacity-80 hover:opacity-100 transition-opacity'
-					/>
-				</div>
 
 				{/* Draggable Timer Component */}
 				{isTimerVisible && (
