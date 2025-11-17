@@ -22,6 +22,10 @@ export const PaymentResultIframe = lazy(() => import('./PaymentResultIframe'));
 export const Purchases = lazy(() => import('./Purchases'));
 export const StudentInvitations = lazy(() => import('./StudentInvitations'));
 
+// Student portal pages
+export const StudentHome = lazy(() => import('./students/StudentHome'));
+export const StudentNotFound = lazy(() => import('./students/StudentNotFound'));
+
 // Product and content pages
 export const ProductDetails = lazy(() => import('./ProductDetails'));
 export const ProductCatalog = lazy(() => import('../components/catalog/ProductCatalog'));

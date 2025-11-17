@@ -1,6 +1,6 @@
 import './App.css';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { useEffect, Suspense } from 'react';
+import { useEffect, Suspense, useState, useCallback } from 'react';
 // Core pages - loaded immediately for better UX
 import { Home, Dashboard, Registration, NotFound } from '@/pages/lazy.jsx';
 // Lazy-loaded pages
@@ -19,9 +19,16 @@ import { PRODUCT_TYPES } from './config/productTypes';
 import OnboardingWizard from '@/components/onboarding/OnboardingWizard';
 import { toast } from '@/components/ui/use-toast';
 import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
-// Student Portal imports
+// Student Portal
 import { isStudentPortal } from '@/utils/domainUtils';
-import StudentApp from '@/components/students/StudentApp';
+import Footer from '@/components/layout/Footer';
+import StudentsNav from '@/components/layout/StudentsNav';
+import MaintenancePage from '@/components/layout/MaintenancePage';
+import LoginModal from '@/components/LoginModal';
+import { useLoginModal } from '@/hooks/useLoginModal';
+import { loginWithFirebase } from '@/services/apiClient';
+import { firebaseAuth } from '@/lib/firebase';
+import { showSuccess, showError } from '@/utils/messaging';
 
 // Suspense fallback component
 const SuspenseLoader = () => (
@@ -30,62 +37,259 @@ const SuspenseLoader = () => (
   </div>
 );
 
-function App() {
-	const { currentUser, isLoading, settings, settingsLoading, settingsLoadFailed } = useUser();
-	const location = useLocation();
+// Student Portal Component (only allowed routes)
+function StudentPortal() {
+	const { currentUser, settings, settingsLoading, settingsLoadFailed, login } = useUser();
+	const { showLoginModal, openLoginModal, closeLoginModal, executeCallback, modalMessage } = useLoginModal();
 
-	// Check if we're on the student portal subdomain
-	const isOnStudentPortal = isStudentPortal();
+	// Draggable return button states (same as Layout.jsx)
+	const [showReturnButton, setShowReturnButton] = useState(false);
+	const [returnButtonPosition, setReturnButtonPosition] = useState({ x: 20, y: 20 });
+	const [isDraggingReturn, setIsDraggingReturn] = useState(false);
+	const [returnDragOffset, setReturnDragOffset] = useState({ x: 0, y: 0 });
 
-	// Handle loading state - wait for both user auth AND settings to load
-	if (isLoading || settingsLoading) {
-		return (
-			<div className="flex items-center justify-center min-h-screen">
-				<LudoraLoadingSpinner
-					message="טוען את המערכת..."
-					size="lg"
-					theme="educational"
-					showLogo={true}
-				/>
-			</div>
-		);
-	}
+	// Check if user is being impersonated and show return button
+	useEffect(() => {
+		if (currentUser && currentUser._isImpersonated) {
+			setShowReturnButton(true);
+		} else {
+			setShowReturnButton(false);
+		}
+	}, [currentUser]);
 
+	// Mouse/touch handlers for draggable return button (same as Layout.jsx)
+	const handleMouseMove = useCallback((e) => {
+		if (!isDraggingReturn) return;
+		const newX = e.clientX - returnDragOffset.x;
+		const newY = e.clientY - returnDragOffset.y;
+		const buttonSize = 56;
+		const maxX = window.innerWidth - buttonSize;
+		const maxY = window.innerHeight - buttonSize;
+		setReturnButtonPosition({
+			x: Math.max(0, Math.min(newX, maxX)),
+			y: Math.max(0, Math.min(newY, maxY))
+		});
+	}, [isDraggingReturn, returnDragOffset]);
+
+	const handleMouseUp = useCallback(() => {
+		setIsDraggingReturn(false);
+	}, []);
+
+	// Effect for global mouse events for dragging
+	useEffect(() => {
+		if (isDraggingReturn) {
+			document.addEventListener('mousemove', handleMouseMove);
+			document.addEventListener('mouseup', handleMouseUp);
+		} else {
+			document.removeEventListener('mousemove', handleMouseMove);
+			document.removeEventListener('mouseup', handleMouseUp);
+		}
+		return () => {
+			document.removeEventListener('mousemove', handleMouseMove);
+			document.removeEventListener('mouseup', handleMouseUp);
+		};
+	}, [isDraggingReturn, handleMouseMove, handleMouseUp]);
+
+	// Admin/staff functionality
+	const handleReturnToSelf = () => {
+		window.location.reload(); // Reload to return to original admin session
+	};
+
+	// Drag handlers
+	const handleReturnDrag = (e) => {
+		setIsDraggingReturn(true);
+		const rect = e.currentTarget.getBoundingClientRect();
+		setReturnDragOffset({
+			x: e.clientX - rect.left,
+			y: e.clientY - rect.top
+		});
+	};
+
+	const handleTouchStart = (e) => {
+		const touch = e.touches[0];
+		setIsDraggingReturn(true);
+		const rect = e.currentTarget.getBoundingClientRect();
+		setReturnDragOffset({
+			x: touch.clientX - rect.left,
+			y: touch.clientY - rect.top
+		});
+		e.preventDefault();
+	};
+
+	const handleTouchMove = (e) => {
+		if (!isDraggingReturn) return;
+		const touch = e.touches[0];
+		const newX = touch.clientX - returnDragOffset.x;
+		const newY = touch.clientY - returnDragOffset.y;
+		const buttonSize = 56;
+		const maxX = window.innerWidth - buttonSize;
+		const maxY = window.innerHeight - buttonSize;
+		setReturnButtonPosition({
+			x: Math.max(0, Math.min(newX, maxX)),
+			y: Math.max(0, Math.min(newY, maxY))
+		});
+		e.preventDefault();
+	};
+
+	const handleTouchEnd = () => {
+		setIsDraggingReturn(false);
+	};
+
+	// Login handler (same as Layout.jsx)
+	const handleLoginSubmit = async (rememberMe = false) => {
+		try {
+			const { user, idToken } = await firebaseAuth.signInWithGoogle();
+			const firebaseResult = { user, idToken };
+			const apiResult = await loginWithFirebase({ idToken: firebaseResult.idToken });
+
+			if (apiResult.valid && apiResult.user) {
+				await login(apiResult.user, rememberMe);
+				showSuccess('התחברת בהצלחה!');
+				closeLoginModal();
+				setTimeout(() => {
+					executeCallback();
+				}, 500);
+			} else {
+				throw new Error('Authentication failed');
+			}
+		} catch (error) {
+			let errorMessage = 'שגיאה בכניסה. נסו שוב.';
+			if (error.message) {
+				if (error.message.includes('popup-closed-by-user')) {
+					errorMessage = 'ההתחברות בוטלה על ידי המשתמש.';
+				} else if (error.message.includes('Firebase not initialized')) {
+					errorMessage = 'שירות ההתחברות אינו זמין כעת.';
+				} else if (error.message.includes('auth/invalid-api-key')) {
+					errorMessage = 'בעיה בהגדרות הזיהוי. צרו קשר עם התמיכה.';
+				}
+			}
+			showError(errorMessage);
+			throw error;
+		}
+	};
+
+	const onLogin = () => {
+		openLoginModal();
+	};
+
+	// EXACT SAME maintenance logic as Layout.jsx
 	// Show maintenance page if enabled OR if settings loading failed (but allow admins to bypass)
 	if ((settings?.maintenance_mode || settingsLoadFailed) && !(currentUser?.role === 'admin' && !currentUser?._isImpersonated)) {
-		// Allow certain public pages even in maintenance mode
-		const allowedInMaintenanceRoutes = ['/contact', '/privacy', '/terms', '/accessibility'];
-		const isAllowedRoute = allowedInMaintenanceRoutes.includes(location.pathname);
+		const isTemporaryIssue = settingsLoadFailed && !settings?.maintenance_mode;
 
-		// Allow privacy/terms even in error mode (settingsLoadFailed)
-		const allowedInErrorRoutes = ['/privacy', '/terms'];
-		const isAllowedInError = settingsLoadFailed && allowedInErrorRoutes.includes(location.pathname);
-
-		if (!isAllowedRoute && !isAllowedInError) {
-			// For student portal, use student-friendly maintenance page
-			if (isOnStudentPortal) {
-				return (
-					<ConfirmationProvider>
-						<StudentApp isMaintenanceMode={true} settingsLoadFailed={settingsLoadFailed} />
-					</ConfirmationProvider>
-				);
-			}
-			// For teacher portal, continue with existing logic below (will be handled after this block)
-		} else {
-			// Allow the route to proceed normally (will be handled in the normal flow below)
-		}
-	}
-
-	// If on student portal and not in maintenance mode, render StudentApp
-	if (isOnStudentPortal) {
 		return (
-			<ConfirmationProvider>
-				<StudentApp isMaintenanceMode={false} />
-			</ConfirmationProvider>
+			<>
+				<MaintenancePage
+					showReturnButton={showReturnButton}
+					isDraggingReturn={isDraggingReturn}
+					returnButtonPosition={returnButtonPosition}
+					handleReturnDrag={handleReturnDrag}
+					handleTouchStart={handleTouchStart}
+					handleTouchMove={handleTouchMove}
+					handleTouchEnd={handleTouchEnd}
+					handleReturnToSelf={handleReturnToSelf}
+					handleLogin={onLogin}
+					isTemporaryIssue={isTemporaryIssue}
+				/>
+
+				{/* Login Modal */}
+				{showLoginModal && (
+					<LoginModal
+						onClose={closeLoginModal}
+						onLogin={handleLoginSubmit}
+						message={modalMessage}
+					/>
+				)}
+			</>
 		);
 	}
 
-	// Handle subscription payment result query parameters (teacher portal only)
+	return (
+		<>
+			<StudentsNav />
+			<Routes>
+				{/* Student Home */}
+				<Route
+					path='/'
+					element={
+						<Suspense fallback={<SuspenseLoader />}>
+							<LazyPages.StudentHome />
+						</Suspense>
+					}
+				/>
+
+				{/* Allowed public pages */}
+				<Route
+					path='/privacy'
+					element={
+						<Suspense fallback={<SuspenseLoader />}>
+							<LazyPages.PrivacyPolicy />
+						</Suspense>
+					}
+				/>
+				<Route
+					path='/terms'
+					element={
+						<Suspense fallback={<SuspenseLoader />}>
+							<LazyPages.TermsOfService />
+						</Suspense>
+					}
+				/>
+				<Route
+					path='/accessibility'
+					element={
+						<Suspense fallback={<SuspenseLoader />}>
+							<LazyPages.Accessibility />
+						</Suspense>
+					}
+				/>
+				<Route
+					path='/contact'
+					element={
+						<Suspense fallback={<SuspenseLoader />}>
+							<LazyPages.Contact />
+						</Suspense>
+					}
+				/>
+
+				{/* Student 404 Page */}
+				<Route
+					path='*'
+					element={
+						<Suspense fallback={<SuspenseLoader />}>
+							<LazyPages.StudentNotFound />
+						</Suspense>
+					}
+				/>
+			</Routes>
+			<Footer />
+		</>
+	);
+}
+
+function App() {
+	const { currentUser, isLoading } = useUser();
+	const location = useLocation();
+
+	// Check if we're on the student portal
+	const isOnStudentPortal = isStudentPortal();
+
+	// If on student portal, render student app without main layout/navigation
+	if (isOnStudentPortal) {
+		return (
+			<AudioCacheProvider>
+				<ConfirmationProvider>
+					<AuthErrorProvider>
+						<StudentPortal />
+						<EnhancedToaster />
+					</AuthErrorProvider>
+				</ConfirmationProvider>
+			</AudioCacheProvider>
+		);
+	}
+
+	// Teacher portal logic (everything below is for teacher portal)
+	// Handle subscription payment result query parameters
 	useEffect(() => {
 		const params = new URLSearchParams(location.search);
 
@@ -112,7 +316,6 @@ function App() {
 		}
 	}, [location.search]);
 
-	// Teacher portal layout (existing functionality)
 	return (
 		<AudioCacheProvider>
 			<ConfirmationProvider>
