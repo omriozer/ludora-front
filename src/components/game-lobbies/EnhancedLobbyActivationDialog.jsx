@@ -30,7 +30,10 @@ import {
   Timer,
   UserPlus,
   BookOpen,
-  Info
+  UserCheck,
+  Shuffle,
+  ArrowRight,
+  MousePointer
 } from 'lucide-react';
 
 /**
@@ -83,6 +86,9 @@ export default function EnhancedLobbyActivationDialog({
     // Player settings
     maxPlayers: config.lobbyDefaults.max_players,
 
+    // Invitation settings
+    invitationType: 'manual_selection', // 'manual_selection', 'teacher_assignment', 'random', 'order'
+
     // Session configuration
     autoCreateSessions: true,
     playersPerSession: config.sessionDefaults.players_per_session
@@ -112,6 +118,7 @@ export default function EnhancedLobbyActivationDialog({
         duration: config.lobbyDefaults.session_duration,
         expiresAt: '',
         maxPlayers: config.lobbyDefaults.max_players,
+        invitationType: 'manual_selection',
         autoCreateSessions: true,
         playersPerSession: config.sessionDefaults.players_per_session
       });
@@ -135,6 +142,7 @@ export default function EnhancedLobbyActivationDialog({
     const activationData = {
       expires_at,
       max_players: formData.maxPlayers,
+      invitation_type: formData.invitationType,
       session_config: {
         auto_create_sessions: formData.autoCreateSessions,
         session_count: sessionDistribution.recommendedSessions,
@@ -159,7 +167,7 @@ export default function EnhancedLobbyActivationDialog({
             <Play className="w-8 h-8 text-blue-600" />
             {isEditMode ? `עריכת הגדרות לובי - ${gameName}` : `יצירת לובי חדש - ${gameName}`}
           </DialogTitle>
-          <DialogDescription className="text-gray-600 text-lg mt-3">
+          <DialogDescription className="text-gray-600 text-lg mt-3 text-right">
             {isEditMode
               ? "ערוך את הגדרות הלובי. שינויים בזמן ישפיעו על כל הסשנים הקיימים, שינויים אחרים רק על סשנים חדשים"
               : "הגדר את הגדרות הלובי, מספר השחקנים המרבי וחדרי המשחק שייווצרו אוטומטית"
@@ -168,117 +176,176 @@ export default function EnhancedLobbyActivationDialog({
         </DialogHeader>
 
         <div className="space-y-8">
-          {/* Game Type Info */}
-          <Card className="bg-blue-50 border-blue-200">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-blue-800 text-lg flex items-center gap-3">
-                <Info className="w-5 h-5" />
-                מידע על סוג המשחק
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <p className="text-blue-700 text-base mb-4">{config.description}</p>
-              <div className="flex gap-4">
-                <Badge variant="outline" className="bg-white text-blue-700 border-blue-300 px-4 py-2">
-                  {config.sessionDefaults.players_per_session === config.sessionDefaults.max_players_per_session
-                    ? `${config.sessionDefaults.players_per_session} שחקנים לחדר`
-                    : `${config.sessionDefaults.players_per_session}-${config.sessionDefaults.max_players_per_session} שחקנים לחדר`
-                  }
-                </Badge>
-                <Badge variant="outline" className="bg-white text-blue-700 border-blue-300 px-4 py-2">
-                  עד {config.lobbyDefaults.max_players} שחקנים בסך הכל
-                </Badge>
-              </div>
-            </CardContent>
-          </Card>
 
-          {/* Expiration Settings */}
+          {/* Lobby Settings - Compact Single Row Layout */}
           <div className="space-y-6">
-            <Label className="text-lg font-semibold flex items-center gap-3">
-              <Clock className="w-5 h-5" />
-              זמן סיום הלובי
-            </Label>
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-3">
+                <Clock className="w-5 h-5 text-gray-600" />
+                <Label className="text-lg font-semibold">זמן סיום הלובי</Label>
+              </div>
+              <div className="flex items-center gap-3">
+                <Users className="w-5 h-5 text-gray-600" />
+                <Label className="text-lg font-semibold">הגדרות שחקנים</Label>
+              </div>
+            </div>
 
             <div className="space-y-4">
-              <Select
-                value={formData.durationType}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, durationType: value }))}
-              >
-                <SelectTrigger className="h-12">
-                  <SelectValue placeholder="בחר סוג זמן סיום" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="duration">החל מעכשיו</SelectItem>
-                  <SelectItem value="specific_time">תאריך ושעה ספציפיים</SelectItem>
-                  <SelectItem value="indefinite">ללא הגבלת זמן</SelectItem>
-                </SelectContent>
-              </Select>
+              {/* Invitation Type Field - Full Width */}
+              <div>
+                <Label className="text-sm font-medium text-gray-700 mb-3 block flex items-center gap-2">
+                  <UserPlus className="w-4 h-4" />
+                  אופן הצטרפות תלמידים
+                </Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div
+                    className={`p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ${
+                      formData.invitationType === 'manual_selection'
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                    onClick={() => setFormData(prev => ({ ...prev, invitationType: 'manual_selection' }))}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <MousePointer className="w-4 h-4 text-blue-600" />
+                      <span className="font-medium text-sm">בחירה ידנית</span>
+                    </div>
+                    <p className="text-xs text-gray-600">תלמידים רואים את כל החדרים ובוחרים איפה להצטרף</p>
+                  </div>
 
-              {formData.durationType === 'duration' && (
-                <div className="flex items-center gap-4">
+                  <div
+                    className={`p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ${
+                      formData.invitationType === 'teacher_assignment'
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                    onClick={() => setFormData(prev => ({ ...prev, invitationType: 'teacher_assignment' }))}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <UserCheck className="w-4 h-4 text-green-600" />
+                      <span className="font-medium text-sm">הקצאת מורה</span>
+                    </div>
+                    <p className="text-xs text-gray-600">המורה מקצה מראש תלמידים לחדרים ספציפיים</p>
+                  </div>
+
+                  <div
+                    className={`p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ${
+                      formData.invitationType === 'random'
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                    onClick={() => setFormData(prev => ({ ...prev, invitationType: 'random' }))}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <Shuffle className="w-4 h-4 text-purple-600" />
+                      <span className="font-medium text-sm">הקצאה אקראית</span>
+                    </div>
+                    <p className="text-xs text-gray-600">המערכת מקצה תלמידים אקראית לחדרים פנויים</p>
+                  </div>
+
+                  <div
+                    className={`p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ${
+                      formData.invitationType === 'order'
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                    onClick={() => setFormData(prev => ({ ...prev, invitationType: 'order' }))}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <ArrowRight className="w-4 h-4 text-orange-600" />
+                      <span className="font-medium text-sm">לפי סדר הגעה</span>
+                    </div>
+                    <p className="text-xs text-gray-600">תלמידים נכנסים לחדרים לפי סדר הגעה עד שמתמלאים</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Compact 4-column layout for other fields */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+                {/* Duration Type */}
+                <div>
+                  <Label className="text-sm font-medium text-gray-700 mb-2 block">סוג זמן סיום</Label>
+                  <Select
+                    value={formData.durationType}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, durationType: value }))}
+                  >
+                    <SelectTrigger className="h-10 text-sm">
+                      <SelectValue placeholder="בחר סוג" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="duration">החל מעכשיו</SelectItem>
+                      <SelectItem value="specific_time">תאריך ושעה</SelectItem>
+                      <SelectItem value="indefinite">ללא הגבלה</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Duration Value */}
+                <div>
+                  {formData.durationType === 'duration' && (
+                    <>
+                      <Label className="text-sm font-medium text-gray-700 mb-2 block">משך זמן (דקות)</Label>
+                      <Input
+                        type="number"
+                        min="5"
+                        max="1440"
+                        value={formData.duration}
+                        onChange={(e) => setFormData(prev => ({ ...prev, duration: parseInt(e.target.value) }))}
+                        className="h-10 text-sm"
+                        placeholder="40"
+                      />
+                    </>
+                  )}
+
+                  {formData.durationType === 'specific_time' && (
+                    <>
+                      <Label className="text-sm font-medium text-gray-700 mb-2 block">תאריך ושעה</Label>
+                      <Input
+                        type="datetime-local"
+                        value={formData.expiresAt}
+                        onChange={(e) => setFormData(prev => ({ ...prev, expiresAt: e.target.value }))}
+                        min={new Date().toISOString().slice(0, 16)}
+                        className="h-10 text-sm"
+                      />
+                    </>
+                  )}
+                </div>
+
+                {/* Max Players */}
+                <div>
+                  <Label className="text-sm font-medium text-gray-700 mb-2 block">מספר שחקנים מרבי בלובי</Label>
                   <Input
                     type="number"
-                    min="5"
-                    max="1440"
-                    value={formData.duration}
-                    onChange={(e) => setFormData(prev => ({ ...prev, duration: parseInt(e.target.value) }))}
-                    className="w-24 h-12"
+                    min="2"
+                    max="100"
+                    value={formData.maxPlayers}
+                    onChange={(e) => setFormData(prev => ({ ...prev, maxPlayers: parseInt(e.target.value) }))}
+                    className="h-10 text-sm"
+                    placeholder="40"
                   />
-                  <span className="text-base text-gray-600">דקות</span>
                 </div>
-              )}
 
-              {formData.durationType === 'specific_time' && (
-                <Input
-                  type="datetime-local"
-                  value={formData.expiresAt}
-                  onChange={(e) => setFormData(prev => ({ ...prev, expiresAt: e.target.value }))}
-                  min={new Date().toISOString().slice(0, 16)}
-                  className="h-12"
-                />
-              )}
+                {/* Players Per Session */}
+                <div>
+                  <Label className="text-sm font-medium text-gray-700 mb-2 block">שחקנים בכל חדר משחק</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    max={config.sessionDefaults.max_players_per_session}
+                    value={formData.playersPerSession}
+                    onChange={(e) => setFormData(prev => ({ ...prev, playersPerSession: parseInt(e.target.value) }))}
+                    className="h-10 text-sm"
+                    placeholder="2"
+                  />
+                </div>
+              </div>
 
+              {/* Indefinite Message */}
               {formData.durationType === 'indefinite' && (
                 <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
                   <p className="text-yellow-800 text-base">הלובי יישאר פתוח ללא הגבלת זמן עד לסגירה ידנית</p>
                 </div>
               )}
-            </div>
-          </div>
-
-          <Separator />
-
-          {/* Player Settings */}
-          <div className="space-y-6">
-            <Label className="text-lg font-semibold flex items-center gap-3">
-              <Users className="w-5 h-5" />
-              הגדרות שחקנים
-            </Label>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div>
-                <Label className="text-base font-medium text-gray-700 mb-3 block">מספר שחקנים מרבי בלובי</Label>
-                <Input
-                  type="number"
-                  min="2"
-                  max="100"
-                  value={formData.maxPlayers}
-                  onChange={(e) => setFormData(prev => ({ ...prev, maxPlayers: parseInt(e.target.value) }))}
-                  className="w-full h-12 text-lg"
-                />
-              </div>
-
-              <div>
-                <Label className="text-base font-medium text-gray-700 mb-3 block">שחקנים בכל חדר משחק</Label>
-                <Input
-                  type="number"
-                  min="1"
-                  max={config.sessionDefaults.max_players_per_session}
-                  value={formData.playersPerSession}
-                  onChange={(e) => setFormData(prev => ({ ...prev, playersPerSession: parseInt(e.target.value) }))}
-                  className="w-full h-12 text-lg"
-                />
-              </div>
             </div>
           </div>
 

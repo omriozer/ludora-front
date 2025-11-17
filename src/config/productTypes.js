@@ -7,7 +7,7 @@
  * All other components should import and use names from this file.
  */
 
-import { Calendar, BookOpen, FileText, Play } from "lucide-react";
+import { Calendar, BookOpen, FileText, Play, Star } from "lucide-react";
 
 // Product Types Configuration with Catalog Settings
 export const PRODUCT_TYPES = {
@@ -205,35 +205,40 @@ export const NAV_ITEMS = {
     text: 'קבצים',
     defaultIcon: 'FileText',
     description: 'קבצים דיגיטליים להדפסה',
-    gradient: "from-emerald-400 via-teal-500 to-cyan-600"
+    gradient: "from-emerald-400 via-teal-500 to-cyan-600",
+    portal: 'teacher'
   },
   tools: {
     key: 'tools',
     text: 'כלים',
     defaultIcon: 'Settings',
     description: 'כלים דיגיטליים ויישומונים',
-    gradient: "from-slate-400 via-gray-500 to-zinc-600"
+    gradient: "from-slate-400 via-gray-500 to-zinc-600",
+    portal: 'teacher'
   },
   games: {
     key: 'games',
     text: 'משחקים',
     defaultIcon: 'Play',
     description: 'משחקים חינוכיים',
-    gradient: "from-purple-500 via-pink-500 to-red-500"
+    gradient: "from-purple-500 via-pink-500 to-red-500",
+    portal: 'teacher'
   },
   workshops: {
     key: 'workshops',
     text: 'הדרכות',
     defaultIcon: 'Calendar',
     description: 'הדרכות וסדנאות',
-    gradient: "from-blue-500 via-indigo-500 to-purple-600"
+    gradient: "from-blue-500 via-indigo-500 to-purple-600",
+    portal: 'teacher'
   },
   courses: {
     key: 'courses',
     text: 'קורסים',
     defaultIcon: 'BookOpen',
     description: 'קורסים מקוונים',
-    gradient: "from-orange-400 via-red-500 to-pink-600"
+    gradient: "from-orange-400 via-red-500 to-pink-600",
+    portal: 'teacher'
   },
   classrooms: {
     key: 'classrooms',
@@ -242,7 +247,8 @@ export const NAV_ITEMS = {
     defaultIcon: 'GraduationCap',
     description: 'ניהול כיתות ותלמידים',
     requiresSubscription: true,
-    gradient: "from-teal-400 via-cyan-500 to-blue-600"
+    gradient: "from-teal-400 via-cyan-500 to-blue-600",
+    portal: 'teacher'
   },
   account: {
     key: 'account',
@@ -250,7 +256,8 @@ export const NAV_ITEMS = {
     text: 'החשבון שלי',
     defaultIcon: 'UserIcon',
     description: 'ניהול חשבון משתמש',
-    gradient: "from-gray-500 via-slate-500 to-gray-600"
+    gradient: "from-gray-500 via-slate-500 to-gray-600",
+    portal: 'both'
   },
   content_creators: {
     key: 'content_creators',
@@ -259,7 +266,8 @@ export const NAV_ITEMS = {
     defaultIcon: 'Users',
     description: 'פורטל יוצרי תוכן',
     specialVisibility: true,
-    gradient: "from-indigo-500 via-purple-500 to-pink-600"
+    gradient: "from-indigo-500 via-purple-500 to-pink-600",
+    portal: 'teacher'
   },
   curriculum: {
     key: 'curriculum',
@@ -267,7 +275,8 @@ export const NAV_ITEMS = {
     text: 'תכניות לימודים',
     defaultIcon: 'BookOpen',
     description: 'ניהול תכניות לימודים לפי מקצועות וכיתות',
-    gradient: "from-blue-500 via-indigo-500 to-purple-600"
+    gradient: "from-blue-500 via-indigo-500 to-purple-600",
+    portal: 'teacher'
   },
   lesson_plans: {
     key: 'lesson_plans',
@@ -275,8 +284,62 @@ export const NAV_ITEMS = {
     text: 'מערכי שיעור',
     defaultIcon: 'BookOpen',
     description: 'מערכי שיעור מוכנים עם מצגות ונכסים',
-    gradient: "from-indigo-400 via-blue-500 to-cyan-600"
+    gradient: "from-indigo-400 via-blue-500 to-cyan-600",
+    portal: 'teacher'
+  },
+  // Student-specific navigation items
+  student_games: {
+    key: 'student_games',
+    text: 'משחקים מהנים',
+    defaultIcon: 'Play',
+    description: 'משחקים חינוכיים מהנים ופשוטים',
+    gradient: "from-purple-500 via-pink-500 to-red-500",
+    portal: 'student',
+    url: '/student/games'
+  },
+  student_activities: {
+    key: 'student_activities',
+    text: 'פעילויות',
+    defaultIcon: 'Star',
+    description: 'פעילויות למידה אינטראקטיביות',
+    gradient: "from-yellow-400 via-orange-500 to-red-500",
+    portal: 'student',
+    url: '/student/activities'
+  },
+  student_materials: {
+    key: 'student_materials',
+    text: 'חומרי לימוד',
+    defaultIcon: 'BookOpen',
+    description: 'חומרי לימוד ומשאבים',
+    gradient: "from-emerald-400 via-teal-500 to-cyan-600",
+    portal: 'student',
+    url: '/student/materials'
+  },
+  student_profile: {
+    key: 'student_profile',
+    text: 'הפרופיל שלי',
+    defaultIcon: 'UserIcon',
+    description: 'הפרופיל האישי שלי',
+    gradient: "from-blue-400 via-purple-500 to-pink-600",
+    portal: 'student',
+    url: '/student/profile'
   }
+};
+
+// Portal filtering utility functions
+export const getNavItemsForPortal = (portalType) => {
+  return Object.keys(NAV_ITEMS).filter(key => {
+    const navItem = NAV_ITEMS[key];
+    return navItem.portal === portalType || navItem.portal === 'both';
+  });
+};
+
+export const filterNavItemsByPortal = (navItems, portalType) => {
+  return navItems.filter(itemKey => {
+    const navItemConfig = getNavItemConfig(itemKey);
+    if (!navItemConfig) return false;
+    return navItemConfig.portal === portalType || navItemConfig.portal === 'both';
+  });
 };
 
 // Utility functions
