@@ -25,8 +25,12 @@ import {
   School,
   UserCheck,
   ClipboardList,
-  BookOpenCheck
+  BookOpenCheck,
+  QrCode,
+  X
 } from 'lucide-react';
+import { renderQRCode, LUDORA_OFFICIAL_PRESET } from '@/utils/qrCodeUtils';
+import ProductImage from '@/components/ui/ProductImage';
 import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
 import { toast } from '@/components/ui/use-toast';
 import { getProductTypeName } from '@/config/productTypes';
@@ -411,6 +415,8 @@ function GameCard({ game, index }) {
   const [lobbyData, setLobbyData] = useState(null);
   const [lobbyLoading, setLobbyLoading] = useState(true);
   const [lobbyError, setLobbyError] = useState(null);
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [qrContainer, setQrContainer] = useState(null);
 
   // Enhanced lobby creation/editing dialog state
   const [showCreationDialog, setShowCreationDialog] = useState(false);
@@ -521,7 +527,7 @@ function GameCard({ game, index }) {
             max_players: creationData.max_players || maxPlayersPerSession,
             session_time_limit: 30,
             allow_guest_users: true,
-            invitation_type: 'lobby_only',
+            invitation_type: creationData.invitation_type || 'manual_selection',
             auto_close_after: 60
           }
         };
@@ -548,7 +554,7 @@ function GameCard({ game, index }) {
 
         toast({
           title: "הגדרות הלובי עודכנו בהצלחה!",
-          description: "השינויים בזמן ישפיעו על כל הסשנים. שינויים אחרים ישפיעו על סשנים חדשים בלבד.",
+          description: "השינויים בזמן ישפיעו על כל החדרים. שינויים אחרים ישפיעו על חדרים חדשים בלבד.",
           variant: "default"
         });
       } else {
@@ -558,7 +564,7 @@ function GameCard({ game, index }) {
             max_players: creationData.max_players || maxPlayersPerSession,
             session_time_limit: 30,
             allow_guest_users: true,
-            invitation_type: 'lobby_only',
+            invitation_type: 'manual_selection',
             auto_close_after: 60
           }
         };
@@ -775,6 +781,39 @@ function GameCard({ game, index }) {
   const currentStatus = mostRecentLobby ? computeLobbyStatus(mostRecentLobby) : 'no_lobby';
   const StatusIcon = statusConfig.icon;
 
+  // Get invitation type display text
+  const getInvitationTypeText = (invitationType) => {
+    const invitationTypes = {
+      'manual_selection': 'בחירה ידנית',
+      'teacher_assignment': 'הקצאת מורה',
+      'random': 'הקצאה אקראית',
+      'order': 'לפי סדר הגעה'
+    };
+    return invitationTypes[invitationType] || 'בחירה ידנית';
+  };
+
+  const currentInvitationType = mostRecentLobby?.settings?.invitation_type || 'manual_selection';
+
+  // Check if QR code should be shown - show for eligible invitation types regardless of lobby status
+  const isEligibleInvitationType = ['manual_selection', 'random', 'order'].includes(currentInvitationType);
+  const showQRCode = isEligibleInvitationType && mostRecentLobby?.lobby_code;
+
+  // Generate QR code when modal is opened
+  useEffect(() => {
+    if (showQRModal && qrContainer && mostRecentLobby?.lobby_code) {
+      try {
+        const studentPortalUrl = `https://my.ludora.app/play/${mostRecentLobby.lobby_code}`;
+        renderQRCode(studentPortalUrl, qrContainer, LUDORA_OFFICIAL_PRESET, {
+          width: 400,
+          height: 400,
+          margin: 0  // Remove all padding/margin
+        });
+      } catch (error) {
+        console.error('Error generating QR code:', error);
+      }
+    }
+  }, [showQRModal, qrContainer, mostRecentLobby?.lobby_code]);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -783,9 +822,24 @@ function GameCard({ game, index }) {
     >
       <Card className="group transition-all duration-300 bg-white border border-gray-200 hover:border-blue-300 hover:shadow-xl overflow-hidden">
         <CardHeader className="pb-4">
-          {/* Game Icon and Title */}
-          <div className="aspect-video bg-gradient-to-br from-blue-50 to-emerald-50 rounded-lg mb-4 flex items-center justify-center border border-gray-100">
-            <BookOpen className="w-16 h-16 text-blue-500" />
+          {/* Game Image with QR Code Button */}
+          <div className="aspect-video bg-gradient-to-br from-blue-50 to-emerald-50 rounded-lg mb-4 flex items-center justify-center border border-gray-100 overflow-hidden relative">
+            <ProductImage
+              product={game}
+              className="w-full h-full object-cover"
+              iconClassName="w-16 h-16 text-blue-500"
+              containerClassName="w-full h-full"
+            />
+            {showQRCode && (
+              <Button
+                onClick={() => setShowQRModal(true)}
+                size="sm"
+                className="absolute top-2 right-2 bg-teal-500 hover:bg-teal-600 text-white shadow-lg z-10"
+              >
+                <QrCode className="w-4 h-4 mr-1" />
+                QR
+              </Button>
+            )}
           </div>
           <CardTitle className="text-gray-800 text-xl mb-3 leading-tight">{gameTitle}</CardTitle>
 
@@ -802,23 +856,39 @@ function GameCard({ game, index }) {
                   <span className="text-xs text-gray-500 mr-1">{statusConfig.timeInfo}</span>
                 )}
               </div>
-              <span className="text-gray-500 text-sm font-medium">
-                {totalActiveSessions} / {maxPlayersPerSession} סשנים
-              </span>
+              <div className="flex flex-col items-end gap-1">
+                <span className="text-gray-500 text-sm font-medium">
+                  {totalActiveSessions} חדרים פעילים
+                </span>
+                {totalOnlinePlayers > 0 && (
+                  <span className="text-blue-600 text-xs font-medium">
+                    {totalOnlinePlayers} משתתפים כולל
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Invitation Type Display */}
+            <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
+              <div className="flex items-center gap-2">
+                <UserPlus className="w-4 h-4 text-blue-600" />
+                <span className="text-sm font-medium text-blue-800">אופן הצטרפות:</span>
+                <span className="text-sm text-blue-700">{getInvitationTypeText(currentInvitationType)}</span>
+              </div>
             </div>
 
             {/* Session Details */}
             {totalActiveSessions > 0 && !lobbyLoading && (
               <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-blue-800">סשנים פעילים</span>
+                  <span className="text-sm font-medium text-blue-800">חדרים פעילים</span>
                   <span className="text-sm text-blue-600">{totalOnlinePlayers} שחקנים מחוברים</span>
                 </div>
                 {lobbyData && lobbyData.lobbies.length > 0 && (
                   <div className="space-y-1">
                     {Array.from({ length: totalActiveSessions }, (_, idx) => (
                       <div key={idx} className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">סשן {idx + 1}</span>
+                        <span className="text-gray-600">חדר {idx + 1}</span>
                         <div className="flex items-center gap-2">
                           <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                           <span className="text-gray-700 font-medium">
@@ -948,7 +1018,7 @@ function GameCard({ game, index }) {
                   className="w-full bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-700 hover:to-emerald-700 text-white font-medium py-3 rounded-lg"
                 >
                   <Users className="w-5 h-5 mr-2" />
-                  נהל סשנים פעילים ({totalActiveSessions})
+                  נהל חדרים פעילים ({totalActiveSessions})
                 </Button>
                 <div className="grid grid-cols-2 gap-2">
                   <Button
@@ -997,6 +1067,56 @@ function GameCard({ game, index }) {
         isEditMode={isEditMode}
         existingLobbyData={isEditMode ? mostRecentLobby : null}
       />
+
+      {/* Full-Screen QR Code Modal */}
+      {showQRModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden relative">
+            {/* Close Button */}
+            <Button
+              onClick={() => setShowQRModal(false)}
+              variant="ghost"
+              size="sm"
+              className="absolute top-4 right-4 z-10 bg-white bg-opacity-90 hover:bg-opacity-100"
+            >
+              <X className="w-5 h-5" />
+            </Button>
+
+            {/* Header */}
+            <div className="bg-gradient-to-r from-teal-500 to-yellow-500 p-6 text-center">
+              <h2 className="text-2xl font-bold text-white mb-2">{gameTitle}</h2>
+              <p className="text-white opacity-90">סרוק להצטרפות למשחק</p>
+            </div>
+
+            {/* QR Code Container */}
+            <div className="p-8 flex flex-col items-center">
+              <div
+                ref={setQrContainer}
+                className="mb-6 bg-white"
+                style={{ width: 400, height: 400 }}
+              />
+
+              {/* Lobby Code */}
+              <div className="text-center">
+                <div className="text-sm text-gray-600 mb-1">קוד לובי:</div>
+                <div className="text-2xl font-bold text-gray-800 font-mono bg-gray-100 px-4 py-2 rounded-lg">
+                  {mostRecentLobby?.lobby_code}
+                </div>
+              </div>
+
+              {/* Instructions */}
+              <div className="mt-6 text-center max-w-md">
+                <p className="text-gray-600 text-sm leading-relaxed">
+                  תלמידים יכולים לסרוק את ה-QR או להזין את הקוד באתר:
+                </p>
+                <p className="text-blue-600 font-medium mt-2">
+                  my.ludora.app/play
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 }
