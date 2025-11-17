@@ -19,6 +19,9 @@ import { PRODUCT_TYPES } from './config/productTypes';
 import OnboardingWizard from '@/components/onboarding/OnboardingWizard';
 import { toast } from '@/components/ui/use-toast';
 import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
+// Student Portal imports
+import { isStudentPortal } from '@/utils/domainUtils';
+import StudentApp from '@/components/students/StudentApp';
 
 // Suspense fallback component
 const SuspenseLoader = () => (
@@ -28,10 +31,61 @@ const SuspenseLoader = () => (
 );
 
 function App() {
-	const { currentUser, isLoading } = useUser();
+	const { currentUser, isLoading, settings, settingsLoading, settingsLoadFailed } = useUser();
 	const location = useLocation();
 
-	// Handle subscription payment result query parameters
+	// Check if we're on the student portal subdomain
+	const isOnStudentPortal = isStudentPortal();
+
+	// Handle loading state - wait for both user auth AND settings to load
+	if (isLoading || settingsLoading) {
+		return (
+			<div className="flex items-center justify-center min-h-screen">
+				<LudoraLoadingSpinner
+					message="טוען את המערכת..."
+					size="lg"
+					theme="educational"
+					showLogo={true}
+				/>
+			</div>
+		);
+	}
+
+	// Show maintenance page if enabled OR if settings loading failed (but allow admins to bypass)
+	if ((settings?.maintenance_mode || settingsLoadFailed) && !(currentUser?.role === 'admin' && !currentUser?._isImpersonated)) {
+		// Allow certain public pages even in maintenance mode
+		const allowedInMaintenanceRoutes = ['/contact', '/privacy', '/terms', '/accessibility'];
+		const isAllowedRoute = allowedInMaintenanceRoutes.includes(location.pathname);
+
+		// Allow privacy/terms even in error mode (settingsLoadFailed)
+		const allowedInErrorRoutes = ['/privacy', '/terms'];
+		const isAllowedInError = settingsLoadFailed && allowedInErrorRoutes.includes(location.pathname);
+
+		if (!isAllowedRoute && !isAllowedInError) {
+			// For student portal, use student-friendly maintenance page
+			if (isOnStudentPortal) {
+				return (
+					<ConfirmationProvider>
+						<StudentApp isMaintenanceMode={true} settingsLoadFailed={settingsLoadFailed} />
+					</ConfirmationProvider>
+				);
+			}
+			// For teacher portal, continue with existing logic below (will be handled after this block)
+		} else {
+			// Allow the route to proceed normally (will be handled in the normal flow below)
+		}
+	}
+
+	// If on student portal and not in maintenance mode, render StudentApp
+	if (isOnStudentPortal) {
+		return (
+			<ConfirmationProvider>
+				<StudentApp isMaintenanceMode={false} />
+			</ConfirmationProvider>
+		);
+	}
+
+	// Handle subscription payment result query parameters (teacher portal only)
 	useEffect(() => {
 		const params = new URLSearchParams(location.search);
 
@@ -58,6 +112,7 @@ function App() {
 		}
 	}, [location.search]);
 
+	// Teacher portal layout (existing functionality)
 	return (
 		<AudioCacheProvider>
 			<ConfirmationProvider>
@@ -388,6 +443,44 @@ function App() {
 									</Suspense>
 								</OnboardingRedirect>
 							</ConditionalRoute>
+						}
+					/>
+
+					{/* Game Lobbies - Multiplayer game management */}
+					<Route
+						path='/game-lobbies'
+						element={
+							<ProtectedRoute>
+								<OnboardingRedirect>
+									<Suspense fallback={<SuspenseLoader />}>
+										<LazyPages.GameLobbies />
+									</Suspense>
+								</OnboardingRedirect>
+							</ProtectedRoute>
+						}
+					/>
+					<Route
+						path='/game-lobbies/:gameId'
+						element={
+							<ProtectedRoute>
+								<OnboardingRedirect>
+									<Suspense fallback={<SuspenseLoader />}>
+										<LazyPages.GameLobbies />
+									</Suspense>
+								</OnboardingRedirect>
+							</ProtectedRoute>
+						}
+					/>
+					<Route
+						path='/game-lobbies/:gameId/:sessionId'
+						element={
+							<ProtectedRoute>
+								<OnboardingRedirect>
+									<Suspense fallback={<SuspenseLoader />}>
+										<LazyPages.GameLobbies />
+									</Suspense>
+								</OnboardingRedirect>
+							</ProtectedRoute>
 						}
 					/>
 					<Route

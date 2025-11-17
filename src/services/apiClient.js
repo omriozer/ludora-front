@@ -447,7 +447,6 @@ export const LessonPlan = new EntityAPI('lessonplan');
 export const Purchase = new EntityAPI('purchase');
 export const EmailLog = new EntityAPI('emaillog');
 export const Game = new EntityAPI('game');
-export const GameContent = new EntityAPI('gamecontent');
 export const AudioFile = new EntityAPI('audiofile');
 export const Word = new EntityAPI('word');
 export const WordEN = new EntityAPI('worden');
@@ -455,6 +454,174 @@ export const Image = new EntityAPI('image');
 export const QA = new EntityAPI('qa');
 export const Grammar = new EntityAPI('grammar');
 export const ContentList = new EntityAPI('contentlist');
+
+// ==========================================
+// EDUCATIONAL CONTENT MANAGEMENT APIS
+// ==========================================
+
+/**
+ * EduContent API - Educational content management with file upload support
+ * Handles text content, image content, and card backgrounds with streaming URLs
+ */
+export const EduContent = {
+  /**
+   * List/search educational content with pagination
+   * @param {Object} params - Query parameters
+   * @param {string} params.search - Search term
+   * @param {string} params.element_type - Filter by element type
+   * @param {number} params.limit - Results per page (max 100)
+   * @param {number} params.offset - Results offset
+   * @returns {Promise<Object>} Paginated content results with fileUrls
+   */
+  async find(params = {}) {
+    const searchParams = new URLSearchParams();
+
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined && value !== null) {
+        searchParams.set(key, value);
+      }
+    }
+
+    const queryString = searchParams.toString();
+    const endpoint = queryString ? `/edu-content?${queryString}` : '/edu-content';
+    return apiRequest(endpoint);
+  },
+
+  /**
+   * Get single educational content item
+   * @param {string} id - Content ID
+   * @returns {Promise<Object>} Content with fileUrl if file exists
+   */
+  async findById(id) {
+    return apiRequest(`/edu-content/${id}`);
+  },
+
+  /**
+   * Create new text-based educational content
+   * @param {Object} data - Content data
+   * @param {string} data.element_type - 'data', 'playing_card_complete', 'playing_card_bg'
+   * @param {string} data.content - Content text/description
+   * @param {Object} data.content_metadata - Additional metadata
+   * @returns {Promise<Object>} Created content
+   */
+  async create(data) {
+    return apiRequest('/edu-content', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  },
+
+  /**
+   * Create educational content with file upload
+   * @param {FormData} formData - Form data with file and content info
+   * @param {Function} onProgress - Progress callback (optional)
+   * @returns {Promise<Object>} Created content with fileUrl
+   */
+  async upload(formData, onProgress = null) {
+    return apiUploadWithProgress('/edu-content/upload', formData, onProgress);
+  },
+
+  /**
+   * Update educational content metadata (not file)
+   * @param {string} id - Content ID
+   * @param {Object} data - Updates to apply
+   * @returns {Promise<Object>} Updated content
+   */
+  async update(id, data) {
+    return apiRequest(`/edu-content/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  },
+
+  /**
+   * Delete educational content with S3 cleanup
+   * @param {string} id - Content ID
+   * @returns {Promise<Object>} Success response
+   */
+  async delete(id) {
+    return apiRequest(`/edu-content/${id}`, {
+      method: 'DELETE'
+    });
+  },
+
+  /**
+   * Get content usage statistics
+   * @param {string} id - Content ID
+   * @returns {Promise<Object>} Usage statistics
+   */
+  async getUsage(id) {
+    return apiRequest(`/edu-content/${id}/usage`);
+  }
+};
+
+/**
+ * GameContent API - Game content management via EduContentUse relationships
+ * Handles the relationship between games and educational content
+ */
+export const GameContent = {
+  /**
+   * Get all content usage for a game with populated content and streaming URLs
+   * @param {string} gameId - Game ID
+   * @param {string} useType - Optional filter by use type ('pair', 'single_content', 'group')
+   * @returns {Promise<Array>} Content usage records with populated content
+   */
+  async getGameContents(gameId, useType = null) {
+    const params = useType ? `?use_type=${useType}` : '';
+    return apiRequest(`/games/${gameId}/contents${params}`);
+  },
+
+  /**
+   * Create new content usage for a game
+   * @param {string} gameId - Game ID
+   * @param {Object} data - Content usage data
+   * @param {string} data.use_type - 'pair', 'single_content', or 'group'
+   * @param {Array<string>} data.contents - Array of content IDs
+   * @returns {Promise<Object>} Created content usage with populated content
+   */
+  async createContentUse(gameId, data) {
+    return apiRequest(`/games/${gameId}/content-use`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  },
+
+  /**
+   * Update existing content usage for a game
+   * @param {string} gameId - Game ID
+   * @param {string} useId - Content usage ID
+   * @param {Object} data - Updates to apply
+   * @param {Array<string>} data.contents - New content IDs
+   * @returns {Promise<Object>} Updated content usage with populated content
+   */
+  async updateContentUse(gameId, useId, data) {
+    return apiRequest(`/games/${gameId}/content-use/${useId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  },
+
+  /**
+   * Delete content usage from a game
+   * @param {string} gameId - Game ID
+   * @param {string} useId - Content usage ID
+   * @returns {Promise<Object>} Success response
+   */
+  async deleteContentUse(gameId, useId) {
+    return apiRequest(`/games/${gameId}/content-use/${useId}`, {
+      method: 'DELETE'
+    });
+  },
+
+  /**
+   * Get content statistics for a game
+   * @param {string} gameId - Game ID
+   * @returns {Promise<Object>} Content statistics
+   */
+  async getGameContentStats(gameId) {
+    return apiRequest(`/games/${gameId}/content-stats`);
+  }
+};
 
 // Add custom method to ContentList
 ContentList.getContentItems = async function(listId) {

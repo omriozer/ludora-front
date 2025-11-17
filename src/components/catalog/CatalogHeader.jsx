@@ -1,6 +1,8 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, TrendingUp } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Sparkles, TrendingUp, Users } from 'lucide-react';
 import { getProductTypeName } from '@/config/productTypes';
 
 /**
@@ -15,6 +17,7 @@ export default function CatalogHeader({
   productCount,
   totalCount
 }) {
+  const navigate = useNavigate();
   // Helper function to safely parse colors
   const parseGradient = (colorString) => {
     if (!colorString) return 'linear-gradient(to right, #3B82F6, #2563EB)';
@@ -40,20 +43,41 @@ export default function CatalogHeader({
     return 'linear-gradient(to right, #3B82F6, #2563EB)';
   };
   return (
-    <div className="text-center mb-12">
-      {/* Title */}
-      <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-indigo-900 bg-clip-text text-transparent mb-6">
-        {config.title}
-      </h1>
+    <div className="mb-12">
+      {/* Title Row with Game Lobbies Button */}
+      <div className="relative flex items-center justify-center mb-6">
+        {/* Classroom Management Button - Only for educational activities catalog */}
+        {typeConfig.key === 'game' && currentUser && (
+          <div className="absolute left-0">
+            <Button
+              onClick={() => navigate('/game-lobbies')}
+              className="bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-700 hover:to-emerald-700 text-white font-medium rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 px-6 py-2.5"
+              size="default"
+            >
+              <span className="flex items-center justify-center gap-2">
+                <Users className="w-5 h-5" />
+                <span className="text-sm">נהל קבוצות תלמידים</span>
+              </span>
+            </Button>
+          </div>
+        )}
+
+        {/* Title - Center */}
+        <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-indigo-900 bg-clip-text text-transparent">
+          {config.title}
+        </h1>
+      </div>
 
       {/* Subtitle */}
-      <p className="text-xl md:text-2xl text-gray-600 max-w-4xl mx-auto leading-relaxed mb-8">
-        {config.subtitle}
-      </p>
+      <div className="text-center">
+        <p className="text-xl md:text-2xl text-gray-600 max-w-4xl mx-auto leading-relaxed mb-8">
+          {config.subtitle}
+        </p>
+      </div>
 
       {/* Analytics Section (Games only) */}
       {config.showAnalytics && currentUser && userAnalytics && (
-        <div className="mb-8">
+        <div className="text-center mb-8">
           <div className="bg-white/10 backdrop-blur-lg rounded-lg p-4 border border-white/20 max-w-md mx-auto">
             <h4 className="text-sm font-semibold text-center mb-3 text-blue-700">
               <TrendingUp className="w-4 h-4 inline mr-1" />
@@ -95,7 +119,7 @@ export default function CatalogHeader({
       )}
 
       {/* Product Count */}
-      <div className="flex justify-center">
+      <div className="text-center">
         <Badge className="bg-white/80 text-gray-700 px-4 py-2 text-base font-semibold shadow-md">
           {productCount} {productCount === totalCount ? '' : `מתוך ${totalCount}`} {getProductTypeName(typeConfig.key, 'plural')}
         </Badge>

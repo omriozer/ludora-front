@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { GraduationCap, Mail } from 'lucide-react';
+import { GraduationCap, Mail, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useUser } from '@/contexts/UserContext';
 import logo from '../../assets/images/logo.png';
@@ -24,7 +24,7 @@ const WhatsAppIcon = ({ className = "w-4 h-4" }) => (
   </svg>
 );
 
-export default function Footer({ isMaintenanceMode = false }) {
+export default function Footer({ isMaintenanceMode = false, theme = 'teacher' }) {
   const { settings } = useUser();
 
   // Static footer texts - converted from dynamic getText
@@ -42,85 +42,176 @@ export default function Footer({ isMaintenanceMode = false }) {
     accessibility: "הצהרת נגישות"
   };
 
-  return (
-    <footer className="bg-gray-900 text-white py-8" role="contentinfo">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid md:grid-cols-4 gap-8 mb-8">
+  // Student Footer - Same Layout as Teacher but Smaller
+  if (theme === 'student') {
+    return (
+      <footer className="student-footer" role="contentinfo">
+        <div className="student-footer-content">
           <div>
-            <div className="flex items-center gap-2 mb-4">
+            {/* Row 1: Logo and Headings */}
+            <div className="grid md:grid-cols-3 gap-2 items-end" style={{gridTemplateColumns: "1fr 2fr 2fr"}}>
+              <div className="flex items-center gap-2">
+                {logo || settings?.logo_url ? (
+                  <img
+                    src={logo || settings?.logo_url}
+                    alt={settings?.site_name || "לודורה"}
+                    className="h-12 md:h-16 object-contain"
+                  />
+                ) : (
+                  <>
+                    <div className="w-6 h-6 bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg flex items-center justify-center">
+                      <GraduationCap className="w-4 h-4 text-white" />
+                    </div>
+                    <h3 className="text-sm font-bold text-purple-700">
+                      {settings?.site_name || "לודורה"}
+                    </h3>
+                  </>
+                )}
+              </div>
+              <div>
+                <h4 className="student-footer-heading text-right mb-0 leading-none">{footerTexts.importantLinks}</h4>
+              </div>
+              <div>
+                <h4 className="student-footer-heading text-right mb-0 leading-none">{footerTexts.contactUs}</h4>
+              </div>
+            </div>
+
+            {/* Row 2: Content */}
+            <div className="grid md:grid-cols-3 gap-2 items-start" style={{gridTemplateColumns: "1fr 2fr 2fr"}}>
+              <div className="student-footer-description">
+                {settings?.site_description || 'בית ללמידה אחרת'}
+              </div>
+              <div className="flex gap-4 justify-start">
+                <Link to="/privacy" className="student-footer-link">{footerTexts.privacy}</Link>
+                <Link to="/terms" className="student-footer-link">{footerTexts.terms}</Link>
+                <Link to="/accessibility" className="student-footer-link">{footerTexts.accessibility}</Link>
+              </div>
+              <div className="flex items-center justify-start gap-3">
+                <span className="student-footer-contact-desc">{footerTexts.contactDescription}</span>
+                <div className="student-footer-buttons">
+                {/* WhatsApp Button */}
+                <a
+                  href={getWhatsAppUrl(getContactPhone(settings), 'שלום, יש לי שאלה על לודורה')}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <button className="student-footer-button student-footer-button-whatsapp">
+                    <WhatsAppIcon className="w-4 h-4" />
+                  </button>
+                </a>
+
+                {/* Email Button */}
+                <a
+                  href={getEmailUrl(getContactEmail(settings), 'שאלה על לודורה', '')}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <button className="student-footer-button student-footer-button-email">
+                    <Mail className="w-4 h-4" />
+                  </button>
+                </a>
+
+                {/* Contact Form Button */}
+                <Link to="/contact">
+                  <button className="student-footer-button student-footer-button-contact">
+                    {footerTexts.sendMessage}
+                  </button>
+                </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="student-footer-copyright">
+            <p className="student-footer-copyright-text">{footerTexts.copyright}</p>
+          </div>
+        </div>
+      </footer>
+    );
+  }
+
+  // Teacher Footer - Full Layout (ORIGINAL STYLING RESTORED)
+  return (
+    <footer className="bg-gray-900 text-white py-4" role="contentinfo">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="mb-2">
+          {/* Row 1: Logo and Headings */}
+          <div className="grid md:grid-cols-3 gap-4 items-end" style={{gridTemplateColumns: "1fr 2fr 2fr"}}>
+            <div className="flex items-center gap-2">
               {logo || settings?.logo_url ? (
                 <img
                   src={logo || settings?.logo_url}
                   alt={settings?.site_name || "לודורה"}
-                  className="h-12 md:h-16 object-contain -mb-4" // smaller and negative margin to reduce gap
-                  style={{marginBottom: '-1.5rem'}} // extra negative margin for fine-tuning
+                  className="h-16 md:h-20 object-contain"
                 />
               ) : (
                 <>
                   <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
                     <GraduationCap className="w-5 h-5 text-white" />
                   </div>
-                  <h3 className="text-lg font-bold text-gray-900">
+                  <h3 className="text-lg font-bold text-white">
                     {settings?.site_name || "לודורה"}
                   </h3>
                 </>
               )}
             </div>
-            <p className="font-semibold text-sm leading-relaxed">
+            <div>
+              <h4 className="font-semibold text-white text-right mb-0 leading-none">{footerTexts.importantLinks}</h4>
+            </div>
+            <div>
+              <h4 className="font-semibold text-white text-right mb-0 leading-none">{footerTexts.contactUs}</h4>
+            </div>
+          </div>
+
+          {/* Row 2: Content */}
+          <div className="grid md:grid-cols-3 gap-4 items-start mt-1" style={{gridTemplateColumns: "1fr 2fr 2fr"}}>
+            <div className="font-semibold text-sm text-white">
               {settings?.site_description || 'בית ללמידה אחרת'}
-            </p>
-          </div>
-
-          <div>
-            <h4 className="font-semibold mb-4">{footerTexts.importantLinks}</h4>
-            <ul className="space-y-2">
-              <li><Link to="/privacy" className="text-gray-400 hover:text-white transition-colors">{footerTexts.privacy}</Link></li>
-              <li><Link to="/terms" className="text-gray-400 hover:text-white transition-colors">{footerTexts.terms}</Link></li>
-              <li><Link to="/accessibility" className="text-gray-400 hover:text-white transition-colors">{footerTexts.accessibility}</Link></li>
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="font-semibold mb-4">{footerTexts.contactUs}</h4>
-            <p className="text-gray-400 mb-4">{footerTexts.contactDescription}</p>
-            <div className="space-y-3">
+            </div>
+            <div className="flex gap-4 justify-start">
+              <Link to="/privacy" className="text-gray-400 hover:text-white transition-colors">{footerTexts.privacy}</Link>
+              <Link to="/terms" className="text-gray-400 hover:text-white transition-colors">{footerTexts.terms}</Link>
+              <Link to="/accessibility" className="text-gray-400 hover:text-white transition-colors">{footerTexts.accessibility}</Link>
+            </div>
+            <div className="flex items-center justify-start gap-3">
+              <span className="text-gray-400">{footerTexts.contactDescription}</span>
+              <div className="flex gap-1">
               {/* WhatsApp Button */}
               <a
                 href={getWhatsAppUrl(getContactPhone(settings), 'שלום, יש לי שאלה על לודורה')}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block"
               >
-                <Button className="bg-green-600 hover:bg-green-700 text-white border-0 w-full transition-colors">
-                  <WhatsAppIcon className="w-4 h-4 mr-2" />
-                  {footerTexts.whatsappMessage}
+                <Button className="bg-green-600 hover:bg-green-700 text-white border-0 transition-colors whitespace-nowrap">
+                  <WhatsAppIcon className="w-4 h-4" />
                 </Button>
               </a>
 
               {/* Email Button */}
               <a
-                href={getEmailUrl(getContactEmail(settings), 'שאלה על לודורה', '')}
-                className="block"
+                href={getEmailUrl(getContactEmail(settings), 'שאלה על לודורא', '')}
+                target="_blank"
+                rel="noopener noreferrer"
               >
-                <Button className="bg-blue-600 hover:bg-blue-700 text-white border-0 w-full transition-colors">
-                  <Mail className="w-4 h-4 mr-2" />
-                  {footerTexts.emailMessage}
+                <Button className="bg-blue-600 hover:bg-blue-700 text-white border-0 transition-colors whitespace-nowrap">
+                  <Mail className="w-4 h-4" />
                 </Button>
               </a>
 
               {/* Contact Us Button - Hidden in maintenance mode */}
               {!isMaintenanceMode && (
-                <Link to="/contact" className="block">
-                  <Button variant="outline" className="bg-transparent border-white text-white hover:bg-white hover:text-gray-900 w-full">
+                <Link to="/contact">
+                  <Button variant="outline" className="bg-transparent border-white text-white hover:bg-white hover:text-gray-900 whitespace-nowrap">
                     {footerTexts.sendMessage}
                   </Button>
                 </Link>
               )}
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="border-t border-gray-800 mt-8 pt-8 text-center">
+        <div className="border-t border-gray-800 mt-1 pt-1 text-center">
           <p className="font-semibold">{footerTexts.copyright}</p>
         </div>
       </div>

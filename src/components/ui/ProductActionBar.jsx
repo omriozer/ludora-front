@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ShoppingCart } from 'lucide-react';
+import { ShoppingCart, Users } from 'lucide-react';
 import { useProductAccess } from '@/hooks/useProductAccess';
 import BuyProductButton from '@/components/ui/BuyProductButton';
 import AddToCartButton from '@/components/ui/AddToCartButton';
@@ -107,6 +107,23 @@ export default function ProductActionBar({
             fullWidth={fullWidth}
             onWorkshopAccess={onWorkshopAccess}
           />
+        );
+      case 'game':
+        return (
+          <Button
+            onClick={(e) => {
+              e.stopPropagation();
+              // Navigate to classroom management for this educational activity
+              navigate(`/game-lobbies/${product.entity_id || product.id}`);
+            }}
+            className={`bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-700 hover:to-emerald-700 text-white font-medium rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 ${fullWidth ? 'w-full' : ''} ${className}`}
+            size={size}
+          >
+            <span className="flex items-center justify-center gap-2 sm:gap-3">
+              <Users className="w-5 h-5 sm:w-6 sm:h-6" />
+              <span>נהל תלמידים</span>
+            </span>
+          </Button>
         );
       default:
         // Generic access button for other product types

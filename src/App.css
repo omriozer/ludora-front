@@ -1,3 +1,6 @@
+/* Import Ludora Design System Global Styles */
+@import './styles/globalStyles.css';
+
 /*
   Moved from inline <style> in Layout.jsx:
   - Global height, margin, padding resets

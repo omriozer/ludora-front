@@ -1,8 +1,9 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { User, SubscriptionPlan, SubscriptionHistory, Settings } from '@/services/apiClient';
 import { loadSettingsWithRetry } from '@/lib/appUser';
 import { clog, cerror } from '@/lib/utils';
 import { toast } from '@/components/ui/use-toast';
+import { SETTINGS_RETRY_INTERVALS } from '@/constants/settings';
 
 const UserContext = createContext(null);
 
@@ -22,6 +23,9 @@ export function UserProvider({ children }) {
   const [settingsLoading, setSettingsLoading] = useState(true);
   const [settingsLoadFailed, setSettingsLoadFailed] = useState(false);
   const [userDataFresh, setUserDataFresh] = useState(false);
+
+  // Retry mechanism for settings loading
+  const retryIntervalRef = useRef(null);
 
   // Load settings independently of user authentication
   const loadSettings = useCallback(async () => {
@@ -43,6 +47,57 @@ export function UserProvider({ children }) {
     }
   }, []);
 
+  // Silent retry function - doesn't show loading states or errors in UI
+  const retryLoadSettings = useCallback(async () => {
+    try {
+      const appSettings = await loadSettingsWithRetry(Settings);
+      if (appSettings && appSettings.length > 0) {
+        setSettings(appSettings[0]);
+        setSettingsLoadFailed(false);
+        // Stop retrying on successful load
+        stopSettingsRetry();
+      } else {
+        setSettings(null);
+        // Continue retrying if no settings returned
+      }
+    } catch (error) {
+      cerror('[UserContext] Silent retry failed:', error);
+      // Continue retrying on error (silent failure)
+    }
+  }, []);
+
+  // Stop the settings retry mechanism
+  const stopSettingsRetry = useCallback(() => {
+    if (retryIntervalRef.current) {
+      clearInterval(retryIntervalRef.current);
+      retryIntervalRef.current = null;
+    }
+  }, []);
+
+  // Start settings retry with appropriate interval based on current state
+  const startSettingsRetry = useCallback(() => {
+    // Stop any existing retry first
+    stopSettingsRetry();
+
+    // Determine retry interval based on current state
+    let interval;
+    if (settingsLoadFailed) {
+      // System error mode - use faster interval
+      interval = SETTINGS_RETRY_INTERVALS.SYSTEM_ERROR;
+    } else if (settings?.maintenance_mode) {
+      // Regular maintenance mode - use slower interval
+      interval = SETTINGS_RETRY_INTERVALS.MAINTENANCE;
+    } else {
+      // No retry needed
+      return;
+    }
+
+    // Start retry interval
+    retryIntervalRef.current = setInterval(() => {
+      retryLoadSettings();
+    }, interval);
+  }, [settingsLoadFailed, settings?.maintenance_mode, retryLoadSettings, stopSettingsRetry]);
+
   // Check for persisted auth state on mount and load settings
   useEffect(() => {
     const init = async () => {
@@ -53,6 +108,22 @@ export function UserProvider({ children }) {
     };
     init();
   }, [loadSettings]);
+
+  // Start retry mechanism when settings fail to load or maintenance mode is active
+  useEffect(() => {
+    if (settingsLoadFailed || settings?.maintenance_mode) {
+      startSettingsRetry();
+    } else {
+      stopSettingsRetry();
+    }
+  }, [settingsLoadFailed, settings?.maintenance_mode, startSettingsRetry, stopSettingsRetry]);
+
+  // Cleanup retry interval on unmount
+  useEffect(() => {
+    return () => {
+      stopSettingsRetry();
+    };
+  }, [stopSettingsRetry]);
 
   const checkPersistedAuth = useCallback(async () => {
     try {

@@ -1,8 +1,12 @@
 /**
- * Fonts for PDF Template Editor
- * These fonts match exactly what the backend uses for PDF generation
- * - Inter: For English/Latin text
- * - NotoSansHebrew: For Hebrew text
+ * Comprehensive Font Library for Hebrew/English Text
+ * Extended collection supporting PDF generation and UI components
+ * - Inter: Modern, clean (English/Hebrew)
+ * - NotoSansHebrew: Optimized for Hebrew text
+ * - Rubik: Rounded, friendly (English/Hebrew)
+ * - Heebo: Hebrew-first design (English/Hebrew)
+ * - Assistant: Clean, readable (English/Hebrew)
+ * - Frank Ruehl Libre: Traditional Hebrew serif
  */
 
 /* Inter Font Declarations - Match backend PDF generation */
@@ -42,6 +46,66 @@
   font-family: 'NotoSansHebrew-Variable';
   src: url('/fonts/NotoSansHebrew-Variable.ttf') format('truetype');
   font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Rubik Font Declarations - Modern, rounded design with excellent Hebrew support */
+@font-face {
+  font-family: 'Rubik';
+  src: url('/fonts/Rubik-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Rubik';
+  src: url('/fonts/Rubik-Bold.ttf') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Heebo Font Declarations - Hebrew-first design optimized for Hebrew text */
+@font-face {
+  font-family: 'Heebo';
+  src: url('/fonts/Heebo-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Heebo';
+  src: url('/fonts/Heebo-Bold.ttf') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Assistant Font Declarations - Clean, readable design for UI text */
+@font-face {
+  font-family: 'Assistant';
+  src: url('/fonts/Assistant-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Assistant';
+  src: url('/fonts/Assistant-Bold.ttf') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Frank Ruehl Libre Font Declarations - Traditional Hebrew serif */
+@font-face {
+  font-family: 'Frank Ruehl Libre';
+  src: url('/fonts/Frank-Ruehl-Libre-Regular.ttf') format('truetype');
+  font-weight: normal;
   font-style: normal;
   font-display: swap;
 }
