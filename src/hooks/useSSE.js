@@ -688,6 +688,9 @@ export function useSSE(channels = [], options = {}) {
 
   // Auto-connect on mount or channel/config changes
   useEffect(() => {
+    // Reset unmounted flag since effect is running (component is mounted)
+    isUnmountedRef.current = false;
+
     console.log('🔄 [useSSE] Effect triggered - channels or sessionContext changed:', {
       channels: channels,
       sessionContext: config.sessionContext,
