@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useUser } from '@/contexts/UserContext';
 import { motion } from 'framer-motion';
 import { apiRequest } from '@/services/apiClient';
+import { useSSE, SSE_CONNECTION_STATES } from '@/hooks/useSSE';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -30,33 +31,13 @@ import {
   X
 } from 'lucide-react';
 import { renderQRCode, LUDORA_OFFICIAL_PRESET } from '@/utils/qrCodeUtils';
+import { computeLobbyStatus, isLobbyActive, filterActiveLobbies, getLobbyStatusConfig, findBestActiveLobby, findMostRecentLobby } from '@/utils/lobbyUtils';
 import ProductImage from '@/components/ui/ProductImage';
 import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
 import { toast } from '@/components/ui/use-toast';
 import { getProductTypeName } from '@/config/productTypes';
 import EnhancedLobbyCreationDialog from '@/components/game-lobbies/EnhancedLobbyActivationDialog';
 
-// Utility function for computing lobby status based on expiration
-const computeLobbyStatus = (lobby) => {
-  // Manual close takes precedence
-  if (lobby.closed_at) return 'closed';
-
-  // No expiration = pending activation
-  if (!lobby.expires_at) return 'pending';
-
-  const now = new Date();
-  const expiration = new Date(lobby.expires_at);
-  const fiftyYearsFromNow = new Date(now.getFullYear() + 50, now.getMonth(), now.getDate());
-
-  // Past expiration = closed
-  if (expiration <= now) return 'closed';
-
-  // ~50+ years = indefinite (more reliable threshold)
-  if (expiration >= fiftyYearsFromNow) return 'open_indefinitely';
-
-  // Normal future date = open
-  return 'open';
-};
 
 // Main component
 export default function GameLobbies() {
@@ -73,7 +54,6 @@ export default function GameLobbies() {
         // Fetch user's accessible games with purchase data from the /api/games endpoint
         // This endpoint returns games the user owns/created or has access to, with embedded product data
         const games = await apiRequest('/games');
-        console.log('Fetched games:', games); // Debug: log the actual structure
 
         setUserGames(games || []);
         setLoading(false);
@@ -184,7 +164,7 @@ function MainLobbyView({ userGames, loading }) {
 
             {/* Subtitle */}
             <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8 leading-relaxed">
-              נהל קבוצות תלמידים, צור סשני {getProductTypeName('game', 'plural')} אינטראקטיביים ועקוב אחר התקדמות הכיתה
+              נהל קבוצות תלמידים, צור חדרי {getProductTypeName('game', 'plural')} אינטראקטיביים ועקוב אחר התקדמות הכיתה
             </p>
 
             {/* Search Bar */}
@@ -262,7 +242,7 @@ function EmptyGamesState() {
 
           {/* Description */}
           <p className="text-xl text-gray-600 mb-8 leading-relaxed max-w-2xl mx-auto">
-            כדי ליצור סשני {getProductTypeName('game', 'plural')} קבוצתיים, תחילה עליך לרכוש {getProductTypeName('game', 'plural')} חינוכיים מהקטלוג.
+            כדי ליצור חדרי {getProductTypeName('game', 'plural')} קבוצתיים, תחילה עליך לרכוש {getProductTypeName('game', 'plural')} חינוכיים מהקטלוג.
             <br />
             בחר ממגוון רחב של {getProductTypeName('game', 'plural')} פדגוגיים והתחל ליצור חוויות למידה מעניינות עבור התלמידים!
           </p>
@@ -358,7 +338,7 @@ function ActiveGamesGrid({ userGames, searchTerm }) {
               ה{getProductTypeName('game', 'plural')} שלך ({filteredGames.length})
             </h2>
             <p className="text-gray-600">
-              נהל קבוצות תלמידים וצור סשני {getProductTypeName('game', 'plural')} חדשים עבור הכיתות שלך
+              נהל קבוצות תלמידים וצור חדרי {getProductTypeName('game', 'plural')} חדשים עבור הכיתות שלך
             </p>
           </div>
           <div className="flex gap-3">
@@ -426,10 +406,123 @@ function GameCard({ game, index }) {
   // Safely get the game title from various possible locations
   const gameTitle = game.title || game.name || game.product?.title || game.product?.name || 'משחק ללא שם';
 
+  // Use reusable utility to find the most recent lobby (prioritizes active lobbies)
+  const mostRecentLobby = findMostRecentLobby(lobbyData?.lobbies || []);
+
+  // Use a ref to maintain truly stable lobbyId to prevent SSE reconnections
+  const stableLobbyIdRef = useRef(null);
+
+  // Only update the stable lobby ID when we have confirmed data, never go back to null
+  if (lobbyData && !lobbyLoading && mostRecentLobby?.id && !stableLobbyIdRef.current) {
+    stableLobbyIdRef.current = mostRecentLobby.id;
+  }
+
+  // Build session context that only changes when gameId changes (not lobbyId)
+  const sessionContext = useMemo(() => {
+    const context = {
+      gameId: game.id,
+      lobbyId: stableLobbyIdRef.current, // Truly stable - set once and never changes
+      sessionId: null, // Set when in specific session
+      isLobbyOwner: true, // User is owner since they're managing the lobby
+      isActiveParticipant: true, // User is actively managing
+      priorityHint: 'lobby_status' // Valid SSE priority type for lobby monitoring
+    };
+
+    console.log('🔍 [GameCard] SessionContext created:', {
+      gameId: game.id,
+      stableLobbyId: stableLobbyIdRef.current,
+      lobbyLoading,
+      hasLobbyData: !!lobbyData,
+      lobbiesCount: lobbyData?.lobbies?.length || 0,
+      mostRecentLobby: mostRecentLobby ? { id: mostRecentLobby.id, status: computeLobbyStatus(mostRecentLobby) } : null,
+      context
+    });
+
+    return context;
+  }, [game.id]); // Only depend on gameId - lobbyId is truly stable via ref
+
+  // Memoize SSE options to ensure proper reactivity when sessionContext changes
+  const sseOptions = useMemo(() => {
+    const options = {
+      debugMode: true,
+      autoReconnect: true,
+      sessionContext
+    };
+
+    console.log('🔄 [GameCard] SSE Options updated:', {
+      gameId: game.id,
+      sessionContextLobbyId: sessionContext?.lobbyId,
+      options
+    });
+
+    return options;
+  }, [sessionContext]);
+
+  // SSE integration for real-time lobby updates with session context
+  const {
+    connectionState,
+    isConnected,
+    isConnecting,
+    isReconnecting,
+    error,
+    retryCount,
+    addEventListener,
+    removeEventListener
+  } = useSSE(
+    [`game:${game.id}`], // Subscribe to this game's events
+    sseOptions
+  );
+
+  // Handle SSE events for real-time updates
+  useEffect(() => {
+    const handleLobbyEvent = (event) => {
+      // For any lobby-related event, refresh the lobby data to get the latest state
+      if (event.data?.gameId === game.id || event.data?.game_id === game.id) {
+        fetchLobbyData(false); // Don't show loading during SSE updates
+      }
+    };
+
+    const handleSessionEvent = (event) => {
+      // For any session-related event, refresh the lobby data to get updated participant counts
+      if (event.data?.gameId === game.id || event.data?.game_id === game.id) {
+        fetchLobbyData(false); // Don't show loading during SSE updates
+      }
+    };
+
+    // Register event handlers for lobby events
+    const cleanupLobbyCreated = addEventListener('lobby:created', handleLobbyEvent);
+    const cleanupLobbyActivated = addEventListener('lobby:activated', handleLobbyEvent);
+    const cleanupLobbyClosed = addEventListener('lobby:closed', handleLobbyEvent);
+    const cleanupLobbyExpired = addEventListener('lobby:expired', handleLobbyEvent);
+
+    // Register event handlers for session events that affect participant counts
+    const cleanupSessionCreated = addEventListener('session:created', handleSessionEvent);
+    const cleanupSessionParticipantJoined = addEventListener('session:participant:joined', handleSessionEvent);
+    const cleanupSessionParticipantLeft = addEventListener('session:participant:left', handleSessionEvent);
+    const cleanupSessionStarted = addEventListener('session:started', handleSessionEvent);
+    const cleanupSessionFinished = addEventListener('session:finished', handleSessionEvent);
+
+    // Cleanup event handlers on unmount
+    return () => {
+      cleanupLobbyCreated?.();
+      cleanupLobbyActivated?.();
+      cleanupLobbyClosed?.();
+      cleanupLobbyExpired?.();
+      cleanupSessionCreated?.();
+      cleanupSessionParticipantJoined?.();
+      cleanupSessionParticipantLeft?.();
+      cleanupSessionStarted?.();
+      cleanupSessionFinished?.();
+    };
+  }, [game.id, addEventListener, removeEventListener]);
+
+
   // Fetch real lobby data for this game
-  const fetchLobbyData = async () => {
+  const fetchLobbyData = async (showLoading = true) => {
     try {
-      setLobbyLoading(true);
+      if (showLoading) {
+        setLobbyLoading(true);
+      }
       setLobbyError(null);
 
       // Fetch lobbies for this specific game
@@ -485,7 +578,9 @@ function GameCard({ game, index }) {
       });
       setLobbyError(error.message);
     } finally {
-      setLobbyLoading(false);
+      if (showLoading) {
+        setLobbyLoading(false);
+      }
     }
   };
 
@@ -680,7 +775,7 @@ function GameCard({ game, index }) {
       // Find the active lobby to close
       const targetLobby = lobbyData.lobbies.find(lobby => {
         const status = computeLobbyStatus(lobby);
-        return status === 'open' || status === 'open_indefinitely';
+        return status === 'open' || status === 'open_indefinitely' || status === 'pending';
       }) || lobbyData.lobbies[0];
 
       const response = await apiRequest(`/game-lobbies/${targetLobby.id}/close`, {
@@ -709,67 +804,10 @@ function GameCard({ game, index }) {
   };
 
 
-  // Get lobby status styling with expiration info
-  const getLobbyStatusConfig = (lobby) => {
-    const status = computeLobbyStatus(lobby);
-    const now = new Date();
-
-    switch (status) {
-      case 'pending':
-        return {
-          color: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-          text: 'ממתין להפעלה',
-          icon: Clock,
-          timeInfo: null
-        };
-      case 'open':
-        if (lobby.expires_at) {
-          const timeRemaining = Math.ceil((new Date(lobby.expires_at) - now) / (1000 * 60)); // minutes
-          const hours = Math.floor(timeRemaining / 60);
-          const minutes = timeRemaining % 60;
-          return {
-            color: 'bg-green-100 text-green-700 border-green-200',
-            text: 'פתוח להרשמה',
-            icon: UserPlus,
-            timeInfo: hours > 0 ? `${hours}ש ${minutes}ד נותרו` : `${minutes}ד נותרו`
-          };
-        }
-        return {
-          color: 'bg-green-100 text-green-700 border-green-200',
-          text: 'פתוח להרשמה',
-          icon: UserPlus,
-          timeInfo: null
-        };
-      case 'open_indefinitely':
-        return {
-          color: 'bg-blue-100 text-blue-700 border-blue-200',
-          text: 'פתוח ללא הגבלת זמן',
-          icon: UserPlus,
-          timeInfo: null
-        };
-      case 'closed':
-      default:
-        return {
-          color: 'bg-gray-100 text-gray-700 border-gray-200',
-          text: 'סגור',
-          icon: Square,
-          timeInfo: null
-        };
-    }
-  };
 
   // Use real lobby data or show loading state
   const totalActiveSessions = lobbyData ? lobbyData.totalActiveSessions : 0;
   const totalOnlinePlayers = lobbyData ? lobbyData.totalOnlinePlayers : 0;
-
-  // Get the most recent lobby regardless of status (prioritize active, then most recent)
-  const activeLobby = lobbyData?.lobbies?.find(lobby =>
-    computeLobbyStatus(lobby) === 'open' || computeLobbyStatus(lobby) === 'open_indefinitely'
-  );
-
-  // If no active lobby, get the most recent lobby (including closed ones)
-  const mostRecentLobby = activeLobby ||
-    (lobbyData?.lobbies?.length > 0 ? lobbyData.lobbies[0] : null);
 
   const statusConfig = mostRecentLobby ? getLobbyStatusConfig(mostRecentLobby) : {
     color: 'bg-gray-100 text-gray-700 border-gray-200',
@@ -797,6 +835,63 @@ function GameCard({ game, index }) {
   // Check if QR code should be shown - show for eligible invitation types regardless of lobby status
   const isEligibleInvitationType = ['manual_selection', 'random', 'order'].includes(currentInvitationType);
   const showQRCode = isEligibleInvitationType && mostRecentLobby?.lobby_code;
+
+  // Get SSE connection status display configuration
+  const getSSEStatusConfig = () => {
+    switch (connectionState) {
+      case SSE_CONNECTION_STATES.CONNECTED:
+        return {
+          color: 'bg-green-500',
+          textColor: 'text-green-600',
+          text: 'מחובר',
+          title: 'מחובר לעדכונים בזמן אמת',
+          icon: '🟢'
+        };
+      case SSE_CONNECTION_STATES.CONNECTING:
+        return {
+          color: 'bg-yellow-500',
+          textColor: 'text-yellow-600',
+          text: 'מתחבר...',
+          title: 'מתחבר לעדכונים בזמן אמת',
+          icon: '🟡'
+        };
+      case SSE_CONNECTION_STATES.RECONNECTING:
+        return {
+          color: 'bg-orange-500',
+          textColor: 'text-orange-600',
+          text: retryCount > 0 ? `מתחבר מחדש (${retryCount})` : 'מתחבר מחדש',
+          title: 'מנסה להתחבר מחדש לעדכונים בזמן אמת',
+          icon: '🔄'
+        };
+      case SSE_CONNECTION_STATES.ERROR:
+        return {
+          color: 'bg-red-500',
+          textColor: 'text-red-600',
+          text: 'שגיאה',
+          title: error?.message || 'שגיאה בחיבור לעדכונים בזמן אמת',
+          icon: '🔴'
+        };
+      case SSE_CONNECTION_STATES.PERMANENTLY_FAILED:
+        return {
+          color: 'bg-red-600',
+          textColor: 'text-red-700',
+          text: 'נכשל',
+          title: 'החיבור לעדכונים בזמן אמת נכשל לצמיתות. בדוק שהשרת פועל.',
+          icon: '❌'
+        };
+      case SSE_CONNECTION_STATES.DISCONNECTED:
+      default:
+        return {
+          color: 'bg-gray-500',
+          textColor: 'text-gray-600',
+          text: 'מנותק',
+          title: 'לא מחובר לעדכונים בזמן אמת',
+          icon: '⚪'
+        };
+    }
+  };
+
+  const sseStatusConfig = getSSEStatusConfig();
 
   // Generate QR code when modal is opened
   useEffect(() => {
@@ -841,7 +936,45 @@ function GameCard({ game, index }) {
               </Button>
             )}
           </div>
-          <CardTitle className="text-gray-800 text-xl mb-3 leading-tight">{gameTitle}</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-gray-800 text-xl leading-tight">{gameTitle}</CardTitle>
+            {/* Enhanced SSE Connection Status Indicator */}
+            <div className="flex items-center gap-2">
+              <div
+                className={`w-2 h-2 rounded-full ${sseStatusConfig.color} ${isConnecting || isReconnecting ? 'animate-pulse' : ''}`}
+                title={sseStatusConfig.title}
+              />
+              <span className={`text-xs ${sseStatusConfig.textColor} font-medium`}>
+                {sseStatusConfig.text}
+              </span>
+            </div>
+          </div>
+
+          {/* SSE Error Information */}
+          {(connectionState === SSE_CONNECTION_STATES.ERROR || connectionState === SSE_CONNECTION_STATES.PERMANENTLY_FAILED) && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-2">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <span className="text-xs text-red-700 font-medium">חיבור לעדכונים נכשל</span>
+                  {error && (
+                    <p className="text-xs text-red-600 mt-1" title={error.message}>
+                      {error.message.length > 50 ? `${error.message.slice(0, 50)}...` : error.message}
+                    </p>
+                  )}
+                </div>
+                {connectionState === SSE_CONNECTION_STATES.ERROR && (
+                  <Button
+                    onClick={() => window.location.reload()}
+                    size="sm"
+                    variant="outline"
+                    className="border-red-300 text-red-700 hover:bg-red-100 text-xs px-2 py-1 ml-2"
+                  >
+                    נסה שוב
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Status and Session Info */}
           <div className="space-y-3">
@@ -928,7 +1061,6 @@ function GameCard({ game, index }) {
               <>
                 <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-3">
                   <div className="flex items-center gap-2 mb-1">
-                    <Square className="w-4 h-4 text-orange-600" />
                     <span className="text-sm font-medium text-orange-800">לובי סגור</span>
                   </div>
                   <p className="text-xs text-orange-700">
@@ -1194,22 +1326,22 @@ function SessionDetailView({ gameId, sessionId }) {
             <CardContent>
               <Users className="w-20 h-20 text-blue-500 mx-auto mb-6" />
               <h2 className="text-2xl font-bold text-gray-800 mb-4">
-                ניהול סשן {getProductTypeName('game', 'singular')}
+                ניהול חדר {getProductTypeName('game', 'singular')}
               </h2>
               <p className="text-gray-600 mb-6">
-                TODO: הוסף ממשק לניהול סשן {sessionId} עבור {getProductTypeName('game', 'singular')} {gameId}
+                TODO: הוסף ממשק לניהול חדר {sessionId} עבור {getProductTypeName('game', 'singular')} {gameId}
                 <br />
-                <span className="text-sm">כולל רשימת תלמידים, מעקב התקדמות והגדרות הסשן</span>
+                <span className="text-sm">כולל רשימת תלמידים, מעקב התקדמות והגדרות החדר</span>
               </p>
               <Button
                 onClick={() => toast({
                   title: "בפיתוח",
-                  description: "ממשק ניהול הסשן יתווסף בקרוב",
+                  description: "ממשק ניהול החדר יתווסף בקרוב",
                   variant: "default"
                 })}
                 className="bg-blue-600 hover:bg-blue-700 text-white"
               >
-                הגדרות סשן למידה
+                הגדרות חדר למידה
               </Button>
             </CardContent>
           </Card>
