@@ -4,6 +4,7 @@ import { GraduationCap, Keyboard, QrCode, CameraOff, AlertTriangle } from 'lucid
 import PropTypes from 'prop-types';
 import { useUser } from '@/contexts/UserContext';
 import { Button } from '@/components/ui/button';
+import { checkCameraAvailability, scanQRCode } from '@/utils/qrScannerUtils';
 import logo from '../../assets/images/logo.png';
 
 /**
@@ -14,19 +15,11 @@ const StudentsNav = ({ teacherInfo = null }) => {
   const { settings, currentUser } = useUser();
   const [isCameraAvailable, setIsCameraAvailable] = useState(false);
 
-  // Check camera availability on component mount
+  // Check camera availability on component mount (without opening camera)
   React.useEffect(() => {
     const checkCamera = async () => {
-      try {
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-          setIsCameraAvailable(true);
-          // Stop the stream immediately after checking
-          stream.getTracks().forEach(track => track.stop());
-        }
-      } catch {
-        setIsCameraAvailable(false);
-      }
+      const isAvailable = await checkCameraAvailability();
+      setIsCameraAvailable(isAvailable);
     };
 
     checkCamera();
@@ -43,9 +36,18 @@ const StudentsNav = ({ teacherInfo = null }) => {
     }
   };
 
-  const handleQRScan = () => {
-    // TODO: Implement QR scanning functionality
-    console.log('QR scan button clicked');
+  const handleQRScan = async () => {
+    await scanQRCode({
+      onSuccess: (result) => {
+        console.log('QR scan successful from StudentsNav:', result);
+        // The utility will handle navigation automatically
+      },
+      onError: (error) => {
+        console.error('QR scan failed from StudentsNav:', error);
+        // TODO: Show user-friendly error message
+        alert(error);
+      }
+    });
   };
 
   const handleCodeInputChange = (e) => {

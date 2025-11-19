@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { GamepadIcon, PuzzleIcon, BookOpenIcon, StarIcon, Keyboard, QrCode, CameraOff, ChevronDown, GraduationCap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useUser } from '@/contexts/UserContext';
+import { checkCameraAvailability, scanQRCode } from '@/utils/qrScannerUtils';
 import logo from '../../assets/images/logo.png';
 
 /**
@@ -15,19 +16,11 @@ const StudentHome = () => {
   const [showScrollArrow, setShowScrollArrow] = useState(true);
   const actionSectionRef = useRef(null);
 
-  // Check camera availability on component mount
+  // Check camera availability on component mount (without opening camera)
   useEffect(() => {
     const checkCamera = async () => {
-      try {
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-          setIsCameraAvailable(true);
-          // Stop the stream immediately after checking
-          stream.getTracks().forEach(track => track.stop());
-        }
-      } catch (error) {
-        setIsCameraAvailable(false);
-      }
+      const isAvailable = await checkCameraAvailability();
+      setIsCameraAvailable(isAvailable);
     };
 
     checkCamera();
@@ -75,9 +68,18 @@ const StudentHome = () => {
     }
   };
 
-  const handleQRScan = () => {
-    // TODO: Implement QR scanning functionality
-    console.log('QR scan button clicked from StudentHome');
+  const handleQRScan = async () => {
+    await scanQRCode({
+      onSuccess: (result) => {
+        console.log('QR scan successful from StudentHome:', result);
+        // The utility will handle navigation automatically
+      },
+      onError: (error) => {
+        console.error('QR scan failed from StudentHome:', error);
+        // TODO: Show user-friendly error message
+        alert(error);
+      }
+    });
   };
 
   const handleCodeInputChange = (e) => {

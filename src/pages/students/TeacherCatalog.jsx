@@ -46,7 +46,8 @@ const TeacherCatalog = () => {
           const gamesWithLobbyInfo = await Promise.all(
             data.games.all.map(async (game) => {
               try {
-                const lobbies = await apiRequest(`/games/${game.entity_id}/lobbies?expired=false`);
+                const lobbyResponse = await apiRequest(`/public/games/${game.entity_id}/lobbies?expired=false`);
+                const lobbies = lobbyResponse.data || lobbyResponse; // Handle both formats
                 const activeLobbies = filterActiveLobbies(lobbies);
                 const hasActiveLobby = activeLobbies.length > 0;
                 const activeLobbiesCount = activeLobbies.length;
@@ -111,7 +112,8 @@ const TeacherCatalog = () => {
   // Function to refresh lobby info for a specific game
   const refreshGameLobbyInfo = async (gameId) => {
     try {
-      const lobbies = await apiRequest(`/games/${gameId}/lobbies?expired=false`);
+      const lobbyResponse = await apiRequest(`/public/games/${gameId}/lobbies?expired=false`);
+      const lobbies = lobbyResponse.data || lobbyResponse; // Handle both formats
       const activeLobbies = filterActiveLobbies(lobbies);
       const hasActiveLobby = activeLobbies.length > 0;
       const activeLobbiesCount = activeLobbies.length;
@@ -229,7 +231,8 @@ const TeacherCatalog = () => {
 
     // Fallback: re-fetch lobby info if not available or no active lobbies
     try {
-      const lobbies = await apiRequest(`/games/${game.entity_id}/lobbies?expired=false`);
+      const lobbyResponse = await apiRequest(`/public/games/${game.entity_id}/lobbies?expired=false`);
+      const lobbies = lobbyResponse.data || lobbyResponse; // Handle both formats
       const bestLobby = findBestActiveLobby(lobbies);
 
       if (bestLobby) {
