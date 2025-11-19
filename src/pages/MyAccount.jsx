@@ -44,7 +44,7 @@ import { toast } from '@/components/ui/use-toast';
 const MyAccount = () => {
   const navigate = useNavigate();
   // Use global state from UserContext instead of direct API calls
-  const { currentUser, settings, isLoading: userLoading, setCurrentUser } = useUser();
+  const { currentUser, settings, isLoading: userLoading, updateUser } = useUser();
 
   const [registrations, setRegistrations] = useState([]);
   const [workshops, setWorkshops] = useState([]);
@@ -88,7 +88,7 @@ const MyAccount = () => {
       setInvitationCode(newCode);
 
       // Update user context
-      setCurrentUser(prev => ({ ...prev, invitation_code: newCode }));
+      updateUser({ invitation_code: newCode });
 
       toast({
         title: "קוד הזמנה נוצר בהצלחה!",
@@ -287,7 +287,7 @@ const MyAccount = () => {
   const handleSaveProfile = async () => {
     try {
       await User.updateMyUserData(editedProfile);
-      setCurrentUser(prev => ({ ...prev, ...editedProfile }));
+      updateUser(editedProfile);
       setIsEditingProfile(false);
       setMessage({ type: 'success', text: 'הפרטים עודכנו בהצלחה' });
       setTimeout(() => setMessage(null), 3000);
