@@ -110,7 +110,7 @@ export const useProductForm = (editingProduct = null, currentUser = null) => {
       watermark_template_id: null,
       watermark_settings: null,
       accessible_pages: null,
-      creator_user_id: (currentUser?.role === 'admin' || currentUser?.role === 'sysadmin') ? null : currentUser?.uid || null, // Default to Ludora for admins, user for others
+      creator_user_id: (currentUser?.role === 'admin' || currentUser?.role === 'sysadmin') ? null : currentUser?.id || null, // Default to Ludora for admins, user for others
       image_is_private: false,
       // Lesson plan specific
       file_configs: null,

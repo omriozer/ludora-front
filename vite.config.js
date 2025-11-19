@@ -13,12 +13,61 @@ export default defineConfig({
         target: `http://localhost:${process.env.VITE_API_PORT || '3003'}`,
         changeOrigin: true,
         secure: false,
+        ws: true, // Enable WebSocket proxying
         // Preserve original request body and headers for multipart uploads
         configure: (proxy, options) => {
           proxy.on('proxyReq', (proxyReq, req, res) => {
             // Don't modify the body for multipart uploads
             if (req.headers['content-type'] && req.headers['content-type'].includes('multipart/form-data')) {
               console.log('📤 Vite proxy: Preserving multipart/form-data upload');
+            }
+
+            // Special handling for Server-Sent Events (SSE)
+            if (req.url && req.url.includes('/sse/')) {
+              console.log('📡 Vite proxy: Handling SSE request', req.url);
+              // Ensure proper SSE headers are preserved
+              proxyReq.setHeader('Accept', 'text/event-stream');
+              proxyReq.setHeader('Cache-Control', 'no-cache');
+              proxyReq.setHeader('Connection', 'keep-alive');
+            }
+          });
+
+          proxy.on('proxyRes', (proxyRes, req, res) => {
+            // Special handling for SSE responses
+            if (req.url && req.url.includes('/sse/')) {
+              console.log('📡 Vite proxy: SSE response received', {
+                url: req.url,
+                statusCode: proxyRes.statusCode,
+                contentType: proxyRes.headers['content-type'],
+                headers: proxyRes.headers
+              });
+
+              // Critical: Disable buffering for SSE streams
+              if (proxyRes.headers['content-type'] && proxyRes.headers['content-type'].includes('text/event-stream')) {
+                console.log('📡 Vite proxy: Configuring SSE streaming response');
+
+                // Set proper SSE headers
+                res.setHeader('Content-Type', 'text/event-stream');
+                res.setHeader('Cache-Control', 'no-cache');
+                res.setHeader('Connection', 'keep-alive');
+
+                // Disable compression and buffering for streaming
+                res.setHeader('X-Accel-Buffering', 'no');
+
+                // Write head immediately to establish connection
+                res.writeHead(200);
+
+                // Pipe the response directly without buffering
+                proxyRes.pipe(res, { end: true });
+
+                console.log('📡 Vite proxy: SSE stream pipe established');
+              }
+            }
+          });
+
+          proxy.on('error', (err, req, res) => {
+            if (req.url && req.url.includes('/sse/')) {
+              console.error('📡 Vite proxy: SSE proxy error', err);
             }
           });
         }

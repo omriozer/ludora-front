@@ -169,7 +169,7 @@ export default function EnhancedLobbyActivationDialog({
           </DialogTitle>
           <DialogDescription className="text-gray-600 text-lg mt-3 text-right">
             {isEditMode
-              ? "ערוך את הגדרות הלובי. שינויים בזמן ישפיעו על כל הסשנים הקיימים, שינויים אחרים רק על סשנים חדשים"
+              ? "ערוך את הגדרות הלובי. שינויים בזמן ישפיעו על כל החדרים הקיימים, שינויים אחרים רק על חדרים חדשים"
               : "הגדר את הגדרות הלובי, מספר השחקנים המרבי וחדרי המשחק שייווצרו אוטומטית"
             }
           </DialogDescription>
@@ -355,7 +355,7 @@ export default function EnhancedLobbyActivationDialog({
           <div className="space-y-6">
             <Label className="text-lg font-semibold flex items-center gap-3">
               <BookOpen className="w-5 h-5" />
-              חדרי משחק (סשנים)
+              חדרי משחק
             </Label>
 
             {/* Session Distribution Preview */}

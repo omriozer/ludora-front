@@ -39,8 +39,41 @@ const SuspenseLoader = () => (
 
 // Student Portal Component (only allowed routes)
 function StudentPortal() {
-	const { currentUser, settings, settingsLoading, settingsLoadFailed, login } = useUser();
+	const { currentUser, settings, settingsLoadFailed, login } = useUser();
 	const { showLoginModal, openLoginModal, closeLoginModal, executeCallback, modalMessage } = useLoginModal();
+	const location = useLocation();
+
+	// Teacher catalog state
+	const [teacherInfo, setTeacherInfo] = useState(null);
+
+	// Check if we're on teacher catalog page and fetch teacher info
+	useEffect(() => {
+		const fetchTeacherInfo = async () => {
+			const match = location.pathname.match(/^\/portal\/([A-Z0-9]{8})$/);
+			if (match) {
+				const userCode = match[1];
+				try {
+					const response = await fetch(`/api/entities/teacher-catalog/${userCode}`);
+					if (response.ok) {
+						const data = await response.json();
+						setTeacherInfo({
+							name: data.teacher.name,
+							invitation_code: data.teacher.invitation_code
+						});
+					} else {
+						setTeacherInfo(null);
+					}
+				} catch (error) {
+					console.error('Failed to fetch teacher info:', error);
+					setTeacherInfo(null);
+				}
+			} else {
+				setTeacherInfo(null);
+			}
+		};
+
+		fetchTeacherInfo();
+	}, [location.pathname]);
 
 	// Draggable return button states (same as Layout.jsx)
 	const [showReturnButton, setShowReturnButton] = useState(false);
@@ -206,7 +239,7 @@ function StudentPortal() {
 
 	return (
 		<>
-			<StudentsNav />
+			<StudentsNav teacherInfo={teacherInfo} />
 			<Routes>
 				{/* Student Home */}
 				<Route
@@ -214,6 +247,36 @@ function StudentPortal() {
 					element={
 						<Suspense fallback={<SuspenseLoader />}>
 							<LazyPages.StudentHome />
+						</Suspense>
+					}
+				/>
+
+				{/* Teacher Catalog */}
+				<Route
+					path='/portal/:userCode'
+					element={
+						<Suspense fallback={<SuspenseLoader />}>
+							<LazyPages.TeacherCatalog />
+						</Suspense>
+					}
+				/>
+
+				{/* Game Lobby Join */}
+				<Route
+					path='/lobby/:code'
+					element={
+						<Suspense fallback={<SuspenseLoader />}>
+							<LazyPages.LobbyJoin />
+						</Suspense>
+					}
+				/>
+
+				{/* Game Play Session */}
+				<Route
+					path='/play/:code'
+					element={
+						<Suspense fallback={<SuspenseLoader />}>
+							<LazyPages.GamePlay />
 						</Suspense>
 					}
 				/>

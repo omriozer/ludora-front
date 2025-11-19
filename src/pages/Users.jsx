@@ -212,7 +212,7 @@ function SubscriptionManagementModal({
 		>
 			<DialogContent className='sm:max-w-[650px] max-h-[90vh] overflow-y-auto'>
 				<DialogHeader>
-					<DialogTitle>ניהול מנוי למשתמש: {user.display_name || user.full_name}</DialogTitle>
+					<DialogTitle>ניהול מנוי למשתמש: {user.full_name}</DialogTitle>
 					<DialogDescription>עדכן את פרטי המנוי של המשתמש.</DialogDescription>
 				</DialogHeader>
 				<div className='grid gap-4 py-4'>
@@ -496,8 +496,7 @@ export default function UsersPage() {
 					(user) =>
 						user.full_name?.toLowerCase().includes(searchLower) ||
 						user.email?.toLowerCase().includes(searchLower) ||
-						user.phone?.toLowerCase().includes(searchLower) ||
-						user.display_name?.toLowerCase().includes(searchLower)
+						user.phone?.toLowerCase().includes(searchLower)
 				)
 			);
 		}
@@ -622,7 +621,7 @@ export default function UsersPage() {
 
 			setMessage({
 				type: 'success',
-				text: `מתחזה כעת למשתמש: ${user.display_name || user.full_name}`,
+				text: `מתחזה כעת למשתמש: ${user.full_name}`,
 			});
 
 			setTimeout(() => {
@@ -705,7 +704,7 @@ export default function UsersPage() {
 		try {
 			// Show confirmation dialog
 			const confirmed = window.confirm(
-				`האם אתה בטוח שברצונך לאפס את סטטוס ההכנה עבור ${user.display_name || user.full_name}?\n\n` +
+				`האם אתה בטוח שברצונך לאפס את סטטוס ההכנה עבור ${user.full_name}?\n\n` +
 				`המשתמש יידרש להשלים את תהליך ההכנה שוב בכניסה הבאה למערכת.`
 			);
 
@@ -727,7 +726,7 @@ export default function UsersPage() {
 				)
 			);
 
-			showMessage('success', `סטטוס ההכנה עבור ${user.display_name || user.full_name} אופס בהצלחה`);
+			showMessage('success', `סטטוס ההכנה עבור ${user.full_name} אופס בהצלחה`);
 
 		} catch (error) {
 			cerror('Error resetting onboarding:', error);
@@ -742,7 +741,7 @@ export default function UsersPage() {
 		try {
 			// Show confirmation dialog with more warning about hard reset
 			const confirmed = window.confirm(
-				`האם אתה בטוח שברצונך לבצע איפוס קשה של ההכנה עבור ${user.display_name || user.full_name}?\n\n` +
+				`האם אתה בטוח שברצונך לבצע איפוס קשה של ההכנה עבור ${user.full_name}?\n\n` +
 				`איפוס קשה יאפס:\n` +
 				`• את סטטוס ההכנה\n` +
 				`• את מנוי המשתמש (יחזור לחינמי)\n` +
@@ -786,7 +785,7 @@ export default function UsersPage() {
 				)
 			);
 
-			showMessage('success', `איפוס קשה עבור ${user.display_name || user.full_name} בוצע בהצלחה`);
+			showMessage('success', `איפוס קשה עבור ${user.full_name} בוצע בהצלחה`);
 
 		} catch (error) {
 			cerror('Error hard resetting onboarding:', error);
@@ -928,7 +927,7 @@ export default function UsersPage() {
 												<div className='flex flex-col sm:flex-row sm:items-center justify-between gap-4'>
 													<div className='flex-1'>
 														<div className='flex items-center gap-3 mb-2'>
-															<h4 className='font-semibold text-lg'>{user.display_name || user.full_name}</h4>
+															<h4 className='font-semibold text-lg'>{user.full_name}</h4>
 															<Badge className={getRoleBadgeColor(user.role)}>{getRoleText(user.role)}</Badge>
 															{user.user_type && (
 																<Badge className={getUserTypeBadgeColor(user.user_type)}>
@@ -1054,7 +1053,7 @@ export default function UsersPage() {
 				onConfirm={handleResetSubscription}
 				title='איפוס מנוי משתמש'
 				message={`האם אתה בטוח שברצונך לאפס לחלוטין את המנוי של המשתמש ${
-					userToReset?.display_name || userToReset?.full_name
+					userToReset?.full_name
 				}?\n\nפעולה זו תמחק:\n• את כל היסטוריית המנויים\n• מנויים ממתינים\n• נתוני המנוי הנוכחיים\n\nהפעולה היא בלתי הפיכה!`}
 				confirmText='כן, אפס מנוי'
 				cancelText='ביטול'

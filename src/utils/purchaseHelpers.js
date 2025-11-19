@@ -12,12 +12,15 @@ import { Product } from '@/services/entities';
  */
 export function getUserIdFromToken() {
   try {
-    // Use correct localStorage key that matches apiClient.js
+    // Note: This function is deprecated with cookie-based authentication
+    // Authentication is now handled automatically via httpOnly cookies
+    // This function is kept for backward compatibility only
+
     const authToken = localStorage.getItem('authToken');
     if (!authToken) return null;
 
     const payload = JSON.parse(atob(authToken.split('.')[1]));
-    return payload.uid;
+    return payload.id; // Updated from uid to id for consistency
   } catch (error) {
     cerror('Error decoding auth token:', error);
     return null;

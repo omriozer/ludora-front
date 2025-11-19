@@ -9,33 +9,10 @@ import { ApiError } from '@/utils/ApiError.js';
 // Use centralized API base configuration
 const API_BASE = getApiBase();
 
-// Store authentication token in memory (but always sync with localStorage)
-let authToken = null;
+// Note: Authentication now uses httpOnly cookies instead of localStorage tokens
 
-// Function to get current auth token (always read from localStorage for consistency)
-function getCurrentAuthToken() {
-  if (typeof localStorage !== 'undefined') {
-    authToken = localStorage.getItem('authToken');
-  }
-  return authToken;
-}
-
-export async function getCurrentUser() {
-  return apiRequest('/auth/me');
-}
-
-export async function login({ email, password }) {
-  const response = await apiRequest('/auth/login', {
-    method: 'POST',
-    body: JSON.stringify({ email, password })
-  });
-  
-  if (response.token) {
-    authToken = response.token;
-    localStorage.setItem('authToken', response.token);
-  }
-  
-  return response;
+export async function getCurrentUser(suppressUserErrors = false) {
+  return apiRequest('/auth/me', { suppressUserErrors });
 }
 
 export async function loginWithFirebase({ idToken }) {
@@ -43,47 +20,32 @@ export async function loginWithFirebase({ idToken }) {
     method: 'POST',
     body: JSON.stringify({ idToken })
   });
-  
-  if (response.valid && response.token) {
-    authToken = response.token;
-    localStorage.setItem('authToken', response.token);
-  }
-  
+
+  // Note: Authentication tokens are now set as httpOnly cookies by the server
   return response;
 }
 
 export async function logout() {
-  authToken = null;
-  localStorage.removeItem('authToken');
+  // Note: Authentication cookies are cleared by the server
   return apiRequest('/auth/logout', {
     method: 'POST'
   });
 }
 
-// Note: Token initialization is now handled by getCurrentAuthToken() function
-
-// Generic API request helper with authentication
+// Generic API request helper with cookie-based authentication
 export async function apiRequest(endpoint, options = {}) {
   const url = `${API_BASE}${endpoint}`;
-  const currentToken = getCurrentAuthToken();
 
   clog(`🌐 API Request: ${options.method || 'GET'} ${url}`);
   clog('📊 API Base:', API_BASE);
-  clog('🔑 Auth Token:', currentToken ? `${currentToken.substring(0, 20)}...` : 'None');
-
 
   const headers = {
     'Content-Type': 'application/json',
     ...options.headers
   };
 
-  // Add auth token if available
-  if (currentToken) {
-    headers['Authorization'] = `Bearer ${currentToken}`;
-  }
-
   const defaultOptions = {
-    credentials: 'include',
+    credentials: 'include', // Automatically include cookies
     headers
   };
 
@@ -116,17 +78,22 @@ export async function apiRequest(endpoint, options = {}) {
   } catch (error) {
     cerror('🚫 API Request Failed:', error);
 
-    // Show user-friendly error for specific error types
-    if (error.message.includes('fetch') || error.message.includes('network') || error.message.includes('Failed to fetch')) {
-      showError(
-        "בעיית חיבור",
-        "לא הצלחנו להתחבר לשרת. אנא בדוק את החיבור לאינטרנט ונסה שוב."
-      );
-    } else if (error.message.includes('Access token required') || error.message.includes('Unauthorized')) {
-      showError(
-        "שגיאת הרשאה",
-        "נדרשת התחברות מחדש. אנא רענן את הדף והתחבר שוב."
-      );
+    // Only show user-facing error messages if not explicitly suppressed
+    const suppressUserErrors = options.suppressUserErrors || false;
+
+    if (!suppressUserErrors) {
+      // Show user-friendly error for specific error types
+      if (error.message.includes('fetch') || error.message.includes('network') || error.message.includes('Failed to fetch')) {
+        showError(
+          "בעיית חיבור",
+          "לא הצלחנו להתחבר לשרת. אנא בדוק את החיבור לאינטרנט ונסה שוב."
+        );
+      } else if (error.message.includes('Access token required') || error.message.includes('Unauthorized')) {
+        showError(
+          "שגיאת הרשאה",
+          "נדרשת התחברות מחדש. אנא רענן את הדף והתחבר שוב."
+        );
+      }
     }
 
     throw error;
@@ -136,39 +103,16 @@ export async function apiRequest(endpoint, options = {}) {
 // File download helper - returns blob instead of JSON
 export async function apiDownload(endpoint, options = {}) {
   const url = `${API_BASE}${endpoint}`;
-  const currentToken = getCurrentAuthToken();
 
   clog(`📥 API Download: ${options.method || 'GET'} ${url}`);
   clog('📊 API Base:', API_BASE);
-  clog('🔑 Auth Token:', currentToken ? `${currentToken.substring(0, 20)}...` : 'None');
-
-  // DEBUG: Log full token temporarily
-  if (currentToken) {
-    clog('🔍 FULL AUTH TOKEN FOR DOWNLOAD:', currentToken);
-    if (currentToken.startsWith('eyJ')) {
-      try {
-        const [header, payload, signature] = currentToken.split('.');
-        const decodedPayload = JSON.parse(atob(payload));
-        clog('🔍 DECODED TOKEN PAYLOAD:', decodedPayload);
-        clog('🔍 TOKEN EXPIRY:', new Date(decodedPayload.exp * 1000));
-        clog('🔍 IS TOKEN EXPIRED?', new Date() > new Date(decodedPayload.exp * 1000));
-      } catch (e) {
-        cerror('🔍 TOKEN DECODE ERROR:', e);
-      }
-    }
-  }
 
   const headers = {
     ...options.headers
   };
 
-  // Add auth token if available
-  if (currentToken) {
-    headers['Authorization'] = `Bearer ${currentToken}`;
-  }
-
   const defaultOptions = {
-    credentials: 'include',
+    credentials: 'include', // Automatically include cookies
     headers
   };
 
@@ -223,11 +167,8 @@ export async function apiUploadWithProgress(endpoint, formData, onProgress = nul
     url = `${API_BASE}${endpoint}`;
   }
 
-  const currentToken = getCurrentAuthToken();
-
   clog(`📤 API Upload with progress: POST ${url}`);
   clog('📊 API Base:', API_BASE);
-  clog('🔑 Auth Token:', currentToken ? `${currentToken.substring(0, 20)}...` : 'None');
 
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
@@ -290,10 +231,9 @@ export async function apiUploadWithProgress(endpoint, formData, onProgress = nul
 
     xhr.open('POST', url, true);
 
-    // Add auth token
-    if (currentToken) {
-      xhr.setRequestHeader('Authorization', `Bearer ${currentToken}`);
-    }
+    // XMLHttpRequest automatically includes cookies in requests to same origin
+    // or when withCredentials is set to true
+    xhr.withCredentials = true;
 
     // Add custom headers (but NOT Content-Type - let browser set it with boundary for multipart)
     if (options.headers) {
@@ -714,7 +654,7 @@ export const User = {
   login: loginWithFirebaseAuth, // Use Firebase auth for login
   loginWithRedirect: loginWithFirebaseAuth, // Alias for compatibility
   logout,
-  // Alias for compatibility
+  // Alias for compatibility that supports suppressUserErrors parameter
   me: getCurrentUser,
   filter: UserEntityAPI.find.bind(UserEntityAPI),
   // Add updateMyUserData method for content creator signup

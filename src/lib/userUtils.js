@@ -100,7 +100,7 @@ export function canAccess(user, requiredRole) {
  */
 export function getUserDisplayName(user) {
   if (!user) return 'Guest';
-  return user.full_name || user.displayName || user.email || 'Unknown User';
+  return user.full_name || user.email || 'Unknown User';
 }
 
 /**

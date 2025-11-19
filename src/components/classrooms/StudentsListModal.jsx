@@ -49,7 +49,7 @@ export default function StudentsListModal({ isOpen, onClose, classroom, onInvite
               ...user,
               membership: membership, // Attach the membership object
               joinedAt: membership.joined_at,
-              displayName: membership.student_display_name || user.display_name || user.full_name || user.email // Fallback to email
+              displayName: membership.student_display_name || user.full_name || user.email // Fallback to email
             });
           }
         } catch (error) {

@@ -284,7 +284,7 @@ export default function OnboardingWizard() {
 
       // Update user if there are changes
       if (Object.keys(userUpdates).length > 0) {
-        clog(`[OnboardingWizard] 🔍 Updating user with ID: ${currentUser.uid || currentUser.id}`);
+        clog(`[OnboardingWizard] 🔍 Updating user with ID: ${currentUser.id}`);
         clog(`[OnboardingWizard] 🔑 Auth token from localStorage:`, localStorage.getItem('authToken') ? 'Present' : 'Missing');
         clog(`[OnboardingWizard] 🔑 Backup token from localStorage:`, localStorage.getItem('token') ? 'Present' : 'Missing');
 
@@ -299,7 +299,7 @@ export default function OnboardingWizard() {
           cerror(`[OnboardingWizard] 📋 Update error details:`, {
             message: updateError.message,
             stack: updateError.stack,
-            userId: currentUser.uid || currentUser.id,
+            userId: currentUser.id,
             userUpdates,
             authToken: localStorage.getItem('authToken') ? 'Present' : 'Missing'
           });
@@ -393,7 +393,7 @@ export default function OnboardingWizard() {
             name: onboardingData.teacherInfo.firstClassroomName,
             grade_level: onboardingData.teacherInfo.firstClassroomGrade,
             year: new Date().getFullYear().toString(),
-            teacher_id: currentUser.uid || currentUser.id,
+            teacher_id: currentUser.id,
             description: 'כיתה ראשונה שנוצרה במהלך ההרשמה'
           });
 

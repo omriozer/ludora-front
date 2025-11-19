@@ -104,7 +104,7 @@ export default function CatalogHeader({
                   </td>
                 </tr>
                 <tr>
-                  <td className="text-right py-1 px-2 font-medium text-gray-800">סשנים</td>
+                  <td className="text-right py-1 px-2 font-medium text-gray-800">חדרים</td>
                   <td className="text-center py-1 px-2 font-bold text-blue-600">
                     {userAnalytics.allTime?.totalSessions || 0}
                   </td>

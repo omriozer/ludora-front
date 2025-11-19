@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { User } from "@/services/entities"; // Keep User for updateMyUserData calls only
 import { useUser } from "@/contexts/UserContext";
 import { purchaseUtils } from "@/utils/api.js";
+import { apiRequest } from '@/services/apiClient';
+import { renderQRCode, LUDORA_OFFICIAL_PRESET } from '@/utils/qrCodeUtils';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +26,11 @@ import {
   Save,
   Crown,
   CreditCard,
-  Gift // New icon imported for free plans
+  Gift, // New icon imported for free plans
+  Share2,
+  QrCode,
+  Copy,
+  UserPlus
 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
@@ -54,12 +60,88 @@ const MyAccount = () => {
   // Subscription modal
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
 
+  // Invitation code states
+  const [invitationCode, setInvitationCode] = useState(currentUser?.invitation_code || null);
+  const [loadingInviteCode, setLoadingInviteCode] = useState(false);
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [qrContainer, setQrContainer] = useState(null);
+
   const [accountTexts, setAccountTexts] = useState({});
 
   // Use the new subscription state hook
   const subscriptionState = useSubscriptionState(currentUser);
 
+  // Generate portal URL from invitation code
+  const portalUrl = invitationCode
+    ? `https://my.ludora.app/portal/${invitationCode}`
+    : '';
 
+  // Generate invitation code
+  const generateInvitationCode = async () => {
+    try {
+      setLoadingInviteCode(true);
+      const response = await apiRequest(`/entities/user/${currentUser.id}/generate-invitation-code`, {
+        method: 'POST'
+      });
+
+      const newCode = response.user.invitation_code;
+      setInvitationCode(newCode);
+
+      // Update user context
+      setCurrentUser(prev => ({ ...prev, invitation_code: newCode }));
+
+      toast({
+        title: "קוד הזמנה נוצר בהצלחה!",
+        description: `קוד המורה שלך: ${newCode}`,
+        variant: "default"
+      });
+    } catch (error) {
+      console.error('Error generating invitation code:', error);
+      toast({
+        title: "שגיאה",
+        description: "לא הצלחנו ליצור קוד הזמנה",
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingInviteCode(false);
+    }
+  };
+
+  // Copy URL to clipboard
+  const copyInviteUrlToClipboard = async () => {
+    if (!portalUrl) return;
+
+    try {
+      await navigator.clipboard.writeText(portalUrl);
+      toast({
+        title: "הועתק ללוח!",
+        description: "כתובת הקטלוג הועתקה ללוח",
+        variant: "default"
+      });
+    } catch (error) {
+      console.error('Error copying to clipboard:', error);
+      toast({
+        title: "שגיאה",
+        description: "לא הצלחנו להעתיק את הכתובת",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Generate QR code when modal opens
+  useEffect(() => {
+    if (showQRModal && qrContainer && portalUrl) {
+      try {
+        renderQRCode(portalUrl, qrContainer, LUDORA_OFFICIAL_PRESET, {
+          width: 400,
+          height: 400,
+          margin: 0
+        });
+      } catch (error) {
+        console.error('Error generating QR code:', error);
+      }
+    }
+  }, [showQRModal, qrContainer, portalUrl]);
 
   // Add function to check and update user subscription
   const checkAndUpdateUserSubscription = useCallback(async (user) => {
@@ -385,6 +467,118 @@ const MyAccount = () => {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Teacher Invitation Code Card - Only for teachers */}
+            {currentUser?.user_type === 'teacher' && (
+              <Card className="shadow-lg sm:shadow-xl border-0 bg-white/80 backdrop-blur-sm rounded-lg sm:rounded-xl lg:rounded-2xl overflow-hidden mx-1 sm:mx-0">
+                <CardHeader className="bg-gradient-to-r from-teal-500 to-blue-600 text-white p-3 sm:p-4 lg:p-6">
+                  <CardTitle className="flex items-center gap-2 sm:gap-3">
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 lg:w-10 lg:h-10 bg-white/20 rounded-md sm:rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 lg:w-5 lg:h-5" />
+                    </div>
+                    <span className="text-base sm:text-lg lg:text-xl font-medium">שיתוף המשחקים</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-3 sm:p-4 lg:p-6 space-y-3 sm:space-y-4 lg:space-y-6">
+                  {invitationCode ? (
+                    <>
+                      {/* Code Display */}
+                      <div className="text-center">
+                        <div className="text-sm font-medium text-gray-700 mb-2">קוד המורה שלך:</div>
+                        <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800 font-mono bg-gradient-to-r from-teal-50 to-blue-50 px-4 py-3 rounded-xl shadow-lg border border-teal-200 mb-4">
+                          {invitationCode}
+                        </div>
+
+                        {/* URL Display */}
+                        <div className="text-center mb-4">
+                          <div className="text-xs text-gray-500 mb-1">כתובת הקטלוג:</div>
+                          <div className="text-sm text-blue-600 font-medium bg-blue-50 px-3 py-2 rounded-lg border border-blue-200 break-all">
+                            my.ludora.app/portal/{invitationCode}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="grid grid-cols-2 gap-2 mb-4">
+                        <Button
+                          onClick={() => setShowQRModal(true)}
+                          className="bg-teal-500 hover:bg-teal-600 text-white text-sm py-2 rounded-lg shadow-lg"
+                        >
+                          <QrCode className="w-4 h-4 mr-1" />
+                          QR
+                        </Button>
+                        <Button
+                          onClick={copyInviteUrlToClipboard}
+                          variant="outline"
+                          className="border-2 border-blue-200 hover:bg-blue-50 text-blue-700 text-sm py-2 rounded-lg"
+                        >
+                          <Copy className="w-4 h-4 mr-1" />
+                          העתק
+                        </Button>
+                      </div>
+
+                      {/* Regenerate Button */}
+                      <Button
+                        onClick={generateInvitationCode}
+                        disabled={loadingInviteCode}
+                        variant="outline"
+                        className="w-full border-2 border-orange-200 hover:bg-orange-50 text-orange-700 text-sm py-2 rounded-lg"
+                      >
+                        {loadingInviteCode ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-orange-600 border-t-transparent mr-1" />
+                        ) : (
+                          <RefreshCw className="w-4 h-4 mr-1" />
+                        )}
+                        קוד חדש
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      {/* Generate Code Section */}
+                      <div className="text-center py-4">
+                        <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-teal-100 to-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <UserPlus className="w-6 h-6 sm:w-8 sm:h-8 text-teal-600" />
+                        </div>
+                        <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">צור קוד שיתוף</h3>
+                        <p className="text-gray-600 mb-4 text-sm sm:text-base">צור קוד ייחודי כדי לשתף את המשחקים שלך עם תלמידים</p>
+                      </div>
+
+                      {/* Generate Button */}
+                      <Button
+                        onClick={generateInvitationCode}
+                        disabled={loadingInviteCode}
+                        className="w-full bg-gradient-to-r from-teal-500 to-blue-600 hover:from-teal-600 hover:to-blue-700 text-white font-bold py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+                      >
+                        {loadingInviteCode ? (
+                          <>
+                            <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2" />
+                            יוצר קוד...
+                          </>
+                        ) : (
+                          <>
+                            <Share2 className="w-5 h-5 mr-2" />
+                            צור קוד שיתוף
+                          </>
+                        )}
+                      </Button>
+
+                      {/* Info Box */}
+                      <div className="bg-gradient-to-r from-teal-50 to-blue-50 rounded-xl p-4 border border-teal-200">
+                        <div className="flex items-center gap-3 mb-2">
+                          <UserPlus className="w-5 h-5 text-teal-600" />
+                          <span className="text-sm font-medium text-gray-700">יתרונות השיתוף:</span>
+                        </div>
+                        <ul className="text-xs text-gray-600 space-y-1">
+                          <li>• תלמידים יגשו למשחקים ללא הרשמה</li>
+                          <li>• קטלוג מותאם עם המשחקים שלך</li>
+                          <li>• ממשק ידידותי לילדים</li>
+                        </ul>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
             {/* Subscription Section - COMPLETELY HIDDEN when subscription system is disabled */}
             {settings?.subscription_system_enabled && currentUser && (
@@ -725,6 +919,67 @@ const MyAccount = () => {
             onSubscriptionChange={handleSubscriptionChange}
             isAutoOpened={false}
           />
+        )}
+
+        {/* QR Code Modal for Invitation Code */}
+        {showQRModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden relative">
+              {/* Close Button */}
+              <Button
+                onClick={() => setShowQRModal(false)}
+                variant="ghost"
+                size="sm"
+                className="absolute top-4 right-4 z-10 bg-white bg-opacity-90 hover:bg-opacity-100"
+              >
+                <X className="w-5 h-5" />
+              </Button>
+
+              {/* Header */}
+              <div className="bg-gradient-to-r from-teal-500 to-yellow-500 p-6 text-center">
+                <h2 className="text-2xl font-bold text-white mb-2">
+                  קטלוג המשחקים של {currentUser?.display_name || currentUser?.full_name}
+                </h2>
+                <p className="text-white opacity-90">סרוק להצטרפות לקטלוג</p>
+              </div>
+
+              {/* QR Code Container */}
+              <div className="p-8 flex flex-col items-center">
+                <div
+                  ref={setQrContainer}
+                  className="mb-6 bg-white"
+                  style={{ width: 400, height: 400 }}
+                />
+
+                {/* Invitation Code */}
+                <div className="text-center mb-6">
+                  <div className="text-sm text-gray-600 mb-1">קוד מורה:</div>
+                  <div className="text-2xl font-bold text-gray-800 font-mono bg-gray-100 px-4 py-2 rounded-lg">
+                    {invitationCode}
+                  </div>
+                </div>
+
+                {/* Instructions */}
+                <div className="text-center max-w-md mb-6">
+                  <p className="text-gray-600 text-sm leading-relaxed">
+                    תלמידים יכולים לסרוק את ה-QR או להזין את הקוד באתר:
+                  </p>
+                  <p className="text-blue-600 font-medium mt-2">
+                    my.ludora.app/portal
+                  </p>
+                </div>
+
+                {/* Copy Button */}
+                <Button
+                  onClick={copyInviteUrlToClipboard}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg"
+                >
+                  <Copy className="w-4 h-4 mr-2" />
+                  העתק כתובת
+                </Button>
+              </div>
+            </div>
+          </div>
         )}
 
       </div>

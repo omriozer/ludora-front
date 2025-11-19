@@ -49,21 +49,13 @@ export class ContentTopicService {
    */
   async updateProductTopics(productId, topicIds) {
     const content_topic_id = topicIds && topicIds.length > 0 ? topicIds[0] : null;
-    console.log(`🔄 Updating product ${productId} content topic to:`, content_topic_id);
 
     try {
-      console.log('📤 Making API request:', {
-        url: `/entities/product/${productId}`,
-        method: 'PUT',
-        body: { content_topic_id }
-      });
-
       const response = await apiRequest(`/entities/product/${productId}`, {
         method: 'PUT',
         body: JSON.stringify({ content_topic_id })
       });
 
-      console.log('📥 API response received:', response);
       return response;
     } catch (error) {
       console.error('❌ API request failed:', error);

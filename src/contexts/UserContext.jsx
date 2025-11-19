@@ -127,37 +127,16 @@ export function UserProvider({ children }) {
 
   const checkPersistedAuth = useCallback(async () => {
     try {
-      const token = localStorage.getItem('authToken');
-      const rememberMe = localStorage.getItem('rememberMe') === 'true';
-      const tokenExpiry = localStorage.getItem('tokenExpiry');
+      // With httpOnly cookies, we simply try to get the current user
+      // The cookies will be automatically sent with the request
+      // If the session is valid, the API will return user data
+      // If invalid/expired, the API will return an error
 
-      if (!token) {
-        setIsLoading(false);
-        return;
-      }
+      clog('[UserContext] 🔄 Checking authentication via cookie-based session...');
 
-      // Check if token is expired
-      if (tokenExpiry && new Date().getTime() > parseInt(tokenExpiry)) {
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('tokenExpiry');
-        localStorage.removeItem('rememberMe');
-        setIsLoading(false);
-        return;
-      }
-
-      // If rememberMe, persist for a week (handled by tokenExpiry). If not, persist for session only.
-      if (!rememberMe) {
-        // For session-only, do not expire until tab/window is closed (no expiry check needed)
-        // Remove tokenExpiry if it exists
-        if (tokenExpiry) {
-          localStorage.removeItem('tokenExpiry');
-        }
-      }
-
-      // Try to get current user with existing token
       try {
-        clog('[UserContext] 🔄 Calling User.getCurrentUser()...');
-        const user = await User.getCurrentUser();
+        clog('[UserContext] 🔄 Calling User.getCurrentUser() with suppressUserErrors=true...');
+        const user = await User.getCurrentUser(true); // Suppress user errors for initial auth check
         clog('[UserContext] 🔄 User.getCurrentUser() response:', user);
         if (user) {
           clog('[UserContext] ✅ User.getCurrentUser() succeeded, calling loadUserData...');
@@ -175,7 +154,8 @@ export function UserProvider({ children }) {
           stack: getCurrentUserError.stack,
           name: getCurrentUserError.name
         });
-        // If we can't get user from API, clear auth completely to force re-login
+        // If we can't get user from API (401/403), user is not authenticated
+        // Clear any local state to ensure clean state
         clearAuth();
       }
     } catch (error) {
@@ -272,7 +252,7 @@ export function UserProvider({ children }) {
 
         if (freePlans && freePlans.length > 0) {
           const freePlan = freePlans[0];
-          const updatedUser = await User.update(user.uid || user.id, {
+          const updatedUser = await User.update(user.id, {
             current_subscription_plan_id: freePlan.id,
             subscription_status: 'active',
             subscription_start_date: new Date().toISOString(),
@@ -311,7 +291,6 @@ export function UserProvider({ children }) {
         onboarding_completed: user.onboarding_completed,
         user_type: user.user_type,
         email: user.email,
-        uid: user.uid,
         id: user.id,
         allKeys: Object.keys(user),
         userSource: user.providerData ? 'Firebase' : 'API'
@@ -327,7 +306,7 @@ export function UserProvider({ children }) {
       clog('[UserContext] 🔄 Fetching complete user data from database...');
       let completeUser;
       try {
-        completeUser = await User.getCurrentUser();
+        completeUser = await User.getCurrentUser(true); // Suppress user errors for user data refresh
         clog('[UserContext] ✅ Complete user data fetched:', {
           birth_date: completeUser?.birth_date,
           onboarding_completed: completeUser?.onboarding_completed,
@@ -379,7 +358,6 @@ export function UserProvider({ children }) {
         ...finalUser,
         // Ensure critical fields are preserved
         email: finalUser.email || user.email,
-        uid: finalUser.uid || user.uid,
         id: finalUser.id || user.id,
         birth_date: finalUser.birth_date,
         onboarding_completed: finalUser.onboarding_completed,
@@ -418,18 +396,13 @@ export function UserProvider({ children }) {
   const login = useCallback(async (userData, rememberMe = false) => {
     try {
       await loadUserData(userData);
-      // Set remember me preference
-      if (rememberMe) {
-        const oneWeekFromNow = new Date().getTime() + (7 * 24 * 60 * 60 * 1000);
-        localStorage.setItem('tokenExpiry', oneWeekFromNow.toString());
-        localStorage.setItem('rememberMe', 'true');
-      } else {
-        // Session-only: remove tokenExpiry, set rememberMe false
-        localStorage.removeItem('tokenExpiry');
-        localStorage.setItem('rememberMe', 'false');
-      }
+
+      // Note: rememberMe functionality is now handled server-side via refresh token duration
+      // The server sets appropriate cookie expiration times based on rememberMe preference
+      // No need for client-side localStorage management
+
       updateLastActivity();
-      clog('[UserContext] User logged in successfully');
+      clog('[UserContext] User logged in successfully with cookie-based session');
     } catch (error) {
       cerror('[UserContext] Login error:', error);
 
@@ -462,11 +435,9 @@ export function UserProvider({ children }) {
     // Don't clear settings - they should remain available for non-logged-in users
     setIsAuthenticated(false);
     setUserDataFresh(false); // Reset fresh data flag when clearing auth
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('token'); // Also clear backup token key
-    localStorage.removeItem('tokenExpiry');
-    localStorage.removeItem('rememberMe');
-    localStorage.removeItem('lastActivity');
+
+    // Note: Authentication cookies are cleared by the server via logout endpoint
+    // No need to manage tokens in localStorage anymore
 
     // Clear any Firebase session data that might be persisting
     try {
@@ -486,6 +457,7 @@ export function UserProvider({ children }) {
   }, []);
 
   const updateLastActivity = useCallback(() => {
+    // Keep activity tracking for analytics/UX purposes (not for authentication)
     localStorage.setItem('lastActivity', new Date().getTime().toString());
   }, []);
 

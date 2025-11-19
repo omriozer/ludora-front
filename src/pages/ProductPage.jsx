@@ -192,20 +192,15 @@ export default function ProductPage() {
 
           // Load content topic associations
           try {
-            console.log('Loading content topics for product:', productId);
             const productTopics = await contentTopicService.getProductTopics(productId);
-            console.log('Loaded product topics response:', productTopics);
 
             if (productTopics && productTopics.topics && productTopics.topics.length > 0) {
               product.content_topic_id = productTopics.topics[0].id;
-              console.log('Set content_topic_id to:', productTopics.topics[0].id);
             } else {
               product.content_topic_id = null;
-              console.log('No content topics found, setting content_topic_id to null');
             }
           } catch (error) {
             cerror('Failed to load product content topics:', error);
-            console.log('Error loading content topics:', error);
             product.content_topic_id = null;
           }
 

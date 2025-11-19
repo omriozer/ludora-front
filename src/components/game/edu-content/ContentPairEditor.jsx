@@ -279,6 +279,29 @@ const ContentPairEditor = ({
   const handleDataForA = async (dataContent) => {
     if (!dataContent || !pendingBgA) return;
 
+    // Validate element types before API call
+    if (pendingBgA.element_type !== 'playing_card_bg') {
+      const errorMsg = 'רקע הקלף חייב להיות מסוג "רקע קלף" (playing_card_bg)';
+      setError(errorMsg);
+      showError('שגיאת אימות', errorMsg);
+      return;
+    }
+
+    if (dataContent.element_type !== 'data') {
+      const errorMsg = 'התוכן חייב להיות מסוג "טקסט" (data)';
+      setError(errorMsg);
+      showError('שגיאת אימות', errorMsg);
+      return;
+    }
+
+    // Validate that background has a file
+    if (!pendingBgA.fileUrl && !pendingBgA.content_metadata?.file_info?.s3_key) {
+      const errorMsg = 'רקע התמונה חייב לכלול קובץ תמונה';
+      setError(errorMsg);
+      showError('שגיאת אימות', errorMsg);
+      return;
+    }
+
     try {
       setIsSaving(true);
 
@@ -324,6 +347,29 @@ const ContentPairEditor = ({
   // Handle bg selection for Card A sub-pair (when data was selected first)
   const handleBgForA = async (bgContent) => {
     if (!bgContent || !pendingDataA) return;
+
+    // Validate element types before API call
+    if (bgContent.element_type !== 'playing_card_bg') {
+      const errorMsg = 'רקע הקלף חייב להיות מסוג "רקע קלף" (playing_card_bg)';
+      setError(errorMsg);
+      showError('שגיאת אימות', errorMsg);
+      return;
+    }
+
+    if (pendingDataA.element_type !== 'data') {
+      const errorMsg = 'התוכן חייב להיות מסוג "טקסט" (data)';
+      setError(errorMsg);
+      showError('שגיאת אימות', errorMsg);
+      return;
+    }
+
+    // Validate that background has a file
+    if (!bgContent.fileUrl && !bgContent.content_metadata?.file_info?.s3_key) {
+      const errorMsg = 'רקע התמונה חייב לכלול קובץ תמונה';
+      setError(errorMsg);
+      showError('שגיאת אימות', errorMsg);
+      return;
+    }
 
     try {
       setIsSaving(true);
@@ -371,6 +417,29 @@ const ContentPairEditor = ({
   const handleBgForB = async (bgContent) => {
     if (!bgContent || !pendingDataB) return;
 
+    // Validate element types before API call
+    if (bgContent.element_type !== 'playing_card_bg') {
+      const errorMsg = 'רקע הקלף חייב להיות מסוג "רקע קלף" (playing_card_bg)';
+      setError(errorMsg);
+      showError('שגיאת אימות', errorMsg);
+      return;
+    }
+
+    if (pendingDataB.element_type !== 'data') {
+      const errorMsg = 'התוכן חייב להיות מסוג "טקסט" (data)';
+      setError(errorMsg);
+      showError('שגיאת אימות', errorMsg);
+      return;
+    }
+
+    // Validate that background has a file
+    if (!bgContent.fileUrl && !bgContent.content_metadata?.file_info?.s3_key) {
+      const errorMsg = 'רקע התמונה חייב לכלול קובץ תמונה';
+      setError(errorMsg);
+      showError('שגיאת אימות', errorMsg);
+      return;
+    }
+
     try {
       setIsSaving(true);
 
@@ -416,6 +485,29 @@ const ContentPairEditor = ({
   // Handle data selection for Card B sub-pair
   const handleDataForB = async (dataContent) => {
     if (!dataContent || !pendingBgB) return;
+
+    // Validate element types before API call
+    if (pendingBgB.element_type !== 'playing_card_bg') {
+      const errorMsg = 'רקע הקלף חייב להיות מסוג "רקע קלף" (playing_card_bg)';
+      setError(errorMsg);
+      showError('שגיאת אימות', errorMsg);
+      return;
+    }
+
+    if (dataContent.element_type !== 'data') {
+      const errorMsg = 'התוכן חייב להיות מסוג "טקסט" (data)';
+      setError(errorMsg);
+      showError('שגיאת אימות', errorMsg);
+      return;
+    }
+
+    // Validate that background has a file
+    if (!pendingBgB.fileUrl && !pendingBgB.content_metadata?.file_info?.s3_key) {
+      const errorMsg = 'רקע התמונה חייב לכלול קובץ תמונה';
+      setError(errorMsg);
+      showError('שגיאת אימות', errorMsg);
+      return;
+    }
 
     try {
       setIsSaving(true);

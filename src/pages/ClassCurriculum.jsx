@@ -68,7 +68,7 @@ export default function ClassCurriculum() {
       setClassroom(classroomData);
 
       // Verify user has access to this classroom
-      if (currentUser?.role !== 'admin' && classroomData.teacher_id !== currentUser?.uid) {
+      if (currentUser?.role !== 'admin' && classroomData.teacher_id !== currentUser?.id) {
         toast({
           title: "אין הרשאה",
           description: "אין לך הרשאה לצפות בתכנית הלימודים של כיתה זו",
@@ -81,7 +81,7 @@ export default function ClassCurriculum() {
       // Look for existing class curriculum
       const existingCurricula = await CurriculumAPI.find({
         class_id: classId,
-        teacher_user_id: currentUser.uid,
+        teacher_user_id: currentUser.id,
         is_active: true
       });
 

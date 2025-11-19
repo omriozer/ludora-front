@@ -11,6 +11,7 @@ import {
   getWhatsAppUrl,
   getEmailUrl
 } from '@/config/contactDefaults';
+import { isStudentPortal } from '@/utils/domainUtils';
 
 // WhatsApp Icon Component
 const WhatsAppIcon = ({ className = "w-4 h-4" }) => (
@@ -26,6 +27,7 @@ const WhatsAppIcon = ({ className = "w-4 h-4" }) => (
 
 export default function Footer({ isMaintenanceMode = false }) {
   const { settings } = useUser();
+  const isStudent = isStudentPortal();
 
   // Static footer texts - converted from dynamic getText
   const footerTexts = {
@@ -42,6 +44,90 @@ export default function Footer({ isMaintenanceMode = false }) {
     accessibility: "הצהרת נגישות"
   };
 
+  // Student portal footer - compact design
+  if (isStudent) {
+    return (
+      <footer className="bg-gray-900 text-white py-4" role="contentinfo">
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            {/* Logo and description - compact */}
+            <div className="flex items-center gap-3">
+              <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                {logo || settings?.logo_url ? (
+                  <img
+                    src={logo || settings?.logo_url}
+                    alt={settings?.site_name || "לודורה"}
+                    className="h-8 object-contain"
+                  />
+                ) : (
+                  <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                    <GraduationCap className="w-4 h-4 text-white" />
+                  </div>
+                )}
+              </Link>
+              <span className="text-sm font-medium hidden md:block">
+                {settings?.site_description || 'בית ללמידה אחרת'}
+              </span>
+            </div>
+
+            {/* Links - compact */}
+            <div className="flex items-center gap-3 text-sm">
+              <Link to="/privacy" className="text-gray-400 hover:text-white transition-colors">
+                {footerTexts.privacy}
+              </Link>
+              <span className="text-gray-600">•</span>
+              <Link to="/terms" className="text-gray-400 hover:text-white transition-colors">
+                {footerTexts.terms}
+              </Link>
+              <span className="text-gray-600">•</span>
+              <Link to="/accessibility" className="text-gray-400 hover:text-white transition-colors">
+                {footerTexts.accessibility}
+              </Link>
+            </div>
+
+            {/* Contact section - compact */}
+            <div className="text-center md:text-right">
+              <p className="text-xs text-gray-400 mb-2">{footerTexts.contactDescription}</p>
+              <div className="flex gap-2 justify-center md:justify-end">
+                <a
+                  href={getWhatsAppUrl(getContactPhone(settings), 'שלום, יש לי שאלה על לודורה')}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white border-0 px-3 py-1 text-xs">
+                    <WhatsAppIcon className="w-3 h-3 mr-1" />
+                    {footerTexts.whatsappMessage}
+                  </Button>
+                </a>
+                <a
+                  href={getEmailUrl(getContactEmail(settings), 'שאלה על לודורה', '')}
+                >
+                  <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-3 py-1 text-xs">
+                    <Mail className="w-3 h-3 mr-1" />
+                    {footerTexts.emailMessage}
+                  </Button>
+                </a>
+                {!isMaintenanceMode && (
+                  <Link to="/contact">
+                    <Button size="sm" variant="outline" className="bg-transparent border-gray-400 text-gray-300 hover:bg-gray-800 hover:text-white px-3 py-1 text-xs">
+                      {footerTexts.sendMessage}
+                    </Button>
+                  </Link>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Copyright - compact */}
+          <div className="border-t border-gray-800 mt-3 pt-3 text-center">
+            <p className="text-xs text-gray-400">{footerTexts.copyright}</p>
+          </div>
+        </div>
+      </footer>
+    );
+  }
+
+  // Teacher portal footer - full design
   return (
     <footer className="bg-gray-900 text-white py-8" role="contentinfo">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

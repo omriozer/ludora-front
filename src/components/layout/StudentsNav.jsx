@@ -1,16 +1,17 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { GraduationCap, Keyboard, QrCode, Camera, CameraOff } from 'lucide-react';
+import { GraduationCap, Keyboard, QrCode, CameraOff, AlertTriangle } from 'lucide-react';
+import PropTypes from 'prop-types';
 import { useUser } from '@/contexts/UserContext';
 import { Button } from '@/components/ui/button';
 import logo from '../../assets/images/logo.png';
 
 /**
  * Top navigation header for the student portal
- * Simple header with logo on the right side and action buttons on the left
+ * Simple header with logo on the right side, optional teacher info in center, and action buttons on the left
  */
-const StudentsNav = () => {
-  const { settings } = useUser();
+const StudentsNav = ({ teacherInfo = null }) => {
+  const { settings, currentUser } = useUser();
   const [isCameraAvailable, setIsCameraAvailable] = useState(false);
 
   // Check camera availability on component mount
@@ -23,7 +24,7 @@ const StudentsNav = () => {
           // Stop the stream immediately after checking
           stream.getTracks().forEach(track => track.stop());
         }
-      } catch (error) {
+      } catch {
         setIsCameraAvailable(false);
       }
     };
@@ -88,8 +89,25 @@ const StudentsNav = () => {
             )}
           </Link>
 
-          {/* Action Buttons on the left side (second element in RTL = left side) */}
+          {/* Teacher catalog info in the center */}
+          {teacherInfo && (
+            <div className="absolute left-1/2 transform -translate-x-1/2 text-center">
+              <h1 className="text-lg font-bold text-gray-800">
+                קטלוג המשחקים של {teacherInfo.name}
+              </h1>
+              <p className="text-xs text-gray-600">קוד מורה: {teacherInfo.invitation_code}</p>
+            </div>
+          )}
+
+          {/* Action Buttons on the left side (last element in RTL = left side) */}
           <div className="flex items-center gap-2">
+            {/* Maintenance Mode Indicator for Admins */}
+            {settings?.maintenance_mode && currentUser?.role === 'admin' && (
+              <div className="flex items-center gap-1 px-2 py-1 bg-orange-100 border border-orange-300 rounded-md text-xs text-orange-700 mr-2">
+                <AlertTriangle className="w-3 h-3" />
+                <span className="hidden sm:inline">מצב תחזוקה</span>
+              </div>
+            )}
             {/* Code Input and CTA Button */}
             <div className="flex items-center gap-2">
               <input
@@ -138,6 +156,13 @@ const StudentsNav = () => {
       </div>
     </nav>
   );
+};
+
+StudentsNav.propTypes = {
+  teacherInfo: PropTypes.shape({
+    name: PropTypes.string.isRequired,
+    invitation_code: PropTypes.string.isRequired,
+  }),
 };
 
 export default StudentsNav;

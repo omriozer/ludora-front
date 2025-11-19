@@ -25,6 +25,9 @@ export const StudentInvitations = lazy(() => import('./StudentInvitations'));
 // Student portal pages
 export const StudentHome = lazy(() => import('./students/StudentHome'));
 export const StudentNotFound = lazy(() => import('./students/StudentNotFound'));
+export const TeacherCatalog = lazy(() => import('./students/TeacherCatalog'));
+export const LobbyJoin = lazy(() => import('./students/LobbyJoin'));
+export const GamePlay = lazy(() => import('./students/GamePlay'));
 
 // Product and content pages
 export const ProductDetails = lazy(() => import('./ProductDetails'));
