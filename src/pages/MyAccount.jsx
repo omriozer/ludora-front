@@ -131,15 +131,22 @@ const MyAccount = () => {
   // Generate QR code when modal opens
   useEffect(() => {
     if (showQRModal && qrContainer && portalUrl) {
-      try {
-        renderQRCode(portalUrl, qrContainer, LUDORA_OFFICIAL_PRESET, {
-          width: 400,
-          height: 400,
-          margin: 0
-        });
-      } catch (error) {
-        console.error('Error generating QR code:', error);
-      }
+      (async () => {
+        try {
+          await renderQRCode(portalUrl, qrContainer, LUDORA_OFFICIAL_PRESET, {
+            width: 400,
+            height: 400,
+            margin: 0
+          });
+        } catch (error) {
+          console.error('Error generating QR code:', error);
+          toast({
+            title: "שגיאה ביצירת QR",
+            description: "לא הצלחנו ליצור את קוד ה-QR. אנא נסה שוב.",
+            variant: "destructive"
+          });
+        }
+      })();
     }
   }, [showQRModal, qrContainer, portalUrl]);
 

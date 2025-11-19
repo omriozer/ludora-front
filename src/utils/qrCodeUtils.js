@@ -1,4 +1,5 @@
-import QRCodeStyling from 'qr-code-styling';
+// QRCodeStyling will be dynamically imported to fix bundling issues
+let QRCodeStyling = null;
 
 /**
  * QR Code styling presets for Ludora
@@ -23,6 +24,24 @@ const LUDORA_COLORS = {
   ludoraPink: '#FF6B9D',        // Matching the pink in "RA"
   ludoraBlue: '#4834DF'         // Accent blue
 };
+
+/**
+ * Dynamically load QRCodeStyling library to fix bundling issues
+ * @returns {Promise<Object>} QRCodeStyling constructor
+ */
+async function loadQRCodeStyling() {
+  if (!QRCodeStyling) {
+    try {
+      // Try the default import first (most common for this library)
+      const module = await import('qr-code-styling');
+      QRCodeStyling = module.default || module;
+    } catch (error) {
+      console.error('Failed to load QRCodeStyling library:', error);
+      throw new Error('QR code library could not be loaded');
+    }
+  }
+  return QRCodeStyling;
+}
 
 /**
  * Preset styles for different use cases
@@ -513,9 +532,12 @@ export const QR_PRESETS = {
  * @param {string} preset - The preset name to use
  * @param {Object} customOptions - Optional custom options to override preset
  * @param {string} logoUrl - Optional logo URL to include in the center
- * @returns {QRCodeStyling} QR code instance
+ * @returns {Promise<QRCodeStyling>} QR code instance
  */
-export function createQRCode(data, preset = 'gradient', customOptions = {}, logoUrl = null) {
+export async function createQRCode(data, preset = 'gradient', customOptions = {}, logoUrl = null) {
+  // Dynamically load the library
+  const QRCodeStylingConstructor = await loadQRCodeStyling();
+
   if (!QR_PRESETS[preset]) {
     console.warn(`QR preset "${preset}" not found. Using gradient preset.`);
     preset = 'gradient';
@@ -538,7 +560,7 @@ export function createQRCode(data, preset = 'gradient', customOptions = {}, logo
     };
   }
 
-  return new QRCodeStyling(options);
+  return new QRCodeStylingConstructor(options);
 }
 
 /**
@@ -548,25 +570,31 @@ export function createQRCode(data, preset = 'gradient', customOptions = {}, logo
  * @param {string} preset - Preset name
  * @param {Object} customOptions - Custom options
  * @param {string} logoUrl - Optional logo URL
+ * @returns {Promise<QRCodeStyling>} QR code instance
  */
-export function renderQRCode(data, container, preset = 'gradient', customOptions = {}, logoUrl = null) {
-  const qrCode = createQRCode(data, preset, customOptions, logoUrl);
+export async function renderQRCode(data, container, preset = 'gradient', customOptions = {}, logoUrl = null) {
+  try {
+    const qrCode = await createQRCode(data, preset, customOptions, logoUrl);
 
-  // Safely clear container - only remove non-React managed elements
-  if (container) {
-    // Find any existing QR elements and remove them specifically
-    const existingQRElements = container.querySelectorAll('canvas, svg');
-    existingQRElements.forEach(element => {
-      if (element.parentNode === container) {
-        container.removeChild(element);
-      }
-    });
+    // Safely clear container - only remove non-React managed elements
+    if (container) {
+      // Find any existing QR elements and remove them specifically
+      const existingQRElements = container.querySelectorAll('canvas, svg');
+      existingQRElements.forEach(element => {
+        if (element.parentNode === container) {
+          container.removeChild(element);
+        }
+      });
 
-    // Append QR code
-    qrCode.append(container);
+      // Append QR code
+      qrCode.append(container);
+    }
+
+    return qrCode;
+  } catch (error) {
+    console.error('Error rendering QR code:', error);
+    throw error;
   }
-
-  return qrCode;
 }
 
 /**
@@ -610,10 +638,11 @@ export async function getQRCodeDataURL(qrCode, extension = 'png') {
 /**
  * Create a custom QR code with specific styling
  * @param {Object} config - Complete configuration object
- * @returns {QRCodeStyling} QR code instance
+ * @returns {Promise<QRCodeStyling>} QR code instance
  */
-export function createCustomQRCode(config) {
-  return new QRCodeStyling(config);
+export async function createCustomQRCode(config) {
+  const QRCodeStylingConstructor = await loadQRCodeStyling();
+  return new QRCodeStylingConstructor(config);
 }
 
 /**
@@ -638,10 +667,10 @@ export function getPresetConfig(preset) {
  * @param {string} data - The data to encode
  * @param {string} preset - Base preset to use (default: 'ludoraOfficial')
  * @param {Object} customOptions - Custom options to override
- * @returns {QRCodeStyling} QR code instance with logo
+ * @returns {Promise<QRCodeStyling>} QR code instance with logo
  */
-export function createLudoraQRCode(data, preset = 'ludoraOfficial', customOptions = {}) {
-  return createQRCode(data, preset, customOptions);
+export async function createLudoraQRCode(data, preset = 'ludoraOfficial', customOptions = {}) {
+  return await createQRCode(data, preset, customOptions);
 }
 
 /**
@@ -650,10 +679,10 @@ export function createLudoraQRCode(data, preset = 'ludoraOfficial', customOption
  * @param {string} logoUrl - URL to your logo image
  * @param {string} preset - Base preset to use (default: 'professional')
  * @param {Object} customOptions - Custom options
- * @returns {QRCodeStyling} QR code instance with custom logo
+ * @returns {Promise<QRCodeStyling>} QR code instance with custom logo
  */
-export function createQRCodeWithLogo(data, logoUrl, preset = 'professional', customOptions = {}) {
-  return createQRCode(data, preset, customOptions, logoUrl);
+export async function createQRCodeWithLogo(data, logoUrl, preset = 'professional', customOptions = {}) {
+  return await createQRCode(data, preset, customOptions, logoUrl);
 }
 
 /**
