@@ -128,6 +128,14 @@ const MyAccount = () => {
     }
   };
 
+  // Sync local invitation code state with global user state
+  useEffect(() => {
+    // Update local state when user context changes
+    if (currentUser?.invitation_code !== invitationCode) {
+      setInvitationCode(currentUser?.invitation_code || null);
+    }
+  }, [currentUser?.invitation_code, invitationCode]);
+
   // Generate QR code when modal opens
   useEffect(() => {
     if (showQRModal && qrContainer && portalUrl) {
