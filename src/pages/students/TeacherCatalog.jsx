@@ -6,8 +6,8 @@ import { GamepadIcon, UserIcon, Home, Crown, PlayIcon, Clock, Users } from 'luci
 import GameTypeDisplay from '@/components/game/GameTypeDisplay';
 import logoSm from '../../assets/images/logo_sm.png';
 import { useSSE } from '@/hooks/useSSE';
-import { apiRequest } from '@/services/apiClient';
-import { filterActiveLobbies, findBestActiveLobby, isLobbyActive } from '@/utils/lobbyUtils';
+import { apiRequestAnonymous } from '@/services/apiClient';
+import { filterActiveLobbies, findBestActiveLobby, isLobbyActive, computeLobbyStatus } from '@/utils/lobbyUtils';
 
 /**
  * Teacher catalog page for students to view games shared by their teacher
@@ -20,60 +20,107 @@ const TeacherCatalog = () => {
   const [error, setError] = useState(null);
   const [gamesWithLobbies, setGamesWithLobbies] = useState([]);
 
-  // Create channels for SSE based on available games
-  const gameChannels = gamesWithLobbies.length > 0
-    ? gamesWithLobbies.map(game => `game:${game.entity_id}`)
-    : [];
-
-  // SSE integration for real-time lobby updates
-  const { isConnected, addEventListener, removeEventListener } = useSSE(
-    gameChannels,
-    {
-      debugMode: true,
-      autoReconnect: true
-    }
-  );
+  // SSE disabled for student portal to avoid auth errors
+  // Students don't need real-time updates and SSE requires authentication
 
   useEffect(() => {
     const fetchTeacherCatalog = async () => {
       try {
         setLoading(true);
-        const data = await apiRequest(`/entities/teacher-catalog/${userCode}`);
-        setCatalog(data);
 
-        // Fetch lobby information for each game
-        if (data && data.games && data.games.all) {
-          const gamesWithLobbyInfo = await Promise.all(
-            data.games.all.map(async (game) => {
-              try {
-                const lobbies = await apiRequest(`/games/${game.entity_id}/lobbies?expired=false`);
-                const activeLobbies = filterActiveLobbies(lobbies);
-                const hasActiveLobby = activeLobbies.length > 0;
-                const activeLobbiesCount = activeLobbies.length;
+        // Use public teacher endpoint with code parameter (anonymous request)
+        const games = await apiRequestAnonymous(`/games/teacher/${userCode}`);
+
+        // Create catalog structure for UI
+        setCatalog({
+          teacher: {
+            name: "המורה", // Will be populated by the endpoint if it includes teacher info
+            id: userCode
+          },
+          totals: {
+            all: games.length,
+            teacher_created: games.filter(game => game.creator_user_id === userCode).length,
+            ludora_games: games.filter(game => !game.creator_user_id || game.creator_user_id !== userCode).length
+          }
+        });
+
+        // Process lobby information that comes with each game
+        if (games && games.length > 0) {
+          const gamesWithLobbyInfo = games.map((game) => {
+            const lobbies = game.lobbies || [];
+
+            // DEBUG: Log lobby data with enhanced status computation details
+            const now = new Date();
+            console.log(`🔍 [DEBUG] Student Portal - Game ${game.title} (${game.id}):`, {
+              totalLobbies: lobbies.length,
+              currentTime: now.toISOString(),
+              lobbies: lobbies.map(lobby => {
+                const computedStatus = lobby.status || lobby.computed_status || computeLobbyStatus(lobby);
+                const expiresAt = lobby.expires_at ? new Date(lobby.expires_at) : null;
+                const closedAt = lobby.closed_at ? new Date(lobby.closed_at) : null;
+
+                // Detailed status computation analysis
+                let statusReason = '';
+                if (lobby.closed_at) {
+                  statusReason = 'Has closed_at timestamp';
+                } else if (!lobby.expires_at) {
+                  statusReason = 'No expires_at - pending';
+                } else if (expiresAt && expiresAt <= now) {
+                  statusReason = 'Past expiration time';
+                } else if (expiresAt) {
+                  const minutesUntilExpiry = Math.ceil((expiresAt - now) / (1000 * 60));
+                  statusReason = `Expires in ${minutesUntilExpiry} minutes`;
+                }
 
                 return {
-                  ...game,
-                  lobbyInfo: {
-                    hasActiveLobby,
-                    activeLobbiesCount,
-                    totalLobbies: lobbies.length,
-                    lobbies: lobbies
-                  }
+                  id: lobby.id,
+                  lobby_code: lobby.lobby_code,
+                  expires_at: lobby.expires_at,
+                  expires_at_parsed: expiresAt?.toISOString(),
+                  closed_at: lobby.closed_at,
+                  closed_at_parsed: closedAt?.toISOString(),
+                  status: lobby.status,
+                  computed_status: lobby.computed_status,
+                  calculated_status: computedStatus,
+                  status_reason: statusReason,
+                  is_active: isLobbyActive(lobby)
                 };
-              } catch (error) {
-                // If lobby fetch fails, treat as no active lobbies
-                return {
-                  ...game,
-                  lobbyInfo: {
-                    hasActiveLobby: false,
-                    activeLobbiesCount: 0,
-                    totalLobbies: 0,
-                    lobbies: []
-                  }
-                };
+              })
+            });
+
+            const activeLobbies = filterActiveLobbies(lobbies);
+
+            // DEBUG: Log filtering results with individual lobby active status
+            console.log(`🔍 [DEBUG] Student Portal - Filtering results for ${game.title}:`, {
+              activeLobbies: activeLobbies.length,
+              totalLobbies: lobbies.length,
+              activeLobbiesList: activeLobbies.map(lobby => ({
+                id: lobby.id,
+                status: lobby.status || lobby.computed_status || computeLobbyStatus(lobby),
+                is_active: isLobbyActive(lobby)
+              })),
+              allLobbiesActivenessCheck: lobbies.map(lobby => ({
+                id: lobby.id,
+                status: lobby.status || lobby.computed_status || computeLobbyStatus(lobby),
+                is_active: isLobbyActive(lobby),
+                reason: lobby.closed_at ? 'closed' : !lobby.expires_at ? 'pending' :
+                        new Date(lobby.expires_at) <= now ? 'expired' : 'should_be_active'
+              }))
+            });
+
+            const hasActiveLobby = activeLobbies.length > 0;
+            const activeLobbiesCount = activeLobbies.length;
+
+            return {
+              ...game,
+              lobbyInfo: {
+                hasActiveLobby,
+                activeLobbiesCount,
+                totalLobbies: lobbies.length,
+                lobbies: lobbies
               }
-            })
-          );
+            };
+          });
 
           // Sort games: active lobbies first, then inactive
           const sortedGames = gamesWithLobbyInfo.sort((a, b) => {
@@ -108,112 +155,9 @@ const TeacherCatalog = () => {
     }
   }, [userCode]);
 
-  // Function to refresh lobby info for a specific game
-  const refreshGameLobbyInfo = async (gameId) => {
-    try {
-      const lobbies = await apiRequest(`/games/${gameId}/lobbies?expired=false`);
-      const activeLobbies = filterActiveLobbies(lobbies);
-      const hasActiveLobby = activeLobbies.length > 0;
-      const activeLobbiesCount = activeLobbies.length;
 
-      // Update the specific game in the gamesWithLobbies state
-      setGamesWithLobbies(prevGames => {
-        const updatedGames = prevGames.map(game => {
-          if (game.entity_id === gameId) {
-            return {
-              ...game,
-              lobbyInfo: {
-                hasActiveLobby,
-                activeLobbiesCount,
-                totalLobbies: lobbies.length,
-                lobbies: lobbies
-              }
-            };
-          }
-          return game;
-        });
-
-        // Re-sort games after lobby info update
-        return updatedGames.sort((a, b) => {
-          // First, sort by lobby activity (active first)
-          if (a.lobbyInfo.hasActiveLobby && !b.lobbyInfo.hasActiveLobby) return -1;
-          if (!a.lobbyInfo.hasActiveLobby && b.lobbyInfo.hasActiveLobby) return 1;
-
-          // If both have same activity status, sort by active lobby count (more active lobbies first)
-          if (a.lobbyInfo.hasActiveLobby && b.lobbyInfo.hasActiveLobby) {
-            return b.lobbyInfo.activeLobbiesCount - a.lobbyInfo.activeLobbiesCount;
-          }
-
-          // For games without active lobbies, sort by creation date (newest first)
-          return new Date(b.created_at) - new Date(a.created_at);
-        });
-      });
-
-      console.log(`[TeacherCatalog] Updated lobby info for game ${gameId}`);
-    } catch (error) {
-      console.error(`[TeacherCatalog] Error refreshing lobby info for game ${gameId}:`, error);
-    }
-  };
-
-  // SSE event handlers for real-time lobby updates
-  useEffect(() => {
-    if (gamesWithLobbies.length === 0) return; // No games to listen for yet
-
-    const handleLobbyEvent = (event) => {
-      console.log('[TeacherCatalog] Received lobby event:', event);
-
-      // Extract game ID from the event data
-      const gameId = event.data?.gameId || event.data?.game_id;
-      if (gameId) {
-        // Find if this game is in our catalog
-        const gameInCatalog = gamesWithLobbies.find(game => game.entity_id === gameId);
-        if (gameInCatalog) {
-          // Refresh lobby info for this specific game
-          refreshGameLobbyInfo(gameId);
-        }
-      }
-    };
-
-    const handleSessionEvent = (event) => {
-      console.log('[TeacherCatalog] Received session event:', event);
-
-      // For session events, also refresh lobby info as participant counts may have changed
-      const gameId = event.data?.gameId || event.data?.game_id;
-      if (gameId) {
-        const gameInCatalog = gamesWithLobbies.find(game => game.entity_id === gameId);
-        if (gameInCatalog) {
-          refreshGameLobbyInfo(gameId);
-        }
-      }
-    };
-
-    // Register event handlers
-    const cleanupLobbyCreated = addEventListener('lobby:created', handleLobbyEvent);
-    const cleanupLobbyActivated = addEventListener('lobby:activated', handleLobbyEvent);
-    const cleanupLobbyClosed = addEventListener('lobby:closed', handleLobbyEvent);
-    const cleanupLobbyExpired = addEventListener('lobby:expired', handleLobbyEvent);
-
-    // Register handlers for session events (affect participant counts)
-    const cleanupSessionParticipantJoined = addEventListener('session:participant:joined', handleSessionEvent);
-    const cleanupSessionParticipantLeft = addEventListener('session:participant:left', handleSessionEvent);
-
-    // Cleanup on unmount or games change
-    return () => {
-      cleanupLobbyCreated?.();
-      cleanupLobbyActivated?.();
-      cleanupLobbyClosed?.();
-      cleanupLobbyExpired?.();
-      cleanupSessionParticipantJoined?.();
-      cleanupSessionParticipantLeft?.();
-    };
-  }, [gamesWithLobbies, addEventListener, removeEventListener]);
-
-  // Show SSE connection status in console for debugging
-  useEffect(() => {
-    if (gameChannels.length > 0) {
-      console.log(`[TeacherCatalog] SSE ${isConnected ? 'connected' : 'disconnected'} for ${gameChannels.length} games`);
-    }
-  }, [isConnected, gameChannels.length]);
+  // SSE disabled for student portal - no real-time updates needed
+  // Students can refresh the page if they need updated lobby information
 
   const handlePlayGame = async (game) => {
     // Use already fetched lobby info if available
@@ -229,7 +173,7 @@ const TeacherCatalog = () => {
 
     // Fallback: re-fetch lobby info if not available or no active lobbies
     try {
-      const lobbies = await apiRequest(`/games/${game.entity_id}/lobbies?expired=false`);
+      const lobbies = await apiRequestAnonymous(`/games/${game.id}/lobbies`);
       const bestLobby = findBestActiveLobby(lobbies);
 
       if (bestLobby) {

@@ -100,6 +100,70 @@ export async function apiRequest(endpoint, options = {}) {
   }
 }
 
+// Anonymous API request helper without credentials (for student portal)
+export async function apiRequestAnonymous(endpoint, options = {}) {
+  const url = `${API_BASE}${endpoint}`;
+
+  clog(`🌐 Anonymous API Request: ${options.method || 'GET'} ${url}`);
+  clog('📊 API Base:', API_BASE);
+
+  const headers = {
+    'Content-Type': 'application/json',
+    ...options.headers
+  };
+
+  const defaultOptions = {
+    credentials: 'omit', // No credentials for anonymous requests
+    headers
+  };
+
+  clog('📤 Anonymous request headers:', headers);
+  clog('📤 Anonymous request options:', { ...defaultOptions, ...options });
+
+  try {
+    const response = await fetch(url, { ...defaultOptions, ...options });
+    clog(`📥 Anonymous response status: ${response.status} ${response.statusText}`);
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: response.statusText }));
+      cerror('❌ Anonymous API Error:', error);
+
+      // Log validation details if available
+      if (error.details && Array.isArray(error.details)) {
+        cerror('📋 Anonymous Validation Details:', error.details);
+      }
+
+      const errorMessage = typeof error.error === 'string' ? error.error :
+                        error.message ||
+                        JSON.stringify(error) ||
+                        `Anonymous API request failed: ${response.status}`;
+      throw new ApiError(errorMessage, response.status, response);
+    }
+
+    const data = await response.json();
+    clog('✅ Anonymous API Response:', data);
+    return data;
+  } catch (error) {
+    cerror('🚫 Anonymous API Request Failed:', error);
+
+    // Only show user-facing error messages if not explicitly suppressed
+    const suppressUserErrors = options.suppressUserErrors || false;
+
+    if (!suppressUserErrors) {
+      // Show user-friendly error for specific error types
+      if (error.message.includes('fetch') || error.message.includes('network') || error.message.includes('Failed to fetch')) {
+        showError(
+          "בעיית חיבור",
+          "לא הצלחנו להתחבר לשרת. אנא בדוק את החיבור לאינטרנט ונסה שוב."
+        );
+      }
+      // Note: Don't show auth errors for anonymous requests
+    }
+
+    throw error;
+  }
+}
+
 // File download helper - returns blob instead of JSON
 export async function apiDownload(endpoint, options = {}) {
   const url = `${API_BASE}${endpoint}`;

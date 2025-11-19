@@ -34,7 +34,8 @@ export const computeLobbyStatus = (lobby) => {
  * @returns {boolean} True if lobby is active/joinable
  */
 export const isLobbyActive = (lobby) => {
-  const status = lobby.computed_status || computeLobbyStatus(lobby);
+  // Use backend-computed status first (for anonymous users), fallback to frontend computation
+  const status = lobby.status || lobby.computed_status || computeLobbyStatus(lobby);
   return status === 'open' || status === 'open_indefinitely' || status === 'pending';
 };
 
@@ -53,7 +54,7 @@ export const filterActiveLobbies = (lobbies) => {
  * @returns {Object} Status config with color, text, icon, timeInfo
  */
 export const getLobbyStatusConfig = (lobby) => {
-  const status = lobby.computed_status || computeLobbyStatus(lobby);
+  const status = lobby.status || lobby.computed_status || computeLobbyStatus(lobby);
   const now = new Date();
 
   switch (status) {
@@ -114,17 +115,17 @@ export const findBestActiveLobby = (lobbies) => {
 
   // Priority order: open -> open_indefinitely -> pending
   const openLobby = activeLobbies.find(lobby => {
-    const status = lobby.computed_status || computeLobbyStatus(lobby);
+    const status = lobby.status || lobby.computed_status || computeLobbyStatus(lobby);
     return status === 'open';
   });
 
   const openIndefinitelyLobby = activeLobbies.find(lobby => {
-    const status = lobby.computed_status || computeLobbyStatus(lobby);
+    const status = lobby.status || lobby.computed_status || computeLobbyStatus(lobby);
     return status === 'open_indefinitely';
   });
 
   const pendingLobby = activeLobbies.find(lobby => {
-    const status = lobby.computed_status || computeLobbyStatus(lobby);
+    const status = lobby.status || lobby.computed_status || computeLobbyStatus(lobby);
     return status === 'pending';
   });
 

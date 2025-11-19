@@ -478,14 +478,14 @@ function GameCard({ game, index }) {
     const handleLobbyEvent = (event) => {
       // For any lobby-related event, refresh the lobby data to get the latest state
       if (event.data?.gameId === game.id || event.data?.game_id === game.id) {
-        fetchLobbyData(false); // Don't show loading during SSE updates
+        processLobbyData(false); // Don't show loading during SSE updates
       }
     };
 
     const handleSessionEvent = (event) => {
       // For any session-related event, refresh the lobby data to get updated participant counts
       if (event.data?.gameId === game.id || event.data?.game_id === game.id) {
-        fetchLobbyData(false); // Don't show loading during SSE updates
+        processLobbyData(false); // Don't show loading during SSE updates
       }
     };
 
@@ -517,19 +517,73 @@ function GameCard({ game, index }) {
   }, [game.id, addEventListener, removeEventListener]);
 
 
-  // Fetch real lobby data for this game
-  const fetchLobbyData = async (showLoading = true) => {
+  // Process lobby data that comes with the game (no separate API call needed)
+  const processLobbyData = (showLoading = true) => {
     try {
       if (showLoading) {
         setLobbyLoading(true);
       }
       setLobbyError(null);
 
-      // Fetch lobbies for this specific game
-      const response = await apiRequest(`/games/${game.id}/lobbies`);
+      // Use lobbies data that comes with the game from /games endpoint
+      const lobbies = game.lobbies || [];
 
-      // The API returns { data: [...lobbies], pagination: {...} }
-      const lobbies = response.data || [];
+      // DEBUG: Log lobby data with enhanced status computation details
+      const now = new Date();
+      console.log(`🔍 [DEBUG] Teacher Portal - Game ${gameTitle} (${game.id}):`, {
+        totalLobbies: lobbies.length,
+        currentTime: now.toISOString(),
+        lobbies: lobbies.map(lobby => {
+          const computedStatus = lobby.computed_status || computeLobbyStatus(lobby);
+          const expiresAt = lobby.expires_at ? new Date(lobby.expires_at) : null;
+          const closedAt = lobby.closed_at ? new Date(lobby.closed_at) : null;
+
+          // Detailed status computation analysis
+          let statusReason = '';
+          if (lobby.closed_at) {
+            statusReason = 'Has closed_at timestamp';
+          } else if (!lobby.expires_at) {
+            statusReason = 'No expires_at - pending';
+          } else if (expiresAt && expiresAt <= now) {
+            statusReason = 'Past expiration time';
+          } else if (expiresAt) {
+            const minutesUntilExpiry = Math.ceil((expiresAt - now) / (1000 * 60));
+            statusReason = `Expires in ${minutesUntilExpiry} minutes`;
+          }
+
+          return {
+            id: lobby.id,
+            lobby_code: lobby.lobby_code,
+            expires_at: lobby.expires_at,
+            expires_at_parsed: expiresAt?.toISOString(),
+            closed_at: lobby.closed_at,
+            closed_at_parsed: closedAt?.toISOString(),
+            computed_status: lobby.computed_status,
+            calculated_status: computedStatus,
+            status_reason: statusReason,
+            is_active: isLobbyActive(lobby)
+          };
+        })
+      });
+
+      // DEBUG: Active lobbies analysis for teacher portal
+      const activeLobbies = filterActiveLobbies(lobbies);
+      console.log(`🔍 [DEBUG] Teacher Portal - Active lobbies for ${gameTitle}:`, {
+        activeLobbies: activeLobbies.length,
+        totalLobbies: lobbies.length,
+        activeLobbiesList: activeLobbies.map(lobby => ({
+          id: lobby.id,
+          status: lobby.computed_status || computeLobbyStatus(lobby),
+          is_active: isLobbyActive(lobby)
+        })),
+        allLobbiesActivenessCheck: lobbies.map(lobby => ({
+          id: lobby.id,
+          status: lobby.computed_status || computeLobbyStatus(lobby),
+          is_active: isLobbyActive(lobby),
+          reason: lobby.closed_at ? 'closed' : !lobby.expires_at ? 'pending' :
+                  new Date(lobby.expires_at) <= now ? 'expired' : 'should_be_active'
+        }))
+      });
 
       // Calculate real session data from lobbies
       let totalActiveSessions = 0;
@@ -585,7 +639,7 @@ function GameCard({ game, index }) {
   };
 
   useEffect(() => {
-    fetchLobbyData();
+    processLobbyData();
   }, [game.id]);
 
   // Get game settings for max players
@@ -693,7 +747,7 @@ function GameCard({ game, index }) {
 
       // Close dialog and refresh lobby data
       setShowCreationDialog(false);
-      await fetchLobbyData();
+      processLobbyData();
 
     } catch (error) {
       console.error('Error handling lobby:', error);
@@ -745,7 +799,7 @@ function GameCard({ game, index }) {
       });
 
       // Refresh lobby data
-      await fetchLobbyData();
+      processLobbyData();
 
     } catch (error) {
       console.error('Error activating lobby:', error);
@@ -789,7 +843,7 @@ function GameCard({ game, index }) {
       });
 
       // Refresh lobby data
-      await fetchLobbyData();
+      processLobbyData();
 
     } catch (error) {
       console.error('Error closing lobby:', error);

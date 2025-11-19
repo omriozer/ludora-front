@@ -4,6 +4,7 @@ import { loadSettingsWithRetry } from '@/lib/appUser';
 import { clog, cerror } from '@/lib/utils';
 import { toast } from '@/components/ui/use-toast';
 import { SETTINGS_RETRY_INTERVALS } from '@/constants/settings';
+import { isStudentPortal } from '@/utils/domainUtils';
 
 const UserContext = createContext(null);
 
@@ -98,16 +99,98 @@ export function UserProvider({ children }) {
     }, interval);
   }, [settingsLoadFailed, settings?.maintenance_mode, retryLoadSettings, stopSettingsRetry]);
 
+  const checkPersistedAuth = useCallback(async (currentSettings = null) => {
+    try {
+      // Use passed settings or current settings
+      const activeSettings = currentSettings || settings;
+
+      // Check if we're on student portal and if students_access is invite_only
+      const onStudentPortal = isStudentPortal();
+      const studentsAccess = activeSettings?.students_access || 'invite_only'; // Default to invite_only
+
+      clog('[UserContext] 🔄 Authentication check starting...', {
+        onStudentPortal,
+        studentsAccess,
+        settingsLoaded: !!activeSettings
+      });
+
+      // Skip authentication attempt if on student portal with invite_only access
+      if (onStudentPortal && studentsAccess === 'invite_only') {
+        clog('[UserContext] 🚫 Skipping authentication - student portal in invite_only mode (code in URL = access)');
+        // Clear auth state and mark as ready
+        setCurrentUser(null);
+        setIsAuthenticated(false);
+        setUserDataFresh(true); // Mark as ready for invite-only access
+        setIsLoading(false);
+        return;
+      }
+
+      // With httpOnly cookies, we simply try to get the current user
+      // The cookies will be automatically sent with the request
+      // If the session is valid, the API will return user data
+      // If invalid/expired, the API will return an error
+
+      clog('[UserContext] 🔄 Checking authentication via cookie-based session...');
+
+      try {
+        clog('[UserContext] 🔄 Calling User.getCurrentUser() with suppressUserErrors=true...');
+        const user = await User.getCurrentUser(true); // Suppress user errors for initial auth check
+        clog('[UserContext] 🔄 User.getCurrentUser() response:', user);
+        if (user) {
+          clog('[UserContext] ✅ User.getCurrentUser() succeeded, setting user state directly...');
+          // Set user state directly for now - full loadUserData will be called later if needed
+          setCurrentUser(user);
+          setIsAuthenticated(true);
+          // Update activity directly
+          localStorage.setItem('lastActivity', new Date().getTime().toString());
+        } else {
+          clog('[UserContext] ℹ️ User.getCurrentUser() returned null/undefined - no authenticated user found');
+          // Clear auth state directly
+          setCurrentUser(null);
+          setIsAuthenticated(false);
+          setUserDataFresh(false);
+        }
+      } catch (getCurrentUserError) {
+        // Use clog instead of cerror for legitimate non-authenticated states
+        clog('[UserContext] ℹ️ No authenticated user found:', getCurrentUserError.message);
+        clog('[UserContext] 📊 Authentication check details:', {
+          onStudentPortal,
+          studentsAccess,
+          errorName: getCurrentUserError.name,
+          errorMessage: getCurrentUserError.message
+        });
+        // If we can't get user from API (401/403), user is not authenticated
+        // Clear any local state to ensure clean state directly
+        setCurrentUser(null);
+        setIsAuthenticated(false);
+        setUserDataFresh(false);
+      }
+    } catch (error) {
+      cerror('[UserContext] Error in authentication check:', error);
+      // Clear auth state directly
+      setCurrentUser(null);
+      setIsAuthenticated(false);
+      setUserDataFresh(false);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []); // FIXED: Remove settings dependency to break circular dependency
+
   // Check for persisted auth state on mount and load settings
   useEffect(() => {
     const init = async () => {
       // Load settings first (independent of user)
       await loadSettings();
-      // Then check authentication
-      await checkPersistedAuth();
     };
     init();
   }, [loadSettings]);
+
+  // Run auth check after settings are initially loaded
+  useEffect(() => {
+    if (settings !== null && !settingsLoading) {
+      checkPersistedAuth(settings);
+    }
+  }, [settingsLoading]); // Run when settings finish loading (once)
 
   // Start retry mechanism when settings fail to load or maintenance mode is active
   useEffect(() => {
@@ -124,47 +207,6 @@ export function UserProvider({ children }) {
       stopSettingsRetry();
     };
   }, [stopSettingsRetry]);
-
-  const checkPersistedAuth = useCallback(async () => {
-    try {
-      // With httpOnly cookies, we simply try to get the current user
-      // The cookies will be automatically sent with the request
-      // If the session is valid, the API will return user data
-      // If invalid/expired, the API will return an error
-
-      clog('[UserContext] 🔄 Checking authentication via cookie-based session...');
-
-      try {
-        clog('[UserContext] 🔄 Calling User.getCurrentUser() with suppressUserErrors=true...');
-        const user = await User.getCurrentUser(true); // Suppress user errors for initial auth check
-        clog('[UserContext] 🔄 User.getCurrentUser() response:', user);
-        if (user) {
-          clog('[UserContext] ✅ User.getCurrentUser() succeeded, calling loadUserData...');
-          await loadUserData(user);
-          updateLastActivity();
-          setIsAuthenticated(true);
-        } else {
-          clog('[UserContext] ❌ User.getCurrentUser() returned null/undefined');
-          clearAuth();
-        }
-      } catch (getCurrentUserError) {
-        cerror('[UserContext] ❌ Failed to get current user from API:', getCurrentUserError);
-        cerror('[UserContext] ❌ Error details:', {
-          message: getCurrentUserError.message,
-          stack: getCurrentUserError.stack,
-          name: getCurrentUserError.name
-        });
-        // If we can't get user from API (401/403), user is not authenticated
-        // Clear any local state to ensure clean state
-        clearAuth();
-      }
-    } catch (error) {
-      cerror('Error checking persisted auth:', error);
-      clearAuth();
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
 
   // Check if user needs onboarding
   const needsOnboarding = useCallback((user) => {

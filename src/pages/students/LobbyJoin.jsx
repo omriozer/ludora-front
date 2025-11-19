@@ -26,11 +26,11 @@ const LobbyJoin = () => {
   const [joining, setJoining] = useState(false);
 
   // Create SSE channels based on lobby data
-  const sseChannels = lobbyData ? [
+  const sseChannels = lobbyData && lobbyData.lobby && lobbyData.game ? [
     `lobby:${lobbyData.lobby.id}`,
     `game:${lobbyData.game.id}`,
     // Subscribe to all session channels in this lobby
-    ...lobbyData.sessions.map(session => `session:${session.id}`)
+    ...(lobbyData.sessions || []).map(session => `session:${session.id}`)
   ] : [];
 
   // SSE integration for real-time updates
