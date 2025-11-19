@@ -227,8 +227,8 @@ export function useSSE(channels = [], options = {}) {
     }
 
     // Note: Authentication is handled via httpOnly cookies
-    // In development: Direct cross-origin connection with withCredentials
-    // In production: Direct connection (same domain)
+    // Cross-origin requests (e.g., ludora.app → api.ludora.app) require withCredentials: true
+    // Same-origin requests work automatically
 
     const queryString = params.toString();
     const finalUrl = queryString ? `${baseUrl}?${queryString}` : baseUrl;
@@ -359,10 +359,22 @@ export function useSSE(channels = [], options = {}) {
 
       console.log('🎯 [SSE] About to create EventSource with URL:', sseUrl);
 
+      // Detect if this is a cross-origin request based on actual URLs
+      const currentOrigin = window.location.origin;
+      const sseOrigin = new URL(sseUrl).origin;
+      const isCrossOrigin = currentOrigin !== sseOrigin;
+
+      console.log('🎯 [SSE] Cross-origin detection:', {
+        currentOrigin,
+        sseOrigin,
+        isCrossOrigin,
+        isDevelopment: import.meta.env.DEV
+      });
+
       // Create EventSource with credentials for cross-origin authentication
-      const eventSourceOptions = import.meta.env.DEV ?
-        { withCredentials: true } :  // Development: cross-origin requires credentials
-        {};                          // Production: same-origin, credentials automatic
+      const eventSourceOptions = isCrossOrigin ?
+        { withCredentials: true } :  // Cross-origin requires credentials
+        {};                          // Same-origin, credentials automatic
 
       const eventSource = new EventSource(sseUrl, eventSourceOptions);
 
