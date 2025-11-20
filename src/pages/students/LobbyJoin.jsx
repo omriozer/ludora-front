@@ -9,6 +9,7 @@ import ProductImage from '@/components/ui/ProductImage';
 import logoSm from '../../assets/images/logo_sm.png';
 import { useSSE } from '@/hooks/useSSE';
 import { isLobbyJoinable, getLobbyStatusConfig } from '@/utils/lobbyUtils';
+import { toast } from '@/components/ui/use-toast';
 
 /**
  * Student lobby join page
@@ -27,6 +28,13 @@ const LobbyJoin = () => {
   const [displayName, setDisplayName] = useState('');
   const [joining, setJoining] = useState(false);
   const [creatingSession, setCreatingSession] = useState(false);
+  const [recentlyJoinedPlayers, setRecentlyJoinedPlayers] = useState(new Set());
+  const [recentlyLeftPlayers, setRecentlyLeftPlayers] = useState(new Set());
+  const [activityNotifications, setActivityNotifications] = useState([]);
+  const [userAchievements, setUserAchievements] = useState([]);
+  const [showAchievementAnimation, setShowAchievementAnimation] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(false);
 
   // Create SSE channels based on lobby data
   const sseChannels = lobbyData && lobbyData.lobby && lobbyData.game ? [
@@ -96,7 +104,7 @@ const LobbyJoin = () => {
     }
   }, [code, user]);
 
-  // Function to refresh lobby data (excluding the loading state changes)
+  // Enhanced function to refresh lobby data with join/leave animation tracking
   const refreshLobbyData = async () => {
     try {
       const response = await fetch('/api/game-lobbies/join-by-code', {
@@ -115,8 +123,14 @@ const LobbyJoin = () => {
       });
 
       if (response.ok) {
-        const data = await response.json();
-        setLobbyData(data);
+        const newData = await response.json();
+
+        // Track player join/leave animations if we have previous data
+        if (lobbyData && lobbyData.sessions) {
+          trackPlayerChanges(lobbyData.sessions, newData.sessions || []);
+        }
+
+        setLobbyData(newData);
         console.log('[LobbyJoin] Refreshed lobby data via SSE');
       }
     } catch (error) {
@@ -124,6 +138,192 @@ const LobbyJoin = () => {
       // Don't update error state for SSE refreshes, only log the error
     }
   };
+
+  // Function to track player join/leave events for animations
+  const trackPlayerChanges = (oldSessions, newSessions) => {
+    const oldPlayerIds = new Set();
+    const newPlayerIds = new Set();
+
+    // Collect all player IDs from old sessions
+    oldSessions.forEach(session => {
+      session.participants?.forEach(participant => {
+        oldPlayerIds.add(participant.id || participant.display_name);
+      });
+    });
+
+    // Collect all player IDs from new sessions
+    newSessions.forEach(session => {
+      session.participants?.forEach(participant => {
+        newPlayerIds.add(participant.id || participant.display_name);
+      });
+    });
+
+    // Find newly joined players
+    const joinedPlayers = new Set([...newPlayerIds].filter(id => !oldPlayerIds.has(id)));
+
+    // Find players who left
+    const leftPlayers = new Set([...oldPlayerIds].filter(id => !newPlayerIds.has(id)));
+
+    // Update animation state and create notifications
+    if (joinedPlayers.size > 0) {
+      setRecentlyJoinedPlayers(joinedPlayers);
+      console.log('[LobbyJoin] Players joined:', [...joinedPlayers]);
+
+      // Create join notifications
+      const joinNotifications = [...joinedPlayers].map(playerId => ({
+        id: `join-${Date.now()}-${Math.random()}`,
+        type: 'join',
+        playerId,
+        message: `${playerId} הצטרף למשחק! 🎉`,
+        timestamp: Date.now()
+      }));
+
+      setActivityNotifications(prev => [...prev, ...joinNotifications]);
+
+      // Clear animation after 3 seconds
+      setTimeout(() => {
+        setRecentlyJoinedPlayers(new Set());
+      }, 3000);
+    }
+
+    if (leftPlayers.size > 0) {
+      setRecentlyLeftPlayers(leftPlayers);
+      console.log('[LobbyJoin] Players left:', [...leftPlayers]);
+
+      // Create leave notifications
+      const leaveNotifications = [...leftPlayers].map(playerId => ({
+        id: `leave-${Date.now()}-${Math.random()}`,
+        type: 'leave',
+        playerId,
+        message: `${playerId} עזב את המשחק 👋`,
+        timestamp: Date.now()
+      }));
+
+      setActivityNotifications(prev => [...prev, ...leaveNotifications]);
+
+      // Clear animation after 2 seconds
+      setTimeout(() => {
+        setRecentlyLeftPlayers(new Set());
+      }, 2000);
+    }
+  };
+
+  // Auto-remove notifications after 5 seconds
+  useEffect(() => {
+    const now = Date.now();
+    const fiveSecondsAgo = now - 5000;
+
+    setActivityNotifications(prev =>
+      prev.filter(notification => notification.timestamp > fiveSecondsAgo)
+    );
+  }, [activityNotifications]);
+
+  // Gamification: Generate achievements based on user activity
+  useEffect(() => {
+    if (!lobbyData || !displayName) return;
+
+    const achievements = [];
+
+    // First Time Joiner Badge
+    if (!user?.id) {
+      achievements.push({
+        id: 'first_timer',
+        type: 'achievement',
+        title: 'שחקן חדש!',
+        description: 'הצטרפת לראשונה למשחק',
+        icon: '🎊',
+        color: 'gold',
+        rarity: 'common'
+      });
+    }
+
+    // Speed Joiner Badge (if joining quickly)
+    const fastJoinTime = 30000; // 30 seconds
+    const timeOnPage = Date.now() - (window.lobbyJoinStartTime || Date.now());
+    if (timeOnPage < fastJoinTime) {
+      achievements.push({
+        id: 'speed_joiner',
+        type: 'achievement',
+        title: 'מהיר כברק!',
+        description: 'הצטרפת למשחק במהירות הבזק',
+        icon: '⚡',
+        color: 'yellow',
+        rarity: 'rare'
+      });
+    }
+
+    // Active Lobby Badge (if there are many participants)
+    const participantsSummary = lobbyData.participantsSummary || { total: 0 };
+    if (participantsSummary.total > 5) {
+      achievements.push({
+        id: 'popular_lobby',
+        type: 'badge',
+        title: 'לובי פופולרי!',
+        description: 'הצטרפת للובי עם הרבה שחקנים',
+        icon: '🔥',
+        color: 'red',
+        rarity: 'epic'
+      });
+    }
+
+    // Weekend Warrior (simulation - could be based on real data)
+    const isWeekend = [0, 6].includes(new Date().getDay());
+    if (isWeekend) {
+      achievements.push({
+        id: 'weekend_warrior',
+        type: 'badge',
+        title: 'לוחם סופ"ש!',
+        description: 'משחק בסוף השבוע',
+        icon: '🏆',
+        color: 'purple',
+        rarity: 'legendary'
+      });
+    }
+
+    setUserAchievements(achievements);
+
+    // Trigger achievement animation if new achievements were earned
+    if (achievements.length > 0) {
+      setShowAchievementAnimation(true);
+      setTimeout(() => setShowAchievementAnimation(false), 3000);
+    }
+
+  }, [lobbyData, displayName, user]);
+
+  // Track when user enters the page for speed achievements
+  useEffect(() => {
+    if (!window.lobbyJoinStartTime) {
+      window.lobbyJoinStartTime = Date.now();
+    }
+  }, []);
+
+  // Mobile and Reduced Motion Detection
+  useEffect(() => {
+    // Detect mobile devices
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    // Detect reduced motion preference
+    const checkReducedMotion = () => {
+      const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+      setReducedMotion(mediaQuery.matches);
+    };
+
+    // Initial checks
+    checkMobile();
+    checkReducedMotion();
+
+    // Listen for changes
+    window.addEventListener('resize', checkMobile);
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    mediaQuery.addEventListener('change', checkReducedMotion);
+
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+      mediaQuery.removeEventListener('change', checkReducedMotion);
+    };
+  }, []);
 
   // SSE event handlers for real-time updates
   useEffect(() => {
@@ -186,12 +386,20 @@ const LobbyJoin = () => {
 
   const handleJoinLobby = async () => {
     if (!displayName.trim()) {
-      alert('נא להזין שם תצוגה');
+      toast({
+        title: "שגיאה",
+        description: "נא להזין שם תצוגה",
+        variant: "destructive"
+      });
       return;
     }
 
     if (lobbyData.settings.invitation_type === 'manual_selection' && !selectedSession) {
-      alert('נא לבחור חדר');
+      toast({
+        title: "שגיאה",
+        description: "נא לבחור חדר",
+        variant: "destructive"
+      });
       return;
     }
 
@@ -229,7 +437,11 @@ const LobbyJoin = () => {
         }
       });
     } catch (err) {
-      alert(err.message);
+      toast({
+        title: "שגיאה בהצטרפות",
+        description: err.message,
+        variant: "destructive"
+      });
     } finally {
       setJoining(false);
     }
@@ -237,7 +449,11 @@ const LobbyJoin = () => {
 
   const handleCreateSession = async () => {
     if (!displayName.trim()) {
-      alert('נא להזין שם תצוגה לפני יצירת חדר');
+      toast({
+        title: "שגיאה",
+        description: "נא להזין שם תצוגה לפני יצירת חדר",
+        variant: "destructive"
+      });
       return;
     }
 
@@ -274,7 +490,11 @@ const LobbyJoin = () => {
         }
       });
     } catch (err) {
-      alert(err.message);
+      toast({
+        title: "שגיאה ביצירת חדר",
+        description: err.message,
+        variant: "destructive"
+      });
     } finally {
       setCreatingSession(false);
     }
@@ -382,35 +602,241 @@ const LobbyJoin = () => {
   );
 
   return (
-    <div className="min-h-screen student-portal-background">
-      {/* Content */}
-      <main className="max-w-4xl mx-auto px-4 py-8">
-        {/* Game Info with Lobby Code */}
-        <Card className="student-card mb-6">
-          <CardContent className="p-6">
-            {/* Lobby Code Banner */}
-            <div className="text-center mb-6 p-4 student-rainbow-border rounded-xl">
-              <h1 className="text-3xl font-bold student-text-gradient mb-1 student-pulse">
-                {lobby.lobby_code}
-              </h1>
-              <p className="text-sm text-gray-600">קוד הלובי</p>
-              <div className="flex items-center justify-center gap-2 text-sm text-gray-600 mt-2">
+    <div
+      className="min-h-screen student-immersive-background relative overflow-hidden"
+      role="main"
+      aria-label="lobby join page"
+    >
+      {/* Immersive Background Effects */}
+      <div className="student-background-particles">
+        {/* Floating Elements */}
+        <div className="student-floating-element student-float" style={{top: '10%', left: '5%', animationDelay: '0s'}}>
+          <GamepadIcon className="w-8 h-8 text-white/20" />
+        </div>
+        <div className="student-floating-element student-float" style={{top: '60%', left: '85%', animationDelay: '1s'}}>
+          <Users className="w-6 h-6 text-white/15" />
+        </div>
+        <div className="student-floating-element student-float" style={{top: '80%', left: '15%', animationDelay: '2s'}}>
+          <PlayIcon className="w-7 h-7 text-white/25" />
+        </div>
+        <div className="student-floating-element student-float" style={{top: '25%', left: '75%', animationDelay: '0.5s'}}>
+          <Clock className="w-5 h-5 text-white/20" />
+        </div>
+
+        {/* Animated Light Orbs */}
+        <div className="student-light-orb student-pulse" style={{top: '20%', right: '10%', animationDelay: '0s'}}></div>
+        <div className="student-light-orb student-pulse" style={{top: '70%', left: '10%', animationDelay: '1.5s'}}></div>
+        <div className="student-light-orb student-pulse" style={{top: '45%', right: '25%', animationDelay: '3s'}}></div>
+
+        {/* Gradient Overlay for Depth */}
+        <div className="student-background-overlay"></div>
+
+        {/* Dynamic Geometric Shapes */}
+        <div className="student-geometric-shape student-rotate" style={{top: '15%', left: '20%', animationDelay: '0s'}}></div>
+        <div className="student-geometric-shape student-rotate" style={{top: '55%', right: '15%', animationDelay: '2s'}}></div>
+        <div className="student-geometric-shape student-rotate" style={{top: '75%', left: '60%', animationDelay: '4s'}}></div>
+      </div>
+
+      {/* Content with Glassmorphism - Mobile Optimized */}
+      <main className="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-8 relative z-10">
+        {/* Gamification Achievement Panel - Accessible */}
+        {userAchievements.length > 0 && (
+          <section
+            className={`mb-6 ${showAchievementAnimation ? 'student-achievement-celebration' : ''}`}
+            aria-label="achievements section"
+            role="region"
+          >
+            <div className="student-glass-card p-4">
+              <div className="flex items-center gap-3 mb-4">
+                <div
+                  className="w-8 h-8 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center student-glow"
+                  aria-hidden="true"
+                >
+                  <span className="text-xl">🏆</span>
+                </div>
+                <h2 className="text-lg font-bold student-text-gradient">ההישגים שלך</h2>
+                <div className="student-achievement-counter student-pulse">
+                  <span className="font-bold text-yellow-600">{userAchievements.length}</span>
+                  <span className="text-sm text-gray-500 mr-1">הישגים</span>
+                </div>
+              </div>
+
+              <div
+                className="flex flex-wrap gap-2 sm:gap-3"
+                role="list"
+                aria-label="earned achievements"
+              >
+                {userAchievements.map((achievement, index) => (
+                  <div
+                    key={achievement.id}
+                    className={`student-achievement-badge student-achievement-${achievement.color} ${
+                      achievement.rarity === 'legendary' ? 'student-legendary-glow' :
+                      achievement.rarity === 'epic' ? 'student-epic-glow' :
+                      achievement.rarity === 'rare' ? 'student-rare-glow' : ''
+                    } ${showAchievementAnimation ? 'student-achievement-earned' : ''}`}
+                    style={{
+                      animationDelay: reducedMotion ? '0s' : `${index * 0.2}s`
+                    }}
+                    title={achievement.description}
+                    role="listitem"
+                    aria-label={`${achievement.title} achievement: ${achievement.description}`}
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        // Could trigger achievement detail modal
+                        e.preventDefault();
+                      }
+                    }}
+                  >
+                    <div className="student-achievement-icon student-bounce">
+                      <span className="text-2xl">{achievement.icon}</span>
+                    </div>
+                    <div className="student-achievement-content">
+                      <div className="font-bold text-sm">{achievement.title}</div>
+                      <div className="text-xs text-gray-600">{achievement.description}</div>
+                    </div>
+
+                    {/* Rarity indicator */}
+                    <div className={`student-rarity-indicator student-rarity-${achievement.rarity}`}>
+                      {achievement.rarity === 'legendary' && '✨'}
+                      {achievement.rarity === 'epic' && '💎'}
+                      {achievement.rarity === 'rare' && '🌟'}
+                      {achievement.rarity === 'common' && '⭐'}
+                    </div>
+
+                    {/* Achievement sparkle effect */}
+                    {showAchievementAnimation && (
+                      <div className="student-achievement-sparkle student-sparkle"></div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Achievement progress bar */}
+              <div className="mt-4 p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium text-gray-700">התקדמות למשחק</span>
+                  <span className="font-bold text-purple-600">
+                    {Math.min(userAchievements.length * 25, 100)}%
+                  </span>
+                </div>
+                <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
+                  <div
+                    className="student-progress-bar h-2 rounded-full student-glow"
+                    style={{
+                      width: `${Math.min(userAchievements.length * 25, 100)}%`
+                    }}
+                  ></div>
+                </div>
+                <div className="mt-1 text-xs text-gray-500">
+                  צבור עוד הישגים כשתשחק במשחקים שונים!
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Game Info with Lobby Code - Enhanced with Glassmorphism */}
+        <section aria-label="game information and lobby code">
+          <Card className="student-glass-card mb-6">
+            <CardContent className="p-6">
+              {/* Enhanced Lobby Code Ticket with Mobile Optimization */}
+              <div
+                className="student-lobby-ticket text-center mb-6 sm:mb-8 student-fade-in-up"
+                role="banner"
+                aria-label="lobby code display"
+              >
+              {/* Decorative Top Elements - Mobile Responsive */}
+              <div className="flex justify-between items-center mb-3 sm:mb-4">
+                <div className="w-6 h-6 sm:w-8 sm:h-8 bg-white/30 rounded-full flex items-center justify-center">
+                  <GamepadIcon className="w-3 h-3 sm:w-5 sm:h-5" />
+                </div>
+                <div className="flex gap-1 sm:gap-2">
+                  <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-white/40 rounded-full student-pulse"></div>
+                  <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-white/40 rounded-full student-pulse" style={{animationDelay: '0.5s'}}></div>
+                  <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-white/40 rounded-full student-pulse" style={{animationDelay: '1s'}}></div>
+                </div>
+                <div className="w-6 h-6 sm:w-8 sm:h-8 bg-white/30 rounded-full flex items-center justify-center">
+                  <PlayIcon className="w-3 h-3 sm:w-5 sm:h-5" />
+                </div>
+              </div>
+
+              {/* Main Lobby Code Display - Mobile Responsive */}
+              <div className="relative">
+                <h1
+                  className="text-4xl sm:text-6xl font-black tracking-wider mb-2 text-white drop-shadow-lg"
+                  aria-label={`lobby code: ${lobby.lobby_code}`}
+                  id="lobby-code-display"
+                >
+                  {lobby.lobby_code}
+                </h1>
+                <div className="absolute -inset-2 bg-white/10 rounded-2xl blur-xl" aria-hidden="true"></div>
+              </div>
+
+              <p className="text-lg font-semibold text-white/90 mb-4" aria-describedby="lobby-code-display">
+                קוד הלובי שלכם
+              </p>
+
+              {/* Enhanced Status Display with Dynamic Classes */}
+              <div className="flex items-center justify-center gap-3">
                 {(() => {
                   const { icon, text, timeInfo } = getStatusDisplay(lobby);
+
+                  // Determine dynamic status class based on lobby state
+                  let statusClass = 'student-status-active';
+                  if (lobby.status === 'pending' || lobby.status === 'waiting') {
+                    statusClass = 'student-status-waiting';
+                  } else if (lobby.status === 'closed') {
+                    statusClass = 'student-status-expired';
+                  } else if (participantsSummary.total >= lobby.settings.max_players) {
+                    statusClass = 'student-status-full';
+                  }
+
                   return (
-                    <>
-                      {icon}
-                      <span>{text}</span>
-                      {timeInfo && <span className="mr-2 text-xs">({timeInfo})</span>}
-                    </>
+                    <div className={`student-status-indicator ${statusClass}`}>
+                      <div className="student-status-icon">{icon}</div>
+                      <span className="font-bold">{text}</span>
+                      {timeInfo && (
+                        <span className="student-status-time">
+                          {timeInfo}
+                        </span>
+                      )}
+                    </div>
                   );
                 })()}
               </div>
+
+              {/* Copy Code Feature - Mobile Optimized with Accessibility */}
+              <div className="mt-4 sm:mt-6 flex justify-center">
+                <button
+                  onClick={() => {
+                    navigator.clipboard?.writeText(lobby.lobby_code);
+                    toast({
+                      title: "קוד הועתק!",
+                      description: "הקוד הועתק ללוח. שתפו עם חברים!",
+                      variant: "default"
+                    });
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.currentTarget.click();
+                    }
+                  }}
+                  className="student-btn-explosive text-sm sm:text-base px-6 sm:px-8 py-3 sm:py-2 active:scale-95 transition-transform focus:ring-2 focus:ring-yellow-400 focus:outline-none"
+                  aria-label={`copy lobby code ${lobby.lobby_code} to clipboard`}
+                  title="העתק את קוד הלובי ללוח"
+                >
+                  העתק קוד 📋
+                </button>
+              </div>
+
+              {/* Decorative Bottom Border */}
+              <div className="mt-6 h-1 bg-gradient-to-r from-transparent via-white/50 to-transparent" aria-hidden="true"></div>
             </div>
 
-            <div className="flex items-start gap-4">
-              {/* Game Image */}
-              <div className="w-20 h-20 bg-gradient-to-br from-purple-400 via-blue-400 to-indigo-500 rounded-lg flex items-center justify-center flex-shrink-0">
+            <div className="flex items-start gap-3 sm:gap-4">
+              {/* Game Image - Mobile Responsive */}
+              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-purple-400 via-blue-400 to-indigo-500 rounded-lg flex items-center justify-center flex-shrink-0">
                 <ProductImage
                   product={game}
                   className="w-full h-full object-cover rounded-lg"
@@ -442,22 +868,112 @@ const LobbyJoin = () => {
                     />
                   )}
 
-                  <div className="flex items-center gap-1 text-gray-500">
-                    <Users className="w-4 h-4" />
-                    <span>{participantsSummary.total}/{lobby.settings.max_players} שחקנים</span>
+                  {/* Enhanced Player Counter with Dynamic Animation */}
+                  <div className="student-player-counter">
+                    <div className="student-player-counter-icon">
+                      <Users className="w-4 h-4" />
+                    </div>
+                    <div className="student-player-counter-display">
+                      <span className="student-player-count-current student-glow">{participantsSummary.total}</span>
+                      <span className="student-player-count-separator">/</span>
+                      <span className="student-player-count-max">{lobby.settings.max_players}</span>
+                      <span className="student-player-count-label">שחקנים</span>
+                    </div>
+
+                    {/* Player Status Indicators */}
+                    <div className="flex items-center gap-1 mr-2">
+                      {participantsSummary.total >= lobby.settings.max_players ? (
+                        <div className="w-2 h-2 bg-red-500 rounded-full student-pulse"></div>
+                      ) : participantsSummary.total > 0 ? (
+                        <div className="w-2 h-2 bg-green-500 rounded-full student-pulse"></div>
+                      ) : (
+                        <div className="w-2 h-2 bg-yellow-500 rounded-full student-pulse"></div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           </CardContent>
         </Card>
+        </section>
 
-        {/* Join Form */}
-        <Card className="student-card mb-6">
-          <CardContent className="p-6">
-            <h3 className="text-lg font-bold text-gray-800 mb-4">הצטרפות למשחק</h3>
+        {/* Real-Time Activity Notifications - Mobile Optimized */}
+        {activityNotifications.length > 0 && (
+          <div className="fixed top-4 right-2 sm:right-4 left-2 sm:left-auto z-50 space-y-2">
+            {activityNotifications.map(notification => (
+              <div
+                key={notification.id}
+                className={`student-glass-notification ${
+                  notification.type === 'join' ? 'student-notification-join' : 'student-notification-leave'
+                } student-slideInRight`}
+                style={{
+                  animationDelay: `${activityNotifications.indexOf(notification) * 0.1}s`
+                }}
+              >
+                <div className="flex items-center gap-3">
+                  {/* Avatar representation */}
+                  <div className={`student-notification-avatar ${
+                    notification.type === 'join' ? 'student-avatar-joining' : 'student-avatar-leaving'
+                  }`}>
+                    {notification.playerId.charAt(0)}
 
-            {/* Display Name Input */}
+                    {/* Animated status dot */}
+                    <div className={`student-notification-status ${
+                      notification.type === 'join' ? 'bg-green-400 student-pulse' : 'bg-gray-400 student-fadeOut'
+                    }`}></div>
+
+                    {/* Sparkle effect for joins */}
+                    {notification.type === 'join' && (
+                      <div className="student-notification-sparkle student-sparkle"></div>
+                    )}
+                  </div>
+
+                  {/* Notification message */}
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-white mb-1">
+                      {notification.message}
+                    </p>
+                    <div className="text-xs text-white/70">
+                      {new Date(notification.timestamp).toLocaleTimeString('he-IL', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Animated icon */}
+                  <div className={`student-notification-icon ${
+                    notification.type === 'join' ? 'student-bounce' : 'student-fadeOut'
+                  }`}>
+                    {notification.type === 'join' ? (
+                      <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                        <Plus className="w-4 h-4 text-white" />
+                      </div>
+                    ) : (
+                      <div className="w-6 h-6 bg-gray-500 rounded-full flex items-center justify-center">
+                        <XCircle className="w-4 h-4 text-white" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Progress bar showing notification lifetime */}
+                <div className="student-notification-progress">
+                  <div className="student-notification-progress-bar"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Join Form - Enhanced with Glassmorphism and Accessibility */}
+        <section aria-label="join game form">
+          <Card className="student-glass-card mb-6">
+            <CardContent className="p-6">
+              <h2 className="text-lg font-bold text-gray-800 mb-4">הצטרפות למשחק</h2>
+
+            {/* Display Name Input - Accessible */}
             <div className="mb-4">
               <label htmlFor="displayName" className="block text-sm font-medium text-gray-700 mb-2">
                 השם שלך במשחק
@@ -468,9 +984,15 @@ const LobbyJoin = () => {
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 placeholder="הזן את השם שלך..."
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="student-glass-input focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                 maxLength="30"
+                aria-required="true"
+                aria-describedby="displayName-help"
+                autoComplete="name"
               />
+              <div id="displayName-help" className="text-xs text-gray-500 mt-1">
+                השם יופיע לשחקנים אחרים במשחק (עד 30 תווים)
+              </div>
             </div>
 
             {/* Session Selection (Manual Only) */}
@@ -509,15 +1031,15 @@ const LobbyJoin = () => {
                 {availableSessions.length > 0 && (
                   <>
                     <div className="text-sm text-gray-600 mb-2">או הצטרף לחדר קיים:</div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
                       {availableSessions.map((session) => (
                         <button
                           key={session.id}
                           onClick={() => setSelectedSession(session)}
-                          className={`p-3 border rounded-lg text-right transition-all ${
+                          className={`student-glass-button ${
                             selectedSession?.id === session.id
-                              ? 'border-purple-500 bg-purple-50 ring-2 ring-purple-200'
-                              : 'border-gray-200 hover:border-purple-300 hover:bg-purple-25'
+                              ? 'student-glass-button-selected'
+                              : 'student-glass-button-hover'
                           }`}
                         >
                           <div className="flex items-center justify-between">
@@ -556,11 +1078,11 @@ const LobbyJoin = () => {
               </div>
             )}
 
-            {/* Join Button */}
+            {/* Join Button - Mobile Optimized */}
             <Button
               onClick={handleJoinLobby}
               disabled={joining || !displayName.trim() || (isManualSelection && !selectedSession)}
-              className="w-full student-btn-primary py-3"
+              className="w-full student-btn-primary py-4 sm:py-3 text-lg sm:text-base font-bold active:scale-95 transition-transform touch-manipulation"
             >
               {joining ? (
                 <div className="flex items-center justify-center">
@@ -576,41 +1098,169 @@ const LobbyJoin = () => {
             </Button>
           </CardContent>
         </Card>
+        </section>
 
-        {/* Active Sessions Display - Only show if sessions exist */}
+        {/* Enhanced Active Sessions Display - Enhanced with Glassmorphism */}
         {sessions.length > 0 && (
-          <Card className="student-card">
+          <Card className="student-glass-card student-fade-in-up">
             <CardContent className="p-6">
-              <h3 className="text-lg font-bold text-gray-800 mb-4">חדרי משחק פעילים</h3>
-              <div className="space-y-3">
-                {sessions.map((session) => (
-                  <div key={session.id} className="p-3 border border-gray-200 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-medium text-gray-800">
-                          חדר {session.session_number || session.id}
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center">
+                  <Users className="w-4 h-4 text-white" />
+                </div>
+                <h3 className="text-lg font-bold student-text-gradient">חדרי משחק פעילים</h3>
+                <div className="student-session-counter">
+                  <span className="font-bold text-purple-600">{sessions.length}</span>
+                  <span className="text-sm text-gray-500 mr-1">חדרים</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                {sessions.map((session, index) => {
+                  const participantCount = session.participants?.length || 0;
+                  const isSessionFull = participantCount >= lobby.settings.max_players;
+
+                  // Determine session status class
+                  let sessionStatusClass = 'student-status-active';
+                  if (session.status === 'pending' || session.status === 'waiting') {
+                    sessionStatusClass = 'student-status-waiting';
+                  } else if (session.status === 'finished' || session.status === 'closed') {
+                    sessionStatusClass = 'student-status-expired';
+                  } else if (isSessionFull) {
+                    sessionStatusClass = 'student-status-full';
+                  }
+
+                  return (
+                    <div
+                      key={session.id}
+                      className="student-immersive-card"
+                      style={{ animationDelay: `${index * 0.1}s` }}
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <div className="student-room-icon">
+                              <GamepadIcon className="w-4 h-4" />
+                            </div>
+                            <h4 className="font-bold text-gray-800">
+                              חדר {session.session_number || session.id.slice(-4)}
+                            </h4>
+                          </div>
+
+                          {/* Enhanced Session Player Counter */}
+                          <div className="student-player-counter mb-3">
+                            <div className="student-player-counter-icon">
+                              <Users className="w-3 h-3" />
+                            </div>
+                            <div className="student-player-counter-display text-sm">
+                              <span className="student-player-count-current">{participantCount}</span>
+                              <span className="student-player-count-separator">/</span>
+                              <span className="student-player-count-max">{lobby.settings.max_players}</span>
+                              <span className="student-player-count-label">שחקנים</span>
+                            </div>
+
+                            {/* Session availability indicator */}
+                            <div className="flex items-center gap-1 mr-2">
+                              {isSessionFull ? (
+                                <div className="w-2 h-2 bg-red-500 rounded-full student-pulse"></div>
+                              ) : participantCount > 0 ? (
+                                <div className="w-2 h-2 bg-green-500 rounded-full student-pulse"></div>
+                              ) : (
+                                <div className="w-2 h-2 bg-yellow-500 rounded-full student-pulse"></div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Enhanced Session participant avatars with join/leave animations */}
+                          {session.participants && session.participants.length > 0 && (
+                            <div className="student-avatar-stack">
+                              {session.participants.slice(0, 3).map((participant, idx) => {
+                                const participantId = participant.id || participant.display_name;
+                                const isRecentlyJoined = recentlyJoinedPlayers.has(participantId);
+                                const isRecentlyLeft = recentlyLeftPlayers.has(participantId);
+
+                                return (
+                                  <div
+                                    key={participant.id || idx}
+                                    className={`student-player-avatar ${
+                                      isRecentlyJoined ? 'student-avatar-joining student-zoomIn' : ''
+                                    } ${
+                                      isRecentlyLeft ? 'student-avatar-leaving student-fadeOut' : ''
+                                    }`}
+                                    title={participant.display_name || `שחקן ${idx + 1}`}
+                                    style={{
+                                      animationDelay: isRecentlyJoined ? `${idx * 0.2}s` : '0s'
+                                    }}
+                                  >
+                                    {/* Welcome sparkle animation for new players */}
+                                    {isRecentlyJoined && (
+                                      <div className="student-avatar-sparkle student-sparkle"></div>
+                                    )}
+
+                                    {participant.display_name?.charAt(0) || '?'}
+
+                                    {/* Online status indicator */}
+                                    <div className="student-avatar-status">
+                                      <div className={`w-3 h-3 rounded-full ${
+                                        isRecentlyJoined ? 'bg-green-400 student-pulse' :
+                                        isRecentlyLeft ? 'bg-gray-400' :
+                                        'bg-green-500'
+                                      }`}></div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+
+                              {session.participants.length > 3 && (
+                                <div className="student-player-avatar student-avatar-overflow student-bounce">
+                                  +{session.participants.length - 3}
+
+                                  {/* Activity indicator for overflow counter */}
+                                  {session.participants.slice(3).some(p =>
+                                    recentlyJoinedPlayers.has(p.id || p.display_name)
+                                  ) && (
+                                    <div className="student-overflow-activity student-glow"></div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Empty state with invitation animation */}
+                          {(!session.participants || session.participants.length === 0) && (
+                            <div className="student-avatar-stack">
+                              <div className="student-player-avatar student-avatar-empty student-pulse">
+                                <Plus className="w-3 h-3 text-gray-400" />
+                              </div>
+                              <div className="text-xs text-gray-500 mr-2 student-fade-in">
+                                חכה לשחקנים...
+                              </div>
+                            </div>
+                          )}
                         </div>
-                        <div className="text-sm text-gray-500">
-                          {(session.participants?.length || 0)}/{lobby.settings.max_players} שחקנים
+
+                        {/* Enhanced Session Status */}
+                        <div className={`student-status-indicator ${sessionStatusClass} text-xs`}>
+                          {(() => {
+                            const sessionAsLobby = { status: session.status };
+                            const { icon, text, timeInfo } = getStatusDisplay(sessionAsLobby);
+                            return (
+                              <>
+                                <div className="student-status-icon">{icon}</div>
+                                <span className="font-medium">{text}</span>
+                                {timeInfo && (
+                                  <span className="student-status-time text-xs">
+                                    {timeInfo}
+                                  </span>
+                                )}
+                              </>
+                            );
+                          })()}
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {(() => {
-                          // Create a session-like lobby object for status display
-                          const sessionAsLobby = { status: session.status };
-                          const { icon, text, timeInfo } = getStatusDisplay(sessionAsLobby);
-                          return (
-                            <>
-                              {icon}
-                              <span className="text-sm text-gray-600">{text}</span>
-                              {timeInfo && <span className="mr-2 text-xs">({timeInfo})</span>}
-                            </>
-                          );
-                        })()}
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>

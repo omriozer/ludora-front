@@ -3,7 +3,7 @@
  * Bright, colorful, and kid-friendly CSS classes for the student experience
  */
 
-/* Custom keyframes for student portal animations */
+/* Enhanced keyframes for student portal animations */
 @keyframes wiggle {
   0%, 7% {
     transform: rotateZ(0);
@@ -60,16 +60,342 @@
   }
 }
 
-/* Background Styles */
+/* New dynamic animations */
+@keyframes heartbeat {
+  0% {
+    transform: scale(1);
+  }
+  14% {
+    transform: scale(1.3);
+  }
+  28% {
+    transform: scale(1);
+  }
+  42% {
+    transform: scale(1.3);
+  }
+  70% {
+    transform: scale(1);
+  }
+}
+
+@keyframes glow {
+  0% {
+    box-shadow: 0 0 5px rgba(102, 126, 234, 0.5), 0 0 10px rgba(102, 126, 234, 0.5), 0 0 15px rgba(102, 126, 234, 0.5);
+  }
+  100% {
+    box-shadow: 0 0 10px rgba(240, 147, 251, 0.8), 0 0 20px rgba(240, 147, 251, 0.8), 0 0 30px rgba(240, 147, 251, 0.8);
+  }
+}
+
+@keyframes rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px);
+  }
+  75% {
+    transform: translateX(5px);
+  }
+}
+
+@keyframes rubber {
+  0% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(1.25, 0.75);
+  }
+  40% {
+    transform: scale(0.75, 1.25);
+  }
+  50% {
+    transform: scale(1.15, 0.85);
+  }
+  65% {
+    transform: scale(0.95, 1.05);
+  }
+  75% {
+    transform: scale(1.05, 0.95);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes swing {
+  20% {
+    transform: rotate(15deg);
+  }
+  40% {
+    transform: rotate(-10deg);
+  }
+  60% {
+    transform: rotate(5deg);
+  }
+  80% {
+    transform: rotate(-5deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes wobble {
+  0% {
+    transform: translateX(0%);
+  }
+  15% {
+    transform: translateX(-25%) rotate(-5deg);
+  }
+  30% {
+    transform: translateX(20%) rotate(3deg);
+  }
+  45% {
+    transform: translateX(-15%) rotate(-3deg);
+  }
+  60% {
+    transform: translateX(10%) rotate(2deg);
+  }
+  75% {
+    transform: translateX(-5%) rotate(-1deg);
+  }
+  100% {
+    transform: translateX(0%);
+  }
+}
+
+@keyframes jello {
+  0%, 11.1%, 100% {
+    transform: none;
+  }
+  22.2% {
+    transform: skewX(-12.5deg) skewY(-12.5deg);
+  }
+  33.3% {
+    transform: skewX(6.25deg) skewY(6.25deg);
+  }
+  44.4% {
+    transform: skewX(-3.125deg) skewY(-3.125deg);
+  }
+  55.5% {
+    transform: skewX(1.5625deg) skewY(1.5625deg);
+  }
+  66.6% {
+    transform: skewX(-0.78125deg) skewY(-0.78125deg);
+  }
+  77.7% {
+    transform: skewX(0.390625deg) skewY(0.390625deg);
+  }
+  88.8% {
+    transform: skewX(-0.1953125deg) skewY(-0.1953125deg);
+  }
+}
+
+/* Entrance animations */
+@keyframes fadeInUp {
+  0% {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInDown {
+  0% {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInLeft {
+  0% {
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInRight {
+  0% {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes zoomIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes flipInX {
+  0% {
+    transform: perspective(400px) rotateX(90deg);
+    opacity: 0;
+  }
+  40% {
+    transform: perspective(400px) rotateX(-20deg);
+  }
+  60% {
+    transform: perspective(400px) rotateX(10deg);
+    opacity: 1;
+  }
+  80% {
+    transform: perspective(400px) rotateX(-5deg);
+  }
+  100% {
+    transform: perspective(400px) rotateX(0deg);
+  }
+}
+
+/* Attention seekers */
+@keyframes flash {
+  0%, 50%, 100% {
+    opacity: 1;
+  }
+  25%, 75% {
+    opacity: 0;
+  }
+}
+
+@keyframes tada {
+  0% {
+    transform: scale(1);
+  }
+  10%, 20% {
+    transform: scale(0.9) rotate(-3deg);
+  }
+  30%, 50%, 70%, 90% {
+    transform: scale(1.1) rotate(3deg);
+  }
+  40%, 60%, 80% {
+    transform: scale(1.1) rotate(-3deg);
+  }
+  100% {
+    transform: scale(1) rotate(0);
+  }
+}
+
+@keyframes wave {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(20deg);
+  }
+  75% {
+    transform: rotate(-20deg);
+  }
+}
+
+/* Background animations */
+@keyframes rainbowShift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes particleFloat {
+  0%, 100% {
+    transform: translateY(0px) translateX(0px) rotate(0deg);
+  }
+  33% {
+    transform: translateY(-10px) translateX(5px) rotate(120deg);
+  }
+  66% {
+    transform: translateY(5px) translateX(-5px) rotate(240deg);
+  }
+}
+
+@keyframes gradientWave {
+  0%, 100% {
+    background-size: 200% 200%;
+    background-position: left center;
+  }
+  50% {
+    background-size: 200% 200%;
+    background-position: right center;
+  }
+}
+
+/* Enhanced Background Styles */
 .student-portal-background {
-  background: linear-gradient(135deg,
+  background: linear-gradient(270deg,
     #667eea 0%,
-    #764ba2 25%,
-    #f093fb 50%,
-    #f5576c 75%,
-    #4facfe 100%);
+    #764ba2 15%,
+    #f093fb 30%,
+    #f5576c 45%,
+    #4facfe 60%,
+    #10d9c4 75%,
+    #8b5cf6 90%,
+    #667eea 100%);
+  background-size: 800% 800%;
+  animation: rainbowShift 20s ease infinite;
+  min-height: 100vh;
+  position: relative;
+  overflow: hidden;
+}
+
+.student-portal-background::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+              radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
+              radial-gradient(circle at 40% 40%, rgba(120, 219, 226, 0.3) 0%, transparent 50%);
+  animation: particleFloat 15s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.student-dynamic-background {
+  background: conic-gradient(from 0deg at 50% 50%,
+    #667eea 0%,
+    #764ba2 60%,
+    #f093fb 120%,
+    #f5576c 180%,
+    #4facfe 240%,
+    #10d9c4 300%,
+    #667eea 360%);
   background-size: 400% 400%;
-  animation: rainbow 15s ease infinite;
+  animation: rotate 30s linear infinite;
   min-height: 100vh;
 }
 
@@ -246,17 +572,41 @@
     0 4px 6px -2px rgba(79, 172, 254, 0.1);
 }
 
-/* Text Styles */
+/* Text Styles - Enhanced Readability */
 .student-text-gradient {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
 }
 
 .student-text-fun {
-  color: #4c51bf;
-  text-shadow: 0 2px 4px rgba(102, 126, 234, 0.2);
+  color: #1f2937;
+  text-shadow: 0 2px 4px rgba(255, 255, 255, 0.8);
+  font-weight: 600;
+}
+
+.student-text-contrast {
+  color: #1f2937 !important;
+  text-shadow: 0 2px 4px rgba(255, 255, 255, 0.8) !important;
+}
+
+.student-text-white-contrast {
+  color: white !important;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5) !important;
+}
+
+.student-heading-contrast {
+  color: #1f2937 !important;
+  text-shadow: 0 3px 6px rgba(255, 255, 255, 0.9) !important;
+  font-weight: 700 !important;
+}
+
+.student-subtitle-contrast {
+  color: #374151 !important;
+  text-shadow: 0 2px 4px rgba(255, 255, 255, 0.8) !important;
+  font-weight: 500 !important;
 }
 
 /* Input Styles */
@@ -347,4 +697,761 @@
   border-radius: inherit;
   z-index: -1;
   animation: rainbow 3s ease infinite;
+}
+
+/* Enhanced Card Components */
+.student-lobby-ticket {
+  @apply relative overflow-hidden rounded-3xl p-8 text-white;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 75%, #f5576c 100%);
+  background-size: 300% 300%;
+  animation: gradientWave 8s ease-in-out infinite;
+  box-shadow:
+    0 25px 50px -12px rgba(0, 0, 0, 0.25),
+    0 0 0 1px rgba(255, 255, 255, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transform: perspective(1000px) rotateX(5deg);
+  transition: all 0.6s cubic-bezier(0.23, 1, 0.320, 1);
+}
+
+.student-lobby-ticket:hover {
+  transform: perspective(1000px) rotateX(0deg) translateY(-10px);
+  box-shadow:
+    0 35px 80px -12px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.student-lobby-ticket::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.3) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.student-game-card {
+  @apply relative overflow-hidden rounded-2xl backdrop-blur-md;
+  background: rgba(255, 255, 255, 0.95) !important;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  box-shadow:
+    0 20px 40px -12px rgba(0, 0, 0, 0.15),
+    0 0 0 1px rgba(255, 255, 255, 0.3);
+  transition: all 0.5s cubic-bezier(0.23, 1, 0.320, 1);
+  animation: fadeInUp 0.6s ease-out;
+}
+
+.student-game-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow:
+    0 30px 60px -12px rgba(0, 0, 0, 0.25),
+    0 0 0 1px rgba(255, 255, 255, 0.3);
+}
+
+.student-game-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transition: left 0.8s;
+}
+
+.student-game-card:hover::after {
+  left: 100%;
+}
+
+.student-immersive-card {
+  @apply relative overflow-hidden rounded-3xl;
+  background: linear-gradient(135deg, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.8) 100%);
+  backdrop-filter: blur(25px) saturate(180%);
+  border: 2px solid rgba(255, 255, 255, 0.7);
+  box-shadow:
+    0 25px 45px -10px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.3);
+  transition: all 0.4s cubic-bezier(0.23, 1, 0.320, 1);
+  position: relative;
+}
+
+.student-immersive-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: conic-gradient(from 0deg at 50% 50%,
+    rgba(102, 126, 234, 0.1) 0%,
+    rgba(240, 147, 251, 0.1) 120%,
+    rgba(79, 172, 254, 0.1) 240%,
+    rgba(102, 126, 234, 0.1) 360%);
+  border-radius: inherit;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+}
+
+.student-immersive-card:hover::before {
+  opacity: 1;
+}
+
+/* Enhanced Button Styles */
+.student-btn-explosive {
+  @apply px-8 py-4 rounded-2xl font-bold text-white relative overflow-hidden;
+  background: linear-gradient(135deg, #ff6b6b 0%, #4ecdc4 50%, #ffe66d 100%);
+  background-size: 200% 200%;
+  border: none;
+  box-shadow:
+    0 15px 25px -5px rgba(255, 107, 107, 0.4),
+    0 10px 20px -5px rgba(78, 205, 196, 0.2);
+  animation: gradientWave 3s ease-in-out infinite;
+  transition: all 0.3s ease;
+}
+
+.student-btn-explosive:hover {
+  transform: translateY(-3px) scale(1.05);
+  animation: gradientWave 1s ease-in-out infinite;
+  box-shadow:
+    0 20px 40px -5px rgba(255, 107, 107, 0.6),
+    0 15px 30px -5px rgba(78, 205, 196, 0.4);
+}
+
+.student-btn-explosive::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.7) 0%, transparent 70%);
+  transition: all 0.6s ease;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.student-btn-explosive:hover::before {
+  width: 300px;
+  height: 300px;
+}
+
+/* Dynamic Status Indicators */
+.student-status-indicator {
+  @apply relative inline-flex items-center px-4 py-2 rounded-full font-semibold text-sm;
+  transition: all 0.3s ease;
+}
+
+.student-status-waiting {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.4);
+  animation: pulse 2s infinite;
+}
+
+.student-status-active {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+  animation: glow 2s ease-in-out infinite alternate;
+}
+
+.student-status-full {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+.student-status-expired {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+  animation: shake 0.8s ease-in-out infinite;
+}
+
+/* Player Counter Components */
+.student-player-counter {
+  @apply relative inline-flex items-center justify-center;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.7) 100%);
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(102, 126, 234, 0.3);
+  border-radius: 50px;
+  padding: 8px 16px;
+  font-weight: bold;
+  color: #4c51bf;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.student-player-counter:hover {
+  transform: scale(1.1);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+}
+
+.student-player-counter.updating {
+  animation: heartbeat 1.5s ease-in-out infinite;
+}
+
+/* Avatar Components */
+.student-player-avatar {
+  @apply w-8 h-8 rounded-full border-2 border-white;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+  animation: fadeInUp 0.6s ease-out;
+}
+
+.student-player-avatar:hover {
+  transform: scale(1.2);
+  z-index: 10;
+}
+
+.student-avatar-stack {
+  @apply flex -space-x-2;
+}
+
+.student-avatar-stack .student-player-avatar:nth-child(1) { animation-delay: 0.1s; }
+.student-avatar-stack .student-player-avatar:nth-child(2) { animation-delay: 0.2s; }
+.student-avatar-stack .student-player-avatar:nth-child(3) { animation-delay: 0.3s; }
+.student-avatar-stack .student-player-avatar:nth-child(4) { animation-delay: 0.4s; }
+
+/* Gamification Elements */
+.student-achievement-badge {
+  @apply relative inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold;
+  background: linear-gradient(135deg, #ffd700 0%, #ffb347 100%);
+  color: #8b5a00;
+  box-shadow:
+    0 4px 12px rgba(255, 215, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  animation: tada 2s ease-in-out infinite;
+}
+
+.student-streak-indicator {
+  @apply relative inline-flex items-center px-4 py-2 rounded-full font-bold;
+  background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
+  color: white;
+  box-shadow: 0 6px 16px rgba(78, 205, 196, 0.4);
+  animation: flash 2s infinite;
+}
+
+.student-level-badge {
+  @apply relative inline-block;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+  background-size: 200% 200%;
+  padding: 8px 16px;
+  border-radius: 20px;
+  color: white;
+  font-weight: bold;
+  animation: rainbowShift 4s ease-in-out infinite;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* Interactive Animations */
+.student-heartbeat {
+  animation: heartbeat 1.5s ease-in-out infinite;
+}
+
+.student-glow {
+  animation: glow 2s ease-in-out infinite alternate;
+}
+
+.student-rubber-band {
+  animation: rubber 1s ease-in-out;
+}
+
+.student-jello {
+  animation: jello 1s ease-in-out;
+}
+
+.student-fade-in-up {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+.student-slide-in-right {
+  animation: slideInRight 0.6s ease-out;
+}
+
+.student-zoom-in {
+  animation: zoomIn 0.6s ease-out;
+}
+
+.student-tada {
+  animation: tada 1s ease-in-out;
+}
+
+/* Utility Classes */
+.student-hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+}
+
+.student-hover-glow:hover {
+  animation: glow 2s ease-in-out infinite alternate;
+}
+
+.student-hover-scale:hover {
+  transform: scale(1.05);
+}
+
+.student-hover-rotate:hover {
+  transform: rotate(5deg);
+}
+
+/* Enhanced Immersive Background */
+.student-immersive-background {
+  background: linear-gradient(270deg,
+    #667eea 0%,
+    #764ba2 15%,
+    #f093fb 30%,
+    #f5576c 45%,
+    #4facfe 60%,
+    #10d9c4 75%,
+    #8b5cf6 90%,
+    #667eea 100%);
+  background-size: 400% 400%;
+  animation: gradientWave 20s ease infinite;
+  min-height: 100vh;
+  position: relative;
+  overflow: hidden;
+}
+
+.student-background-particles {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.student-floating-element {
+  position: absolute;
+  animation: particleFloat 8s ease-in-out infinite;
+  opacity: 0.6;
+  z-index: 2;
+}
+
+.student-light-orb {
+  position: absolute;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.8), rgba(102, 126, 234, 0.3), transparent);
+  filter: blur(20px);
+  animation: particleFloat 12s ease-in-out infinite;
+  z-index: 2;
+}
+
+.student-background-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.2) 0%, transparent 50%),
+              radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.2) 0%, transparent 50%),
+              radial-gradient(circle at 40% 40%, rgba(120, 219, 226, 0.2) 0%, transparent 50%);
+  animation: particleFloat 15s ease-in-out infinite reverse;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.student-geometric-shape {
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(45deg, rgba(102, 126, 234, 0.3), rgba(240, 147, 251, 0.3));
+  border-radius: 20% 50% 30% 70%;
+  animation: rotate 20s linear infinite;
+  filter: blur(2px);
+  z-index: 2;
+}
+
+/* Enhanced Glassmorphism Cards - Improved Readability */
+.student-glass-card {
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(25px) saturate(180%);
+  border: 2px solid rgba(255, 255, 255, 0.7) !important;
+  border-radius: 24px !important;
+  box-shadow:
+    0 25px 45px -10px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.4) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.student-glass-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.9) 0%,
+    rgba(255, 255, 255, 0.75) 100%);
+  z-index: -1;
+  border-radius: inherit;
+}
+
+.student-glass-overlay {
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.9) 0%,
+    rgba(255, 255, 255, 0.8) 100%) !important;
+  backdrop-filter: blur(25px) saturate(200%);
+  border: 2px solid rgba(255, 255, 255, 0.7) !important;
+}
+
+.student-glass-input {
+  background: rgba(255, 255, 255, 0.9) !important;
+  backdrop-filter: blur(15px);
+  border: 2px solid rgba(255, 255, 255, 0.8) !important;
+  border-radius: 16px !important;
+  color: #1f2937 !important;
+  padding: 12px 16px !important;
+  width: 100% !important;
+  transition: all 0.3s ease;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1) !important;
+}
+
+.student-glass-input:focus {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-color: rgba(102, 126, 234, 0.8) !important;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2), 0 8px 16px rgba(0, 0, 0, 0.15) !important;
+  outline: none !important;
+}
+
+.student-glass-button {
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(15px);
+  border: 2px solid rgba(255, 255, 255, 0.7) !important;
+  border-radius: 16px !important;
+  padding: 12px 16px !important;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1) !important;
+}
+
+.student-glass-button-hover:hover {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-color: rgba(102, 126, 234, 0.7) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.15) !important;
+}
+
+.student-glass-button-selected {
+  background: rgba(102, 126, 234, 0.8) !important;
+  border-color: rgba(102, 126, 234, 0.9) !important;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.3), 0 8px 16px rgba(0, 0, 0, 0.15) !important;
+  color: white !important;
+}
+
+.student-glass-notification {
+  background: rgba(0, 0, 0, 0.8) !important;
+  backdrop-filter: blur(15px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border-radius: 16px !important;
+  padding: 16px !important;
+  margin-bottom: 8px !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Enhanced Status Components */
+.student-status-icon {
+  @apply mr-2;
+}
+
+.student-status-time {
+  @apply ml-2 text-xs;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+/* Enhanced Player Components */
+.student-player-counter-icon {
+  @apply mr-2;
+}
+
+.student-player-counter-display {
+  @apply flex items-center gap-1;
+}
+
+.student-player-count-current {
+  @apply font-bold text-lg;
+  animation: heartbeat 2s ease-in-out infinite;
+}
+
+.student-player-count-separator {
+  @apply text-gray-500 mx-1;
+}
+
+.student-player-count-max {
+  @apply text-gray-600;
+}
+
+.student-player-count-label {
+  @apply text-sm text-gray-500 mr-2;
+}
+
+.student-room-icon {
+  @apply w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center text-white;
+}
+
+/* Enhanced Avatar Components */
+.student-avatar-joining {
+  animation: zoomIn 0.6s ease-out;
+  position: relative;
+}
+
+.student-avatar-leaving {
+  animation: fadeInUp 0.4s ease-out reverse;
+  opacity: 0.5;
+}
+
+.student-avatar-empty {
+  background: rgba(156, 163, 175, 0.5) !important;
+  border-color: rgba(156, 163, 175, 0.3) !important;
+}
+
+.student-avatar-overflow {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+  color: white;
+  font-size: 10px !important;
+  position: relative;
+}
+
+.student-avatar-status {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  background: white;
+  border-radius: 50%;
+  padding: 1px;
+}
+
+.student-avatar-sparkle {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 12px;
+  height: 12px;
+  background: #fbbf24;
+  border-radius: 50%;
+  animation: sparkle 1s ease-in-out infinite;
+}
+
+.student-overflow-activity {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  background: #10b981;
+  border-radius: 50%;
+}
+
+/* Enhanced Gamification Components */
+.student-achievement-counter {
+  @apply inline-flex items-center gap-2;
+  background: rgba(255, 215, 0, 0.2);
+  border: 2px solid rgba(255, 215, 0, 0.3);
+  border-radius: 50px;
+  padding: 4px 12px;
+}
+
+.student-session-counter {
+  @apply inline-flex items-center gap-2;
+  background: rgba(139, 92, 246, 0.2);
+  border: 2px solid rgba(139, 92, 246, 0.3);
+  border-radius: 50px;
+  padding: 4px 12px;
+}
+
+.student-achievement-icon {
+  @apply mr-2;
+}
+
+.student-achievement-content {
+  @apply text-left;
+}
+
+.student-achievement-celebration {
+  animation: tada 1s ease-in-out;
+}
+
+.student-achievement-earned {
+  animation: zoomIn 0.8s ease-out;
+}
+
+.student-rarity-indicator {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  font-size: 16px;
+}
+
+.student-rarity-common {
+  filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.8));
+}
+
+.student-rarity-rare {
+  filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.8));
+  animation: glow 2s ease-in-out infinite alternate;
+}
+
+.student-rarity-epic {
+  filter: drop-shadow(0 0 8px rgba(147, 51, 234, 0.8));
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.student-rarity-legendary {
+  filter: drop-shadow(0 0 12px rgba(245, 158, 11, 0.9));
+  animation: sparkle 1s ease-in-out infinite;
+}
+
+.student-legendary-glow {
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.6) !important;
+  animation: glow 1.5s ease-in-out infinite alternate;
+}
+
+.student-epic-glow {
+  box-shadow: 0 0 15px rgba(147, 51, 234, 0.6) !important;
+}
+
+.student-rare-glow {
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.6) !important;
+}
+
+.student-progress-bar {
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+  animation: gradientWave 3s ease-in-out infinite;
+}
+
+/* Enhanced Notification Components */
+.student-notification-join {
+  border-left: 4px solid #10b981 !important;
+}
+
+.student-notification-leave {
+  border-left: 4px solid #ef4444 !important;
+}
+
+.student-notification-avatar {
+  @apply w-8 h-8 rounded-full border-2 border-white flex items-center justify-center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+  position: relative;
+}
+
+.student-notification-status {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid white;
+}
+
+.student-notification-sparkle {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 8px;
+  height: 8px;
+  background: #fbbf24;
+  border-radius: 50%;
+}
+
+.student-notification-icon {
+  @apply flex items-center justify-center;
+}
+
+.student-notification-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 0 0 16px 16px;
+  overflow: hidden;
+}
+
+.student-notification-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981, #3b82f6);
+  animation: slideInLeft 5s linear;
+  transform-origin: left;
+}
+
+/* Enhanced Animation Classes */
+.student-zoomIn {
+  animation: zoomIn 0.6s ease-out;
+}
+
+.student-fadeOut {
+  animation: fadeInUp 0.4s ease-out reverse;
+  opacity: 0;
+}
+
+.student-slideInRight {
+  animation: slideInRight 0.5s ease-out;
+}
+
+.student-rotate {
+  animation: rotate 20s linear infinite;
+}
+
+.student-shake {
+  animation: shake 0.8s ease-in-out infinite;
+}
+
+.student-fade-in {
+  animation: fadeInUp 1s ease-out;
+}
+
+/* Accessibility & Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .student-immersive-background,
+  .student-lobby-ticket,
+  .student-game-card,
+  .student-btn-explosive,
+  .student-status-waiting,
+  .student-status-active,
+  .student-status-expired,
+  .student-player-counter,
+  .student-player-avatar,
+  .student-achievement-badge,
+  .student-streak-indicator,
+  .student-level-badge,
+  .student-floating-element,
+  .student-light-orb,
+  .student-geometric-shape,
+  .student-legendary-glow,
+  .student-epic-glow,
+  .student-rare-glow {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .student-portal-background,
+  .student-dynamic-background {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    animation: none !important;
+  }
 }

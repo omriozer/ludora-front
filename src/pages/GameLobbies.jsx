@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useUser } from '@/contexts/UserContext';
 import { motion } from 'framer-motion';
@@ -334,6 +334,81 @@ function ActiveGamesGrid({ userGames, searchTerm }) {
     return title.toLowerCase().includes(searchTerm.toLowerCase());
   });
 
+  // Single channel strategy for ALL visible games - efficient lobbies/catalog page subscription
+  const [allChannels] = useState(() => {
+    // Instead of multiple game:gameId channels, use a single channel for all visible games
+    // This is more efficient for lobby/catalog pages where users see many games
+    return ['lobby:visible_games'];
+  });
+
+  const [consolidatedSSEOptions] = useState(() => ({
+    debugMode: true,
+    autoReconnect: true,
+    sessionContext: {
+      gameId: null, // Single channel covers all games
+      lobbyId: null, // Single channel covers all lobbies
+      sessionId: null,
+      isLobbyOwner: true, // Teacher managing lobbies
+      isActiveParticipant: false, // Not actively playing, just monitoring
+      priorityHint: 'lobby_status' // Lobby status monitoring priority
+    }
+  }));
+
+  // Single SSE connection for all games - consolidates all connections into one
+  const {
+    connectionState,
+    isConnected,
+    isConnecting,
+    addEventListener,
+    removeEventListener
+  } = useSSE(allChannels, consolidatedSSEOptions);
+
+  // Global event broadcasting system - forward events to GameCard components
+  const [gameEventHandlers, setGameEventHandlers] = useState({});
+
+  // Register global event handler that forwards to specific game handlers
+  useEffect(() => {
+    const handleGlobalEvent = (eventType) => (event) => {
+      const eventGameId = event.data?.gameId || event.data?.game_id;
+      if (eventGameId && gameEventHandlers[eventGameId]?.[eventType]) {
+        gameEventHandlers[eventGameId][eventType](event);
+      }
+    };
+
+    // Register global handlers for all event types
+    const eventTypes = [
+      'lobby:created', 'lobby:activated', 'lobby:closed', 'lobby:expired',
+      'session:created', 'session:participant:joined', 'session:participant:left',
+      'session:started', 'session:finished'
+    ];
+
+    const cleanupFunctions = eventTypes.map(eventType => {
+      return addEventListener(eventType, handleGlobalEvent(eventType));
+    });
+
+    // Cleanup on unmount
+    return () => {
+      cleanupFunctions.forEach(cleanup => cleanup?.());
+    };
+  }, [gameEventHandlers, addEventListener]);
+
+  // Function to register event handlers for specific games
+  const registerGameEventHandlers = useCallback((gameId, handlers) => {
+    setGameEventHandlers(prev => ({
+      ...prev,
+      [gameId]: handlers
+    }));
+  }, []);
+
+  // Function to unregister event handlers for specific games
+  const unregisterGameEventHandlers = useCallback((gameId) => {
+    setGameEventHandlers(prev => {
+      const newHandlers = { ...prev };
+      delete newHandlers[gameId];
+      return newHandlers;
+    });
+  }, []);
+
   return (
     <div className="space-y-8 py-8">
       {/* Section Title */}
@@ -392,7 +467,17 @@ function ActiveGamesGrid({ userGames, searchTerm }) {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredGames.map((game, index) => (
-            <GameCard key={game.id} game={game} index={index} />
+            <GameCard
+              key={game.id}
+              game={game}
+              index={index}
+              // Pass consolidated SSE connection props
+              sseConnectionState={connectionState}
+              sseIsConnected={isConnected}
+              sseIsConnecting={isConnecting}
+              onRegisterEventHandlers={registerGameEventHandlers}
+              onUnregisterEventHandlers={unregisterGameEventHandlers}
+            />
           ))}
         </div>
       )}
@@ -401,7 +486,16 @@ function ActiveGamesGrid({ userGames, searchTerm }) {
 }
 
 // Individual game card component
-function GameCard({ game, index }) {
+function GameCard({
+  game,
+  index,
+  // Consolidated SSE props from parent
+  sseConnectionState,
+  sseIsConnected,
+  sseIsConnecting,
+  onRegisterEventHandlers,
+  onUnregisterEventHandlers
+}) {
   const navigate = useNavigate();
   const [lobbyData, setLobbyData] = useState(null);
   const [lobbyLoading, setLobbyLoading] = useState(true);
@@ -421,97 +515,49 @@ function GameCard({ game, index }) {
   const lobby = lobbyData?.lobby || null;
   const lobbyCode = lobbyData?.lobbyCode || null;
 
-  // Note: No longer tracking lobbyId in refs to prevent render instability
+  // Make gameId completely stable - only create once per component
+  const [stableGameId] = useState(() => game.id);
 
-  // Build session context that only changes when gameId changes (not lobbyId)
-  // Make sessionContext truly stable - only create once per game
-  const [stableSessionContext] = useState(() => ({
-    gameId: game.id,
-    lobbyId: null, // Will be updated separately if needed
-    sessionId: null,
-    isLobbyOwner: true,
-    isActiveParticipant: true,
-    priorityHint: 'lobby_status'
-  }));
-
-  // Remove the mutation that causes SSE reconnections
-  // The sessionContext lobbyId will remain null, which is fine for SSE subscriptions
-  // We don't need to update it since SSE subscribes to the game channel, not lobby-specific
-
-  // Memoize SSE options to ensure proper reactivity - only recreate when game changes
-  const sseOptions = useMemo(() => {
-    const options = {
-      debugMode: true,
-      autoReconnect: true,
-      sessionContext: stableSessionContext
-    };
-
-    console.log('🔄 [GameCard] SSE Options created for game:', {
-      gameId: game.id,
-      sessionContextLobbyId: stableSessionContext?.lobbyId,
-      options
-    });
-
-    return options;
-  }, [game.id]); // Only depend on game.id for maximum stability
-
-  // SSE integration for real-time lobby updates with session context
-  const {
-    connectionState,
-    isConnected,
-    isConnecting,
-    isReconnecting,
-    error,
-    retryCount,
-    addEventListener,
-    removeEventListener
-  } = useSSE(
-    [`game:${game.id}`], // Subscribe to this game's events
-    sseOptions
-  );
-
-  // Handle SSE events for real-time updates
+  // Register with parent's consolidated SSE system
   useEffect(() => {
+    if (!onRegisterEventHandlers || !onUnregisterEventHandlers) {
+      return;
+    }
+
     const handleLobbyEvent = (event) => {
       // For any lobby-related event, refresh the lobby data to get the latest state
-      if (event.data?.gameId === game.id || event.data?.game_id === game.id) {
+      if (event.data?.gameId === stableGameId || event.data?.game_id === stableGameId) {
         processLobbyData(false); // Don't show loading during SSE updates
       }
     };
 
     const handleSessionEvent = (event) => {
       // For any session-related event, refresh the lobby data to get updated participant counts
-      if (event.data?.gameId === game.id || event.data?.game_id === game.id) {
+      if (event.data?.gameId === stableGameId || event.data?.game_id === stableGameId) {
         processLobbyData(false); // Don't show loading during SSE updates
       }
     };
 
-    // Register event handlers for lobby events
-    const cleanupLobbyCreated = addEventListener('lobby:created', handleLobbyEvent);
-    const cleanupLobbyActivated = addEventListener('lobby:activated', handleLobbyEvent);
-    const cleanupLobbyClosed = addEventListener('lobby:closed', handleLobbyEvent);
-    const cleanupLobbyExpired = addEventListener('lobby:expired', handleLobbyEvent);
-
-    // Register event handlers for session events that affect participant counts
-    const cleanupSessionCreated = addEventListener('session:created', handleSessionEvent);
-    const cleanupSessionParticipantJoined = addEventListener('session:participant:joined', handleSessionEvent);
-    const cleanupSessionParticipantLeft = addEventListener('session:participant:left', handleSessionEvent);
-    const cleanupSessionStarted = addEventListener('session:started', handleSessionEvent);
-    const cleanupSessionFinished = addEventListener('session:finished', handleSessionEvent);
-
-    // Cleanup event handlers on unmount
-    return () => {
-      cleanupLobbyCreated?.();
-      cleanupLobbyActivated?.();
-      cleanupLobbyClosed?.();
-      cleanupLobbyExpired?.();
-      cleanupSessionCreated?.();
-      cleanupSessionParticipantJoined?.();
-      cleanupSessionParticipantLeft?.();
-      cleanupSessionStarted?.();
-      cleanupSessionFinished?.();
+    // Register this game's event handlers with the parent's consolidated system
+    const gameEventHandlers = {
+      'lobby:created': handleLobbyEvent,
+      'lobby:activated': handleLobbyEvent,
+      'lobby:closed': handleLobbyEvent,
+      'lobby:expired': handleLobbyEvent,
+      'session:created': handleSessionEvent,
+      'session:participant:joined': handleSessionEvent,
+      'session:participant:left': handleSessionEvent,
+      'session:started': handleSessionEvent,
+      'session:finished': handleSessionEvent
     };
-  }, [game.id, addEventListener, removeEventListener]);
+
+    onRegisterEventHandlers(stableGameId, gameEventHandlers);
+
+    // Cleanup: unregister this game's handlers on unmount
+    return () => {
+      onUnregisterEventHandlers(stableGameId);
+    };
+  }, [stableGameId, onRegisterEventHandlers, onUnregisterEventHandlers]);
 
 
   // Process lobby data that comes with the game (expect only one lobby per game)
@@ -595,7 +641,7 @@ function GameCard({ game, index }) {
 
   useEffect(() => {
     processLobbyData();
-  }, [game.id]);
+  }, [stableGameId]);
 
   // Get game settings for max players
   const maxPlayersPerSession = game.game_settings?.max_players || game.settings?.max_players || 12;
@@ -748,8 +794,39 @@ function GameCard({ game, index }) {
         variant: "default"
       });
 
-      // Refresh lobby data
-      processLobbyData();
+      // Update UI immediately with fresh API response data
+      if (response) {
+        const updatedLobby = response;
+        const updatedStatus = computeLobbyStatus(updatedLobby);
+
+        // Count sessions for active lobby
+        let totalActiveSessions = 0;
+        let totalOnlinePlayers = 0;
+        if (isLobbyActive(updatedLobby) && updatedLobby.sessions) {
+          const activeSessions = updatedLobby.sessions.filter(session => {
+            return !session.finished_at &&
+                   (!session.expires_at || new Date(session.expires_at) > new Date());
+          });
+          totalActiveSessions = activeSessions.length;
+          totalOnlinePlayers = activeSessions.reduce((sum, session) => {
+            return sum + (session.participants ? session.participants.length : 0);
+          }, 0);
+        }
+
+        // Update lobby data state immediately with fresh data
+        setLobbyData({
+          status: updatedStatus,
+          totalActiveSessions,
+          totalOnlinePlayers,
+          lobby: updatedLobby,
+          lobbyCode: updatedLobby.lobby_code
+        });
+
+        // Also update the game.lobbies array so processLobbyData() will work correctly in the future
+        if (game.lobbies && game.lobbies.length > 0) {
+          game.lobbies[0] = updatedLobby;
+        }
+      }
 
     } catch (error) {
       console.error('Error activating lobby:', error);
@@ -786,8 +863,25 @@ function GameCard({ game, index }) {
         variant: "default"
       });
 
-      // Refresh lobby data
-      processLobbyData();
+      // Update UI immediately with fresh API response data
+      if (response) {
+        const updatedLobby = response;
+        const updatedStatus = computeLobbyStatus(updatedLobby);
+
+        // Update lobby data state immediately with fresh data
+        setLobbyData({
+          status: updatedStatus,
+          totalActiveSessions: 0, // Closed lobby has no active sessions
+          totalOnlinePlayers: 0,
+          lobby: updatedLobby,
+          lobbyCode: updatedLobby.lobby_code
+        });
+
+        // Also update the game.lobbies array so processLobbyData() will work correctly in the future
+        if (game.lobbies && game.lobbies.length > 0) {
+          game.lobbies[0] = updatedLobby;
+        }
+      }
 
     } catch (error) {
       console.error('Error closing lobby:', error);
@@ -837,7 +931,7 @@ function GameCard({ game, index }) {
 
   // Get SSE connection status display configuration
   const getSSEStatusConfig = () => {
-    switch (connectionState) {
+    switch (sseConnectionState) {
       case SSE_CONNECTION_STATES.CONNECTED:
         return {
           color: 'bg-green-500',
@@ -858,7 +952,7 @@ function GameCard({ game, index }) {
         return {
           color: 'bg-orange-500',
           textColor: 'text-orange-600',
-          text: retryCount > 0 ? `מתחבר מחדש (${retryCount})` : 'מתחבר מחדש',
+          text: 'מתחבר מחדש',
           title: 'מנסה להתחבר מחדש לעדכונים בזמן אמת',
           icon: '🔄'
         };
@@ -867,7 +961,7 @@ function GameCard({ game, index }) {
           color: 'bg-red-500',
           textColor: 'text-red-600',
           text: 'שגיאה',
-          title: error?.message || 'שגיאה בחיבור לעדכונים בזמן אמת',
+          title: 'שגיאה בחיבור לעדכונים בזמן אמת',
           icon: '🔴'
         };
       case SSE_CONNECTION_STATES.PERMANENTLY_FAILED:
@@ -949,7 +1043,7 @@ function GameCard({ game, index }) {
             {/* Enhanced SSE Connection Status Indicator */}
             <div className="flex items-center gap-2">
               <div
-                className={`w-2 h-2 rounded-full ${sseStatusConfig.color} ${isConnecting || isReconnecting ? 'animate-pulse' : ''}`}
+                className={`w-2 h-2 rounded-full ${sseStatusConfig.color} ${sseIsConnecting ? 'animate-pulse' : ''}`}
                 title={sseStatusConfig.title}
               />
               <span className={`text-xs ${sseStatusConfig.textColor} font-medium`}>
@@ -959,18 +1053,16 @@ function GameCard({ game, index }) {
           </div>
 
           {/* SSE Error Information */}
-          {(connectionState === SSE_CONNECTION_STATES.ERROR || connectionState === SSE_CONNECTION_STATES.PERMANENTLY_FAILED) && (
+          {(sseConnectionState === SSE_CONNECTION_STATES.ERROR || sseConnectionState === SSE_CONNECTION_STATES.PERMANENTLY_FAILED) && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-2">
               <div className="flex items-center justify-between">
                 <div className="flex-1">
                   <span className="text-xs text-red-700 font-medium">חיבור לעדכונים נכשל</span>
-                  {error && (
-                    <p className="text-xs text-red-600 mt-1" title={error.message}>
-                      {error.message.length > 50 ? `${error.message.slice(0, 50)}...` : error.message}
-                    </p>
-                  )}
+                  <p className="text-xs text-red-600 mt-1">
+                    הייתה שגיאה בחיבור לשרת העדכונים
+                  </p>
                 </div>
-                {connectionState === SSE_CONNECTION_STATES.ERROR && (
+                {sseConnectionState === SSE_CONNECTION_STATES.ERROR && (
                   <Button
                     onClick={() => window.location.reload()}
                     size="sm"

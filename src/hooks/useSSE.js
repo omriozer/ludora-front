@@ -28,8 +28,8 @@ const DEFAULT_CONFIG = {
   retryDelayMultiplier: 1.5,    // Exponential backoff factor
 
   // Connection health settings
-  heartbeatTimeout: 45000,      // 45 seconds (server sends every 30s)
-  connectionTimeout: 30000,     // 30 seconds to establish connection (increased for SSE)
+  heartbeatTimeout: 60000,      // 60 seconds (server sends every 30s, allow more tolerance)
+  connectionTimeout: 60000,     // 60 seconds to establish connection (SSE can be slow)
 
   // Feature flags
   autoReconnect: true,
@@ -78,9 +78,13 @@ export function useSSE(channels = [], options = {}) {
   const fallbackIntervalRef = useRef(null);
   const isUnmountedRef = useRef(false);
   const currentRetryDelayRef = useRef(config.initialRetryDelay);
+  const isConnectingRef = useRef(false); // Prevent multiple concurrent connection attempts
 
   // Event handlers registry
   const eventHandlersRef = useRef(new Map());
+
+  // Ref to store scheduleReconnect function for heartbeat timeout
+  const scheduleReconnectRef = useRef(null);
 
   // Debug logging
   const debugLog = useCallback((message, data = null) => {
@@ -121,11 +125,12 @@ export function useSSE(channels = [], options = {}) {
     heartbeatTimeoutRef.current = setTimeout(() => {
       debugLog('Heartbeat timeout - connection appears dead');
       const latestConfig = configRef.current;
-      if (latestConfig.autoReconnect && !isUnmountedRef.current) {
-        // Call reconnect via closure - it will be defined by the time timeout executes
-        if (typeof reconnect !== 'undefined') {
-          reconnect();
-        }
+      if (latestConfig.autoReconnect && !isUnmountedRef.current && !isConnectingRef.current) {
+        // Force a reconnection by calling connect directly to avoid hoisting issues
+        setConnectionState(SSE_CONNECTION_STATES.ERROR);
+        setError(new Error('Heartbeat timeout - connection lost'));
+        // Schedule reconnection instead of calling reconnect directly
+        scheduleReconnectRef.current?.();
       }
     }, currentConfig.heartbeatTimeout);
   }, [debugLog]); // Remove reconnect dependency to avoid hoisting issues
@@ -269,6 +274,7 @@ export function useSSE(channels = [], options = {}) {
         console.log('🎯 [SSE] Processing connection:established event:', parsedData.data);
         debugLog('Connection established', parsedData.data);
         console.log('🎯 [SSE] Setting connection state to CONNECTED');
+        isConnectingRef.current = false; // Reset connecting flag on successful connection
         setConnectionState(SSE_CONNECTION_STATES.CONNECTED);
         setSubscribedChannels(parsedData.data.subscribedChannels || []);
         setRetryCount(0);
@@ -333,7 +339,14 @@ export function useSSE(channels = [], options = {}) {
       return;
     }
 
+    // Prevent multiple concurrent connection attempts
+    if (isConnectingRef.current) {
+      console.log('⏸️ [useSSE] connect() aborted - already connecting');
+      return;
+    }
+
     console.log('✅ [useSSE] connect() proceeding...');
+    isConnectingRef.current = true;
     // Read current config to avoid dependency issues
     const currentConfig = configRef.current;
     debugLog('Attempting to connect to SSE');
@@ -441,6 +454,7 @@ export function useSSE(channels = [], options = {}) {
         });
 
         eventSource.close();
+        isConnectingRef.current = false; // Reset connecting flag on timeout
         if (!isUnmountedRef.current) {
           setConnectionState(SSE_CONNECTION_STATES.ERROR);
           setError(timeoutError);
@@ -487,6 +501,8 @@ export function useSSE(channels = [], options = {}) {
 
           if (eventSource.readyState === EventSource.CLOSED) {
             console.error('🎯 [SSE] Connection is CLOSED, setting error state');
+            isConnectingRef.current = false; // Reset connecting flag on error
+
             // Provide helpful error message based on likely causes
             if (retryCount === 0) {
               // First connection attempt failed - likely port mismatch or server not running
@@ -512,6 +528,7 @@ export function useSSE(channels = [], options = {}) {
     } catch (error) {
       const enhancedError = new Error(`Failed to create SSE connection: ${error.message}. Check if EventSource is supported and API server is accessible.`);
       debugLog('Failed to create SSE connection', { error, sseUrl: buildSSEUrl() });
+      isConnectingRef.current = false; // Reset connecting flag on exception
       setConnectionState(SSE_CONNECTION_STATES.ERROR);
       setError(enhancedError);
 
@@ -536,6 +553,7 @@ export function useSSE(channels = [], options = {}) {
         debugLog('Max retry attempts exceeded');
         setConnectionState(SSE_CONNECTION_STATES.PERMANENTLY_FAILED);
         setError(new Error(`Failed to connect after ${currentConfig.maxRetryAttempts} attempts`));
+        isConnectingRef.current = false; // Reset connecting flag
 
         if (currentConfig.enableFallback) {
           startFallback();
@@ -568,6 +586,11 @@ export function useSSE(channels = [], options = {}) {
       return newCount;
     });
   }, [connect, debugLog]); // Remove config dependency
+
+  // Set up scheduleReconnectRef for heartbeat timeout usage
+  useEffect(() => {
+    scheduleReconnectRef.current = scheduleReconnect;
+  }, [scheduleReconnect]);
 
   // Reconnect manually (resets retry count)
   const reconnect = useCallback(() => {
@@ -682,15 +705,19 @@ export function useSSE(channels = [], options = {}) {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [connect, clearTimers, debugLog]); // Remove config dependencies
 
+  // Extract stable gameId and debugMode to prevent reconnections when config object changes
+  const gameId = options.sessionContext?.gameId;
+  const debugMode = options.debugMode;
+
   // Auto-connect on mount or channel/config changes
   useEffect(() => {
     // Reset unmounted flag since effect is running (component is mounted)
     isUnmountedRef.current = false;
 
-    console.log('🔄 [useSSE] Effect triggered - channels or core sessionContext changed:', {
+    console.log('🔄 [useSSE] Effect triggered - channels or gameId changed:', {
       channels: channels,
-      sessionContext: config.sessionContext,
-      debugMode: config.debugMode
+      gameId: gameId,
+      debugMode: debugMode
     });
 
     console.log('🔄 [useSSE] About to call connect() for channels:', channels);
@@ -708,11 +735,12 @@ export function useSSE(channels = [], options = {}) {
   }, [
     channels.join(','),
     // Only reconnect for core changes that require a new connection
-    config.sessionContext?.gameId,
+    gameId, // Use extracted gameId instead of config.sessionContext?.gameId
     // Note: Removed lobbyId, sessionId and other dynamic properties to prevent rapid reconnections
     // These are sent as URL parameters but don't require reconnection when they change
-    config.debugMode // Only reconnect if debug mode changes
-  ]); // Reduced dependencies to prevent unnecessary reconnections on dynamic sessionContext changes
+    debugMode // Use extracted debugMode to prevent config object recreation from triggering reconnections
+    // Removed connect, disconnect from dependencies to prevent recreation loops
+  ]); // Minimal dependencies to prevent unnecessary reconnections
 
   // Cleanup on unmount
   useEffect(() => {
