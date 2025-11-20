@@ -140,14 +140,33 @@ export function UserProvider({ children }) {
 
   const checkUserSession = useCallback(async (activeSettings, onStudentPortal, studentsAccess) => {
     try {
-      // Skip user authentication attempt if on student portal with invite_only access
+      // On student portal with invite_only access, first check if there's a valid admin session
       if (onStudentPortal && studentsAccess === 'invite_only') {
-        clog('[UserContext] 🚫 Skipping user authentication - student portal in invite_only mode (code in URL = access)');
-        // Clear user auth state and mark as ready
-        setCurrentUser(null);
-        setIsAuthenticated(false);
-        setUserDataFresh(true); // Mark as ready for invite-only access
-        return;
+        clog('[UserContext] 🔍 Student portal in invite_only mode - checking for admin session first...');
+
+        try {
+          // Attempt to get current user to check for admin privileges
+          const user = await User.getCurrentUser(true); // Suppress errors
+
+          if (user && user.role === 'admin' && !user._isImpersonated) {
+            clog('[UserContext] ✅ Admin user detected on student portal - allowing authentication to proceed');
+            // Admin user - proceed with normal authentication flow below
+          } else {
+            clog('[UserContext] 🚫 No admin session found - skipping user authentication for student portal invite_only mode');
+            // Not an admin - skip user auth and mark as ready for invite-only access
+            setCurrentUser(null);
+            setIsAuthenticated(false);
+            setUserDataFresh(true);
+            return;
+          }
+        } catch (error) {
+          clog('[UserContext] 🚫 Error checking for admin session - skipping user authentication for student portal invite_only mode');
+          // Error checking session - skip user auth and mark as ready for invite-only access
+          setCurrentUser(null);
+          setIsAuthenticated(false);
+          setUserDataFresh(true);
+          return;
+        }
       }
 
       // With httpOnly cookies, we simply try to get the current user
