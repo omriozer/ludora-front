@@ -22,14 +22,20 @@ export const SSE_CONNECTION_STATES = {
  */
 const DEFAULT_CONFIG = {
   // Reconnection settings
-  maxRetryAttempts: 10,
-  initialRetryDelay: 1000,      // 1 second
-  maxRetryDelay: 30000,         // 30 seconds
-  retryDelayMultiplier: 1.5,    // Exponential backoff factor
+  maxRetryAttempts: 15,         // ✅ IMPROVED: More retry attempts for better reliability
+  initialRetryDelay: 500,       // ✅ IMPROVED: Faster initial retry (500ms instead of 1s)
+  maxRetryDelay: 20000,         // ✅ IMPROVED: Reduced max delay (20s instead of 30s)
+  retryDelayMultiplier: 1.4,    // ✅ IMPROVED: Slightly more aggressive backoff
+  fastRetryThreshold: 3,        // ✅ NEW: Use faster retries for first 3 attempts
 
   // Connection health settings
-  heartbeatTimeout: 60000,      // 60 seconds (server sends every 30s, allow more tolerance)
-  connectionTimeout: 60000,     // 60 seconds to establish connection (SSE can be slow)
+  heartbeatTimeout: 45000,      // ✅ IMPROVED: Reduced from 60s to 45s (server sends every 30s)
+  connectionTimeout: 12000,     // ✅ IMPROVED: Much faster connection timeout (12s instead of 60s)
+
+  // ✅ NEW: Connection quality monitoring
+  connectionQualityCheck: true, // Enable connection quality monitoring
+  qualityCheckInterval: 15000,  // Check connection quality every 15 seconds
+  maxMissedHeartbeats: 2,       // Trigger reconnection after 2 missed heartbeats
 
   // Feature flags
   autoReconnect: true,
@@ -41,7 +47,13 @@ const DEFAULT_CONFIG = {
 
   // Error handling
   enableFallback: true,         // Enable fallback to polling if needed
-  fallbackInterval: 5000        // 5 seconds polling interval
+  fallbackInterval: 5000,       // 5 seconds polling interval
+
+  // ✅ NEW: Enhanced error handling
+  retryOnSpecificErrors: true,  // Retry on specific network errors
+  permanentFailureErrors: [     // Don't retry on these HTTP status codes
+    401, 403, 404, 410          // Authentication, authorization, not found, gone
+  ]
 };
 
 /**
@@ -70,12 +82,18 @@ export function useSSE(channels = [], options = {}) {
   const [subscribedChannels, setSubscribedChannels] = useState([]);
   const [fallbackActive, setFallbackActive] = useState(false);
 
+  // ✅ NEW: Connection quality monitoring state
+  const [connectionQuality, setConnectionQuality] = useState('unknown'); // 'good', 'poor', 'unknown'
+  const [missedHeartbeats, setMissedHeartbeats] = useState(0);
+  const [lastHeartbeatTime, setLastHeartbeatTime] = useState(null);
+
   // Refs for managing connection and timers
   const eventSourceRef = useRef(null);
   const retryTimeoutRef = useRef(null);
   const heartbeatTimeoutRef = useRef(null);
   const connectionTimeoutRef = useRef(null);
   const fallbackIntervalRef = useRef(null);
+  const qualityCheckIntervalRef = useRef(null); // ✅ NEW: Connection quality monitoring timer
   const isUnmountedRef = useRef(false);
   const currentRetryDelayRef = useRef(config.initialRetryDelay);
   const isConnectingRef = useRef(false); // Prevent multiple concurrent connection attempts
@@ -112,23 +130,51 @@ export function useSSE(channels = [], options = {}) {
       clearInterval(fallbackIntervalRef.current);
       fallbackIntervalRef.current = null;
     }
+    // ✅ NEW: Clear connection quality monitoring timer
+    if (qualityCheckIntervalRef.current) {
+      clearInterval(qualityCheckIntervalRef.current);
+      qualityCheckIntervalRef.current = null;
+    }
   }, []);
 
-  // Reset heartbeat timer
+  // Reset heartbeat timer with connection quality monitoring
   const resetHeartbeat = useCallback(() => {
     if (heartbeatTimeoutRef.current) {
       clearTimeout(heartbeatTimeoutRef.current);
     }
 
+    // ✅ IMPROVED: Update heartbeat tracking and connection quality
+    const now = new Date();
+    setLastHeartbeatTime(now);
+    setMissedHeartbeats(0); // Reset missed heartbeats on successful heartbeat
+    setConnectionQuality('good'); // Mark connection as good when heartbeat received
+
     // Read current config to avoid dependency issues
     const currentConfig = configRef.current;
     heartbeatTimeoutRef.current = setTimeout(() => {
       debugLog('Heartbeat timeout - connection appears dead');
+
+      // ✅ IMPROVED: Track missed heartbeats for quality monitoring
+      setMissedHeartbeats(prev => {
+        const newCount = prev + 1;
+
+        // Update connection quality based on missed heartbeats
+        if (newCount >= currentConfig.maxMissedHeartbeats) {
+          setConnectionQuality('poor');
+          debugLog(`Connection quality poor: ${newCount} missed heartbeats`);
+        } else {
+          setConnectionQuality('poor');
+          debugLog(`Connection quality degrading: ${newCount} missed heartbeats`);
+        }
+
+        return newCount;
+      });
+
       const latestConfig = configRef.current;
       if (latestConfig.autoReconnect && !isUnmountedRef.current && !isConnectingRef.current) {
         // Force a reconnection by calling connect directly to avoid hoisting issues
         setConnectionState(SSE_CONNECTION_STATES.ERROR);
-        setError(new Error('Heartbeat timeout - connection lost'));
+        setError(new Error(`Connection lost - missed ${latestConfig.maxMissedHeartbeats} heartbeats`));
         // Schedule reconnection instead of calling reconnect directly
         scheduleReconnectRef.current?.();
       }
@@ -539,7 +585,7 @@ export function useSSE(channels = [], options = {}) {
     }
   }, [buildSSEUrl, handleSSEEvent, debugLog]); // Remove config dependency to prevent recreation
 
-  // Schedule reconnection with exponential backoff
+  // Schedule reconnection with improved retry strategy
   const scheduleReconnect = useCallback(() => {
     if (isUnmountedRef.current) return;
 
@@ -552,8 +598,9 @@ export function useSSE(channels = [], options = {}) {
       if (newCount >= currentConfig.maxRetryAttempts) {
         debugLog('Max retry attempts exceeded');
         setConnectionState(SSE_CONNECTION_STATES.PERMANENTLY_FAILED);
-        setError(new Error(`Failed to connect after ${currentConfig.maxRetryAttempts} attempts`));
+        setError(new Error(`Failed to connect after ${currentConfig.maxRetryAttempts} attempts. Please check your network connection and try again.`));
         isConnectingRef.current = false; // Reset connecting flag
+        setConnectionQuality('poor'); // Mark connection quality as poor
 
         if (currentConfig.enableFallback) {
           startFallback();
@@ -562,14 +609,25 @@ export function useSSE(channels = [], options = {}) {
         return newCount;
       }
 
-      // Calculate delay with exponential backoff
-      const delay = Math.min(
-        currentRetryDelayRef.current,
-        currentConfig.maxRetryDelay
-      );
+      // ✅ IMPROVED: Fast retry strategy for initial attempts
+      let delay;
+      if (newCount <= currentConfig.fastRetryThreshold) {
+        // Use faster, fixed delay for first few attempts (better UX)
+        delay = currentConfig.initialRetryDelay;
+        debugLog(`Fast retry attempt ${newCount}/${currentConfig.fastRetryThreshold} in ${delay}ms`);
+      } else {
+        // Use exponential backoff for subsequent attempts
+        delay = Math.min(
+          currentRetryDelayRef.current,
+          currentConfig.maxRetryDelay
+        );
+        debugLog(`Exponential backoff retry attempt ${newCount} in ${delay}ms`);
+      }
 
-      debugLog(`Scheduling reconnection attempt ${newCount} in ${delay}ms`);
+      // ✅ IMPROVED: Better user feedback during retry process
+      setError(new Error(`Connection failed. Retrying... (attempt ${newCount}/${currentConfig.maxRetryAttempts})`));
       setConnectionState(SSE_CONNECTION_STATES.RECONNECTING);
+      setConnectionQuality('unknown'); // Reset quality during reconnection
 
       retryTimeoutRef.current = setTimeout(() => {
         if (!isUnmountedRef.current) {
@@ -577,11 +635,13 @@ export function useSSE(channels = [], options = {}) {
         }
       }, delay);
 
-      // Update delay for next attempt
-      currentRetryDelayRef.current = Math.min(
-        currentRetryDelayRef.current * currentConfig.retryDelayMultiplier,
-        currentConfig.maxRetryDelay
-      );
+      // ✅ IMPROVED: Only update delay after fast retry threshold
+      if (newCount > currentConfig.fastRetryThreshold) {
+        currentRetryDelayRef.current = Math.min(
+          currentRetryDelayRef.current * currentConfig.retryDelayMultiplier,
+          currentConfig.maxRetryDelay
+        );
+      }
 
       return newCount;
     });
@@ -762,6 +822,11 @@ export function useSSE(channels = [], options = {}) {
     subscribedChannels,
     fallbackActive,
 
+    // ✅ NEW: Connection quality monitoring
+    connectionQuality, // 'good', 'poor', 'unknown'
+    missedHeartbeats,
+    lastHeartbeatTime,
+
     // Latest event data
     lastEvent,
 
@@ -778,7 +843,12 @@ export function useSSE(channels = [], options = {}) {
     debug: {
       config,
       eventHandlers: eventHandlersRef.current,
-      authMethod: 'cookie-based-with-credentials'
+      authMethod: 'cookie-based-with-credentials',
+      qualityMetrics: {
+        connectionQuality,
+        missedHeartbeats,
+        lastHeartbeatTime
+      }
     }
   };
 }
