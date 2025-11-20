@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { GamepadIcon, UserIcon, Home, Crown, PlayIcon, Clock, Users } from 'lucide-react';
 import GameTypeDisplay from '@/components/game/GameTypeDisplay';
+import ProductImage from '@/components/ui/ProductImage';
 import logoSm from '../../assets/images/logo_sm.png';
 import { useSSE } from '@/hooks/useSSE';
 import { apiRequestAnonymous } from '@/services/apiClient';
@@ -56,7 +57,7 @@ const TeacherCatalog = () => {
             const lobby = lobbies.length > 0 ? lobbies[0] : null;
 
             if (lobbies.length > 1) {
-              console.warn(`🚨 [WARNING] Game ${game.title} (${game.id}) has ${lobbies.length} lobbies but should only have one!`);
+              console.warn(`🚨 [WARNING] Game ${game.product?.title || game.id} (${game.id}) has ${lobbies.length} lobbies but should only have one!`);
             }
 
             let hasActiveLobby = false;
@@ -70,9 +71,9 @@ const TeacherCatalog = () => {
               lobbyCode = lobby.lobby_code;
 
               // DEBUG: Log lobby and game data
-              console.log(`🔍 [DEBUG] Student Portal - Game ${game.title} (${game.id}):`, {
-                gameTitle: game.title,
-                gameData: { id: game.id, title: game.title, description: game.description },
+              console.log(`🔍 [DEBUG] Student Portal - Game ${game.product?.title || game.id} (${game.id}):`, {
+                gameTitle: game.product?.title || game.product?.name,
+                gameData: { id: game.id, title: game.product?.title || game.product?.name, description: game.description },
                 hasLobby: true,
                 lobbyCode: lobbyCode,
                 status: computedStatus,
@@ -82,7 +83,7 @@ const TeacherCatalog = () => {
                 closureTimeText: getLobbyClosureTimeText(lobby)
               });
             } else {
-              console.log(`🔍 [DEBUG] Student Portal - Game ${game.title} (${game.id}): No lobby`);
+              console.log(`🔍 [DEBUG] Student Portal - Game ${game.product?.title || game.id} (${game.id}): No lobby`);
             }
 
             return {
@@ -210,18 +211,6 @@ const TeacherCatalog = () => {
 
   return (
     <div className="min-h-screen student-portal-background">
-      {/* Header */}
-      <header className="student-card-colorful mx-4 mt-4 mb-6 shadow-2xl">
-        <div className="max-w-6xl mx-auto px-6 py-6">
-          <div className="text-center">
-            <h1 className="text-3xl font-bold student-text-gradient mb-2">
-              קטלוג המשחקים של {catalog.teacher.name}
-            </h1>
-            <p className="text-lg text-gray-600 font-medium">קוד מורה: {catalog.teacher.id}</p>
-          </div>
-        </div>
-      </header>
-
       {/* Content */}
       <main className="max-w-6xl mx-auto px-4 py-8">
         {/* Statistics */}
@@ -274,15 +263,12 @@ const TeacherCatalog = () => {
               <CardContent className="p-0">
                 {/* Game Image/Icon */}
                 <div className="h-48 bg-gradient-to-br from-purple-400 via-blue-400 to-indigo-500 flex items-center justify-center relative">
-                  {game.image_url || game.thumbnail_url ? (
-                    <img
-                      src={game.image_url || game.thumbnail_url}
-                      alt={game.title}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <GamepadIcon className="w-16 h-16 text-white/80" />
-                  )}
+                  <ProductImage
+                    product={game}
+                    className="w-full h-full object-cover"
+                    iconClassName="w-16 h-16 text-white/80"
+                    containerClassName="w-full h-full"
+                  />
 
                   {/* Creator badge */}
                   <div className="absolute top-3 right-3 px-2 py-1 rounded-full text-xs font-medium bg-white/90 backdrop-blur-sm">
@@ -302,40 +288,33 @@ const TeacherCatalog = () => {
                     )}
                   </div>
 
-                  {/* Lobby status indicator and code - only show if lobby exists */}
+                  {/* Lobby Code Badge - top left */}
                   {lobbyCode && (
-                    <div className="absolute top-3 left-3 flex flex-col gap-1">
-                      {/* Lobby Code Badge */}
-                      <Badge className="bg-blue-500/90 text-white border-0 font-mono text-xs px-3 py-1 backdrop-blur-sm shadow-lg">
+                    <div className="absolute top-3 left-3">
+                      <Badge className="bg-blue-500/90 text-white border-0 font-mono text-xs px-2 py-1 backdrop-blur-sm shadow-lg">
                         {lobbyCode}
                       </Badge>
-
-                      {/* Active Status Badge - only show if active */}
-                      {hasActiveLobby && (
-                        <Badge className="bg-green-500/90 text-white border-0 text-xs px-3 py-1 backdrop-blur-sm shadow-lg">
-                          <PlayIcon className="w-3 h-3 mr-1" />
-                          פעיל
-                        </Badge>
-                      )}
-
-                      {/* Closure Time Badge - show for active lobbies with expiration */}
-                      {hasActiveLobby && game.lobbyInfo?.lobby && (() => {
-                        const closureTimeText = getLobbyClosureTimeText(game.lobbyInfo.lobby);
-                        return closureTimeText ? (
-                          <Badge className="bg-orange-500/90 text-white border-0 text-xs px-3 py-1 backdrop-blur-sm shadow-lg">
-                            <Clock className="w-3 h-3 mr-1" />
-                            {closureTimeText}
-                          </Badge>
-                        ) : null;
-                      })()}
                     </div>
                   )}
+
+                  {/* Time Left Badge - bottom left */}
+                  {hasActiveLobby && game.lobbyInfo?.lobby && (() => {
+                    const closureTimeText = getLobbyClosureTimeText(game.lobbyInfo.lobby);
+                    return closureTimeText ? (
+                      <div className="absolute bottom-3 left-3">
+                        <Badge className="bg-orange-500/90 text-white border-0 text-xs px-2 py-1 backdrop-blur-sm shadow-lg">
+                          <Clock className="w-3 h-3 mr-1" />
+                          {closureTimeText}
+                        </Badge>
+                      </div>
+                    ) : null;
+                  })()}
                 </div>
 
                 {/* Game Info */}
                 <div className="p-4">
                   <h3 className="text-lg font-bold text-gray-800 mb-2 line-clamp-2">
-                    {game.title || 'משחק ללא כותרת'}
+                    {game.product?.title || game.product?.name || 'משחק ללא כותרת'}
                   </h3>
 
                   {game.description && (

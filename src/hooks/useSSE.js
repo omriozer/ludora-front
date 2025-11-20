@@ -52,18 +52,14 @@ const DEFAULT_CONFIG = {
  * @returns {Object} Hook state and methods
  */
 export function useSSE(channels = [], options = {}) {
-  // Recalculate config whenever options change (especially sessionContext)
-  // Use individual option properties instead of JSON.stringify to prevent unnecessary recalculations
+  // Recalculate config only for essential changes - avoid dynamic sessionContext properties
   const config = useMemo(() => ({ ...DEFAULT_CONFIG, ...options }), [
     options.debugMode,
     options.autoReconnect,
     options.maxRetryAttempts,
-    options.sessionContext?.gameId,
-    options.sessionContext?.lobbyId,
-    options.sessionContext?.sessionId,
-    options.sessionContext?.isLobbyOwner,
-    options.sessionContext?.isActiveParticipant,
-    options.sessionContext?.priorityHint
+    options.sessionContext?.gameId
+    // Note: Removed dynamic sessionContext properties to prevent unnecessary reconnections
+    // lobbyId, sessionId, etc. are sent as URL params but don't require config recalculation
   ]);
 
   // Hook state
@@ -691,7 +687,7 @@ export function useSSE(channels = [], options = {}) {
     // Reset unmounted flag since effect is running (component is mounted)
     isUnmountedRef.current = false;
 
-    console.log('🔄 [useSSE] Effect triggered - channels or sessionContext changed:', {
+    console.log('🔄 [useSSE] Effect triggered - channels or core sessionContext changed:', {
       channels: channels,
       sessionContext: config.sessionContext,
       debugMode: config.debugMode
@@ -711,13 +707,12 @@ export function useSSE(channels = [], options = {}) {
     };
   }, [
     channels.join(','),
+    // Only reconnect for core changes that require a new connection
     config.sessionContext?.gameId,
-    config.sessionContext?.lobbyId,
-    config.sessionContext?.sessionId,
-    config.sessionContext?.isLobbyOwner,
-    config.sessionContext?.isActiveParticipant,
-    config.sessionContext?.priorityHint
-  ]); // Use individual sessionContext values instead of JSON.stringify to prevent unnecessary reruns
+    // Note: Removed lobbyId, sessionId and other dynamic properties to prevent rapid reconnections
+    // These are sent as URL parameters but don't require reconnection when they change
+    config.debugMode // Only reconnect if debug mode changes
+  ]); // Reduced dependencies to prevent unnecessary reconnections on dynamic sessionContext changes
 
   // Cleanup on unmount
   useEffect(() => {

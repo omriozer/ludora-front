@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Share2, QrCode, Copy, RefreshCw, X, UserPlus, Users } from 'lucide-react';
+import { Share2, QrCode, Copy, RefreshCw, X, UserPlus, Users, MessageCircle } from 'lucide-react';
 import { useUser } from '@/contexts/UserContext';
 import { apiRequest } from '@/services/apiClient';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
 import { renderQRCode, LUDORA_OFFICIAL_PRESET } from '@/utils/qrCodeUtils';
+import { useNavigate } from 'react-router-dom';
 
 /**
  * GameSharingWidget - Dashboard widget for teachers to manage their invitation code
@@ -12,6 +13,7 @@ import { renderQRCode, LUDORA_OFFICIAL_PRESET } from '@/utils/qrCodeUtils';
  */
 const GameSharingWidget = ({ widgetId, settings = {} }) => {
   const { currentUser } = useUser();
+  const navigate = useNavigate();
   const [invitationCode, setInvitationCode] = useState(currentUser?.invitation_code || null);
   const [loading, setLoading] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
@@ -22,10 +24,25 @@ const GameSharingWidget = ({ widgetId, settings = {} }) => {
     return null;
   }
 
-  // Generate portal URL
-  const portalUrl = invitationCode
-    ? `https://my.ludora.app/portal/${invitationCode}`
-    : '';
+  // Generate portal URL using environment variable
+  const getStudentPortalUrl = () => {
+    const currentHost = window.location.hostname;
+    const currentProtocol = window.location.protocol;
+
+    // For localhost development
+    if (currentHost === 'localhost') {
+      const studentPort = import.meta.env.VITE_STUDENT_PORTAL_PORT || '5174';
+      const studentDomain = `localhost:${studentPort}`;
+      return invitationCode ? `${currentProtocol}//${studentDomain}/portal/${invitationCode}` : '';
+    }
+
+    // For production/staging
+    const studentDomain = import.meta.env.VITE_STUDENT_PORTAL_DOMAIN || 'my.ludora.app';
+    return invitationCode ? `https://${studentDomain}/portal/${invitationCode}` : '';
+  };
+
+  const portalUrl = getStudentPortalUrl();
+  const studentDomain = portalUrl ? new URL(portalUrl).host : (import.meta.env.VITE_STUDENT_PORTAL_DOMAIN || 'my.ludora.app');
 
   // Generate invitation code
   const generateCode = async () => {
@@ -74,13 +91,43 @@ const GameSharingWidget = ({ widgetId, settings = {} }) => {
     }
   };
 
+  // Share via WhatsApp
+  const shareViaWhatsApp = () => {
+    if (!portalUrl) return;
+
+    const message = `🎯 צטרף לקטלוג המשחקים שלי!\n\nקוד המורה: ${invitationCode}\nכתובת: ${portalUrl}\n\nמשחקי למידה מותאמים אישית 🎮📚`;
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+
+    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+
+    toast({
+      title: "נפתח ב-WhatsApp",
+      description: "הודעת השיתוף נוצרה",
+      variant: "default"
+    });
+  };
+
+  // Handle clicking the URL in the modal to navigate there
+  const handleUrlClick = () => {
+    if (!portalUrl) return;
+
+    // Always open the student portal URL (which may be a different domain/port)
+    window.open(portalUrl, '_blank', 'noopener,noreferrer');
+
+    toast({
+      title: "נפתח דף הקטלוג",
+      description: "פותח את דף הקטלוג התלמידים",
+      variant: "default"
+    });
+  };
+
   // Generate QR code when modal opens
   useEffect(() => {
     if (showQRModal && qrContainer && portalUrl) {
       try {
         renderQRCode(portalUrl, qrContainer, LUDORA_OFFICIAL_PRESET, {
-          width: 400,
-          height: 400,
+          width: 350,
+          height: 350,
           margin: 0
         });
       } catch (error) {
@@ -114,9 +161,12 @@ const GameSharingWidget = ({ widgetId, settings = {} }) => {
               {/* URL Display */}
               <div className="text-center">
                 <div className="text-xs text-gray-500 mb-1">כתובת הקטלוג:</div>
-                <div className="text-sm text-blue-600 font-medium bg-white/50 px-3 py-2 rounded-lg border border-blue-200">
-                  my.ludora.app/portal/{invitationCode}
-                </div>
+                <button
+                  onClick={handleUrlClick}
+                  className="text-sm text-blue-600 hover:text-blue-800 font-medium bg-white/50 hover:bg-blue-50 px-3 py-2 rounded-lg border border-blue-200 hover:border-blue-300 cursor-pointer transition-all underline"
+                >
+                  {portalUrl.replace(/^https?:\/\//, '')}
+                </button>
               </div>
             </div>
 
@@ -136,6 +186,17 @@ const GameSharingWidget = ({ widgetId, settings = {} }) => {
               >
                 <Copy className="w-4 h-4 mr-1" />
                 העתק
+              </Button>
+            </div>
+
+            {/* Additional Action Button */}
+            <div className="mb-3">
+              <Button
+                onClick={shareViaWhatsApp}
+                className="w-full bg-green-500 hover:bg-green-600 text-white text-sm py-2 rounded-lg shadow-lg"
+              >
+                <MessageCircle className="w-4 h-4 mr-1" />
+                WhatsApp
               </Button>
             </div>
 
@@ -205,7 +266,7 @@ const GameSharingWidget = ({ widgetId, settings = {} }) => {
       {/* Full-Screen QR Code Modal */}
       {showQRModal && (
         <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden relative">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-xl w-full max-h-[90vh] overflow-hidden relative">
             {/* Close Button */}
             <Button
               onClick={() => setShowQRModal(false)}
@@ -218,46 +279,76 @@ const GameSharingWidget = ({ widgetId, settings = {} }) => {
 
             {/* Header */}
             <div className="bg-gradient-to-r from-teal-500 to-yellow-500 p-6 text-center">
-              <h2 className="text-2xl font-bold text-white mb-2">
+              <h2 className="text-xl font-bold text-white mb-2">
                 קטלוג המשחקים של {currentUser?.display_name || currentUser?.full_name}
               </h2>
               <p className="text-white opacity-90">סרוק להצטרפות לקטלוג</p>
             </div>
 
             {/* QR Code Container */}
-            <div className="p-8 flex flex-col items-center">
+            <div className="p-6 flex flex-col items-center">
               <div
                 ref={setQrContainer}
-                className="mb-6 bg-white"
-                style={{ width: 400, height: 400 }}
+                className="mb-5 bg-white"
+                style={{ width: 350, height: 350 }}
               />
 
               {/* Invitation Code */}
-              <div className="text-center mb-6">
-                <div className="text-sm text-gray-600 mb-1">קוד מורה:</div>
-                <div className="text-2xl font-bold text-gray-800 font-mono bg-gray-100 px-4 py-2 rounded-lg">
+              <div className="text-center mb-5">
+                <div className="text-sm text-gray-600 mb-2">קוד מורה:</div>
+                <div className="text-2xl font-bold text-gray-800 font-mono bg-gray-100 px-4 py-3 rounded-lg">
                   {invitationCode}
                 </div>
               </div>
 
               {/* Instructions */}
-              <div className="text-center max-w-md mb-6">
-                <p className="text-gray-600 text-sm leading-relaxed">
-                  תלמידים יכולים לסרוק את ה-QR או להזין את הקוד באתר:
+              <div className="text-center max-w-md mb-5">
+                <p className="text-gray-600 text-sm leading-relaxed mb-4">
+                  ניתן לגשת לקטלוג המשחקים האישי באמצעות:
                 </p>
-                <p className="text-blue-600 font-medium mt-2">
-                  my.ludora.app/portal
-                </p>
+                <div className="space-y-2 text-sm">
+                  <p className="text-gray-600">• סריקת ה-QR</p>
+                  <p className="text-gray-600">
+                    • הזנת הקוד{' '}
+                    <button
+                      onClick={() => {
+                        const homeUrl = portalUrl.replace(/\/portal\/.*$/, '');
+                        window.open(homeUrl, '_blank', 'noopener,noreferrer');
+                      }}
+                      className="text-blue-600 hover:text-blue-800 underline cursor-pointer transition-colors font-medium"
+                    >
+                      בדף הבית
+                    </button>
+                  </p>
+                  <p className="text-gray-600">
+                    • גישה ישירות{' '}
+                    <button
+                      onClick={handleUrlClick}
+                      className="text-blue-600 hover:text-blue-800 underline cursor-pointer transition-colors font-medium"
+                    >
+                      לעמוד הקטלוג
+                    </button>
+                  </p>
+                </div>
               </div>
 
-              {/* Copy Button */}
-              <Button
-                onClick={copyToClipboard}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg"
-              >
-                <Copy className="w-4 h-4 mr-2" />
-                העתק כתובת
-              </Button>
+              {/* Action Buttons */}
+              <div className="flex gap-3 justify-center">
+                <Button
+                  onClick={copyToClipboard}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2"
+                >
+                  <Copy className="w-4 h-4 mr-2" />
+                  העתק
+                </Button>
+                <Button
+                  onClick={shareViaWhatsApp}
+                  className="bg-green-500 hover:bg-green-600 text-white px-6 py-2"
+                >
+                  <MessageCircle className="w-4 h-4 mr-2" />
+                  WhatsApp
+                </Button>
+              </div>
             </div>
           </div>
         </div>

@@ -27,6 +27,7 @@ import DiceRollerWidget from "@/components/dashboard/widgets/DiceRollerWidget";
 import ColorWheelWidget from "@/components/dashboard/widgets/ColorWheelWidget";
 import TableDisplayWidget from "@/components/dashboard/widgets/TableDisplayWidget";
 import MyProductsWidget from "@/components/dashboard/widgets/MyProductsWidget";
+import GameSharingWidget from "@/components/dashboard/widgets/GameSharingWidget";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { clog, cerror } from "@/lib/utils";
 import { toast } from "@/components/ui/use-toast";
@@ -137,7 +138,8 @@ const WidgetRenderer = ({ widget, isEditMode, onRemove, onMoveUp, onMoveDown, ca
       'dice-roller': ['small', 'medium'],      // Small and medium only
       'color-wheel': ['small', 'medium'],      // Small and medium only
       'table-display': ['medium', 'large'],    // Medium and large only
-      'my-products': ['small', 'medium', 'large'] // All sizes
+      'my-products': ['small', 'medium', 'large'], // All sizes
+      'game-sharing': ['small', 'medium']     // Small and medium only
     };
 
     return sizeConfigs[widgetType] || ['medium']; // Default to medium only
@@ -227,6 +229,17 @@ const WidgetRenderer = ({ widget, isEditMode, onRemove, onMoveUp, onMoveDown, ca
                 widgetId={widget.id}
                 settings={widget.settings}
                 size={widget.size || 'medium'}
+              />
+            </CardContent>
+          </Card>
+        );
+      case 'game-sharing':
+        return (
+          <Card className="h-full border-0 bg-gradient-to-br from-teal-50 to-blue-50 shadow-lg hover:shadow-xl transition-all duration-300">
+            <CardContent className="p-0 h-full">
+              <GameSharingWidget
+                widgetId={widget.id}
+                settings={widget.settings}
               />
             </CardContent>
           </Card>
@@ -403,6 +416,12 @@ export default function Dashboard() {
           name: 'היסטוריית רכישות',
           description: 'צפייה מפורטת בהיסטוריית הרכישות שלך',
           category: 'purchases'
+        },
+        'game-sharing': {
+          id: 'game-sharing',
+          name: 'שיתוף המשחקים',
+          description: 'שתף את קטלוג המשחקים שלך עם תלמידים',
+          category: 'classroom'
         }
       });
 

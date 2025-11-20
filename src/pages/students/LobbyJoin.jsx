@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { GamepadIcon, PlayIcon, Home, Users, Clock, AlertCircle, CheckCircle, XCircle, Plus } from 'lucide-react';
 import { useUser } from '@/contexts/UserContext';
 import GameTypeDisplay from '@/components/game/GameTypeDisplay';
+import ProductImage from '@/components/ui/ProductImage';
 import logoSm from '../../assets/images/logo_sm.png';
 import { useSSE } from '@/hooks/useSSE';
 import { isLobbyJoinable, getLobbyStatusConfig } from '@/utils/lobbyUtils';
@@ -319,8 +320,7 @@ const LobbyJoin = () => {
           <div className="student-icon-container-error student-bounce mx-auto mb-6">
             <AlertCircle className="w-10 h-10 text-white" />
           </div>
-          <h2 className="text-2xl font-bold student-text-gradient mb-4">אופס! יש בעיה קטנה</h2>
-          <p className="text-gray-700 text-lg mb-8 leading-relaxed">{error}</p>
+          <h2 className="text-2xl font-bold student-text-gradient mb-4">{error}</h2>
           <div className="mb-6">
             <div className="student-loading-dots justify-center">
               <div className="dot student-sparkle"></div>
@@ -328,12 +328,13 @@ const LobbyJoin = () => {
               <div className="dot student-sparkle" style={{ animationDelay: '0.2s' }}></div>
             </div>
           </div>
-          <Link to="/">
-            <Button className="student-btn-primary student-float">
-              <Home className="w-5 h-5 ml-2" />
-              חזרה לעמוד הבית
-            </Button>
-          </Link>
+          <Button
+            onClick={() => navigate(-1)}
+            className="student-btn-primary student-float"
+          >
+            <Home className="w-5 h-5 ml-2" />
+            חזרה לקטלוג המורה
+          </Button>
         </div>
       </div>
     );
@@ -410,15 +411,12 @@ const LobbyJoin = () => {
             <div className="flex items-start gap-4">
               {/* Game Image */}
               <div className="w-20 h-20 bg-gradient-to-br from-purple-400 via-blue-400 to-indigo-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                {game.image_url || game.thumbnail_url ? (
-                  <img
-                    src={game.image_url || game.thumbnail_url}
-                    alt={game.title}
-                    className="w-full h-full object-cover rounded-lg"
-                  />
-                ) : (
-                  <GamepadIcon className="w-10 h-10 text-white/80" />
-                )}
+                <ProductImage
+                  product={game}
+                  className="w-full h-full object-cover rounded-lg"
+                  iconClassName="w-10 h-10 text-white/80"
+                  containerClassName="w-full h-full rounded-lg"
+                />
               </div>
 
               {/* Game Details */}

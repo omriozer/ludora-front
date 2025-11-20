@@ -55,6 +55,17 @@ export default function GameLobbies() {
         // This endpoint returns games the user owns/created or has access to, with embedded product data
         const games = await apiRequest('/games');
 
+        // DEBUG: Log the first game to see data structure
+        if (games && games.length > 0) {
+          console.log('🔍 [DEBUG] First game data structure:', games[0]);
+          console.log('🔍 [DEBUG] Game title source (should be from product):', {
+            'game.product?.title': games[0].product?.title,
+            'game.product?.name': games[0].product?.name,
+            'product exists': !!games[0].product,
+            'note': 'Games do not have title/name fields - title comes from associated Product'
+          });
+        }
+
         setUserGames(games || []);
         setLoading(false);
       } catch (error) {
@@ -318,8 +329,8 @@ function EmptyGamesState() {
 function ActiveGamesGrid({ userGames, searchTerm }) {
   // Filter games based on search with safe title access
   const filteredGames = userGames.filter(game => {
-    // Handle different possible title locations and ensure safe access
-    const title = game.title || game.name || game.product?.title || game.product?.name || '';
+    // Game title comes from the associated Product, not the Game entity itself
+    const title = game.product?.title || game.product?.name || '';
     return title.toLowerCase().includes(searchTerm.toLowerCase());
   });
 
@@ -403,60 +414,46 @@ function GameCard({ game, index }) {
   const [creationLoading, setCreationLoading] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
 
-  // Safely get the game title from various possible locations
-  const gameTitle = game.title || game.name || game.product?.title || game.product?.name || 'משחק ללא שם';
+  // Game title comes from the associated Product, not the Game entity itself
+  const gameTitle = game.product?.title || game.product?.name || 'משחק ללא שם';
 
   // Get the single lobby from lobby data
   const lobby = lobbyData?.lobby || null;
   const lobbyCode = lobbyData?.lobbyCode || null;
 
-  // Use a ref to maintain truly stable lobbyId to prevent SSE reconnections
-  const stableLobbyIdRef = useRef(null);
-
-  // Only update the stable lobby ID when we have confirmed data, never go back to null
-  if (lobbyData && !lobbyLoading && lobby?.id && !stableLobbyIdRef.current) {
-    stableLobbyIdRef.current = lobby.id;
-  }
+  // Note: No longer tracking lobbyId in refs to prevent render instability
 
   // Build session context that only changes when gameId changes (not lobbyId)
-  const sessionContext = useMemo(() => {
-    const context = {
-      gameId: game.id,
-      lobbyId: stableLobbyIdRef.current, // Truly stable - set once and never changes
-      sessionId: null, // Set when in specific session
-      isLobbyOwner: true, // User is owner since they're managing the lobby
-      isActiveParticipant: true, // User is actively managing
-      priorityHint: 'lobby_status' // Valid SSE priority type for lobby monitoring
-    };
+  // Make sessionContext truly stable - only create once per game
+  const [stableSessionContext] = useState(() => ({
+    gameId: game.id,
+    lobbyId: null, // Will be updated separately if needed
+    sessionId: null,
+    isLobbyOwner: true,
+    isActiveParticipant: true,
+    priorityHint: 'lobby_status'
+  }));
 
-    console.log('🔍 [GameCard] SessionContext created:', {
-      gameId: game.id,
-      stableLobbyId: stableLobbyIdRef.current,
-      lobbyLoading,
-      hasLobbyData: !!lobbyData,
-      lobby: lobby ? { id: lobby.id, status: computeLobbyStatus(lobby), code: lobbyCode } : null,
-      context
-    });
+  // Remove the mutation that causes SSE reconnections
+  // The sessionContext lobbyId will remain null, which is fine for SSE subscriptions
+  // We don't need to update it since SSE subscribes to the game channel, not lobby-specific
 
-    return context;
-  }, [game.id]); // Only depend on gameId - lobbyId is truly stable via ref
-
-  // Memoize SSE options to ensure proper reactivity when sessionContext changes
+  // Memoize SSE options to ensure proper reactivity - only recreate when game changes
   const sseOptions = useMemo(() => {
     const options = {
       debugMode: true,
       autoReconnect: true,
-      sessionContext
+      sessionContext: stableSessionContext
     };
 
-    console.log('🔄 [GameCard] SSE Options updated:', {
+    console.log('🔄 [GameCard] SSE Options created for game:', {
       gameId: game.id,
-      sessionContextLobbyId: sessionContext?.lobbyId,
+      sessionContextLobbyId: stableSessionContext?.lobbyId,
       options
     });
 
     return options;
-  }, [sessionContext]);
+  }, [game.id]); // Only depend on game.id for maximum stability
 
   // SSE integration for real-time lobby updates with session context
   const {
