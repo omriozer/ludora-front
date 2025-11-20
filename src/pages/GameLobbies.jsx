@@ -31,7 +31,7 @@ import {
   X
 } from 'lucide-react';
 import { renderQRCode, LUDORA_OFFICIAL_PRESET } from '@/utils/qrCodeUtils';
-import { computeLobbyStatus, isLobbyActive, filterActiveLobbies, getLobbyStatusConfig, findBestActiveLobby, findMostRecentLobby } from '@/utils/lobbyUtils';
+import { computeLobbyStatus, isLobbyActive, isLobbyJoinable, filterActiveLobbies, filterJoinableLobbies, getLobbyStatusConfig, findBestJoinableLobby, findMostRecentLobby } from '@/utils/lobbyUtils';
 import ProductImage from '@/components/ui/ProductImage';
 import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
 import { toast } from '@/components/ui/use-toast';
@@ -406,15 +406,16 @@ function GameCard({ game, index }) {
   // Safely get the game title from various possible locations
   const gameTitle = game.title || game.name || game.product?.title || game.product?.name || 'משחק ללא שם';
 
-  // Use reusable utility to find the most recent lobby (prioritizes active lobbies)
-  const mostRecentLobby = findMostRecentLobby(lobbyData?.lobbies || []);
+  // Get the single lobby from lobby data
+  const lobby = lobbyData?.lobby || null;
+  const lobbyCode = lobbyData?.lobbyCode || null;
 
   // Use a ref to maintain truly stable lobbyId to prevent SSE reconnections
   const stableLobbyIdRef = useRef(null);
 
   // Only update the stable lobby ID when we have confirmed data, never go back to null
-  if (lobbyData && !lobbyLoading && mostRecentLobby?.id && !stableLobbyIdRef.current) {
-    stableLobbyIdRef.current = mostRecentLobby.id;
+  if (lobbyData && !lobbyLoading && lobby?.id && !stableLobbyIdRef.current) {
+    stableLobbyIdRef.current = lobby.id;
   }
 
   // Build session context that only changes when gameId changes (not lobbyId)
@@ -433,8 +434,7 @@ function GameCard({ game, index }) {
       stableLobbyId: stableLobbyIdRef.current,
       lobbyLoading,
       hasLobbyData: !!lobbyData,
-      lobbiesCount: lobbyData?.lobbies?.length || 0,
-      mostRecentLobby: mostRecentLobby ? { id: mostRecentLobby.id, status: computeLobbyStatus(mostRecentLobby) } : null,
+      lobby: lobby ? { id: lobby.id, status: computeLobbyStatus(lobby), code: lobbyCode } : null,
       context
     });
 
@@ -517,7 +517,7 @@ function GameCard({ game, index }) {
   }, [game.id, addEventListener, removeEventListener]);
 
 
-  // Process lobby data that comes with the game (no separate API call needed)
+  // Process lobby data that comes with the game (expect only one lobby per game)
   const processLobbyData = (showLoading = true) => {
     try {
       if (showLoading) {
@@ -528,80 +528,35 @@ function GameCard({ game, index }) {
       // Use lobbies data that comes with the game from /games endpoint
       const lobbies = game.lobbies || [];
 
-      // DEBUG: Log lobby data with enhanced status computation details
-      const now = new Date();
-      console.log(`🔍 [DEBUG] Teacher Portal - Game ${gameTitle} (${game.id}):`, {
-        totalLobbies: lobbies.length,
-        currentTime: now.toISOString(),
-        lobbies: lobbies.map(lobby => {
-          const computedStatus = lobby.computed_status || computeLobbyStatus(lobby);
-          const expiresAt = lobby.expires_at ? new Date(lobby.expires_at) : null;
-          const closedAt = lobby.closed_at ? new Date(lobby.closed_at) : null;
+      // Each game should have only one lobby - warn if multiple
+      if (lobbies.length > 1) {
+        console.warn(`🚨 [WARNING] Game ${gameTitle} (${game.id}) has ${lobbies.length} lobbies but should only have one!`);
+      }
 
-          // Detailed status computation analysis
-          let statusReason = '';
-          if (lobby.closed_at) {
-            statusReason = 'Has closed_at timestamp';
-          } else if (!lobby.expires_at) {
-            statusReason = 'No expires_at - pending';
-          } else if (expiresAt && expiresAt <= now) {
-            statusReason = 'Past expiration time';
-          } else if (expiresAt) {
-            const minutesUntilExpiry = Math.ceil((expiresAt - now) / (1000 * 60));
-            statusReason = `Expires in ${minutesUntilExpiry} minutes`;
-          }
+      // Use the first/only lobby
+      const lobby = lobbies.length > 0 ? lobbies[0] : null;
 
-          return {
-            id: lobby.id,
-            lobby_code: lobby.lobby_code,
-            expires_at: lobby.expires_at,
-            expires_at_parsed: expiresAt?.toISOString(),
-            closed_at: lobby.closed_at,
-            closed_at_parsed: closedAt?.toISOString(),
-            computed_status: lobby.computed_status,
-            calculated_status: computedStatus,
-            status_reason: statusReason,
-            is_active: isLobbyActive(lobby)
-          };
-        })
-      });
-
-      // DEBUG: Active lobbies analysis for teacher portal
-      const activeLobbies = filterActiveLobbies(lobbies);
-      console.log(`🔍 [DEBUG] Teacher Portal - Active lobbies for ${gameTitle}:`, {
-        activeLobbies: activeLobbies.length,
-        totalLobbies: lobbies.length,
-        activeLobbiesList: activeLobbies.map(lobby => ({
-          id: lobby.id,
-          status: lobby.computed_status || computeLobbyStatus(lobby),
-          is_active: isLobbyActive(lobby)
-        })),
-        allLobbiesActivenessCheck: lobbies.map(lobby => ({
-          id: lobby.id,
-          status: lobby.computed_status || computeLobbyStatus(lobby),
-          is_active: isLobbyActive(lobby),
-          reason: lobby.closed_at ? 'closed' : !lobby.expires_at ? 'pending' :
-                  new Date(lobby.expires_at) <= now ? 'expired' : 'should_be_active'
-        }))
-      });
-
-      // Calculate real session data from lobbies
       let totalActiveSessions = 0;
       let totalOnlinePlayers = 0;
-      let currentLobbyStatus = 'closed'; // Default to closed if no lobbies
+      let currentLobbyStatus = 'no_lobby';
+      let lobbyCode = null;
 
-      if (lobbies.length > 0) {
-        // Find the most recent open lobby, or fall back to most recent lobby
-        const openLobby = lobbies.find(lobby => {
-          const computed = computeLobbyStatus(lobby);
-          return computed === 'open' || computed === 'open_indefinitely';
+      if (lobby) {
+        currentLobbyStatus = computeLobbyStatus(lobby);
+        lobbyCode = lobby.lobby_code;
+
+        // DEBUG: Log lobby data
+        console.log(`🔍 [DEBUG] Teacher Portal - Game ${gameTitle} (${game.id}):`, {
+          hasLobby: true,
+          lobbyCode: lobbyCode,
+          status: currentLobbyStatus,
+          expiresAt: lobby.expires_at,
+          closedAt: lobby.closed_at
         });
-        const mostRecentLobby = openLobby || lobbies[0];
-        currentLobbyStatus = computeLobbyStatus(mostRecentLobby);
 
-        // Count sessions - only count from active lobbies, not closed ones
-        if (openLobby && openLobby.sessions) {
-          const activeSessions = openLobby.sessions.filter(session => {
+        // Count sessions - only if lobby is active
+        if (isLobbyActive(lobby) && lobby.sessions) {
+          const activeSessions = lobby.sessions.filter(session => {
             // Only count sessions that are not finished and not expired
             return !session.finished_at &&
                    (!session.expires_at || new Date(session.expires_at) > new Date());
@@ -611,24 +566,27 @@ function GameCard({ game, index }) {
             return sum + (session.participants ? session.participants.length : 0);
           }, 0);
         }
-        // If no open lobby but we have closed lobbies, show zero active sessions
+      } else {
+        console.log(`🔍 [DEBUG] Teacher Portal - Game ${gameTitle} (${game.id}): No lobby`);
       }
 
       setLobbyData({
         status: currentLobbyStatus,
         totalActiveSessions,
         totalOnlinePlayers,
-        lobbies
+        lobby: lobby,
+        lobbyCode: lobbyCode
       });
 
     } catch (error) {
-      console.error('Error fetching lobby data for game:', game.id, error);
+      console.error('Error processing lobby data for game:', game.id, error);
       // Set default values on error
       setLobbyData({
-        status: 'closed',
+        status: 'no_lobby',
         totalActiveSessions: 0,
         totalOnlinePlayers: 0,
-        lobbies: []
+        lobby: null,
+        lobbyCode: null
       });
       setLobbyError(error.message);
     } finally {
@@ -664,7 +622,7 @@ function GameCard({ game, index }) {
 
       if (isEditMode) {
         // Edit existing lobby
-        const targetLobby = mostRecentLobby;
+        const targetLobby = lobby;
         if (!targetLobby) {
           throw new Error('No lobby to edit');
         }
@@ -765,7 +723,7 @@ function GameCard({ game, index }) {
   const openLobby = async () => {
     try {
       // Check if we have a lobby to activate
-      if (!lobbyData?.lobbies?.length) {
+      if (!lobby) {
         toast({
           title: "אין לובי זמין",
           description: "יש ליצור לובי תחילה",
@@ -776,15 +734,10 @@ function GameCard({ game, index }) {
 
       setLobbyLoading(true);
 
-      // Find the lobby to activate - can be pending or closed
-      const pendingLobby = lobbyData.lobbies.find(lobby => computeLobbyStatus(lobby) === 'pending');
-      const closedLobby = lobbyData.lobbies.find(lobby => computeLobbyStatus(lobby) === 'closed');
-      const targetLobby = pendingLobby || closedLobby || lobbyData.lobbies[0];
-
-      const targetStatus = computeLobbyStatus(targetLobby);
+      const targetStatus = computeLobbyStatus(lobby);
 
       // Activation with default duration
-      const response = await apiRequest(`/game-lobbies/${targetLobby.id}/activate`, {
+      const response = await apiRequest(`/game-lobbies/${lobby.id}/activate`, {
         method: 'PUT',
         body: JSON.stringify({
           duration: 40 // Default 40 minutes
@@ -794,7 +747,7 @@ function GameCard({ game, index }) {
       const actionText = targetStatus === 'closed' ? 'נפתח מחדש' : 'הופעל';
       toast({
         title: `לובי ${actionText} בהצלחה!`,
-        description: `השחקנים יכולים כעת להצטרף באמצעות קוד: ${response.lobby_code || targetLobby.lobby_code}`,
+        description: `השחקנים יכולים כעת להצטרף באמצעות קוד: ${response.lobby_code || lobbyCode}`,
         variant: "default"
       });
 
@@ -815,7 +768,7 @@ function GameCard({ game, index }) {
 
   const closeLobby = async () => {
     try {
-      if (!lobbyData?.lobbies?.length) {
+      if (!lobby) {
         toast({
           title: "אין לובי זמין",
           description: "אין לובי לסגירה",
@@ -826,13 +779,7 @@ function GameCard({ game, index }) {
 
       setLobbyLoading(true);
 
-      // Find the active lobby to close
-      const targetLobby = lobbyData.lobbies.find(lobby => {
-        const status = computeLobbyStatus(lobby);
-        return status === 'open' || status === 'open_indefinitely' || status === 'pending';
-      }) || lobbyData.lobbies[0];
-
-      const response = await apiRequest(`/game-lobbies/${targetLobby.id}/close`, {
+      const response = await apiRequest(`/game-lobbies/${lobby.id}/close`, {
         method: 'PUT'
       });
 
@@ -863,14 +810,14 @@ function GameCard({ game, index }) {
   const totalActiveSessions = lobbyData ? lobbyData.totalActiveSessions : 0;
   const totalOnlinePlayers = lobbyData ? lobbyData.totalOnlinePlayers : 0;
 
-  const statusConfig = mostRecentLobby ? getLobbyStatusConfig(mostRecentLobby) : {
+  const statusConfig = lobby ? getLobbyStatusConfig(lobby) : {
     color: 'bg-gray-100 text-gray-700 border-gray-200',
     text: 'אין לובי',
     icon: Square,
     timeInfo: null
   };
 
-  const currentStatus = mostRecentLobby ? computeLobbyStatus(mostRecentLobby) : 'no_lobby';
+  const currentStatus = lobby ? computeLobbyStatus(lobby) : 'no_lobby';
   const StatusIcon = statusConfig.icon;
 
   // Get invitation type display text
@@ -884,11 +831,12 @@ function GameCard({ game, index }) {
     return invitationTypes[invitationType] || 'בחירה ידנית';
   };
 
-  const currentInvitationType = mostRecentLobby?.settings?.invitation_type || 'manual_selection';
+  const currentInvitationType = lobby?.settings?.invitation_type || 'manual_selection';
 
-  // Check if QR code should be shown - show for eligible invitation types regardless of lobby status
+  // Check if QR code should be shown - only show for actually joinable lobbies
   const isEligibleInvitationType = ['manual_selection', 'random', 'order'].includes(currentInvitationType);
-  const showQRCode = isEligibleInvitationType && mostRecentLobby?.lobby_code;
+  const isActuallyJoinable = lobby ? isLobbyJoinable(lobby) : false;
+  const showQRCode = isEligibleInvitationType && lobbyCode && isActuallyJoinable;
 
   // Get SSE connection status display configuration
   const getSSEStatusConfig = () => {
@@ -949,9 +897,9 @@ function GameCard({ game, index }) {
 
   // Generate QR code when modal is opened
   useEffect(() => {
-    if (showQRModal && qrContainer && mostRecentLobby?.lobby_code) {
+    if (showQRModal && qrContainer && lobbyCode) {
       try {
-        const studentPortalUrl = `https://my.ludora.app/play/${mostRecentLobby.lobby_code}`;
+        const studentPortalUrl = `https://my.ludora.app/play/${lobbyCode}`;
         renderQRCode(studentPortalUrl, qrContainer, LUDORA_OFFICIAL_PRESET, {
           width: 400,
           height: 400,
@@ -961,7 +909,7 @@ function GameCard({ game, index }) {
         console.error('Error generating QR code:', error);
       }
     }
-  }, [showQRModal, qrContainer, mostRecentLobby?.lobby_code]);
+  }, [showQRModal, qrContainer, lobbyCode]);
 
   return (
     <motion.div
@@ -971,7 +919,7 @@ function GameCard({ game, index }) {
     >
       <Card className="group transition-all duration-300 bg-white border border-gray-200 hover:border-blue-300 hover:shadow-xl overflow-hidden">
         <CardHeader className="pb-4">
-          {/* Game Image with QR Code Button */}
+          {/* Game Image with QR Code Button and Lobby Code Badge */}
           <div className="aspect-video bg-gradient-to-br from-blue-50 to-emerald-50 rounded-lg mb-4 flex items-center justify-center border border-gray-100 overflow-hidden relative">
             <ProductImage
               product={game}
@@ -979,6 +927,15 @@ function GameCard({ game, index }) {
               iconClassName="w-16 h-16 text-blue-500"
               containerClassName="w-full h-full"
             />
+
+            {/* Lobby Code Badge - Top Left */}
+            {lobbyCode && (
+              <Badge className="absolute top-2 left-2 bg-blue-500 text-white border-0 font-mono text-sm px-3 py-1.5 shadow-lg z-10 flex items-center justify-center">
+                {lobbyCode}
+              </Badge>
+            )}
+
+            {/* QR Code Button - Top Right */}
             {showQRCode && (
               <Button
                 onClick={() => setShowQRModal(true)}
@@ -1035,6 +992,7 @@ function GameCard({ game, index }) {
             {/* Lobby Status */}
             <div className="flex items-center justify-between">
               <div className="flex flex-col gap-1">
+                {/* Status Badge */}
                 <Badge className={`${statusConfig.color} border flex items-center gap-2`}>
                   <StatusIcon className="w-4 h-4" />
                   {statusConfig.text}
@@ -1071,7 +1029,7 @@ function GameCard({ game, index }) {
                   <span className="text-sm font-medium text-blue-800">חדרים פעילים</span>
                   <span className="text-sm text-blue-600">{totalOnlinePlayers} שחקנים מחוברים</span>
                 </div>
-                {lobbyData && lobbyData.lobbies.length > 0 && (
+                {lobby && (
                   <div className="space-y-1">
                     {Array.from({ length: totalActiveSessions }, (_, idx) => (
                       <div key={idx} className="flex items-center justify-between text-sm">
@@ -1165,6 +1123,14 @@ function GameCard({ game, index }) {
 
             {!lobbyLoading && currentStatus === 'pending' && (
               <>
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-sm font-medium text-yellow-800">לובי ממתין להפעלה</span>
+                  </div>
+                  <p className="text-xs text-yellow-700">
+                    הלובי נוצר אך עדיין לא פתוח לתלמידים. יש להפעיל אותו כדי שתלמידים יוכלו להצטרף.
+                  </p>
+                </div>
                 <Button
                   onClick={openLobby}
                   disabled={lobbyLoading}
@@ -1251,7 +1217,7 @@ function GameCard({ game, index }) {
         gameName={gameTitle}
         isLoading={creationLoading}
         isEditMode={isEditMode}
-        existingLobbyData={isEditMode ? mostRecentLobby : null}
+        existingLobbyData={isEditMode ? lobby : null}
       />
 
       {/* Full-Screen QR Code Modal */}
@@ -1286,7 +1252,7 @@ function GameCard({ game, index }) {
               <div className="text-center">
                 <div className="text-sm text-gray-600 mb-1">קוד לובי:</div>
                 <div className="text-2xl font-bold text-gray-800 font-mono bg-gray-100 px-4 py-2 rounded-lg">
-                  {mostRecentLobby?.lobby_code}
+                  {lobbyCode}
                 </div>
               </div>
 

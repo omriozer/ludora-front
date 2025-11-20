@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { GamepadIcon, UserIcon, Home, Crown, PlayIcon, Clock, Users } from 'lucide-react';
@@ -7,7 +7,8 @@ import GameTypeDisplay from '@/components/game/GameTypeDisplay';
 import logoSm from '../../assets/images/logo_sm.png';
 import { useSSE } from '@/hooks/useSSE';
 import { apiRequestAnonymous } from '@/services/apiClient';
-import { filterActiveLobbies, findBestActiveLobby, isLobbyActive, computeLobbyStatus } from '@/utils/lobbyUtils';
+import { filterActiveLobbies, isLobbyActive, computeLobbyStatus, getLobbyClosureTimeText } from '@/utils/lobbyUtils';
+import { Badge } from '@/components/ui/badge';
 
 /**
  * Teacher catalog page for students to view games shared by their teacher
@@ -15,6 +16,7 @@ import { filterActiveLobbies, findBestActiveLobby, isLobbyActive, computeLobbySt
  */
 const TeacherCatalog = () => {
   const { userCode } = useParams();
+  const navigate = useNavigate();
   const [catalog, setCatalog] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -29,12 +31,13 @@ const TeacherCatalog = () => {
         setLoading(true);
 
         // Use public teacher endpoint with code parameter (anonymous request)
-        const games = await apiRequestAnonymous(`/games/teacher/${userCode}`);
+        const response = await apiRequestAnonymous(`/games/teacher/${userCode}`);
+        const { teacher, games } = response;
 
         // Create catalog structure for UI
         setCatalog({
           teacher: {
-            name: "המורה", // Will be populated by the endpoint if it includes teacher info
+            name: teacher?.name || "המורה",
             id: userCode
           },
           totals: {
@@ -44,80 +47,51 @@ const TeacherCatalog = () => {
           }
         });
 
-        // Process lobby information that comes with each game
+        // Process lobby information that comes with each game (expect only one lobby per game)
         if (games && games.length > 0) {
           const gamesWithLobbyInfo = games.map((game) => {
             const lobbies = game.lobbies || [];
 
-            // DEBUG: Log lobby data with enhanced status computation details
-            const now = new Date();
-            console.log(`🔍 [DEBUG] Student Portal - Game ${game.title} (${game.id}):`, {
-              totalLobbies: lobbies.length,
-              currentTime: now.toISOString(),
-              lobbies: lobbies.map(lobby => {
-                const computedStatus = lobby.status || lobby.computed_status || computeLobbyStatus(lobby);
-                const expiresAt = lobby.expires_at ? new Date(lobby.expires_at) : null;
-                const closedAt = lobby.closed_at ? new Date(lobby.closed_at) : null;
+            // Each game should have only one lobby - use the first/only lobby
+            const lobby = lobbies.length > 0 ? lobbies[0] : null;
 
-                // Detailed status computation analysis
-                let statusReason = '';
-                if (lobby.closed_at) {
-                  statusReason = 'Has closed_at timestamp';
-                } else if (!lobby.expires_at) {
-                  statusReason = 'No expires_at - pending';
-                } else if (expiresAt && expiresAt <= now) {
-                  statusReason = 'Past expiration time';
-                } else if (expiresAt) {
-                  const minutesUntilExpiry = Math.ceil((expiresAt - now) / (1000 * 60));
-                  statusReason = `Expires in ${minutesUntilExpiry} minutes`;
-                }
+            if (lobbies.length > 1) {
+              console.warn(`🚨 [WARNING] Game ${game.title} (${game.id}) has ${lobbies.length} lobbies but should only have one!`);
+            }
 
-                return {
-                  id: lobby.id,
-                  lobby_code: lobby.lobby_code,
-                  expires_at: lobby.expires_at,
-                  expires_at_parsed: expiresAt?.toISOString(),
-                  closed_at: lobby.closed_at,
-                  closed_at_parsed: closedAt?.toISOString(),
-                  status: lobby.status,
-                  computed_status: lobby.computed_status,
-                  calculated_status: computedStatus,
-                  status_reason: statusReason,
-                  is_active: isLobbyActive(lobby)
-                };
-              })
-            });
+            let hasActiveLobby = false;
+            let lobbyCode = null;
+            let lobbyStatus = 'no_lobby';
 
-            const activeLobbies = filterActiveLobbies(lobbies);
+            if (lobby) {
+              const computedStatus = lobby.status || lobby.computed_status || computeLobbyStatus(lobby);
+              lobbyStatus = computedStatus;
+              hasActiveLobby = isLobbyActive(lobby);
+              lobbyCode = lobby.lobby_code;
 
-            // DEBUG: Log filtering results with individual lobby active status
-            console.log(`🔍 [DEBUG] Student Portal - Filtering results for ${game.title}:`, {
-              activeLobbies: activeLobbies.length,
-              totalLobbies: lobbies.length,
-              activeLobbiesList: activeLobbies.map(lobby => ({
-                id: lobby.id,
-                status: lobby.status || lobby.computed_status || computeLobbyStatus(lobby),
-                is_active: isLobbyActive(lobby)
-              })),
-              allLobbiesActivenessCheck: lobbies.map(lobby => ({
-                id: lobby.id,
-                status: lobby.status || lobby.computed_status || computeLobbyStatus(lobby),
-                is_active: isLobbyActive(lobby),
-                reason: lobby.closed_at ? 'closed' : !lobby.expires_at ? 'pending' :
-                        new Date(lobby.expires_at) <= now ? 'expired' : 'should_be_active'
-              }))
-            });
-
-            const hasActiveLobby = activeLobbies.length > 0;
-            const activeLobbiesCount = activeLobbies.length;
+              // DEBUG: Log lobby and game data
+              console.log(`🔍 [DEBUG] Student Portal - Game ${game.title} (${game.id}):`, {
+                gameTitle: game.title,
+                gameData: { id: game.id, title: game.title, description: game.description },
+                hasLobby: true,
+                lobbyCode: lobbyCode,
+                status: computedStatus,
+                isActive: hasActiveLobby,
+                expiresAt: lobby.expires_at,
+                closedAt: lobby.closed_at,
+                closureTimeText: getLobbyClosureTimeText(lobby)
+              });
+            } else {
+              console.log(`🔍 [DEBUG] Student Portal - Game ${game.title} (${game.id}): No lobby`);
+            }
 
             return {
               ...game,
               lobbyInfo: {
                 hasActiveLobby,
-                activeLobbiesCount,
-                totalLobbies: lobbies.length,
-                lobbies: lobbies
+                lobbyCode,
+                lobbyStatus,
+                lobby: lobby
               }
             };
           });
@@ -128,12 +102,7 @@ const TeacherCatalog = () => {
             if (a.lobbyInfo.hasActiveLobby && !b.lobbyInfo.hasActiveLobby) return -1;
             if (!a.lobbyInfo.hasActiveLobby && b.lobbyInfo.hasActiveLobby) return 1;
 
-            // If both have same activity status, sort by active lobby count (more active lobbies first)
-            if (a.lobbyInfo.hasActiveLobby && b.lobbyInfo.hasActiveLobby) {
-              return b.lobbyInfo.activeLobbiesCount - a.lobbyInfo.activeLobbiesCount;
-            }
-
-            // For games without active lobbies, sort by creation date (newest first)
+            // For games with same activity status, sort by creation date (newest first)
             return new Date(b.created_at) - new Date(a.created_at);
           });
 
@@ -161,23 +130,21 @@ const TeacherCatalog = () => {
 
   const handlePlayGame = async (game) => {
     // Use already fetched lobby info if available
-    if (game.lobbyInfo && game.lobbyInfo.hasActiveLobby) {
-      const bestLobby = findBestActiveLobby(game.lobbyInfo.lobbies);
-
-      if (bestLobby) {
-        // Redirect to the best available lobby
-        window.location.href = `/lobby/${bestLobby.lobby_code}`;
-        return;
-      }
+    if (game.lobbyInfo && game.lobbyInfo.hasActiveLobby && game.lobbyInfo.lobbyCode) {
+      // Navigate to the lobby using the lobby code
+      navigate(`/lobby/${game.lobbyInfo.lobbyCode}`);
+      return;
     }
 
-    // Fallback: re-fetch lobby info if not available or no active lobbies
+    // Fallback: re-fetch lobby info if not available or no active lobby
     try {
       const lobbies = await apiRequestAnonymous(`/games/${game.id}/lobbies`);
-      const bestLobby = findBestActiveLobby(lobbies);
 
-      if (bestLobby) {
-        window.location.href = `/lobby/${bestLobby.lobby_code}`;
+      // Since each game should have only one lobby, take the first one
+      const lobby = lobbies.length > 0 ? lobbies[0] : null;
+
+      if (lobby && isLobbyActive(lobby)) {
+        navigate(`/lobby/${lobby.lobby_code}`);
       } else {
         alert('אין כרגע לובי פעיל למשחק הזה. בדקו עם המורה שלכם או נסו שוב מאוחר יותר.');
       }
@@ -243,6 +210,18 @@ const TeacherCatalog = () => {
 
   return (
     <div className="min-h-screen student-portal-background">
+      {/* Header */}
+      <header className="student-card-colorful mx-4 mt-4 mb-6 shadow-2xl">
+        <div className="max-w-6xl mx-auto px-6 py-6">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold student-text-gradient mb-2">
+              קטלוג המשחקים של {catalog.teacher.name}
+            </h1>
+            <p className="text-lg text-gray-600 font-medium">קוד מורה: {catalog.teacher.id}</p>
+          </div>
+        </div>
+      </header>
+
       {/* Content */}
       <main className="max-w-6xl mx-auto px-4 py-8">
         {/* Statistics */}
@@ -282,7 +261,8 @@ const TeacherCatalog = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {gamesWithLobbies.map((game) => {
             const hasActiveLobby = game.lobbyInfo?.hasActiveLobby || false;
-            const activeLobbiesCount = game.lobbyInfo?.activeLobbiesCount || 0;
+            const lobbyCode = game.lobbyInfo?.lobbyCode;
+            const lobbyStatus = game.lobbyInfo?.lobbyStatus || 'no_lobby';
             const isClickable = hasActiveLobby;
 
             return (
@@ -322,13 +302,32 @@ const TeacherCatalog = () => {
                     )}
                   </div>
 
-                  {/* Lobby status indicator - only show for active games */}
-                  {hasActiveLobby && (
-                    <div className="absolute top-3 left-3 px-3 py-1.5 rounded-full text-xs font-bold backdrop-blur-sm shadow-lg">
-                      <span className="bg-green-500 text-white flex items-center gap-1">
-                        <PlayIcon className="w-3 h-3" />
-                        {activeLobbiesCount} פעיל{activeLobbiesCount > 1 ? 'ים' : ''}
-                      </span>
+                  {/* Lobby status indicator and code - only show if lobby exists */}
+                  {lobbyCode && (
+                    <div className="absolute top-3 left-3 flex flex-col gap-1">
+                      {/* Lobby Code Badge */}
+                      <Badge className="bg-blue-500/90 text-white border-0 font-mono text-xs px-3 py-1 backdrop-blur-sm shadow-lg">
+                        {lobbyCode}
+                      </Badge>
+
+                      {/* Active Status Badge - only show if active */}
+                      {hasActiveLobby && (
+                        <Badge className="bg-green-500/90 text-white border-0 text-xs px-3 py-1 backdrop-blur-sm shadow-lg">
+                          <PlayIcon className="w-3 h-3 mr-1" />
+                          פעיל
+                        </Badge>
+                      )}
+
+                      {/* Closure Time Badge - show for active lobbies with expiration */}
+                      {hasActiveLobby && game.lobbyInfo?.lobby && (() => {
+                        const closureTimeText = getLobbyClosureTimeText(game.lobbyInfo.lobby);
+                        return closureTimeText ? (
+                          <Badge className="bg-orange-500/90 text-white border-0 text-xs px-3 py-1 backdrop-blur-sm shadow-lg">
+                            <Clock className="w-3 h-3 mr-1" />
+                            {closureTimeText}
+                          </Badge>
+                        ) : null;
+                      })()}
                     </div>
                   )}
                 </div>

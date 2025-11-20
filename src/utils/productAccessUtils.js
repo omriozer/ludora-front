@@ -3,6 +3,7 @@
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { getProductTypeName } from "@/config/productTypes";
+import { isExpired, formatInIsraelTimezone } from "@/utils/timezoneUtils";
 
 // Same logic as Files.jsx for checking active access
 export const hasActiveAccess = (purchase) => {
@@ -16,8 +17,8 @@ export const hasActiveAccess = (purchase) => {
 
   // null access_expires_at = lifetime access
   if (!purchase.access_expires_at) return true;
-  // future access_expires_at = has access
-  if (purchase.access_expires_at && new Date(purchase.access_expires_at) > new Date()) return true;
+  // Check expiration using Israel timezone
+  if (purchase.access_expires_at && !isExpired(purchase.access_expires_at)) return true;
   return false;
 };
 
@@ -43,7 +44,7 @@ export const getProductAccessStatus = (userPurchase) => {
   if (!userPurchase.access_expires_at) {
     statusDetail = texts.lifetimeAccess; // null = lifetime access
   } else if (userPurchase.access_expires_at) {
-    statusDetail = `${texts.accessUntil} ${format(new Date(userPurchase.access_expires_at), 'dd/MM/yyyy', { locale: he })}`;
+    statusDetail = `${texts.accessUntil} ${formatInIsraelTimezone(userPurchase.access_expires_at, 'dd/MM/yyyy')}`;
   }
 
   return {

@@ -221,21 +221,8 @@ function LayoutContent({ children }) {
     openLoginModal();
   };
 
-  // Handle loading state - wait for both user auth AND settings to load
-  if (isLoading || settingsLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <LudoraLoadingSpinner
-          message="טוען את המערכת..."
-          size="lg"
-          theme="educational"
-          showLogo={true}
-        />
-      </div>
-    );
-  }
-
   // Show maintenance page if enabled OR if settings loading failed (but allow admins to bypass)
+  // IMPORTANT: Check maintenance/error state BEFORE loading state to prevent infinite spinner
   if ((settings?.maintenance_mode || settingsLoadFailed) && !(currentUser?.role === 'admin' && !currentUser?._isImpersonated)) {
     const isTemporaryIssue = settingsLoadFailed && !settings?.maintenance_mode;
 
@@ -267,6 +254,20 @@ function LayoutContent({ children }) {
     );
   }
 
+  // Handle loading state - wait for both user auth AND settings to load
+  // Only show loading if settings haven't failed (to avoid infinite spinner when API is down)
+  if (isLoading || (settingsLoading && !settingsLoadFailed)) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <LudoraLoadingSpinner
+          message="טוען את המערכת..."
+          size="lg"
+          theme="educational"
+          showLogo={true}
+        />
+      </div>
+    );
+  }
 
   // Handle ParentConsent page specially
   if (location.pathname.startsWith('/parent-consent')) {

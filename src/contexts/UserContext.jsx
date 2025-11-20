@@ -141,6 +141,7 @@ export function UserProvider({ children }) {
           // Set user state directly for now - full loadUserData will be called later if needed
           setCurrentUser(user);
           setIsAuthenticated(true);
+          setUserDataFresh(true); // Mark data as fresh for existing users
           // Update activity directly
           localStorage.setItem('lastActivity', new Date().getTime().toString());
         } else {
@@ -191,6 +192,16 @@ export function UserProvider({ children }) {
       checkPersistedAuth(settings);
     }
   }, [settingsLoading]); // Run when settings finish loading (once)
+
+  // Additional effect: Trigger auth check when settings are updated by retry
+  // This handles the case where auto-retry succeeds but auth check doesn't re-run
+  useEffect(() => {
+    if (settings !== null && !settingsLoading && isLoading && !settingsLoadFailed) {
+      // Settings were successfully loaded (either initially or via retry) but we're still in loading state
+      // Re-run auth check to complete the initialization
+      checkPersistedAuth(settings);
+    }
+  }, [settings, settingsLoading, isLoading, settingsLoadFailed, checkPersistedAuth]);
 
   // Start retry mechanism when settings fail to load or maintenance mode is active
   useEffect(() => {

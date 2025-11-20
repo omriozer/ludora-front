@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { GamepadIcon, PlayIcon, Home, Users, Clock, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
+import { GamepadIcon, PlayIcon, Home, Users, Clock, AlertCircle, CheckCircle, XCircle, Plus } from 'lucide-react';
 import { useUser } from '@/contexts/UserContext';
 import GameTypeDisplay from '@/components/game/GameTypeDisplay';
 import logoSm from '../../assets/images/logo_sm.png';
 import { useSSE } from '@/hooks/useSSE';
+import { isLobbyJoinable, getLobbyStatusConfig } from '@/utils/lobbyUtils';
 
 /**
  * Student lobby join page
@@ -24,6 +25,7 @@ const LobbyJoin = () => {
   const [selectedSession, setSelectedSession] = useState(null);
   const [displayName, setDisplayName] = useState('');
   const [joining, setJoining] = useState(false);
+  const [creatingSession, setCreatingSession] = useState(false);
 
   // Create SSE channels based on lobby data
   const sseChannels = lobbyData && lobbyData.lobby && lobbyData.game ? [
@@ -131,7 +133,7 @@ const LobbyJoin = () => {
 
       // Check if this event is for our lobby
       const lobbyId = event.data?.lobbyId || event.data?.lobby_id;
-      if (lobbyId === lobbyData.lobby.id) {
+      if (lobbyId === lobbyData.lobby?.id) {
         // Refresh lobby data for lobby status changes
         refreshLobbyData();
       }
@@ -142,7 +144,8 @@ const LobbyJoin = () => {
 
       // Check if this session event is for sessions in our lobby
       const sessionId = event.data?.sessionId || event.data?.session_id;
-      if (sessionId && lobbyData.sessions.some(session => session.id === sessionId)) {
+      const sessions = lobbyData.sessions || [];
+      if (sessionId && sessions.some(session => session.id === sessionId)) {
         // Refresh lobby data for participant count updates
         refreshLobbyData();
       }
@@ -187,7 +190,7 @@ const LobbyJoin = () => {
     }
 
     if (lobbyData.settings.invitation_type === 'manual_selection' && !selectedSession) {
-      alert('נא לבחור מושב');
+      alert('נא לבחור חדר');
       return;
     }
 
@@ -231,33 +234,71 @@ const LobbyJoin = () => {
     }
   };
 
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'open':
-      case 'open_indefinitely':
-        return <CheckCircle className="w-5 h-5 text-green-600" />;
-      case 'pending':
-        return <Clock className="w-5 h-5 text-yellow-600" />;
-      case 'closed':
-        return <XCircle className="w-5 h-5 text-red-600" />;
-      default:
-        return <AlertCircle className="w-5 h-5 text-gray-600" />;
+  const handleCreateSession = async () => {
+    if (!displayName.trim()) {
+      alert('נא להזין שם תצוגה לפני יצירת חדר');
+      return;
+    }
+
+    try {
+      setCreatingSession(true);
+
+      const response = await fetch(`/api/game-lobbies/${lobbyData.lobby.id}/sessions/create-student`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          participant: {
+            display_name: displayName.trim(),
+            user_id: user?.id || null,
+            guest_token: user?.id ? null : `guest_${Date.now()}`,
+          }
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'שגיאה ביצירת חדר חדש');
+      }
+
+      const createResult = await response.json();
+
+      // Redirect to play page with session info
+      navigate(`/play/${createResult.session.id}`, {
+        state: {
+          lobbyData: createResult.lobby,
+          sessionData: createResult.session,
+          participantId: createResult.participant.id
+        }
+      });
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setCreatingSession(false);
     }
   };
 
-  const getStatusText = (status) => {
-    switch (status) {
-      case 'open':
-        return 'זמין להצטרפות';
-      case 'open_indefinitely':
-        return 'פתוח ללא הגבלת זמן';
-      case 'pending':
-        return 'ממתין להפעלה';
-      case 'closed':
-        return 'נסגר';
+  // Get status configuration from lobbyUtils
+  const getStatusDisplay = (lobby) => {
+    const config = getLobbyStatusConfig(lobby);
+
+    let icon;
+    switch (config.icon) {
+      case 'Play':
+        icon = <CheckCircle className="w-5 h-5 text-green-600" />;
+        break;
+      case 'Clock':
+        icon = <Clock className="w-5 h-5 text-yellow-600" />;
+        break;
+      case 'Square':
+        icon = <XCircle className="w-5 h-5 text-red-600" />;
+        break;
       default:
-        return 'לא ידוע';
+        icon = <AlertCircle className="w-5 h-5 text-gray-600" />;
     }
+
+    return { icon, text: config.text, timeInfo: config.timeInfo };
   };
 
   if (loading) {
@@ -273,16 +314,23 @@ const LobbyJoin = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen student-portal-background flex items-center justify-center p-4">
-        <div className="max-w-md w-full text-center student-card p-8">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <AlertCircle className="w-8 h-8 text-red-600" />
+      <div className="student-error-page student-portal-background">
+        <div className="student-error-card">
+          <div className="student-icon-container-error student-bounce mx-auto mb-6">
+            <AlertCircle className="w-10 h-10 text-white" />
           </div>
-          <h2 className="text-xl font-bold text-gray-800 mb-2">שגיאה</h2>
-          <p className="text-gray-600 mb-6">{error}</p>
+          <h2 className="text-2xl font-bold student-text-gradient mb-4">אופס! יש בעיה קטנה</h2>
+          <p className="text-gray-700 text-lg mb-8 leading-relaxed">{error}</p>
+          <div className="mb-6">
+            <div className="student-loading-dots justify-center">
+              <div className="dot student-sparkle"></div>
+              <div className="dot student-sparkle" style={{ animationDelay: '0.1s' }}></div>
+              <div className="dot student-sparkle" style={{ animationDelay: '0.2s' }}></div>
+            </div>
+          </div>
           <Link to="/">
-            <Button className="student-btn-primary">
-              <Home className="w-4 h-4 ml-2" />
+            <Button className="student-btn-primary student-float">
+              <Home className="w-5 h-5 ml-2" />
               חזרה לעמוד הבית
             </Button>
           </Link>
@@ -291,22 +339,29 @@ const LobbyJoin = () => {
     );
   }
 
-  if (!lobbyData || !lobbyData.lobby.canJoin) {
+  if (!lobbyData || !isLobbyJoinable(lobbyData.lobby)) {
     return (
-      <div className="min-h-screen student-portal-background flex items-center justify-center p-4">
-        <div className="max-w-md w-full text-center student-card p-8">
-          <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <XCircle className="w-8 h-8 text-yellow-600" />
+      <div className="student-error-page student-portal-background">
+        <div className="student-error-card">
+          <div className="student-icon-container-warning student-wiggle mx-auto mb-6">
+            <XCircle className="w-10 h-10 text-white" />
           </div>
-          <h2 className="text-xl font-bold text-gray-800 mb-2">הלובי לא זמין</h2>
-          <p className="text-gray-600 mb-2">
+          <h2 className="text-2xl font-bold student-text-gradient mb-4">הלובי לא זמין</h2>
+          <p className="text-gray-700 text-lg mb-2 leading-relaxed">
             הלובי הזה סגור או לא זמין כרגע
           </p>
-          <p className="text-sm text-gray-500 mb-6">בדקו עם המורה שלכם לקוד חדש</p>
+          <p className="text-gray-500 text-base mb-8">בדקו עם המורה שלכם לקוד חדש</p>
+          <div className="mb-6">
+            <div className="student-loading-dots justify-center">
+              <div className="dot student-pulse"></div>
+              <div className="dot student-pulse" style={{ animationDelay: '0.1s' }}></div>
+              <div className="dot student-pulse" style={{ animationDelay: '0.2s' }}></div>
+            </div>
+          </div>
           <Link to="/">
-            <Button className="student-btn-primary">
-              <Home className="w-4 h-4 ml-2" />
-              חזרה לעמוד הבית
+            <Button className="student-btn-primary student-float">
+              <Home className="w-5 h-5 ml-2" />
+              חזרה למרכז הבית
             </Button>
           </Link>
         </div>
@@ -314,52 +369,44 @@ const LobbyJoin = () => {
     );
   }
 
-  const { lobby, sessions, game, participantsSummary } = lobbyData;
+  // Handle the actual API response structure
+  const lobby = lobbyData.lobby;
+  const game = lobby.game;
+  const sessions = lobbyData.sessions || []; // API doesn't return sessions for join-by-code
+  const participantsSummary = lobbyData.participantsSummary || { total: 0 };
+
   const isManualSelection = lobby.settings.invitation_type === 'manual_selection';
   const availableSessions = sessions.filter(session =>
-    session.status === 'open' && session.participants.length < lobby.settings.max_players
+    session.status === 'open' && session.participants && session.participants.length < lobby.settings.max_players
   );
 
   return (
     <div className="min-h-screen student-portal-background">
-      {/* Header */}
-      <header className="bg-white/70 backdrop-blur-sm shadow-lg">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <img
-              src={logoSm}
-              alt="לודורה"
-              className="h-10 object-contain"
-            />
-          </Link>
-
-          {/* Lobby Code */}
-          <div className="text-center">
-            <h1 className="text-xl font-bold text-gray-800">
-              קוד לובי: {lobby.lobby_code}
-            </h1>
-            <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
-              {getStatusIcon(lobby.status)}
-              <span>{getStatusText(lobby.status)}</span>
-            </div>
-          </div>
-
-          {/* Back to home button */}
-          <Link to="/">
-            <Button variant="outline" className="student-btn-outline">
-              <Home className="w-4 h-4 ml-2" />
-              עמוד הבית
-            </Button>
-          </Link>
-        </div>
-      </header>
-
       {/* Content */}
       <main className="max-w-4xl mx-auto px-4 py-8">
-        {/* Game Info */}
+        {/* Game Info with Lobby Code */}
         <Card className="student-card mb-6">
           <CardContent className="p-6">
+            {/* Lobby Code Banner */}
+            <div className="text-center mb-6 p-4 student-rainbow-border rounded-xl">
+              <h1 className="text-3xl font-bold student-text-gradient mb-1 student-pulse">
+                {lobby.lobby_code}
+              </h1>
+              <p className="text-sm text-gray-600">קוד הלובי</p>
+              <div className="flex items-center justify-center gap-2 text-sm text-gray-600 mt-2">
+                {(() => {
+                  const { icon, text, timeInfo } = getStatusDisplay(lobby);
+                  return (
+                    <>
+                      {icon}
+                      <span>{text}</span>
+                      {timeInfo && <span className="mr-2 text-xs">({timeInfo})</span>}
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+
             <div className="flex items-start gap-4">
               {/* Game Image */}
               <div className="w-20 h-20 bg-gradient-to-br from-purple-400 via-blue-400 to-indigo-500 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -432,38 +479,70 @@ const LobbyJoin = () => {
             {isManualSelection && (
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  בחר מושב
+                  בחר חדר או צור חדר חדש
                 </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {availableSessions.map((session) => (
-                    <button
-                      key={session.id}
-                      onClick={() => setSelectedSession(session)}
-                      className={`p-3 border rounded-lg text-right transition-all ${
-                        selectedSession?.id === session.id
-                          ? 'border-purple-500 bg-purple-50 ring-2 ring-purple-200'
-                          : 'border-gray-200 hover:border-purple-300 hover:bg-purple-25'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="font-medium text-gray-800">
-                            מושב {session.session_number}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {session.participants.length}/{lobby.settings.max_players} שחקנים
-                          </div>
-                        </div>
-                        <Users className="w-5 h-5 text-gray-400" />
+
+                {/* Create New Session Button */}
+                <div className="mb-3">
+                  <Button
+                    onClick={handleCreateSession}
+                    disabled={creatingSession || !displayName.trim()}
+                    className="w-full sm:w-auto student-btn-primary"
+                    variant="outline"
+                  >
+                    {creatingSession ? (
+                      <div className="flex items-center justify-center">
+                        <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin ml-2" />
+                        יוצר חדר חדש...
                       </div>
-                    </button>
-                  ))}
+                    ) : (
+                      <>
+                        <Plus className="w-4 h-4 ml-2" />
+                        צור חדר חדש והצטרף אליו
+                      </>
+                    )}
+                  </Button>
+                  <p className="text-xs text-gray-500 mt-1">
+                    יצירת חדר חדש תצטרף אליו אוטומטית
+                  </p>
                 </div>
 
+                {/* Existing Sessions */}
+                {availableSessions.length > 0 && (
+                  <>
+                    <div className="text-sm text-gray-600 mb-2">או הצטרף לחדר קיים:</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {availableSessions.map((session) => (
+                        <button
+                          key={session.id}
+                          onClick={() => setSelectedSession(session)}
+                          className={`p-3 border rounded-lg text-right transition-all ${
+                            selectedSession?.id === session.id
+                              ? 'border-purple-500 bg-purple-50 ring-2 ring-purple-200'
+                              : 'border-gray-200 hover:border-purple-300 hover:bg-purple-25'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="font-medium text-gray-800">
+                                חדר {session.session_number}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {(session.participants?.length || 0)}/{lobby.settings.max_players} שחקנים
+                              </div>
+                            </div>
+                            <Users className="w-5 h-5 text-gray-400" />
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+
                 {availableSessions.length === 0 && (
-                  <p className="text-sm text-yellow-600 mt-2">
-                    כל המושבים מלאים כרגע. נסה שוב מאוחר יותר.
-                  </p>
+                  <div className="text-sm text-gray-500 mt-2">
+                    אין חדרים פעילים כרגע. צור חדר חדש כדי להתחיל!
+                  </div>
                 )}
               </div>
             )}
@@ -472,14 +551,8 @@ const LobbyJoin = () => {
             {!isManualSelection && (
               <div className="mb-4 p-3 bg-blue-50 rounded-lg">
                 <div className="text-sm text-blue-700">
-                  {lobby.settings.invitation_type === 'random' &&
-                    'תוזמן אוטומטית למושב אקראי זמין'
-                  }
                   {lobby.settings.invitation_type === 'order' &&
-                    'תוזמן למושב הראשון הזמין'
-                  }
-                  {lobby.settings.invitation_type === 'teacher_assignment' &&
-                    'המורה קבע לך מושב מראש'
+                    'תוזמן לחדר הראשון הזמין'
                   }
                 </div>
               </div>
@@ -506,28 +579,36 @@ const LobbyJoin = () => {
           </CardContent>
         </Card>
 
-        {/* Active Sessions Display */}
+        {/* Active Sessions Display - Only show if sessions exist */}
         {sessions.length > 0 && (
           <Card className="student-card">
             <CardContent className="p-6">
-              <h3 className="text-lg font-bold text-gray-800 mb-4">מושבי משחק פעילים</h3>
+              <h3 className="text-lg font-bold text-gray-800 mb-4">חדרי משחק פעילים</h3>
               <div className="space-y-3">
                 {sessions.map((session) => (
                   <div key={session.id} className="p-3 border border-gray-200 rounded-lg">
                     <div className="flex items-center justify-between">
                       <div>
                         <div className="font-medium text-gray-800">
-                          מושב {session.session_number}
+                          חדר {session.session_number || session.id}
                         </div>
                         <div className="text-sm text-gray-500">
-                          {session.participants.length}/{lobby.settings.max_players} שחקנים
+                          {(session.participants?.length || 0)}/{lobby.settings.max_players} שחקנים
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        {getStatusIcon(session.status)}
-                        <span className="text-sm text-gray-600">
-                          {getStatusText(session.status)}
-                        </span>
+                        {(() => {
+                          // Create a session-like lobby object for status display
+                          const sessionAsLobby = { status: session.status };
+                          const { icon, text, timeInfo } = getStatusDisplay(sessionAsLobby);
+                          return (
+                            <>
+                              {icon}
+                              <span className="text-sm text-gray-600">{text}</span>
+                              {timeInfo && <span className="mr-2 text-xs">({timeInfo})</span>}
+                            </>
+                          );
+                        })()}
                       </div>
                     </div>
                   </div>

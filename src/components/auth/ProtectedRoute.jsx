@@ -1,12 +1,13 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useUser } from '@/contexts/UserContext';
+import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
 
 export default function ProtectedRoute({ children }) {
   const { currentUser, isLoading } = useUser();
   const location = useLocation();
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return <LudoraLoadingSpinner />;
   }
 
   if (!currentUser) {

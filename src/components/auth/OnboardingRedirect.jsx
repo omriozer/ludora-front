@@ -9,7 +9,7 @@ export default function OnboardingRedirect({ children }) {
   const { currentUser, needsOnboarding, isLoading, settingsLoading, userDataFresh } = useUser();
   const navigate = useNavigate();
   const location = useLocation();
-  const [hasCheckedInvitations, setHasCheckedInvitations] = useState(false);
+  const [hasCheckedInvitations, setHasCheckedInvitations] = useState(true);
   const [hasInvitations, setHasInvitations] = useState(false);
 
   useEffect(() => {

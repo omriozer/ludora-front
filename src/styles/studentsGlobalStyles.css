@@ -1,0 +1,350 @@
+/**
+ * Student Portal Global Styles
+ * Bright, colorful, and kid-friendly CSS classes for the student experience
+ */
+
+/* Custom keyframes for student portal animations */
+@keyframes wiggle {
+  0%, 7% {
+    transform: rotateZ(0);
+  }
+  15% {
+    transform: rotateZ(-15deg);
+  }
+  20% {
+    transform: rotateZ(10deg);
+  }
+  25% {
+    transform: rotateZ(-10deg);
+  }
+  30% {
+    transform: rotateZ(6deg);
+  }
+  35% {
+    transform: rotateZ(-4deg);
+  }
+  40%, 100% {
+    transform: rotateZ(0);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes rainbow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes sparkle {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.1);
+  }
+}
+
+/* Background Styles */
+.student-portal-background {
+  background: linear-gradient(135deg,
+    #667eea 0%,
+    #764ba2 25%,
+    #f093fb 50%,
+    #f5576c 75%,
+    #4facfe 100%);
+  background-size: 400% 400%;
+  animation: rainbow 15s ease infinite;
+  min-height: 100vh;
+}
+
+/* Card Components */
+.student-card {
+  @apply bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border-2 border-white/50;
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04),
+    0 0 0 1px rgba(255, 255, 255, 0.5);
+  transition: all 0.3s ease;
+}
+
+.student-card:hover {
+  @apply shadow-2xl;
+  transform: translateY(-2px);
+  box-shadow:
+    0 25px 30px -5px rgba(0, 0, 0, 0.15),
+    0 15px 15px -5px rgba(0, 0, 0, 0.08),
+    0 0 0 1px rgba(255, 255, 255, 0.7);
+}
+
+.student-card-colorful {
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.95) 0%,
+    rgba(240, 248, 255, 0.95) 100%);
+  border: 3px solid transparent;
+  background-clip: padding-box;
+  position: relative;
+}
+
+.student-card-colorful::before {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  right: -3px;
+  bottom: -3px;
+  background: linear-gradient(45deg, #667eea, #764ba2, #f093fb, #f5576c, #4facfe);
+  border-radius: inherit;
+  z-index: -1;
+  background-size: 200% 200%;
+  animation: rainbow 3s ease infinite;
+}
+
+/* Button Styles */
+.student-btn-primary {
+  @apply px-6 py-3 rounded-xl font-semibold text-white;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  box-shadow:
+    0 10px 15px -3px rgba(102, 126, 234, 0.4),
+    0 4px 6px -2px rgba(102, 126, 234, 0.1);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.student-btn-primary:hover {
+  background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+  transform: translateY(-2px);
+  box-shadow:
+    0 15px 20px -3px rgba(102, 126, 234, 0.5),
+    0 8px 10px -2px rgba(102, 126, 234, 0.2);
+}
+
+.student-btn-primary:active {
+  transform: translateY(0);
+}
+
+.student-btn-secondary {
+  @apply px-6 py-3 rounded-xl font-semibold text-white;
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  border: none;
+  box-shadow:
+    0 10px 15px -3px rgba(240, 147, 251, 0.4),
+    0 4px 6px -2px rgba(240, 147, 251, 0.1);
+  transition: all 0.3s ease;
+}
+
+.student-btn-secondary:hover {
+  background: linear-gradient(135deg, #e879f9 0%, #ef4444 100%);
+  transform: translateY(-2px);
+  box-shadow:
+    0 15px 20px -3px rgba(240, 147, 251, 0.5),
+    0 8px 10px -2px rgba(240, 147, 251, 0.2);
+}
+
+.student-btn-success {
+  @apply px-6 py-3 rounded-xl font-semibold text-white;
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  border: none;
+  box-shadow:
+    0 10px 15px -3px rgba(79, 172, 254, 0.4),
+    0 4px 6px -2px rgba(79, 172, 254, 0.1);
+  transition: all 0.3s ease;
+}
+
+.student-btn-success:hover {
+  background: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
+  transform: translateY(-2px);
+  box-shadow:
+    0 15px 20px -3px rgba(79, 172, 254, 0.5),
+    0 8px 10px -2px rgba(79, 172, 254, 0.2);
+}
+
+.student-btn-outline {
+  @apply px-6 py-3 rounded-xl font-semibold border-2 bg-white/80 backdrop-blur-sm;
+  border-color: rgba(102, 126, 234, 0.5);
+  color: #4c51bf;
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s ease;
+}
+
+.student-btn-outline:hover {
+  border-color: rgba(102, 126, 234, 1);
+  background: rgba(102, 126, 234, 0.1);
+  transform: translateY(-1px);
+  box-shadow:
+    0 8px 12px -1px rgba(0, 0, 0, 0.15),
+    0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* Fun Interactive Elements */
+.student-wiggle {
+  animation: wiggle 1s ease-in-out infinite;
+}
+
+.student-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.student-bounce {
+  animation: bounce 1s infinite;
+}
+
+.student-pulse {
+  animation: pulse 2s infinite;
+}
+
+.student-sparkle {
+  animation: sparkle 2s ease-in-out infinite;
+}
+
+/* Icon Containers */
+.student-icon-container {
+  @apply w-16 h-16 rounded-full flex items-center justify-center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  box-shadow:
+    0 10px 15px -3px rgba(102, 126, 234, 0.4),
+    0 4px 6px -2px rgba(102, 126, 234, 0.1);
+}
+
+.student-icon-container-error {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  box-shadow:
+    0 10px 15px -3px rgba(240, 147, 251, 0.4),
+    0 4px 6px -2px rgba(240, 147, 251, 0.1);
+}
+
+.student-icon-container-warning {
+  background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+  box-shadow:
+    0 10px 15px -3px rgba(250, 112, 154, 0.4),
+    0 4px 6px -2px rgba(250, 112, 154, 0.1);
+}
+
+.student-icon-container-success {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  box-shadow:
+    0 10px 15px -3px rgba(79, 172, 254, 0.4),
+    0 4px 6px -2px rgba(79, 172, 254, 0.1);
+}
+
+/* Text Styles */
+.student-text-gradient {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.student-text-fun {
+  color: #4c51bf;
+  text-shadow: 0 2px 4px rgba(102, 126, 234, 0.2);
+}
+
+/* Input Styles */
+.student-input {
+  @apply w-full px-4 py-3 rounded-xl border-2 bg-white/90 backdrop-blur-sm;
+  border-color: rgba(102, 126, 234, 0.3);
+  transition: all 0.3s ease;
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.student-input:focus {
+  border-color: rgba(102, 126, 234, 1);
+  box-shadow:
+    0 0 0 3px rgba(102, 126, 234, 0.1),
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  outline: none;
+}
+
+/* Loading Animations */
+.student-loading-spinner {
+  @apply w-8 h-8 border-4 rounded-full animate-spin;
+  border-color: rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+}
+
+.student-loading-dots {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.student-loading-dots .dot {
+  @apply w-3 h-3 rounded-full;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  animation: bounce 1.4s ease-in-out infinite both;
+}
+
+.student-loading-dots .dot:nth-child(1) { animation-delay: -0.32s; }
+.student-loading-dots .dot:nth-child(2) { animation-delay: -0.16s; }
+.student-loading-dots .dot:nth-child(3) { animation-delay: 0s; }
+
+/* Special Effects */
+.student-glass-effect {
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.student-rainbow-border {
+  border: 3px solid transparent;
+  background:
+    linear-gradient(white, white) padding-box,
+    linear-gradient(45deg, #667eea, #764ba2, #f093fb, #f5576c) border-box;
+}
+
+/* Error Page Specific Styles */
+.student-error-page {
+  @apply min-h-screen flex items-center justify-center p-4;
+}
+
+.student-error-card {
+  @apply max-w-md w-full text-center p-8;
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.95) 0%,
+    rgba(248, 250, 252, 0.95) 100%);
+  border: 3px solid transparent;
+  background-clip: padding-box;
+  border-radius: 24px;
+  box-shadow:
+    0 25px 30px -5px rgba(0, 0, 0, 0.15),
+    0 15px 15px -5px rgba(0, 0, 0, 0.08);
+  position: relative;
+  overflow: hidden;
+}
+
+.student-error-card::before {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  right: -3px;
+  bottom: -3px;
+  background: linear-gradient(45deg,
+    #667eea, #764ba2, #f093fb, #f5576c, #4facfe, #667eea);
+  background-size: 200% 200%;
+  border-radius: inherit;
+  z-index: -1;
+  animation: rainbow 3s ease infinite;
+}

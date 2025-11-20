@@ -33,12 +33,12 @@ const GamePlay = () => {
 
         if (!response.ok) {
           if (response.status === 404) {
-            throw new Error('מושב המשחק לא נמצא');
+            throw new Error('חדר משחק לא נמצא');
           }
           if (response.status === 403) {
-            throw new Error('אין לך גישה למושב המשחק הזה');
+            throw new Error('אין לך גישה לחדר משחק הזה');
           }
-          throw new Error('שגיאה בטעינת נתוני המושב');
+          throw new Error('שגיאה בטעינת נתוני החדר');
         }
 
         const data = await response.json();
@@ -317,8 +317,8 @@ const GamePlay = () => {
           <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <AlertCircle className="w-8 h-8 text-yellow-600" />
           </div>
-          <h2 className="text-xl font-bold text-gray-800 mb-2">מושב לא נמצא</h2>
-          <p className="text-gray-600 mb-6">לא ניתן למצוא את מושב המשחק</p>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">חדר לא נמצא</h2>
+          <p className="text-gray-600 mb-6">לא ניתן למצוא את חדר משחק</p>
           <Link to="/">
             <Button className="student-btn-primary">
               <Home className="w-4 h-4 ml-2" />
@@ -351,7 +351,7 @@ const GamePlay = () => {
             </h1>
             <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
               {getStatusIcon(sessionData.status)}
-              <span>מושב {sessionData.session_number}</span>
+              <span>חדר {sessionData.session_number}</span>
               {lobbyData.game.game_type && (
                 <>
                   <span>•</span>

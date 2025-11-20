@@ -1,4 +1,5 @@
 import './App.css';
+import './styles/studentsGlobalStyles.css';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useEffect, Suspense, useState, useCallback } from 'react';
 // Core pages - loaded immediately for better UX
@@ -53,12 +54,12 @@ function StudentPortal() {
 			if (match) {
 				const userCode = match[1];
 				try {
-					const response = await fetch(`/api/entities/teacher-catalog/${userCode}`);
+					const response = await fetch(`/api/games/teacher/${userCode}`);
 					if (response.ok) {
 						const data = await response.json();
 						setTeacherInfo({
-							name: data.teacher.name,
-							invitation_code: data.teacher.invitation_code
+							name: data.teacher?.name || "המורה",
+							invitation_code: data.teacher?.invitation_code || userCode
 						});
 					} else {
 						setTeacherInfo(null);

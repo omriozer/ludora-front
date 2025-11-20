@@ -44,9 +44,17 @@ export async function apiRequest(endpoint, options = {}) {
     ...options.headers
   };
 
+  // Add timeout protection
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => {
+    clog('⏰ API request timeout, aborting...');
+    controller.abort();
+  }, 15000); // 15 second timeout
+
   const defaultOptions = {
     credentials: 'include', // Automatically include cookies
-    headers
+    headers,
+    signal: controller.signal
   };
 
   clog('📤 Request headers:', headers);
@@ -54,6 +62,7 @@ export async function apiRequest(endpoint, options = {}) {
 
   try {
     const response = await fetch(url, { ...defaultOptions, ...options });
+    clearTimeout(timeoutId); // Clear timeout on successful response
     clog(`📥 Response status: ${response.status} ${response.statusText}`);
 
     if (!response.ok) {
@@ -76,7 +85,23 @@ export async function apiRequest(endpoint, options = {}) {
     clog('✅ API Response:', data);
     return data;
   } catch (error) {
+    clearTimeout(timeoutId); // Clear timeout on error
     cerror('🚫 API Request Failed:', error);
+
+    // Handle timeout specifically
+    if (error.name === 'AbortError') {
+      const timeoutError = new ApiError('Request timeout - please check your connection and try again', 408);
+
+      // Only show user-facing error messages if not explicitly suppressed
+      const suppressUserErrors = options.suppressUserErrors || false;
+      if (!suppressUserErrors) {
+        showError(
+          "בקשה נכשלה",
+          "הבקשה ארכה זמן רב מדי. אנא בדוק את החיבור לאינטרנט ונסה שוב."
+        );
+      }
+      throw timeoutError;
+    }
 
     // Only show user-facing error messages if not explicitly suppressed
     const suppressUserErrors = options.suppressUserErrors || false;
@@ -112,9 +137,17 @@ export async function apiRequestAnonymous(endpoint, options = {}) {
     ...options.headers
   };
 
+  // Add timeout protection
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => {
+    clog('⏰ Anonymous API request timeout, aborting...');
+    controller.abort();
+  }, 15000); // 15 second timeout
+
   const defaultOptions = {
     credentials: 'omit', // No credentials for anonymous requests
-    headers
+    headers,
+    signal: controller.signal
   };
 
   clog('📤 Anonymous request headers:', headers);
@@ -122,6 +155,7 @@ export async function apiRequestAnonymous(endpoint, options = {}) {
 
   try {
     const response = await fetch(url, { ...defaultOptions, ...options });
+    clearTimeout(timeoutId); // Clear timeout on successful response
     clog(`📥 Anonymous response status: ${response.status} ${response.statusText}`);
 
     if (!response.ok) {
@@ -144,7 +178,23 @@ export async function apiRequestAnonymous(endpoint, options = {}) {
     clog('✅ Anonymous API Response:', data);
     return data;
   } catch (error) {
+    clearTimeout(timeoutId); // Clear timeout on error
     cerror('🚫 Anonymous API Request Failed:', error);
+
+    // Handle timeout specifically
+    if (error.name === 'AbortError') {
+      const timeoutError = new ApiError('Request timeout - please check your connection and try again', 408);
+
+      // Only show user-facing error messages if not explicitly suppressed
+      const suppressUserErrors = options.suppressUserErrors || false;
+      if (!suppressUserErrors) {
+        showError(
+          "בקשה נכשלה",
+          "הבקשה ארכה זמן רב מדי. אנא בדוק את החיבור לאינטרנט ונסה שוב."
+        );
+      }
+      throw timeoutError;
+    }
 
     // Only show user-facing error messages if not explicitly suppressed
     const suppressUserErrors = options.suppressUserErrors || false;
