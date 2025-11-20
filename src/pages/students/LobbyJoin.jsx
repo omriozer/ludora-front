@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { GamepadIcon, PlayIcon, Home, Users, Clock, AlertCircle, CheckCircle, XCircle, Plus } from 'lucide-react';
@@ -19,6 +19,7 @@ import { toast } from '@/components/ui/use-toast';
 const LobbyJoin = () => {
   const { code } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useUser();
 
   const [lobbyData, setLobbyData] = useState(null);
@@ -35,6 +36,52 @@ const LobbyJoin = () => {
   const [showAchievementAnimation, setShowAchievementAnimation] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
+
+  // Helper function to determine if we can navigate back to teacher catalog
+  const getBackNavigationInfo = () => {
+    // Check if we have a teacher catalog referrer from state or URL patterns
+    const fromState = location.state?.fromTeacherCatalog;
+    const hasTeacherCode = location.state?.teacherCode;
+
+    // Check if the previous URL in history suggests we came from a teacher catalog
+    // Look for patterns like /portal/:teacherCode in the referrer
+    const referrer = document.referrer;
+    const teacherCatalogPattern = /\/portal\/([A-Z0-9]{8})/i;
+    const referrerMatch = referrer.match(teacherCatalogPattern);
+
+    // Check current browser history state for teacher context
+    const currentPath = window.location.pathname;
+    const canGoBack = window.history.length > 1;
+
+    if (fromState || hasTeacherCode || referrerMatch) {
+      return {
+        canGoToTeacherCatalog: true,
+        teacherCode: hasTeacherCode || (referrerMatch && referrerMatch[1]),
+        navigationText: 'חזרה לקטלוג המורה'
+      };
+    }
+
+    return {
+      canGoToTeacherCatalog: false,
+      navigationText: 'חזרה לעמוד הבית'
+    };
+  };
+
+  // Handle smart navigation back
+  const handleSmartNavigation = () => {
+    const navInfo = getBackNavigationInfo();
+
+    if (navInfo.canGoToTeacherCatalog && navInfo.teacherCode) {
+      // Navigate to the specific teacher catalog
+      navigate(`/portal/${navInfo.teacherCode}`);
+    } else if (navInfo.canGoToTeacherCatalog) {
+      // Try to go back in history (might be teacher catalog)
+      navigate(-1);
+    } else {
+      // Navigate to student home page
+      navigate('/');
+    }
+  };
 
   // Create SSE channels based on lobby data
   const sseChannels = lobbyData && lobbyData.lobby && lobbyData.game ? [
@@ -549,11 +596,11 @@ const LobbyJoin = () => {
             </div>
           </div>
           <Button
-            onClick={() => navigate(-1)}
+            onClick={handleSmartNavigation}
             className="student-btn-primary student-float"
           >
             <Home className="w-5 h-5 ml-2" />
-            חזרה לקטלוג המורה
+            {getBackNavigationInfo().navigationText}
           </Button>
         </div>
       </div>

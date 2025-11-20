@@ -152,7 +152,10 @@ export function useSSE(channels = [], options = {}) {
     // Read current config to avoid dependency issues
     const currentConfig = configRef.current;
     heartbeatTimeoutRef.current = setTimeout(() => {
-      debugLog('Heartbeat timeout - connection appears dead');
+      // Use config ref instead of function dependency to avoid loops
+      if (currentConfig.debugMode) {
+        console.log('[SSE] Heartbeat timeout - connection appears dead');
+      }
 
       // ✅ IMPROVED: Track missed heartbeats for quality monitoring
       setMissedHeartbeats(prev => {
@@ -161,10 +164,14 @@ export function useSSE(channels = [], options = {}) {
         // Update connection quality based on missed heartbeats
         if (newCount >= currentConfig.maxMissedHeartbeats) {
           setConnectionQuality('poor');
-          debugLog(`Connection quality poor: ${newCount} missed heartbeats`);
+          if (currentConfig.debugMode) {
+            console.log(`[SSE] Connection quality poor: ${newCount} missed heartbeats`);
+          }
         } else {
           setConnectionQuality('poor');
-          debugLog(`Connection quality degrading: ${newCount} missed heartbeats`);
+          if (currentConfig.debugMode) {
+            console.log(`[SSE] Connection quality degrading: ${newCount} missed heartbeats`);
+          }
         }
 
         return newCount;
@@ -179,7 +186,7 @@ export function useSSE(channels = [], options = {}) {
         scheduleReconnectRef.current?.();
       }
     }, currentConfig.heartbeatTimeout);
-  }, [debugLog]); // Remove reconnect dependency to avoid hoisting issues
+  }, []); // Remove all dependencies to prevent recreation loops
 
   // Build SSE URL with channels and session context (cookies handle authentication)
   // Use ref to avoid recreating connect function when config changes
@@ -197,13 +204,17 @@ export function useSSE(channels = [], options = {}) {
       // Use same port detection logic as api.js for consistency
       const port = import.meta.env.VITE_API_PORT || '3003';
       baseUrl = `http://localhost:${port}/api/sse/events`;
-      debugLog('Development: Using direct API connection to bypass Vite proxy', baseUrl);
-      debugLog('Development: Using port from VITE_API_PORT or fallback', port);
+      if (currentConfig.debugMode) {
+        console.log('[SSE] Development: Using direct API connection to bypass Vite proxy', baseUrl);
+        console.log('[SSE] Development: Using port from VITE_API_PORT or fallback', port);
+      }
     } else {
       // In production, use direct connection
       const apiBase = getApiBase();
       baseUrl = `${apiBase}/sse/events`;
-      debugLog('Production: Direct SSE connection', baseUrl);
+      if (currentConfig.debugMode) {
+        console.log('[SSE] Production: Direct SSE connection', baseUrl);
+      }
     }
 
     const validChannels = channels.filter(ch => typeof ch === 'string' && ch.trim());
@@ -216,61 +227,79 @@ export function useSSE(channels = [], options = {}) {
     }
 
     // Debug: Log session context being used
-    debugLog('Session context in buildSSEUrl:', currentConfig.sessionContext);
+    if (currentConfig.debugMode) {
+      console.log('[SSE] Session context in buildSSEUrl:', currentConfig.sessionContext);
+    }
 
     // Add session context parameters if provided in config
     if (currentConfig.sessionContext) {
       const ctx = currentConfig.sessionContext;
 
-      debugLog('Processing session context parameters:', {
-        gameId: ctx.gameId,
-        lobbyId: ctx.lobbyId,
-        sessionId: ctx.sessionId,
-        isLobbyOwner: ctx.isLobbyOwner,
-        isActiveParticipant: ctx.isActiveParticipant,
-        priorityHint: ctx.priorityHint
-      });
+      if (currentConfig.debugMode) {
+        console.log('[SSE] Processing session context parameters:', {
+          gameId: ctx.gameId,
+          lobbyId: ctx.lobbyId,
+          sessionId: ctx.sessionId,
+          isLobbyOwner: ctx.isLobbyOwner,
+          isActiveParticipant: ctx.isActiveParticipant,
+          priorityHint: ctx.priorityHint
+        });
 
-      debugLog('Parameter validation before URL building:', {
-        'gameId defined': !!ctx.gameId,
-        'lobbyId defined': !!ctx.lobbyId,
-        'sessionId defined': !!ctx.sessionId,
-        'isLobbyOwner value': ctx.isLobbyOwner,
-        'isActiveParticipant value': ctx.isActiveParticipant,
-        'priorityHint defined': !!ctx.priorityHint
-      });
+        console.log('[SSE] Parameter validation before URL building:', {
+          'gameId defined': !!ctx.gameId,
+          'lobbyId defined': !!ctx.lobbyId,
+          'sessionId defined': !!ctx.sessionId,
+          'isLobbyOwner value': ctx.isLobbyOwner,
+          'isActiveParticipant value': ctx.isActiveParticipant,
+          'priorityHint defined': !!ctx.priorityHint
+        });
+      }
 
       // Add lobby and session identifiers (only if they have actual values)
       if (ctx.gameId && ctx.gameId !== 'undefined') {
         params.set('game_id', ctx.gameId);
-        debugLog('Added game_id parameter:', ctx.gameId);
+        if (currentConfig.debugMode) {
+          console.log('[SSE] Added game_id parameter:', ctx.gameId);
+        }
       }
       if (ctx.lobbyId && ctx.lobbyId !== 'undefined') {
         params.set('lobby_id', ctx.lobbyId);
-        debugLog('Added lobby_id parameter:', ctx.lobbyId);
+        if (currentConfig.debugMode) {
+          console.log('[SSE] Added lobby_id parameter:', ctx.lobbyId);
+        }
       }
       if (ctx.sessionId && ctx.sessionId !== 'undefined') {
         params.set('session_id', ctx.sessionId);
-        debugLog('Added session_id parameter:', ctx.sessionId);
+        if (currentConfig.debugMode) {
+          console.log('[SSE] Added session_id parameter:', ctx.sessionId);
+        }
       }
 
       // Add boolean flags (only if explicitly true)
       if (ctx.isLobbyOwner === true) {
         params.set('is_lobby_owner', 'true');
-        debugLog('Added is_lobby_owner parameter: true');
+        if (currentConfig.debugMode) {
+          console.log('[SSE] Added is_lobby_owner parameter: true');
+        }
       }
       if (ctx.isActiveParticipant === true) {
         params.set('is_active_participant', 'true');
-        debugLog('Added is_active_participant parameter: true');
+        if (currentConfig.debugMode) {
+          console.log('[SSE] Added is_active_participant parameter: true');
+        }
       }
 
       // Add priority hint if provided
       if (ctx.priorityHint && ctx.priorityHint !== 'undefined') {
         params.set('priority_hint', ctx.priorityHint);
-        debugLog('Added priority_hint parameter:', ctx.priorityHint);
+        if (currentConfig.debugMode) {
+          console.log('[SSE] Added priority_hint parameter:', ctx.priorityHint);
+        }
       }
     } else {
-      debugLog('No session context provided in config');
+      if (currentConfig.debugMode) {
+        console.log('[SSE] No session context provided in config');
+      }
     }
 
     // Note: Authentication is handled via httpOnly cookies
@@ -280,11 +309,13 @@ export function useSSE(channels = [], options = {}) {
     const queryString = params.toString();
     const finalUrl = queryString ? `${baseUrl}?${queryString}` : baseUrl;
 
-    debugLog('Built SSE URL:', finalUrl);
-    debugLog('Query parameters:', queryString);
+    if (currentConfig.debugMode) {
+      console.log('[SSE] Built SSE URL:', finalUrl);
+      console.log('[SSE] Query parameters:', queryString);
+    }
 
     return finalUrl;
-  }, [channels, debugLog]); // Remove config dependencies to prevent recreation
+  }, [channels]); // Remove debugLog dependency to prevent recreation loops
 
   // Handle incoming SSE events
   const handleSSEEvent = useCallback((event) => {
@@ -571,17 +602,19 @@ export function useSSE(channels = [], options = {}) {
 
     } catch (error) {
       const enhancedError = new Error(`Failed to create SSE connection: ${error.message}. Check if EventSource is supported and API server is accessible.`);
-      debugLog('Failed to create SSE connection', { error, sseUrl: buildSSEUrl() });
+      const currentConfig = configRef.current;
+      if (currentConfig.debugMode) {
+        console.log('[SSE] Failed to create SSE connection', { error, sseUrl: buildSSEUrl() });
+      }
       isConnectingRef.current = false; // Reset connecting flag on exception
       setConnectionState(SSE_CONNECTION_STATES.ERROR);
       setError(enhancedError);
 
-      const currentConfig = configRef.current;
       if (!isUnmountedRef.current && currentConfig.autoReconnect) {
         scheduleReconnect();
       }
     }
-  }, [buildSSEUrl, handleSSEEvent, debugLog]); // Remove config dependency to prevent recreation
+  }, [buildSSEUrl, handleSSEEvent]); // Remove debugLog dependency to prevent recreation loops
 
   // Schedule reconnection with improved retry strategy
   const scheduleReconnect = useCallback(() => {
@@ -594,7 +627,9 @@ export function useSSE(channels = [], options = {}) {
 
       // Check if max retries exceeded
       if (newCount >= currentConfig.maxRetryAttempts) {
-        debugLog('Max retry attempts exceeded');
+        if (currentConfig.debugMode) {
+          console.log('[SSE] Max retry attempts exceeded');
+        }
         setConnectionState(SSE_CONNECTION_STATES.PERMANENTLY_FAILED);
         setError(new Error(`Failed to connect after ${currentConfig.maxRetryAttempts} attempts. Please check your network connection and try again.`));
         isConnectingRef.current = false; // Reset connecting flag
@@ -612,14 +647,18 @@ export function useSSE(channels = [], options = {}) {
       if (newCount <= currentConfig.fastRetryThreshold) {
         // Use faster, fixed delay for first few attempts (better UX)
         delay = currentConfig.initialRetryDelay;
-        debugLog(`Fast retry attempt ${newCount}/${currentConfig.fastRetryThreshold} in ${delay}ms`);
+        if (currentConfig.debugMode) {
+          console.log(`[SSE] Fast retry attempt ${newCount}/${currentConfig.fastRetryThreshold} in ${delay}ms`);
+        }
       } else {
         // Use exponential backoff for subsequent attempts
         delay = Math.min(
           currentRetryDelayRef.current,
           currentConfig.maxRetryDelay
         );
-        debugLog(`Exponential backoff retry attempt ${newCount} in ${delay}ms`);
+        if (currentConfig.debugMode) {
+          console.log(`[SSE] Exponential backoff retry attempt ${newCount} in ${delay}ms`);
+        }
       }
 
       // ✅ IMPROVED: Better user feedback during retry process
@@ -643,7 +682,7 @@ export function useSSE(channels = [], options = {}) {
 
       return newCount;
     });
-  }, [connect, debugLog]); // Remove config dependency
+  }, [connect]); // Remove debugLog dependency to prevent loops
 
   // Set up scheduleReconnectRef for heartbeat timeout usage
   useEffect(() => {
@@ -652,7 +691,10 @@ export function useSSE(channels = [], options = {}) {
 
   // Reconnect manually (resets retry count)
   const reconnect = useCallback(() => {
-    debugLog('Manual reconnection requested');
+    const currentConfig = configRef.current;
+    if (currentConfig.debugMode) {
+      console.log('[SSE] Manual reconnection requested');
+    }
 
     // Close existing connection
     if (eventSourceRef.current) {
@@ -664,15 +706,17 @@ export function useSSE(channels = [], options = {}) {
     setRetryCount(0);
     setFallbackActive(false);
     // Read current config to avoid dependency issues
-    const currentConfig = configRef.current;
     currentRetryDelayRef.current = currentConfig.initialRetryDelay;
 
     connect();
-  }, [connect, clearTimers, debugLog]); // Remove config dependency
+  }, [connect, clearTimers]); // Remove debugLog dependency
 
   // Disconnect from SSE
   const disconnect = useCallback(() => {
-    debugLog('Disconnecting from SSE');
+    const currentConfig = configRef.current;
+    if (currentConfig.debugMode) {
+      console.log('[SSE] Disconnecting from SSE');
+    }
 
     setConnectionState(SSE_CONNECTION_STATES.DISCONNECTED);
     clearTimers();
@@ -686,9 +730,8 @@ export function useSSE(channels = [], options = {}) {
     setRetryCount(0);
     setFallbackActive(false);
     // Read current config to avoid dependency issues
-    const currentConfig = configRef.current;
     currentRetryDelayRef.current = currentConfig.initialRetryDelay;
-  }, [clearTimers, debugLog]); // Remove config dependency
+  }, [clearTimers]); // Remove debugLog dependency
 
   // Start fallback polling (if SSE completely fails)
   const startFallback = useCallback(() => {
@@ -696,15 +739,19 @@ export function useSSE(channels = [], options = {}) {
     const currentConfig = configRef.current;
     if (!currentConfig.enableFallback || fallbackIntervalRef.current) return;
 
-    debugLog('Starting fallback polling');
+    if (currentConfig.debugMode) {
+      console.log('[SSE] Starting fallback polling');
+    }
     setFallbackActive(true);
 
     fallbackIntervalRef.current = setInterval(() => {
       // Placeholder for fallback polling logic
       // This would typically call specific API endpoints to get updates
-      debugLog('Fallback polling tick (not implemented yet)');
+      if (currentConfig.debugMode) {
+        console.log('[SSE] Fallback polling tick (not implemented yet)');
+      }
     }, currentConfig.fallbackInterval);
-  }, [debugLog]); // Remove config dependencies
+  }, []); // Remove debugLog dependency
 
   // Add event handler for specific event type
   const addEventListener = useCallback((eventType, handler) => {
@@ -743,15 +790,20 @@ export function useSSE(channels = [], options = {}) {
     if (!currentConfig.pauseOnHidden) return;
 
     const handleVisibilityChange = () => {
+      const currentConfig = configRef.current;
       if (document.hidden) {
-        debugLog('Page hidden - pausing SSE connection');
+        if (currentConfig.debugMode) {
+          console.log('[SSE] Page hidden - pausing SSE connection');
+        }
         if (eventSourceRef.current) {
           eventSourceRef.current.close();
           eventSourceRef.current = null;
         }
         clearTimers();
       } else {
-        debugLog('Page visible - resuming SSE connection');
+        if (currentConfig.debugMode) {
+          console.log('[SSE] Page visible - resuming SSE connection');
+        }
         const latestConfig = configRef.current;
         if (latestConfig.autoReconnect) {
           connect();
@@ -761,7 +813,7 @@ export function useSSE(channels = [], options = {}) {
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [connect, clearTimers, debugLog]); // Remove config dependencies
+  }, [connect, clearTimers]); // Remove debugLog dependency
 
   // Extract stable gameId and debugMode to prevent reconnections when config object changes
   const gameId = options.sessionContext?.gameId;

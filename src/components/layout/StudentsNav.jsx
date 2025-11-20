@@ -4,7 +4,9 @@ import { GraduationCap, Keyboard, QrCode, CameraOff, AlertTriangle } from 'lucid
 import PropTypes from 'prop-types';
 import { useUser } from '@/contexts/UserContext';
 import { Button } from '@/components/ui/button';
-import { checkCameraAvailability, scanQRCode } from '@/utils/qrScannerUtils';
+import ConfirmationDialog from '@/components/ui/confirmation-dialog';
+import { checkCameraAvailability } from '@/utils/qrScannerUtils';
+import { useActivityCodeHandler } from '@/hooks/useActivityCodeHandler';
 import logo from '../../assets/images/logo.png';
 
 /**
@@ -14,6 +16,7 @@ import logo from '../../assets/images/logo.png';
 const StudentsNav = ({ teacherInfo = null }) => {
   const { settings, currentUser } = useUser();
   const [isCameraAvailable, setIsCameraAvailable] = useState(false);
+  const [confirmationDialog, setConfirmationDialog] = useState({ isOpen: false });
 
   // Check camera availability on component mount (without opening camera)
   React.useEffect(() => {
@@ -25,42 +28,21 @@ const StudentsNav = ({ teacherInfo = null }) => {
     checkCamera();
   }, []);
 
-  const [codeInput, setCodeInput] = useState('');
+  // Use the activity code handler hook
+  const {
+    codeInput,
+    isLoading,
+    handleCodeInputChange,
+    handleCodeInputKeyDown,
+    handleCodeEntry,
+    handleQRScan,
+    isInputValid
+  } = useActivityCodeHandler({
+    showConfirmationDialog: setConfirmationDialog
+  });
 
   const handleEnterCode = () => {
-    if (codeInput.trim().length === 6) {
-      // TODO: Implement code entry functionality
-      console.log('Enter code with:', codeInput);
-    } else {
-      console.log('Code must be 6 characters');
-    }
-  };
-
-  const handleQRScan = async () => {
-    await scanQRCode({
-      onSuccess: (result) => {
-        console.log('QR scan successful from StudentsNav:', result);
-        // The utility will handle navigation automatically
-      },
-      onError: (error) => {
-        console.error('QR scan failed from StudentsNav:', error);
-        // TODO: Show user-friendly error message
-        alert(error);
-      }
-    });
-  };
-
-  const handleCodeInputChange = (e) => {
-    const value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-    if (value.length <= 6) {
-      setCodeInput(value);
-    }
-  };
-
-  const handleCodeInputKeyDown = (e) => {
-    if (e.key === 'Enter' && codeInput.length === 6) {
-      handleEnterCode();
-    }
+    handleCodeEntry();
   };
 
   return (
@@ -117,16 +99,16 @@ const StudentsNav = ({ teacherInfo = null }) => {
                 value={codeInput}
                 onChange={handleCodeInputChange}
                 onKeyDown={handleCodeInputKeyDown}
-                placeholder="ABC123"
-                maxLength={6}
+                placeholder="ABC12345"
+                maxLength={8}
                 className="w-16 h-8 text-center text-sm font-bold uppercase border-2 border-purple-300 rounded-lg focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all duration-200 bg-gradient-to-br from-white to-purple-50"
-                title="מכניסים קוד כדי להתחבר למורה או למשחק"
+                title="קוד פעילות (6 תווים ללובי משחק או 8 תווים לפורטל מורה)"
               />
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleEnterCode}
-                disabled={codeInput.length !== 6}
+                disabled={!isInputValid() || isLoading}
                 className="h-8 px-2 border-purple-200 text-purple-600 hover:bg-purple-50 disabled:opacity-50"
                 title="הזן קוד"
               >
@@ -156,6 +138,22 @@ const StudentsNav = ({ teacherInfo = null }) => {
           </div>
         </div>
       </div>
+
+      {/* Confirmation Dialog for error messages */}
+      <ConfirmationDialog
+        isOpen={confirmationDialog.isOpen}
+        onClose={() => setConfirmationDialog({ isOpen: false })}
+        onConfirm={confirmationDialog.onConfirm || (() => setConfirmationDialog({ isOpen: false }))}
+        title={confirmationDialog.title}
+        message={confirmationDialog.message}
+        variant={confirmationDialog.variant || 'warning'}
+        confirmText={confirmationDialog.confirmText || 'בסדר'}
+        cancelText={confirmationDialog.cancelText}
+        operationStatus={confirmationDialog.operationStatus}
+        loadingMessage={confirmationDialog.loadingMessage}
+        successMessage={confirmationDialog.successMessage}
+        errorMessage={confirmationDialog.errorMessage}
+      />
     </nav>
   );
 };

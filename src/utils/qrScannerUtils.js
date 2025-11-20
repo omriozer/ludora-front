@@ -251,78 +251,26 @@ export const openQRScanner = async ({ onSuccess, onError, onClose }) => {
   }
 };
 
-/**
- * Handle QR scan result and navigate/process accordingly
- * @param {string} scannedData - The scanned QR code data
- * @returns {Promise<{success: boolean, action?: string, error?: string}>}
- */
-export const handleQRScanResult = async (scannedData) => {
-  try {
-    console.log('Processing QR scan result:', scannedData);
-
-    // Check if it's a Ludora portal URL
-    const portalMatch = scannedData.match(/my\.ludora\.app\/portal\/([A-Z0-9]{6})/i);
-    if (portalMatch) {
-      const invitationCode = portalMatch[1];
-      console.log('Found teacher portal code:', invitationCode);
-      // TODO: Navigate to teacher catalog
-      window.location.href = `/portal/${invitationCode}`;
-      return { success: true, action: 'teacher_portal' };
-    }
-
-    // Check if it's a game lobby URL
-    const gameMatch = scannedData.match(/my\.ludora\.app\/play\/([A-Z0-9]{6})/i);
-    if (gameMatch) {
-      const lobbyCode = gameMatch[1];
-      console.log('Found game lobby code:', lobbyCode);
-      // TODO: Navigate to game lobby
-      window.location.href = `/play/${lobbyCode}`;
-      return { success: true, action: 'game_lobby' };
-    }
-
-    // Check if it's just a 6-character code
-    const codeMatch = scannedData.match(/^[A-Z0-9]{6}$/i);
-    if (codeMatch) {
-      const code = codeMatch[0].toUpperCase();
-      console.log('Found 6-character code:', code);
-      // TODO: Determine if it's a teacher code or game code and navigate accordingly
-      // For now, assume it could be either
-      return { success: true, action: 'code_detected', data: code };
-    }
-
-    // Unrecognized format
-    return {
-      success: false,
-      error: 'QR code format not recognized. Please scan a valid Ludora QR code.'
-    };
-
-  } catch (error) {
-    console.error('Failed to process QR scan result:', error);
-    return {
-      success: false,
-      error: 'Failed to process scanned QR code'
-    };
-  }
-};
+// Note: handleQRScanResult has been moved to @/utils/codeResolver
+// Components should use the useActivityCodeHandler hook or import directly from codeResolver
 
 /**
  * Main function to handle QR scanning workflow
- * This is the primary function that components should use
+ * This is a simplified version that just handles the camera scanning.
+ * Components should handle the QR result processing via useActivityCodeHandler hook.
+ *
  * @param {Object} options - Scanning options
- * @param {Function} options.onSuccess - Called when scanning succeeds with result
+ * @param {Function} options.onSuccess - Called when scanning succeeds with raw QR data
  * @param {Function} options.onError - Called when an error occurs
  * @returns {Promise<void>}
  */
 export const scanQRCode = async ({ onSuccess, onError } = {}) => {
   try {
     const scannerResult = await openQRScanner({
-      onSuccess: async (scannedData) => {
-        const result = await handleQRScanResult(scannedData);
-        if (result.success) {
-          if (onSuccess) onSuccess(result);
-        } else {
-          if (onError) onError(result.error);
-        }
+      onSuccess: (scannedData) => {
+        // Just return the raw scanned data, let the component handle processing
+        console.log('QR Code scanned:', scannedData);
+        if (onSuccess) onSuccess(scannedData);
       },
       onError: (error) => {
         if (onError) onError(error);
@@ -347,6 +295,5 @@ export default {
   requestCameraPermission,
   stopCameraStream,
   openQRScanner,
-  handleQRScanResult,
   scanQRCode
 };

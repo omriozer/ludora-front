@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GamepadIcon, PuzzleIcon, BookOpenIcon, StarIcon, Keyboard, QrCode, CameraOff, ChevronDown, GraduationCap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import ConfirmationDialog from '@/components/ui/confirmation-dialog';
 import { useUser } from '@/contexts/UserContext';
-import { checkCameraAvailability, scanQRCode } from '@/utils/qrScannerUtils';
+import { checkCameraAvailability } from '@/utils/qrScannerUtils';
+import { useActivityCodeHandler } from '@/hooks/useActivityCodeHandler';
 import logo from '../../assets/images/logo.png';
 
 /**
@@ -12,9 +14,22 @@ import logo from '../../assets/images/logo.png';
 const StudentHome = () => {
   const { settings } = useUser();
   const [isCameraAvailable, setIsCameraAvailable] = useState(false);
-  const [codeInput, setCodeInput] = useState('');
   const [showScrollArrow, setShowScrollArrow] = useState(true);
+  const [confirmationDialog, setConfirmationDialog] = useState({ isOpen: false });
   const actionSectionRef = useRef(null);
+
+  // Use the activity code handler hook
+  const {
+    codeInput,
+    isLoading,
+    handleCodeInputChange,
+    handleCodeInputKeyDown,
+    handleCodeEntry,
+    handleQRScan,
+    isInputValid
+  } = useActivityCodeHandler({
+    showConfirmationDialog: setConfirmationDialog
+  });
 
   // Check camera availability on component mount (without opening camera)
   useEffect(() => {
@@ -60,39 +75,7 @@ const StudentHome = () => {
   };
 
   const handleEnterCode = () => {
-    if (codeInput.trim().length === 6) {
-      // TODO: Implement code entry functionality
-      console.log('Enter code with:', codeInput);
-    } else {
-      console.log('Code must be 6 characters');
-    }
-  };
-
-  const handleQRScan = async () => {
-    await scanQRCode({
-      onSuccess: (result) => {
-        console.log('QR scan successful from StudentHome:', result);
-        // The utility will handle navigation automatically
-      },
-      onError: (error) => {
-        console.error('QR scan failed from StudentHome:', error);
-        // TODO: Show user-friendly error message
-        alert(error);
-      }
-    });
-  };
-
-  const handleCodeInputChange = (e) => {
-    const value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-    if (value.length <= 6) {
-      setCodeInput(value);
-    }
-  };
-
-  const handleCodeInputKeyDown = (e) => {
-    if (e.key === 'Enter' && codeInput.length === 6) {
-      handleEnterCode();
-    }
+    handleCodeEntry();
   };
   return (
     <>
@@ -198,14 +181,14 @@ const StudentHome = () => {
                       value={codeInput}
                       onChange={handleCodeInputChange}
                       onKeyDown={handleCodeInputKeyDown}
-                      placeholder="ABC123"
-                      maxLength={6}
+                      placeholder="ABC12345"
+                      maxLength={8}
                       className="w-32 h-12 text-center text-xl font-bold uppercase border-3 border-purple-300 rounded-xl focus:border-purple-500 focus:ring-4 focus:ring-purple-200 transition-all duration-300 bg-gradient-to-br from-white to-purple-50 shadow-lg"
-                      title="הכניסו קוד בן 6 תווים"
+                      title="הכניסו קוד פעילות (6 תווים ללובי משחק או 8 תווים לפורטל מורה)"
                     />
                     <Button
                       onClick={handleEnterCode}
-                      disabled={codeInput.length !== 6}
+                      disabled={!isInputValid() || isLoading}
                       className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-bold py-3 px-8 rounded-2xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                     >
                       <Keyboard className="w-5 h-5" />
@@ -282,6 +265,22 @@ const StudentHome = () => {
         </div>
       )}
     </div>
+
+    {/* Confirmation Dialog for error messages */}
+    <ConfirmationDialog
+      isOpen={confirmationDialog.isOpen}
+      onClose={() => setConfirmationDialog({ isOpen: false })}
+      onConfirm={confirmationDialog.onConfirm || (() => setConfirmationDialog({ isOpen: false }))}
+      title={confirmationDialog.title}
+      message={confirmationDialog.message}
+      variant={confirmationDialog.variant || 'warning'}
+      confirmText={confirmationDialog.confirmText || 'בסדר'}
+      cancelText={confirmationDialog.cancelText}
+      operationStatus={confirmationDialog.operationStatus}
+      loadingMessage={confirmationDialog.loadingMessage}
+      successMessage={confirmationDialog.successMessage}
+      errorMessage={confirmationDialog.errorMessage}
+    />
     </>
   );
 };
