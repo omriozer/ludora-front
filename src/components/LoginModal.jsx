@@ -12,7 +12,7 @@ import { APP_VERSION } from "@/constants/version";
 import { useUser } from "@/contexts/UserContext";
 
 export default function LoginModal({ onClose, onLogin, message }) {
-  const { playerLogin } = useUser();
+  const { playerLogin, settings } = useUser();
 
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isPlayerLoggingIn, setIsPlayerLoggingIn] = useState(false);
@@ -159,18 +159,21 @@ export default function LoginModal({ onClose, onLogin, message }) {
             </Label>
           </div>
 
-          {/* Divider */}
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-gray-300" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white px-2 text-gray-500">או</span>
-            </div>
-          </div>
+          {/* Conditionally show player login section - hide during maintenance mode */}
+          {!settings?.maintenance_mode && (
+            <>
+              {/* Divider */}
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-gray-300" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-white px-2 text-gray-500">או</span>
+                </div>
+              </div>
 
-          {/* Student/Player Login Section */}
-          <div className="space-y-4">
+              {/* Student/Player Login Section */}
+              <div className="space-y-4">
             <div className="text-center">
               <h3 className="text-lg font-semibold text-gray-900 flex items-center justify-center gap-2">
                 <GamepadIcon className="w-5 h-5 text-purple-600" />
@@ -227,6 +230,8 @@ export default function LoginModal({ onClose, onLogin, message }) {
               </Button>
             </form>
           </div>
+            </>
+          )}
 
           <div className="text-center text-sm text-gray-500 mt-4">
             על ידי התחברות, אתם מסכימים ל
