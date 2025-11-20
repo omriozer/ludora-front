@@ -4,19 +4,27 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { X, Loader2, AlertCircle } from "lucide-react";
+import { X, Loader2, AlertCircle, GamepadIcon } from "lucide-react";
 import { cerror } from "@/lib/utils";
 import { APP_VERSION } from "@/constants/version";
+import { useUser } from "@/contexts/UserContext";
 
 export default function LoginModal({ onClose, onLogin, message }) {
+  const { playerLogin } = useUser();
+
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isPlayerLoggingIn, setIsPlayerLoggingIn] = useState(false);
   const [error, setError] = useState('');
+  const [playerError, setPlayerError] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
+  const [privacyCode, setPrivacyCode] = useState('');
 
   const handleGoogleSignIn = async () => {
     setIsLoggingIn(true);
     setError('');
+    setPlayerError(''); // Clear player errors when switching to user login
 
     try {
       await onLogin(rememberMe);
@@ -25,7 +33,7 @@ export default function LoginModal({ onClose, onLogin, message }) {
       cerror('Google sign-in error:', err);
 
       let errorMessage = 'שגיאה בכניסה. נסו שוב.';
-      
+
       if (err.message) {
         if (err.message.includes('popup-closed-by-user')) {
           errorMessage = 'ההתחברות בוטלה על ידי המשתמש.';
@@ -35,10 +43,47 @@ export default function LoginModal({ onClose, onLogin, message }) {
           errorMessage = 'בעיה בהגדרות הזיהוי. צרו קשר עם התמיכה.';
         }
       }
-      
+
       setError(errorMessage);
     } finally {
       setIsLoggingIn(false);
+    }
+  };
+
+  const handlePlayerLogin = async (e) => {
+    e.preventDefault();
+
+    if (!privacyCode.trim()) {
+      setPlayerError('אנא הזינו קוד פרטיות');
+      return;
+    }
+
+    setIsPlayerLoggingIn(true);
+    setPlayerError('');
+    setError(''); // Clear user errors when switching to player login
+
+    try {
+      await playerLogin(privacyCode.trim().toUpperCase());
+      // Close modal on successful player login
+      onClose();
+    } catch (err) {
+      cerror('Player login error:', err);
+
+      let errorMessage = 'קוד פרטיות שגוי או לא קיים. אנא בדוק את הקוד ונסה שוב.';
+
+      if (err.message) {
+        if (err.message.includes('Invalid privacy code')) {
+          errorMessage = 'קוד הפרטיות שהוזן אינו תקין';
+        } else if (err.message.includes('Player not found')) {
+          errorMessage = 'לא נמצא שחקן עם קוד זה';
+        } else if (err.message.includes('Network Error')) {
+          errorMessage = 'בעיית רשת. אנא בדוק את החיבור לאינטרנט';
+        }
+      }
+
+      setPlayerError(errorMessage);
+    } finally {
+      setIsPlayerLoggingIn(false);
     }
   };
 
@@ -106,14 +151,83 @@ export default function LoginModal({ onClose, onLogin, message }) {
               checked={rememberMe}
               onCheckedChange={setRememberMe}
             />
-            <Label 
-              htmlFor="remember-me" 
+            <Label
+              htmlFor="remember-me"
               className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
             >
               זכור אותי במחשב זה
             </Label>
           </div>
-          
+
+          {/* Divider */}
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-gray-300" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-white px-2 text-gray-500">או</span>
+            </div>
+          </div>
+
+          {/* Student/Player Login Section */}
+          <div className="space-y-4">
+            <div className="text-center">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center justify-center gap-2">
+                <GamepadIcon className="w-5 h-5 text-purple-600" />
+                התחברות תלמיד
+              </h3>
+              <p className="text-sm text-gray-600 mt-1">
+                הזינו את קוד הפרטיות שקיבלתם מהמורה
+              </p>
+            </div>
+
+            {playerError && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="text-right">
+                  {playerError}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <form onSubmit={handlePlayerLogin} className="space-y-4">
+              <div>
+                <Label htmlFor="privacy-code" className="text-sm font-medium text-gray-700">
+                  קוד פרטיות (8 תווים)
+                </Label>
+                <Input
+                  id="privacy-code"
+                  type="text"
+                  value={privacyCode}
+                  onChange={(e) => setPrivacyCode(e.target.value.toUpperCase())}
+                  placeholder="לדוגמה: AB3X7KM9"
+                  maxLength={8}
+                  className="mt-1 text-center uppercase font-mono tracking-wider"
+                  disabled={isPlayerLoggingIn}
+                  autoComplete="off"
+                />
+              </div>
+
+              <Button
+                type="submit"
+                disabled={isPlayerLoggingIn || !privacyCode.trim()}
+                className="w-full h-12 bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center gap-3"
+              >
+                {isPlayerLoggingIn ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    מתחבר...
+                  </>
+                ) : (
+                  <>
+                    <GamepadIcon className="w-5 h-5" />
+                    התחבר כתלמיד
+                  </>
+                )}
+              </Button>
+            </form>
+          </div>
+
           <div className="text-center text-sm text-gray-500 mt-4">
             על ידי התחברות, אתם מסכימים ל
             <Link

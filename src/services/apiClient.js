@@ -780,6 +780,67 @@ export const User = {
   }
 };
 
+// Player authentication API for anonymous student authentication
+export const Player = {
+  /**
+   * Login with privacy code for anonymous player authentication
+   * @param {Object} data - Login data
+   * @param {string} data.privacy_code - 8-character privacy code
+   * @returns {Promise<Object>} Login response with player data
+   */
+  async login(data) {
+    clog('🎮 Player.login called with privacy code:', data.privacy_code);
+    return apiRequest('/players/login', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  },
+
+  /**
+   * Logout current player session
+   * @returns {Promise<Object>} Logout response
+   */
+  async logout() {
+    clog('🎮 Player.logout called');
+    return apiRequest('/players/logout', {
+      method: 'POST'
+    });
+  },
+
+  /**
+   * Get current player information (equivalent to User.getCurrentUser)
+   * @param {boolean} suppressUserErrors - Whether to suppress error messages
+   * @returns {Promise<Object>} Current player data
+   */
+  async getCurrentPlayer(suppressUserErrors = false) {
+    clog('🎮 Player.getCurrentPlayer called');
+    return apiRequest('/players/me', { suppressUserErrors });
+  },
+
+  /**
+   * Update current player profile
+   * @param {Object} data - Profile updates
+   * @param {string} data.display_name - Updated display name
+   * @param {Object} data.preferences - Updated preferences
+   * @param {Array} data.achievements - Updated achievements
+   * @returns {Promise<Object>} Updated player data
+   */
+  async updateProfile(data) {
+    clog('🎮 Player.updateProfile called with data:', data);
+    return apiRequest('/players/update-profile', {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  },
+
+  /**
+   * Alias for getCurrentPlayer for consistency with User API
+   */
+  get me() {
+    return this.getCurrentPlayer;
+  }
+};
+
 // Unified Product API for all product types
 export const ProductAPI = {
   async create(data) {

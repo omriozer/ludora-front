@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { User, SubscriptionPlan, SubscriptionHistory, Settings } from '@/services/apiClient';
+import { User, SubscriptionPlan, SubscriptionHistory, Settings, Player } from '@/services/apiClient';
 import { loadSettingsWithRetry } from '@/lib/appUser';
 import { clog, cerror } from '@/lib/utils';
 import { toast } from '@/components/ui/use-toast';
@@ -18,12 +18,15 @@ export function useUser() {
 
 export function UserProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
+  const [currentPlayer, setCurrentPlayer] = useState(null);
   const [settings, setSettings] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isPlayerAuthenticated, setIsPlayerAuthenticated] = useState(false);
   const [settingsLoading, setSettingsLoading] = useState(true);
   const [settingsLoadFailed, setSettingsLoadFailed] = useState(false);
   const [userDataFresh, setUserDataFresh] = useState(false);
+  const [playerDataFresh, setPlayerDataFresh] = useState(false);
 
   // Retry mechanism for settings loading
   const retryIntervalRef = useRef(null);
@@ -114,14 +117,36 @@ export function UserProvider({ children }) {
         settingsLoaded: !!activeSettings
       });
 
-      // Skip authentication attempt if on student portal with invite_only access
+      // Check both user and player sessions simultaneously
+      const [userResult, playerResult] = await Promise.allSettled([
+        checkUserSession(activeSettings, onStudentPortal, studentsAccess),
+        checkPlayerSession()
+      ]);
+
+      if (userResult.status === 'rejected') {
+        cerror('[UserContext] User session check failed:', userResult.reason);
+      }
+      if (playerResult.status === 'rejected') {
+        cerror('[UserContext] Player session check failed:', playerResult.reason);
+      }
+    } catch (error) {
+      cerror('[UserContext] Error in authentication check:', error);
+      // Clear all auth state directly
+      clearAllAuthState();
+    } finally {
+      setIsLoading(false);
+    }
+  }, []); // FIXED: Remove settings dependency to break circular dependency
+
+  const checkUserSession = useCallback(async (activeSettings, onStudentPortal, studentsAccess) => {
+    try {
+      // Skip user authentication attempt if on student portal with invite_only access
       if (onStudentPortal && studentsAccess === 'invite_only') {
-        clog('[UserContext] 🚫 Skipping authentication - student portal in invite_only mode (code in URL = access)');
-        // Clear auth state and mark as ready
+        clog('[UserContext] 🚫 Skipping user authentication - student portal in invite_only mode (code in URL = access)');
+        // Clear user auth state and mark as ready
         setCurrentUser(null);
         setIsAuthenticated(false);
         setUserDataFresh(true); // Mark as ready for invite-only access
-        setIsLoading(false);
         return;
       }
 
@@ -130,7 +155,7 @@ export function UserProvider({ children }) {
       // If the session is valid, the API will return user data
       // If invalid/expired, the API will return an error
 
-      clog('[UserContext] 🔄 Checking authentication via cookie-based session...');
+      clog('[UserContext] 🔄 Checking user authentication via cookie-based session...');
 
       try {
         clog('[UserContext] 🔄 Calling User.getCurrentUser() with suppressUserErrors=true...');
@@ -146,7 +171,7 @@ export function UserProvider({ children }) {
           localStorage.setItem('lastActivity', new Date().getTime().toString());
         } else {
           clog('[UserContext] ℹ️ User.getCurrentUser() returned null/undefined - no authenticated user found');
-          // Clear auth state directly
+          // Clear user auth state directly
           setCurrentUser(null);
           setIsAuthenticated(false);
           setUserDataFresh(false);
@@ -154,9 +179,7 @@ export function UserProvider({ children }) {
       } catch (getCurrentUserError) {
         // Use clog instead of cerror for legitimate non-authenticated states
         clog('[UserContext] ℹ️ No authenticated user found:', getCurrentUserError.message);
-        clog('[UserContext] 📊 Authentication check details:', {
-          onStudentPortal,
-          studentsAccess,
+        clog('[UserContext] 📊 User authentication check details:', {
           errorName: getCurrentUserError.name,
           errorMessage: getCurrentUserError.message
         });
@@ -167,15 +190,66 @@ export function UserProvider({ children }) {
         setUserDataFresh(false);
       }
     } catch (error) {
-      cerror('[UserContext] Error in authentication check:', error);
-      // Clear auth state directly
+      cerror('[UserContext] Error in user session check:', error);
+      // Clear user auth state directly
       setCurrentUser(null);
       setIsAuthenticated(false);
       setUserDataFresh(false);
-    } finally {
-      setIsLoading(false);
     }
-  }, []); // FIXED: Remove settings dependency to break circular dependency
+  }, []);
+
+  const checkPlayerSession = useCallback(async () => {
+    try {
+      clog('[UserContext] 🎮 Checking player authentication via cookie-based session...');
+
+      try {
+        // Check for player session using Player API client
+        const player = await Player.getCurrentPlayer(true); // Suppress errors for initial check
+        clog('[UserContext] 🎮 Player.getCurrentPlayer() response:', player);
+
+        if (player) {
+          clog('[UserContext] ✅ Player.getCurrentPlayer() succeeded, setting player state...');
+          setCurrentPlayer(player);
+          setIsPlayerAuthenticated(true);
+          setPlayerDataFresh(true);
+          // Update activity for player as well
+          localStorage.setItem('lastActivity', new Date().getTime().toString());
+        } else {
+          clog('[UserContext] ℹ️ Player.getCurrentPlayer() returned null/undefined - no authenticated player found');
+          // Clear player auth state directly
+          setCurrentPlayer(null);
+          setIsPlayerAuthenticated(false);
+          setPlayerDataFresh(false);
+        }
+      } catch (getCurrentPlayerError) {
+        // Use clog instead of cerror for legitimate non-authenticated states
+        clog('[UserContext] ℹ️ No authenticated player found:', getCurrentPlayerError.message);
+        clog('[UserContext] 📊 Player authentication check details:', {
+          errorName: getCurrentPlayerError.name,
+          errorMessage: getCurrentPlayerError.message
+        });
+        // Clear player auth state
+        setCurrentPlayer(null);
+        setIsPlayerAuthenticated(false);
+        setPlayerDataFresh(false);
+      }
+    } catch (error) {
+      cerror('[UserContext] Error in player session check:', error);
+      // Clear player auth state
+      setCurrentPlayer(null);
+      setIsPlayerAuthenticated(false);
+      setPlayerDataFresh(false);
+    }
+  }, []);
+
+  const clearAllAuthState = useCallback(() => {
+    setCurrentUser(null);
+    setIsAuthenticated(false);
+    setUserDataFresh(false);
+    setCurrentPlayer(null);
+    setIsPlayerAuthenticated(false);
+    setPlayerDataFresh(false);
+  }, []);
 
   // Check for persisted auth state on mount and load settings
   useEffect(() => {
@@ -470,9 +544,51 @@ export function UserProvider({ children }) {
     }
   }, [loadUserData]);
 
+  const playerLogin = useCallback(async (privacyCode) => {
+    try {
+      clog('[UserContext] 🎮 Starting player login with privacy code:', privacyCode);
+
+      // Call player login API
+      const response = await Player.login({ privacy_code: privacyCode });
+
+      if (response.success && response.player) {
+        clog('[UserContext] ✅ Player logged in successfully:', response.player.display_name);
+
+        // Set player state
+        setCurrentPlayer(response.player);
+        setIsPlayerAuthenticated(true);
+        setPlayerDataFresh(true);
+
+        updateLastActivity();
+
+        // Show success message
+        toast({
+          title: "התחברת בהצלחה! 🎮",
+          description: `ברוך הבא ${response.player.display_name}`,
+          variant: "default",
+        });
+
+        return response.player;
+      } else {
+        throw new Error('Invalid response from server');
+      }
+    } catch (error) {
+      cerror('[UserContext] Player login error:', error);
+
+      // Show user-friendly error message
+      toast({
+        title: "שגיאה בהתחברות 🎮",
+        description: "קוד פרטיות שגוי או לא קיים. אנא בדוק את הקוד ונסה שוב.",
+        variant: "destructive",
+      });
+
+      throw error;
+    }
+  }, []);
+
   const logout = useCallback(async () => {
     try {
-      // Call API logout if available
+      // Call API logout if available (handles user logout)
       const { logout: apiLogout } = await import('@/services/apiClient');
       await apiLogout();
     } catch (error) {
@@ -482,8 +598,45 @@ export function UserProvider({ children }) {
     }
   }, []);
 
+  const playerLogout = useCallback(async () => {
+    try {
+      clog('[UserContext] 🎮 Starting player logout');
+
+      // Call player logout API
+      await Player.logout();
+
+      clog('[UserContext] ✅ Player logged out successfully');
+
+      // Clear player state
+      setCurrentPlayer(null);
+      setIsPlayerAuthenticated(false);
+      setPlayerDataFresh(false);
+
+      // Show success message
+      toast({
+        title: "התנתקת בהצלחה! 👋",
+        description: "תודה שיצא לך להשתמש במערכת",
+        variant: "default",
+      });
+    } catch (error) {
+      cerror('[UserContext] Player logout error:', error);
+
+      // Still clear local state even if API call fails
+      setCurrentPlayer(null);
+      setIsPlayerAuthenticated(false);
+      setPlayerDataFresh(false);
+
+      // Show error message
+      toast({
+        title: "שגיאה בהתנתקות 🎮",
+        description: "בעיה בהתנתקות, אך המערכת נוקתה מקומית.",
+        variant: "destructive",
+      });
+    }
+  }, []);
+
   const clearAuth = useCallback(() => {
-    clog('[UserContext] Clearing authentication - user will be logged out');
+    clog('[UserContext] Clearing user authentication - user will be logged out');
     setCurrentUser(null);
     // Don't clear settings - they should remain available for non-logged-in users
     setIsAuthenticated(false);
@@ -509,6 +662,13 @@ export function UserProvider({ children }) {
     }
   }, []);
 
+  const clearPlayerAuth = useCallback(() => {
+    clog('[UserContext] 🎮 Clearing player authentication - player will be logged out');
+    setCurrentPlayer(null);
+    setIsPlayerAuthenticated(false);
+    setPlayerDataFresh(false);
+  }, []);
+
   const updateLastActivity = useCallback(() => {
     // Keep activity tracking for analytics/UX purposes (not for authentication)
     localStorage.setItem('lastActivity', new Date().getTime().toString());
@@ -518,9 +678,39 @@ export function UserProvider({ children }) {
     setCurrentUser(prev => ({ ...prev, ...updatedUserData }));
   }, []);
 
-  // Update last activity on user interactions
+  const updatePlayer = useCallback((updatedPlayerData) => {
+    setCurrentPlayer(prev => ({ ...prev, ...updatedPlayerData }));
+  }, []);
+
+  // Helper functions to determine current entity type
+  const isUserSession = useCallback(() => {
+    return isAuthenticated && !!currentUser && !isPlayerAuthenticated;
+  }, [isAuthenticated, currentUser, isPlayerAuthenticated]);
+
+  const isPlayerSession = useCallback(() => {
+    return isPlayerAuthenticated && !!currentPlayer && !isAuthenticated;
+  }, [isPlayerAuthenticated, currentPlayer, isAuthenticated]);
+
+  const getCurrentEntity = useCallback(() => {
+    if (isUserSession()) {
+      return { type: 'user', entity: currentUser };
+    } else if (isPlayerSession()) {
+      return { type: 'player', entity: currentPlayer };
+    }
+    return { type: null, entity: null };
+  }, [isUserSession, isPlayerSession, currentUser, currentPlayer]);
+
+  const hasAnyAuthentication = useCallback(() => {
+    return isAuthenticated || isPlayerAuthenticated;
+  }, [isAuthenticated, isPlayerAuthenticated]);
+
+  const isFullyLoaded = useCallback(() => {
+    return userDataFresh || playerDataFresh || (!isAuthenticated && !isPlayerAuthenticated);
+  }, [userDataFresh, playerDataFresh, isAuthenticated, isPlayerAuthenticated]);
+
+  // Update last activity on user interactions (for both users and players)
   useEffect(() => {
-    if (isAuthenticated) {
+    if (hasAnyAuthentication()) {
       const handleActivity = () => updateLastActivity();
 
       document.addEventListener('click', handleActivity);
@@ -531,21 +721,44 @@ export function UserProvider({ children }) {
         document.removeEventListener('keypress', handleActivity);
       };
     }
-  }, [isAuthenticated, updateLastActivity]);
+  }, [hasAnyAuthentication, updateLastActivity]);
 
   const value = {
+    // User state
     currentUser,
+    isAuthenticated,
+    userDataFresh,
+
+    // Player state
+    currentPlayer,
+    isPlayerAuthenticated,
+    playerDataFresh,
+
+    // Shared state
     settings,
     isLoading,
-    isAuthenticated,
     settingsLoading,
     settingsLoadFailed,
-    userDataFresh,
+
+    // User functions
     login,
     logout,
     updateUser,
     clearAuth,
-    needsOnboarding
+    needsOnboarding,
+
+    // Player functions
+    playerLogin,
+    playerLogout,
+    updatePlayer,
+    clearPlayerAuth,
+
+    // Helper functions
+    isUserSession,
+    isPlayerSession,
+    getCurrentEntity,
+    hasAnyAuthentication,
+    isFullyLoaded
   };
 
   return (
