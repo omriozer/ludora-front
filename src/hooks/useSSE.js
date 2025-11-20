@@ -426,16 +426,14 @@ export function useSSE(channels = [], options = {}) {
         isDevelopment: import.meta.env.DEV
       });
 
-      // Create EventSource with credentials for cross-origin authentication
-      const eventSourceOptions = isCrossOrigin ?
-        { withCredentials: true } :  // Cross-origin requires credentials
-        {};                          // Same-origin, credentials automatic
-
-      const eventSource = new EventSource(sseUrl, eventSourceOptions);
+      // Create EventSource (credentials are automatically included for both same-origin and cross-origin
+      // when the server responds with Access-Control-Allow-Credentials: true)
+      // EventSource API doesn't have a withCredentials option like XMLHttpRequest
+      const eventSource = new EventSource(sseUrl);
 
       console.log('🎯 [SSE] EventSource created with options:', {
         url: sseUrl,
-        withCredentials: eventSourceOptions.withCredentials || false,
+        credentialsMode: 'automatic', // Credentials included automatically for cross-origin when CORS allows
         isDevelopment: import.meta.env.DEV
       });
 
