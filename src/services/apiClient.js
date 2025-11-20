@@ -34,9 +34,14 @@ export async function logout() {
 
 // Generic API request helper with cookie-based authentication
 export async function apiRequest(endpoint, options = {}) {
+  return apiRequestWithRetry(endpoint, options, false);
+}
+
+// Internal function to handle API requests with token refresh retry
+async function apiRequestWithRetry(endpoint, options = {}, isRetryAttempt = false) {
   const url = `${API_BASE}${endpoint}`;
 
-  clog(`🌐 API Request: ${options.method || 'GET'} ${url}`);
+  clog(`🌐 API Request: ${options.method || 'GET'} ${url}${isRetryAttempt ? ' (retry after token refresh)' : ''}`);
   clog('📊 API Base:', API_BASE);
 
   const headers = {
@@ -66,6 +71,31 @@ export async function apiRequest(endpoint, options = {}) {
     clog(`📥 Response status: ${response.status} ${response.statusText}`);
 
     if (!response.ok) {
+      // Handle 401 Unauthorized - attempt token refresh
+      if (response.status === 401 && !isRetryAttempt && !endpoint.includes('/auth/logout') && !endpoint.includes('/auth/refresh')) {
+        clog('🔄 401 Unauthorized received, attempting token refresh...');
+
+        try {
+          // Attempt to refresh tokens by making a simple authenticated request
+          // The auth middleware will automatically handle refresh token logic
+          const refreshResponse = await fetch(`${API_BASE}/auth/me`, {
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' }
+          });
+
+          if (refreshResponse.ok) {
+            clog('✅ Token refresh successful, retrying original request...');
+            // Retry the original request now that tokens are refreshed
+            return apiRequestWithRetry(endpoint, options, true);
+          } else {
+            clog('❌ Token refresh failed, proceeding with original error handling');
+          }
+        } catch (refreshError) {
+          clog('❌ Token refresh attempt failed:', refreshError);
+          // Continue with original error handling
+        }
+      }
+
       const error = await response.json().catch(() => ({ error: response.statusText }));
       cerror('❌ API Error:', error);
 
