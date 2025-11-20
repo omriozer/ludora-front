@@ -30,6 +30,7 @@ import { useLoginModal } from '@/hooks/useLoginModal';
 import { loginWithFirebase } from '@/services/apiClient';
 import { firebaseAuth } from '@/lib/firebase';
 import { showSuccess, showError } from '@/utils/messaging';
+import { canBypassMaintenance } from '@/utils/adminCheck';
 
 // Suspense fallback component
 const SuspenseLoader = () => (
@@ -82,6 +83,10 @@ function StudentPortal() {
 	const [isDraggingReturn, setIsDraggingReturn] = useState(false);
 	const [returnDragOffset, setReturnDragOffset] = useState({ x: 0, y: 0 });
 
+	// Admin bypass state for maintenance mode
+	const [canAdminBypass, setCanAdminBypass] = useState(false);
+	const [isCheckingAdminBypass, setIsCheckingAdminBypass] = useState(true);
+
 	// Check if user is being impersonated and show return button
 	useEffect(() => {
 		if (currentUser && currentUser._isImpersonated) {
@@ -90,6 +95,29 @@ function StudentPortal() {
 			setShowReturnButton(false);
 		}
 	}, [currentUser]);
+
+	// Check admin bypass for maintenance mode
+	useEffect(() => {
+		const checkAdminBypass = async () => {
+			if (settings?.maintenance_mode || settingsLoadFailed) {
+				setIsCheckingAdminBypass(true);
+				try {
+					const canBypass = await canBypassMaintenance(currentUser);
+					setCanAdminBypass(canBypass);
+				} catch (error) {
+					console.warn('Error checking admin bypass:', error);
+					setCanAdminBypass(false);
+				} finally {
+					setIsCheckingAdminBypass(false);
+				}
+			} else {
+				setCanAdminBypass(false);
+				setIsCheckingAdminBypass(false);
+			}
+		};
+
+		checkAdminBypass();
+	}, [currentUser, settings?.maintenance_mode, settingsLoadFailed]);
 
 	// Mouse/touch handlers for draggable return button (same as Layout.jsx)
 	const handleMouseMove = useCallback((e) => {
@@ -206,10 +234,24 @@ function StudentPortal() {
 		openLoginModal();
 	};
 
-	// EXACT SAME maintenance logic as Layout.jsx
 	// Show maintenance page if enabled OR if settings loading failed (but allow admins to bypass)
-	if ((settings?.maintenance_mode || settingsLoadFailed) && !(currentUser?.role === 'admin' && !currentUser?._isImpersonated)) {
+	// IMPORTANT: Check maintenance/error state BEFORE loading state to prevent infinite spinner
+	if ((settings?.maintenance_mode || settingsLoadFailed) && !canAdminBypass) {
 		const isTemporaryIssue = settingsLoadFailed && !settings?.maintenance_mode;
+
+		// Show loading while checking admin bypass
+		if (isCheckingAdminBypass) {
+			return (
+				<div className="flex items-center justify-center min-h-screen">
+					<LudoraLoadingSpinner
+						message="בודק הרשאות..."
+						size="lg"
+						theme="educational"
+						showLogo={true}
+					/>
+				</div>
+			);
+		}
 
 		return (
 			<>
@@ -222,7 +264,7 @@ function StudentPortal() {
 					handleTouchMove={handleTouchMove}
 					handleTouchEnd={handleTouchEnd}
 					handleReturnToSelf={handleReturnToSelf}
-					handleLogin={onLogin}
+					handleLogin={handleLoginSubmit}
 					isTemporaryIssue={isTemporaryIssue}
 				/>
 

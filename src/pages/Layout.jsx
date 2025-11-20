@@ -18,6 +18,7 @@ import MaintenancePage from "@/components/layout/MaintenancePage";
 import { useLoginModal } from "@/hooks/useLoginModal";
 import { CartProvider } from "@/contexts/CartContext";
 import LudoraLoadingSpinner from "@/components/ui/LudoraLoadingSpinner";
+import { canBypassMaintenance } from "@/utils/adminCheck";
 
 function LayoutContent({ children }) {
   const location = useLocation();
@@ -38,6 +39,10 @@ function LayoutContent({ children }) {
   const [isDraggingReturn, setIsDraggingReturn] = useState(false);
   const [returnDragOffset, setReturnDragOffset] = useState({ x: 0, y: 0 });
 
+  // Admin bypass state for maintenance mode
+  const [canAdminBypass, setCanAdminBypass] = useState(false);
+  const [isCheckingAdminBypass, setIsCheckingAdminBypass] = useState(true);
+
   // Check if current page should hide navigation (game launcher)
   const hideNav = shouldHideNavigation(location.pathname);
 
@@ -49,6 +54,29 @@ function LayoutContent({ children }) {
       setShowReturnButton(false);
     }
   }, [currentUser]);
+
+  // Check admin bypass for maintenance mode
+  useEffect(() => {
+    const checkAdminBypass = async () => {
+      if (settings?.maintenance_mode || settingsLoadFailed) {
+        setIsCheckingAdminBypass(true);
+        try {
+          const canBypass = await canBypassMaintenance(currentUser);
+          setCanAdminBypass(canBypass);
+        } catch (error) {
+          console.warn('Error checking admin bypass:', error);
+          setCanAdminBypass(false);
+        } finally {
+          setIsCheckingAdminBypass(false);
+        }
+      } else {
+        setCanAdminBypass(false);
+        setIsCheckingAdminBypass(false);
+      }
+    };
+
+    checkAdminBypass();
+  }, [currentUser, settings?.maintenance_mode, settingsLoadFailed]);
 
   // Handle responsive layout
   useEffect(() => {
@@ -223,8 +251,22 @@ function LayoutContent({ children }) {
 
   // Show maintenance page if enabled OR if settings loading failed (but allow admins to bypass)
   // IMPORTANT: Check maintenance/error state BEFORE loading state to prevent infinite spinner
-  if ((settings?.maintenance_mode || settingsLoadFailed) && !(currentUser?.role === 'admin' && !currentUser?._isImpersonated)) {
+  if ((settings?.maintenance_mode || settingsLoadFailed) && !canAdminBypass) {
     const isTemporaryIssue = settingsLoadFailed && !settings?.maintenance_mode;
+
+    // Show loading while checking admin bypass
+    if (isCheckingAdminBypass) {
+      return (
+        <div className="flex items-center justify-center min-h-screen">
+          <LudoraLoadingSpinner
+            message="בודק הרשאות..."
+            size="lg"
+            theme="educational"
+            showLogo={true}
+          />
+        </div>
+      );
+    }
 
     return (
       <>
@@ -238,7 +280,7 @@ function LayoutContent({ children }) {
           handleTouchMove={handleTouchMove}
           handleTouchEnd={handleTouchEnd}
           handleReturnToSelf={handleReturnToSelf}
-          handleLogin={onLogin}
+          handleLogin={handleLoginSubmit}
           isTemporaryIssue={isTemporaryIssue}
         />
 
