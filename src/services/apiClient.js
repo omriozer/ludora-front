@@ -6,6 +6,9 @@ import { clog, cerror } from '@/lib/utils';
 import { showError } from '@/utils/messaging';
 import { ApiError } from '@/utils/ApiError.js';
 
+// Re-export clog and cerror for use by other modules
+export { clog, cerror };
+
 // Use centralized API base configuration
 const API_BASE = getApiBase();
 
@@ -41,9 +44,6 @@ export async function apiRequest(endpoint, options = {}) {
 async function apiRequestWithRetry(endpoint, options = {}, isRetryAttempt = false) {
   const url = `${API_BASE}${endpoint}`;
 
-  clog(`🌐 API Request: ${options.method || 'GET'} ${url}${isRetryAttempt ? ' (retry after token refresh)' : ''}`);
-  clog('📊 API Base:', API_BASE);
-
   const headers = {
     'Content-Type': 'application/json',
     ...options.headers
@@ -52,7 +52,6 @@ async function apiRequestWithRetry(endpoint, options = {}, isRetryAttempt = fals
   // Add timeout protection
   const controller = new AbortController();
   const timeoutId = setTimeout(() => {
-    clog('⏰ API request timeout, aborting...');
     controller.abort();
   }, 15000); // 15 second timeout
 
@@ -62,19 +61,13 @@ async function apiRequestWithRetry(endpoint, options = {}, isRetryAttempt = fals
     signal: controller.signal
   };
 
-  clog('📤 Request headers:', headers);
-  clog('📤 Request options:', { ...defaultOptions, ...options });
-
   try {
     const response = await fetch(url, { ...defaultOptions, ...options });
     clearTimeout(timeoutId); // Clear timeout on successful response
-    clog(`📥 Response status: ${response.status} ${response.statusText}`);
 
     if (!response.ok) {
       // Handle 401 Unauthorized - attempt token refresh
       if (response.status === 401 && !isRetryAttempt && !endpoint.includes('/auth/logout') && !endpoint.includes('/auth/refresh')) {
-        clog('🔄 401 Unauthorized received, attempting token refresh...');
-
         try {
           // Attempt to refresh tokens by making a simple authenticated request
           // The auth middleware will automatically handle refresh token logic
@@ -84,24 +77,20 @@ async function apiRequestWithRetry(endpoint, options = {}, isRetryAttempt = fals
           });
 
           if (refreshResponse.ok) {
-            clog('✅ Token refresh successful, retrying original request...');
             // Retry the original request now that tokens are refreshed
             return apiRequestWithRetry(endpoint, options, true);
-          } else {
-            clog('❌ Token refresh failed, proceeding with original error handling');
           }
         } catch (refreshError) {
-          clog('❌ Token refresh attempt failed:', refreshError);
           // Continue with original error handling
         }
       }
 
       const error = await response.json().catch(() => ({ error: response.statusText }));
-      cerror('❌ API Error:', error);
+      cerror('API Error:', error);
 
       // Log validation details if available
       if (error.details && Array.isArray(error.details)) {
-        cerror('📋 Validation Details:', error.details);
+        cerror('Validation Details:', error.details);
       }
 
       const errorMessage = typeof error.error === 'string' ? error.error :
@@ -112,11 +101,10 @@ async function apiRequestWithRetry(endpoint, options = {}, isRetryAttempt = fals
     }
 
     const data = await response.json();
-    clog('✅ API Response:', data);
     return data;
   } catch (error) {
     clearTimeout(timeoutId); // Clear timeout on error
-    cerror('🚫 API Request Failed:', error);
+    cerror('API Request Failed:', error);
 
     // Handle timeout specifically
     if (error.name === 'AbortError') {
@@ -159,9 +147,6 @@ async function apiRequestWithRetry(endpoint, options = {}, isRetryAttempt = fals
 export async function apiRequestAnonymous(endpoint, options = {}) {
   const url = `${API_BASE}${endpoint}`;
 
-  clog(`🌐 Anonymous API Request: ${options.method || 'GET'} ${url}`);
-  clog('📊 API Base:', API_BASE);
-
   const headers = {
     'Content-Type': 'application/json',
     ...options.headers
@@ -170,7 +155,6 @@ export async function apiRequestAnonymous(endpoint, options = {}) {
   // Add timeout protection
   const controller = new AbortController();
   const timeoutId = setTimeout(() => {
-    clog('⏰ Anonymous API request timeout, aborting...');
     controller.abort();
   }, 15000); // 15 second timeout
 
@@ -180,21 +164,17 @@ export async function apiRequestAnonymous(endpoint, options = {}) {
     signal: controller.signal
   };
 
-  clog('📤 Anonymous request headers:', headers);
-  clog('📤 Anonymous request options:', { ...defaultOptions, ...options });
-
   try {
     const response = await fetch(url, { ...defaultOptions, ...options });
     clearTimeout(timeoutId); // Clear timeout on successful response
-    clog(`📥 Anonymous response status: ${response.status} ${response.statusText}`);
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: response.statusText }));
-      cerror('❌ Anonymous API Error:', error);
+      cerror('Anonymous API Error:', error);
 
       // Log validation details if available
       if (error.details && Array.isArray(error.details)) {
-        cerror('📋 Anonymous Validation Details:', error.details);
+        cerror('Anonymous Validation Details:', error.details);
       }
 
       const errorMessage = typeof error.error === 'string' ? error.error :
@@ -205,11 +185,10 @@ export async function apiRequestAnonymous(endpoint, options = {}) {
     }
 
     const data = await response.json();
-    clog('✅ Anonymous API Response:', data);
     return data;
   } catch (error) {
     clearTimeout(timeoutId); // Clear timeout on error
-    cerror('🚫 Anonymous API Request Failed:', error);
+    cerror('Anonymous API Request Failed:', error);
 
     // Handle timeout specifically
     if (error.name === 'AbortError') {
@@ -248,9 +227,6 @@ export async function apiRequestAnonymous(endpoint, options = {}) {
 export async function apiDownload(endpoint, options = {}) {
   const url = `${API_BASE}${endpoint}`;
 
-  clog(`📥 API Download: ${options.method || 'GET'} ${url}`);
-  clog('📊 API Base:', API_BASE);
-
   const headers = {
     ...options.headers
   };
@@ -260,15 +236,12 @@ export async function apiDownload(endpoint, options = {}) {
     headers
   };
 
-  clog('📤 Download headers:', headers);
-
   try {
     const response = await fetch(url, { ...defaultOptions, ...options });
-    clog(`📥 Download response status: ${response.status} ${response.statusText}`);
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: response.statusText }));
-      cerror('❌ Download Error:', error);
+      cerror('Download Error:', error);
 
       const errorMessage = typeof error.error === 'string' ? error.error :
                         error.message ||
@@ -278,10 +251,9 @@ export async function apiDownload(endpoint, options = {}) {
     }
 
     const blob = await response.blob();
-    clog('✅ Download successful, blob size:', blob.size, 'type:', blob.type);
     return blob;
   } catch (error) {
-    cerror('🚫 Download Failed:', error);
+    cerror('Download Failed:', error);
 
     // Show user-friendly error for network failures
     if (error.message.includes('fetch') || error.message.includes('network') || error.message.includes('Failed to fetch')) {
@@ -305,14 +277,10 @@ export async function apiUploadWithProgress(endpoint, formData, onProgress = nul
     // In development, bypass the Vite proxy and go directly to the API server
     const apiPort = import.meta.env.VITE_API_PORT || '3003';
     url = `http://localhost:${apiPort}/api${endpoint}`;
-    clog('📤 Development upload: Bypassing Vite proxy, direct to API server:', url);
   } else {
     // In production, use the normal API base
     url = `${API_BASE}${endpoint}`;
   }
-
-  clog(`📤 API Upload with progress: POST ${url}`);
-  clog('📊 API Base:', API_BASE);
 
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
@@ -322,7 +290,6 @@ export async function apiUploadWithProgress(endpoint, formData, onProgress = nul
       xhr.upload.addEventListener('progress', (e) => {
         if (e.lengthComputable) {
           const percentComplete = Math.round((e.loaded / e.total) * 100);
-          clog(`📊 Upload progress: ${percentComplete}%`);
           onProgress(percentComplete);
         }
       });
@@ -332,14 +299,13 @@ export async function apiUploadWithProgress(endpoint, formData, onProgress = nul
       if (xhr.status >= 200 && xhr.status < 300) {
         try {
           const response = JSON.parse(xhr.responseText);
-          clog('✅ Upload successful:', response);
           resolve(response);
         } catch (e) {
-          cerror('❌ Invalid response format:', e);
+          cerror('Invalid response format:', e);
           reject(new Error('Invalid response format'));
         }
       } else {
-        cerror(`❌ Upload failed: ${xhr.status}`, xhr.responseText);
+        cerror(`Upload failed: ${xhr.status}`, xhr.responseText);
         try {
           const errorData = JSON.parse(xhr.responseText);
           const errorMessage = errorData.error || errorData.message || `Upload failed with status: ${xhr.status}`;
@@ -351,7 +317,7 @@ export async function apiUploadWithProgress(endpoint, formData, onProgress = nul
     });
 
     xhr.addEventListener('error', () => {
-      cerror('❌ Network error during upload');
+      cerror('Network error during upload');
       showError(
         "בעיית העלאה",
         "שגיאת רשת במהלך העלאת הקובץ. אנא נסה שוב.",
@@ -361,7 +327,7 @@ export async function apiUploadWithProgress(endpoint, formData, onProgress = nul
     });
 
     xhr.addEventListener('timeout', () => {
-      cerror('❌ Upload timeout');
+      cerror('Upload timeout');
       showError(
         "העלאה נכשלה",
         "העלאת הקובץ ארכה זמן רב מדי. אנא נסה שוב.",
@@ -388,7 +354,6 @@ export async function apiUploadWithProgress(endpoint, formData, onProgress = nul
       });
     }
 
-    clog('📤 Sending upload request...');
     xhr.send(formData);
   });
 }
@@ -710,11 +675,8 @@ export const GameContent = {
 
 // Add custom method to ContentList
 ContentList.getContentItems = async function(listId) {
-  clog(`🔍 Attempting to load content items for list ID: ${listId}`);
-
   // Note: The /entities/contentlist/:id/items endpoint doesn't exist in the backend
   // So we'll throw an error immediately to trigger the relationship-based fallback
-  clog(`⚠️ ContentList.getContentItems: /items endpoint not implemented, will use relationship fallback`);
   throw new Error('ContentList items endpoint not implemented - using relationship fallback');
 };
 export const ContentRelationship = new EntityAPI('contentrelationship');
@@ -820,7 +782,6 @@ export const Player = {
    * @returns {Promise<Object>} Login response with player data
    */
   async login(data) {
-    clog('🎮 Player.login called with privacy code:', data.privacy_code);
     return apiRequest('/players/login', {
       method: 'POST',
       body: JSON.stringify(data)
@@ -832,7 +793,6 @@ export const Player = {
    * @returns {Promise<Object>} Logout response
    */
   async logout() {
-    clog('🎮 Player.logout called');
     return apiRequest('/players/logout', {
       method: 'POST'
     });
@@ -844,7 +804,6 @@ export const Player = {
    * @returns {Promise<Object>} Current player data
    */
   async getCurrentPlayer(suppressUserErrors = false) {
-    clog('🎮 Player.getCurrentPlayer called');
     return apiRequest('/players/me', { suppressUserErrors });
   },
 
@@ -857,7 +816,6 @@ export const Player = {
    * @returns {Promise<Object>} Updated player data
    */
   async updateProfile(data) {
-    clog('🎮 Player.updateProfile called with data:', data);
     return apiRequest('/players/update-profile', {
       method: 'PUT',
       body: JSON.stringify(data)
@@ -875,7 +833,6 @@ export const Player = {
 // Unified Product API for all product types
 export const ProductAPI = {
   async create(data) {
-    clog('🏭 ProductAPI.create called with:', data);
     return apiRequest('/products', {
       method: 'POST',
       body: JSON.stringify(data)
@@ -883,14 +840,12 @@ export const ProductAPI = {
   },
 
   async findById(id) {
-    clog('🔍 ProductAPI.findById called with:', id);
     return apiRequest(`/entities/product/${id}`, {
       method: 'GET'
     });
   },
 
   async update(id, data) {
-    clog('✏️ ProductAPI.update called with:', { id, data });
     return apiRequest(`/entities/product/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data)
@@ -964,8 +919,6 @@ export async function handlePayplusCallback(data) {
  * @returns {Promise<Object>} Payment page creation response
  */
 export async function createPayplusPaymentPage(data) {
-  clog('🎯 createPayplusPaymentPage: Starting payment page creation', data);
-
   return apiRequest('/payments/createPayplusPaymentPage', {
     method: 'POST',
     body: JSON.stringify(data)

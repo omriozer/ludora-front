@@ -2,20 +2,22 @@ import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { GamepadIcon, UserIcon, Home, Crown, PlayIcon, Clock, Users } from 'lucide-react';
+import { GamepadIcon, UserIcon, Home, Crown, PlayIcon, Clock, Users, Wifi, WifiOff, AlertCircle } from 'lucide-react';
 import GameTypeDisplay from '@/components/game/GameTypeDisplay';
 import ProductImage from '@/components/ui/ProductImage';
 import logoSm from '../../assets/images/logo_sm.png';
-import { useSSE } from '@/hooks/useSSE';
+import { useSocket } from '@/services/socketClient';
 import { apiRequestAnonymous } from '@/services/apiClient';
 import { filterActiveLobbies, isLobbyActive, computeLobbyStatus, getLobbyClosureTimeText } from '@/utils/lobbyUtils';
 import { Badge } from '@/components/ui/badge';
+import ProtectedStudentRoute from '@/components/auth/ProtectedStudentRoute';
 
 /**
  * Teacher catalog page for students to view games shared by their teacher
  * Accessed via my.domain/portal/{invitationCode}
+ * Protected by student authentication based on students_access settings
  */
-const TeacherCatalog = () => {
+const TeacherCatalogContent = () => {
   const { userCode } = useParams();
   const navigate = useNavigate();
   const [catalog, setCatalog] = useState(null);
@@ -23,8 +25,8 @@ const TeacherCatalog = () => {
   const [error, setError] = useState(null);
   const [gamesWithLobbies, setGamesWithLobbies] = useState([]);
 
-  // SSE disabled for student portal to avoid auth errors
-  // Students don't need real-time updates and SSE requires authentication
+  // Socket.IO integration for real-time lobby updates
+  const { connected: isSocketConnected, onLobbyUpdate } = useSocket();
 
   useEffect(() => {
     const fetchTeacherCatalog = async () => {
@@ -125,9 +127,99 @@ const TeacherCatalog = () => {
     }
   }, [userCode]);
 
+  // Socket.IO real-time updates for lobby status changes
+  useEffect(() => {
+    if (!isSocketConnected || !gamesWithLobbies.length) return;
 
-  // SSE disabled for student portal - no real-time updates needed
-  // Students can refresh the page if they need updated lobby information
+    const handleLobbyUpdate = (eventType, eventData) => {
+      console.log('[TeacherCatalog] Received lobby update:', eventType, eventData);
+
+      // Find if any of our games are affected by this lobby update
+      const affectedGameIds = gamesWithLobbies
+        .map(game => game.id)
+        .filter(gameId => {
+          // Check if this lobby update affects any of our games
+          return eventData?.gameId === gameId ||
+                 (eventData?.lobby?.game_id === gameId) ||
+                 (eventData?.game_id === gameId);
+        });
+
+      if (affectedGameIds.length > 0) {
+        console.log('[TeacherCatalog] Lobby update affects our games:', affectedGameIds);
+
+        // Refresh the affected games' lobby data
+        setGamesWithLobbies(prevGames =>
+          prevGames.map(game => {
+            if (affectedGameIds.includes(game.id)) {
+              // For now, refetch data for affected games
+              // In a more sophisticated implementation, we could update specific fields
+              return { ...game, needsRefresh: true };
+            }
+            return game;
+          })
+        );
+
+        // Trigger a partial data refresh for affected games
+        refreshAffectedGames(affectedGameIds);
+      }
+    };
+
+    // Subscribe to all lobby updates
+    const unsubscribe = onLobbyUpdate('all', handleLobbyUpdate);
+
+    return () => {
+      unsubscribe?.();
+    };
+  }, [isSocketConnected, gamesWithLobbies, onLobbyUpdate]);
+
+  // Function to refresh data for specific affected games
+  const refreshAffectedGames = async (affectedGameIds) => {
+    try {
+      // Re-fetch the full catalog to get updated lobby information
+      const response = await apiRequestAnonymous(`/games/teacher/${userCode}`);
+      const { games } = response;
+
+      if (games && games.length > 0) {
+        const updatedGamesWithLobbyInfo = games.map((game) => {
+          const lobbies = game.lobbies || [];
+          const lobby = lobbies.length > 0 ? lobbies[0] : null;
+
+          let hasActiveLobby = false;
+          let lobbyCode = null;
+          let lobbyStatus = 'no_lobby';
+
+          if (lobby) {
+            const computedStatus = lobby.status || lobby.computed_status || computeLobbyStatus(lobby);
+            lobbyStatus = computedStatus;
+            hasActiveLobby = isLobbyActive(lobby);
+            lobbyCode = lobby.lobby_code;
+          }
+
+          return {
+            ...game,
+            lobbyInfo: {
+              hasActiveLobby,
+              lobbyCode,
+              lobbyStatus,
+              lobby: lobby
+            }
+          };
+        });
+
+        // Sort games: active lobbies first, then inactive
+        const sortedGames = updatedGamesWithLobbyInfo.sort((a, b) => {
+          if (a.lobbyInfo.hasActiveLobby && !b.lobbyInfo.hasActiveLobby) return -1;
+          if (!a.lobbyInfo.hasActiveLobby && b.lobbyInfo.hasActiveLobby) return 1;
+          return new Date(b.created_at) - new Date(a.created_at);
+        });
+
+        setGamesWithLobbies(sortedGames);
+        console.log('[TeacherCatalog] Refreshed lobby data via Socket.IO update');
+      }
+    } catch (error) {
+      console.error('[TeacherCatalog] Error refreshing affected games:', error);
+    }
+  };
 
   const handlePlayGame = async (game) => {
     // Use already fetched lobby info if available
@@ -213,6 +305,30 @@ const TeacherCatalog = () => {
     <div className="min-h-screen student-portal-background">
       {/* Content */}
       <main className="max-w-6xl mx-auto px-4 py-8">
+        {/* Page-level Connection Status */}
+        <div className="mb-6 flex justify-center">
+          <Badge
+            variant="outline"
+            className={`px-4 py-2 text-sm font-medium transition-all duration-200 ${
+              isSocketConnected
+                ? 'bg-green-50 border-green-200 text-green-700'
+                : 'bg-red-50 border-red-200 text-red-700'
+            }`}
+          >
+            {isSocketConnected ? (
+              <>
+                <Wifi className="w-4 h-4 mr-2" />
+                מחובר לעדכונים בזמן אמת
+              </>
+            ) : (
+              <>
+                <WifiOff className="w-4 h-4 mr-2" />
+                אין חיבור לעדכונים בזמן אמת
+              </>
+            )}
+          </Badge>
+        </div>
+
         {/* Statistics */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card className="bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-xl transition-shadow">
@@ -377,6 +493,15 @@ const TeacherCatalog = () => {
         </div>
       </main>
     </div>
+  );
+};
+
+// Wrap the component with protection based on students_access settings
+const TeacherCatalog = () => {
+  return (
+    <ProtectedStudentRoute requireAuth={true}>
+      <TeacherCatalogContent />
+    </ProtectedStudentRoute>
   );
 };
 

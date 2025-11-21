@@ -25,8 +25,8 @@ import { isStudentPortal } from '@/utils/domainUtils';
 import Footer from '@/components/layout/Footer';
 import StudentsNav from '@/components/layout/StudentsNav';
 import MaintenancePage from '@/components/layout/MaintenancePage';
-import LoginModal from '@/components/LoginModal';
-import { useLoginModal } from '@/hooks/useLoginModal';
+import StudentLoginModal from '@/components/auth/StudentLoginModal';
+import { useLoginModal, LoginModalProvider } from '@/hooks/useLoginModal';
 import { loginWithFirebase } from '@/services/apiClient';
 import { firebaseAuth } from '@/lib/firebase';
 import { showSuccess, showError } from '@/utils/messaging';
@@ -41,7 +41,7 @@ const SuspenseLoader = () => (
 
 // Student Portal Component (only allowed routes)
 function StudentPortal() {
-	const { currentUser, configuration, configurationLoadFailed, login } = useUser();
+	const { currentUser, settings, settingsLoadFailed, login } = useUser();
 	const { showLoginModal, openLoginModal, closeLoginModal, executeCallback, modalMessage } = useLoginModal();
 	const location = useLocation();
 
@@ -99,7 +99,7 @@ function StudentPortal() {
 	// Check admin bypass for maintenance mode
 	useEffect(() => {
 		const checkAdminBypass = async () => {
-			if (configuration?.maintenance_mode || configurationLoadFailed) {
+			if (settings?.maintenance_mode || settingsLoadFailed) {
 				setIsCheckingAdminBypass(true);
 				try {
 					const canBypass = await canBypassMaintenance(currentUser);
@@ -117,7 +117,7 @@ function StudentPortal() {
 		};
 
 		checkAdminBypass();
-	}, [currentUser, configuration?.maintenance_mode, configurationLoadFailed]);
+	}, [currentUser, settings?.maintenance_mode, settingsLoadFailed]);
 
 	// Mouse/touch handlers for draggable return button (same as Layout.jsx)
 	const handleMouseMove = useCallback((e) => {
@@ -236,8 +236,8 @@ function StudentPortal() {
 
 	// Show maintenance page if enabled OR if settings loading failed (but allow admins to bypass)
 	// IMPORTANT: Check maintenance/error state BEFORE loading state to prevent infinite spinner
-	if ((configuration?.maintenance_mode || configurationLoadFailed) && !canAdminBypass) {
-		const isTemporaryIssue = configurationLoadFailed && !configuration?.maintenance_mode;
+	if ((settings?.maintenance_mode || settingsLoadFailed) && !canAdminBypass) {
+		const isTemporaryIssue = settingsLoadFailed && !settings?.maintenance_mode;
 
 		// Show loading while checking admin bypass
 		if (isCheckingAdminBypass) {
@@ -268,11 +268,11 @@ function StudentPortal() {
 					isTemporaryIssue={isTemporaryIssue}
 				/>
 
-				{/* Login Modal */}
+				{/* Student Login Modal */}
 				{showLoginModal && (
-					<LoginModal
+					<StudentLoginModal
 						onClose={closeLoginModal}
-						onLogin={handleLoginSubmit}
+						onLoginSuccess={executeCallback}
 						message={modalMessage}
 					/>
 				)}
@@ -369,6 +369,15 @@ function StudentPortal() {
 				/>
 			</Routes>
 			<Footer />
+
+			{/* Student Login Modal for Navigation */}
+			{showLoginModal && (
+				<StudentLoginModal
+					onClose={closeLoginModal}
+					onLoginSuccess={executeCallback}
+					message={modalMessage}
+				/>
+			)}
 		</>
 	);
 }
@@ -386,8 +395,10 @@ function App() {
 			<AudioCacheProvider>
 				<ConfirmationProvider>
 					<AuthErrorProvider>
-						<StudentPortal />
-						<EnhancedToaster />
+						<LoginModalProvider>
+							<StudentPortal />
+							<EnhancedToaster />
+						</LoginModalProvider>
 					</AuthErrorProvider>
 				</ConfirmationProvider>
 			</AudioCacheProvider>

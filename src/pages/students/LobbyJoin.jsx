@@ -7,7 +7,7 @@ import { useUser } from '@/contexts/UserContext';
 import GameTypeDisplay from '@/components/game/GameTypeDisplay';
 import ProductImage from '@/components/ui/ProductImage';
 import logoSm from '../../assets/images/logo_sm.png';
-import { useSSE } from '@/hooks/useSSE';
+import socketClient, { useSocket } from '@/services/socketClient';
 import { isLobbyJoinable, getLobbyStatusConfig } from '@/utils/lobbyUtils';
 import { toast } from '@/components/ui/use-toast';
 
@@ -83,22 +83,8 @@ const LobbyJoin = () => {
     }
   };
 
-  // Create SSE channels based on lobby data
-  const sseChannels = lobbyData && lobbyData.lobby && lobbyData.game ? [
-    `lobby:${lobbyData.lobby.id}`,
-    `game:${lobbyData.game.id}`,
-    // Subscribe to all session channels in this lobby
-    ...(lobbyData.sessions || []).map(session => `session:${session.id}`)
-  ] : [];
-
-  // SSE integration for real-time updates
-  const { isConnected, addEventListener, removeEventListener } = useSSE(
-    sseChannels,
-    {
-      debugMode: true,
-      autoReconnect: true
-    }
-  );
+  // Socket.IO integration for real-time updates
+  const { connected: isConnected, onLobbyUpdate } = useSocket();
 
   useEffect(() => {
     const fetchLobbyData = async () => {
@@ -178,11 +164,11 @@ const LobbyJoin = () => {
         }
 
         setLobbyData(newData);
-        console.log('[LobbyJoin] Refreshed lobby data via SSE');
+        console.log('[LobbyJoin] Refreshed lobby data via Socket.IO');
       }
     } catch (error) {
       console.error('[LobbyJoin] Error refreshing lobby data:', error);
-      // Don't update error state for SSE refreshes, only log the error
+      // Don't update error state for Socket.IO refreshes, only log the error
     }
   };
 
@@ -372,44 +358,48 @@ const LobbyJoin = () => {
     };
   }, []);
 
-  // SSE event handlers for real-time updates
+  // Socket.IO event handlers for real-time updates
   useEffect(() => {
     if (!lobbyData) return; // No lobby data yet, nothing to listen for
 
-    const handleLobbyEvent = (event) => {
-      console.log('[LobbyJoin] Received lobby event:', event);
+    const handleLobbyEvent = (eventData) => {
+      console.log('[LobbyJoin] Received lobby event:', eventData);
 
       // Check if this event is for our lobby
-      const lobbyId = event.data?.lobbyId || event.data?.lobby_id;
+      const lobbyId = eventData?.id || eventData?.lobby_id;
       if (lobbyId === lobbyData.lobby?.id) {
         // Refresh lobby data for lobby status changes
         refreshLobbyData();
       }
     };
 
-    const handleSessionEvent = (event) => {
-      console.log('[LobbyJoin] Received session event:', event);
+    const handleSessionEvent = (eventData) => {
+      console.log('[LobbyJoin] Received session event:', eventData);
 
       // Check if this session event is for sessions in our lobby
-      const sessionId = event.data?.sessionId || event.data?.session_id;
+      const sessionId = eventData?.id || eventData?.session_id;
+      const lobbyId = eventData?.lobby_id;
       const sessions = lobbyData.sessions || [];
-      if (sessionId && sessions.some(session => session.id === sessionId)) {
+
+      // Check if this event is related to our lobby (either by session ID or lobby ID)
+      if ((sessionId && sessions.some(session => session.id === sessionId)) ||
+          (lobbyId === lobbyData.lobby?.id)) {
         // Refresh lobby data for participant count updates
         refreshLobbyData();
       }
     };
 
-    // Register event handlers for lobby events
-    const cleanupLobbyActivated = addEventListener('lobby:activated', handleLobbyEvent);
-    const cleanupLobbyClosed = addEventListener('lobby:closed', handleLobbyEvent);
-    const cleanupLobbyExpired = addEventListener('lobby:expired', handleLobbyEvent);
+    // Register Socket.IO event handlers for lobby events
+    const cleanupLobbyActivated = onLobbyUpdate('lobby:lobby_activated', handleLobbyEvent);
+    const cleanupLobbyClosed = onLobbyUpdate('lobby:lobby_closed', handleLobbyEvent);
+    const cleanupLobbyExpired = onLobbyUpdate('lobby:lobby_expired', handleLobbyEvent);
 
-    // Register event handlers for session events that affect participant counts
-    const cleanupSessionCreated = addEventListener('session:created', handleSessionEvent);
-    const cleanupSessionParticipantJoined = addEventListener('session:participant:joined', handleSessionEvent);
-    const cleanupSessionParticipantLeft = addEventListener('session:participant:left', handleSessionEvent);
-    const cleanupSessionStarted = addEventListener('session:started', handleSessionEvent);
-    const cleanupSessionFinished = addEventListener('session:finished', handleSessionEvent);
+    // Register Socket.IO event handlers for session events that affect participant counts
+    const cleanupSessionCreated = onLobbyUpdate('lobby:session_created', handleSessionEvent);
+    const cleanupSessionParticipantJoined = onLobbyUpdate('lobby:participant_joined', handleSessionEvent);
+    const cleanupSessionParticipantLeft = onLobbyUpdate('lobby:participant_left', handleSessionEvent);
+    const cleanupSessionStarted = onLobbyUpdate('lobby:session_started', handleSessionEvent);
+    const cleanupSessionFinished = onLobbyUpdate('lobby:session_finished', handleSessionEvent);
 
     // Cleanup event handlers on unmount or lobby change
     return () => {
@@ -422,14 +412,14 @@ const LobbyJoin = () => {
       cleanupSessionStarted?.();
       cleanupSessionFinished?.();
     };
-  }, [lobbyData, addEventListener, removeEventListener, code, user]);
+  }, [lobbyData, onLobbyUpdate, code, user]);
 
-  // Show SSE connection status in console for debugging
+  // Show Socket.IO connection status in console for debugging
   useEffect(() => {
-    if (sseChannels.length > 0) {
-      console.log(`[LobbyJoin] SSE ${isConnected ? 'connected' : 'disconnected'} for lobby ${code}`);
+    if (lobbyData?.lobby?.id) {
+      console.log(`[LobbyJoin] Socket.IO ${isConnected ? 'connected' : 'disconnected'} for lobby ${code}`);
     }
-  }, [isConnected, code, sseChannels.length]);
+  }, [isConnected, code, lobbyData]);
 
   const handleJoinLobby = async () => {
     if (!displayName.trim()) {

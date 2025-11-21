@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ShieldAlert, ArrowLeft, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { ShieldAlert, ArrowLeft, CheckCircle, XCircle, Loader2, Eye, EyeOff } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import Footer from "./Footer";
 import { riddles } from "@/assets/riddles";
 import { useUser } from "@/contexts/UserContext";
 import { cerror } from "@/lib/utils";
+import { validateAdminPassword, canBypassMaintenanceAnonymously } from "@/utils/adminCheck";
 
 export default function MaintenancePage({
   showReturnButton,
@@ -19,6 +21,8 @@ export default function MaintenancePage({
   handleTouchEnd,
   handleReturnToSelf,
   handleLogin,
+  studentsAccessMode,
+  onAnonymousAdminSuccess,
   isTemporaryIssue = false
 }) {
   const { isAuthenticated } = useUser();
@@ -28,6 +32,13 @@ export default function MaintenancePage({
   const [loginError, setLoginError] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [showLoginSection, setShowLoginSection] = useState(false);
+
+  // Anonymous admin password state
+  const [adminPassword, setAdminPassword] = useState('');
+  const [isValidatingPassword, setIsValidatingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showPasswordSection, setShowPasswordSection] = useState(false);
 
   // Riddles game state
   const [currentRiddle, setCurrentRiddle] = useState(null);
@@ -79,6 +90,52 @@ export default function MaintenancePage({
       setLoginError(errorMessage);
     } finally {
       setIsLoggingIn(false);
+    }
+  };
+
+  // Anonymous admin password validation handler
+  const handlePasswordSubmit = async (e) => {
+    e.preventDefault();
+    setIsValidatingPassword(true);
+    setPasswordError('');
+
+    try {
+      if (!adminPassword.trim()) {
+        throw new Error('נדרשת סיסמה');
+      }
+
+      // Validate password with server
+      const result = await validateAdminPassword(adminPassword);
+
+      if (result.success) {
+        // Password validated and token stored successfully
+        if (onAnonymousAdminSuccess) {
+          onAnonymousAdminSuccess();
+        }
+        // Reset form
+        setAdminPassword('');
+        setShowPasswordSection(false);
+      } else {
+        throw new Error(result.error || 'סיסמה שגויה');
+      }
+    } catch (error) {
+      cerror('Admin password validation error:', error);
+
+      let errorMessage = 'שגיאה בבדיקת הסיסמה. נסו שוב.';
+
+      if (error.message) {
+        if (error.message.includes('נדרשת סיסמה')) {
+          errorMessage = 'נדרשת סיסמה';
+        } else if (error.message.includes('סיסמה שגויה')) {
+          errorMessage = 'סיסמה שגויה. נסו שוב.';
+        } else if (error.message.includes('Too many attempts')) {
+          errorMessage = 'יותר מדי נסיונות. נסו שוב מאוחר יותר.';
+        }
+      }
+
+      setPasswordError(errorMessage);
+    } finally {
+      setIsValidatingPassword(false);
     }
   };
 
@@ -186,7 +243,15 @@ export default function MaintenancePage({
               {/* Main icon */}
               <div
                 className="relative w-full h-full bg-gradient-to-br from-purple-500 to-blue-600 rounded-3xl flex items-center justify-center shadow-2xl transform hover:scale-105 transition-all duration-300 cursor-pointer hover:rotate-6"
-                onClick={() => setShowLoginSection(!showLoginSection)}
+                onClick={() => {
+                  if (studentsAccessMode === 'invite_only') {
+                    setShowPasswordSection(!showPasswordSection);
+                    setShowLoginSection(false);
+                  } else {
+                    setShowLoginSection(!showLoginSection);
+                    setShowPasswordSection(false);
+                  }
+                }}
               >
                 <ShieldAlert className="w-12 h-12 text-white drop-shadow-lg" />
               </div>
@@ -294,6 +359,78 @@ export default function MaintenancePage({
 
                 <Button
                   onClick={() => setShowLoginSection(false)}
+                  variant="ghost"
+                  className="w-full mt-4 text-gray-500 hover:text-gray-700"
+                >
+                  ביטול
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Anonymous Admin Password Section - Only when students_access is invite_only */}
+          {showPasswordSection && !isAuthenticated && studentsAccessMode === 'invite_only' && (
+            <div className="bg-white/95 backdrop-blur-xl rounded-3xl p-6 md:p-8 shadow-2xl border border-white/30 relative overflow-hidden mb-8 max-w-md mx-auto">
+              {/* Background pattern */}
+              <div className="absolute inset-0 bg-gradient-to-br from-orange-50/50 via-transparent to-red-50/50"></div>
+
+              <div className="relative z-10">
+                <h3 className="text-xl font-bold text-gray-900 text-center mb-4">
+                  גישת מנהל זמנית
+                </h3>
+                <p className="text-sm text-gray-600 text-center mb-6">
+                  הזינו סיסמת מנהל לגישה זמנית לאתר בזמן תחזוקה
+                </p>
+
+                {passwordError && (
+                  <Alert variant="destructive" className="mb-4">
+                    <AlertDescription className="text-right">
+                      {passwordError}
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                <form onSubmit={handlePasswordSubmit}>
+                  <div className="relative mb-4">
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="סיסמת מנהל"
+                      value={adminPassword}
+                      onChange={(e) => setAdminPassword(e.target.value)}
+                      className="w-full h-12 pr-4 pl-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      disabled={isValidatingPassword}
+                    />
+                    <button
+                      type="button"
+                      className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="w-5 h-5" />
+                      ) : (
+                        <Eye className="w-5 h-5" />
+                      )}
+                    </button>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    disabled={isValidatingPassword || !adminPassword.trim()}
+                    className="w-full h-12 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-medium rounded-lg shadow-lg transition-all duration-200 mb-4"
+                  >
+                    {isValidatingPassword ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin ml-2" />
+                        בודק סיסמה...
+                      </>
+                    ) : (
+                      'כניסה'
+                    )}
+                  </Button>
+                </form>
+
+                <Button
+                  onClick={() => setShowPasswordSection(false)}
                   variant="ghost"
                   className="w-full mt-4 text-gray-500 hover:text-gray-700"
                 >

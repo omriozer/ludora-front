@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { GraduationCap, Keyboard, QrCode, CameraOff, AlertTriangle } from 'lucide-react';
+import { GraduationCap, Keyboard, QrCode, CameraOff, AlertTriangle, LogIn, LogOut, User } from 'lucide-react';
 import PropTypes from 'prop-types';
 import { useUser } from '@/contexts/UserContext';
 import { Button } from '@/components/ui/button';
 import ConfirmationDialog from '@/components/ui/confirmation-dialog';
 import { checkCameraAvailability } from '@/utils/qrScannerUtils';
 import { useActivityCodeHandler } from '@/hooks/useActivityCodeHandler';
+import { useLoginModal } from '@/hooks/useLoginModal';
 import logo from '../../assets/images/logo.png';
 
 /**
@@ -14,7 +15,18 @@ import logo from '../../assets/images/logo.png';
  * Simple header with logo on the right side, optional teacher info in center, and action buttons on the left
  */
 const StudentsNav = ({ teacherInfo = null }) => {
-  const { settings, currentUser } = useUser();
+  const {
+    settings,
+    currentUser,
+    currentPlayer,
+    isAuthenticated,
+    isPlayerAuthenticated,
+    hasAnyAuthentication,
+    login,
+    logout,
+    playerLogout
+  } = useUser();
+  const { openLoginModal } = useLoginModal();
   const [isCameraAvailable, setIsCameraAvailable] = useState(false);
   const [confirmationDialog, setConfirmationDialog] = useState({ isOpen: false });
 
@@ -43,6 +55,25 @@ const StudentsNav = ({ teacherInfo = null }) => {
 
   const handleEnterCode = () => {
     handleCodeEntry();
+  };
+
+
+  // Open login modal
+  const handleLoginClick = () => {
+    openLoginModal();
+  };
+
+  // Logout handler - handles both user and player logout
+  const handleLogout = async () => {
+    try {
+      if (isAuthenticated) {
+        await logout();
+      } else if (isPlayerAuthenticated) {
+        await playerLogout();
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   };
 
   return (
@@ -133,6 +164,49 @@ const StudentsNav = ({ teacherInfo = null }) => {
             ) : (
               <div className="text-xs text-gray-400 hidden sm:block" title="זמין במכשירי נייד">
                 <CameraOff className="w-3 h-3" />
+              </div>
+            )}
+
+            {/* Separator */}
+            <span className="text-xs text-gray-400 hidden sm:inline">|</span>
+
+            {/* Authentication Buttons - Always show regardless of students_access setting */}
+            {!hasAnyAuthentication() ? (
+              /* Login Button - when not authenticated */
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleLoginClick}
+                className="h-8 px-3 border-purple-200 text-purple-600 hover:bg-purple-50 flex items-center gap-1"
+                title="התחברות למערכת"
+              >
+                <LogIn className="w-3 h-3" />
+                <span className="hidden sm:inline text-xs">כניסה</span>
+              </Button>
+            ) : (
+              /* Logout Button and User Info - when authenticated (user or player) */
+              <div className="flex items-center gap-2">
+                {/* User/Player Indicator */}
+                <div className="flex items-center gap-1 text-xs text-gray-600">
+                  <User className="w-3 h-3" />
+                  <span className="hidden sm:inline truncate max-w-20">
+                    {isAuthenticated
+                      ? currentUser?.full_name || currentUser?.email || 'משתמש'
+                      : currentPlayer?.display_name || 'שחקן'}
+                  </span>
+                </div>
+
+                {/* Logout Button */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleLogout}
+                  className="h-8 px-3 border-red-200 text-red-600 hover:bg-red-50 flex items-center gap-1"
+                  title="התנתקות מהמערכת"
+                >
+                  <LogOut className="w-3 h-3" />
+                  <span className="hidden sm:inline text-xs">יציאה</span>
+                </Button>
               </div>
             )}
           </div>

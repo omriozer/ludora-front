@@ -12,13 +12,13 @@ export const isStudentPortal = () => {
   const studentDomain = import.meta.env.VITE_STUDENT_PORTAL_DOMAIN || 'my.ludora.app';
   const currentHostname = window.location.hostname;
 
-  // For development - handle localhost with different approaches
+  // For development - handle my.localhost subdomain
+  if (currentHostname === 'my.localhost') {
+    return true;
+  }
+
+  // For regular localhost - check port-based detection as fallback
   if (currentHostname === 'localhost') {
-    // Check if student domain is configured for localhost development
-    if (studentDomain.includes('localhost')) {
-      return currentHostname === studentDomain.split(':')[0];
-    }
-    // Default: use port-based detection for development
     return window.location.port === '5174';
   }
 
