@@ -334,14 +334,10 @@ function ActiveGamesGrid({ userGames, searchTerm }) {
     return title.toLowerCase().includes(searchTerm.toLowerCase());
   });
 
-  // Single channel strategy for ALL visible games - efficient lobbies/catalog page subscription
-  const [allChannels] = useState(() => {
-    // Instead of multiple game:gameId channels, use a single channel for all visible games
-    // This is more efficient for lobby/catalog pages where users see many games
-    return ['lobby:visible_games'];
-  });
+  // ✅ STABILIZED: Single channel strategy with memoization
+  const allChannels = useMemo(() => ['lobby:visible_games'], []);
 
-  const [consolidatedSSEOptions] = useState(() => ({
+  const consolidatedSSEOptions = useMemo(() => ({
     debugMode: true,
     autoReconnect: true,
     sessionContext: {
@@ -352,7 +348,7 @@ function ActiveGamesGrid({ userGames, searchTerm }) {
       isActiveParticipant: false, // Not actively playing, just monitoring
       priorityHint: 'lobby_status' // Lobby status monitoring priority
     }
-  }));
+  }), []); // ✅ STABLE: No dependencies to prevent recreation
 
   // Single SSE connection for all games - consolidates all connections into one
   const {

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Minimal SSE Test</title>
+</head>
+<body>
+    <h1>Minimal SSE Test</h1>
+    <div id="log"></div>
+
+    <script>
+        function log(msg) {
+            document.getElementById('log').innerHTML += '<p>' + new Date().toISOString() + ': ' + msg + '</p>';
+            console.log(msg);
+        }
+
+        // Absolutely minimal test
+        log('🚀 Starting minimal EventSource test...');
+
+        const eventSource = new EventSource('http://localhost:3003/api/sse/events?channels=lobby:visible_games');
+
+        eventSource.addEventListener('open', () => {
+            log('✅ EventSource opened successfully');
+        });
+
+        eventSource.addEventListener('message', (event) => {
+            log('📨 Message: ' + event.data);
+        });
+
+        eventSource.addEventListener('error', (event) => {
+            log(`❌ Error occurred - readyState: ${eventSource.readyState}`);
+            log(`Event error details: ${JSON.stringify({
+                type: event.type,
+                target: event.target,
+                timeStamp: event.timeStamp
+            })}`);
+        });
+
+        // Log state every second
+        setInterval(() => {
+            log(`📊 State: ${eventSource.readyState} (${
+                eventSource.readyState === 0 ? 'CONNECTING' :
+                eventSource.readyState === 1 ? 'OPEN' :
+                eventSource.readyState === 2 ? 'CLOSED' : 'UNKNOWN'
+            })`);
+        }, 1000);
+    </script>
+</body>
+</html>

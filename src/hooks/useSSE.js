@@ -98,6 +98,14 @@ export function useSSE(channels = [], options = {}) {
   const currentRetryDelayRef = useRef(config.initialRetryDelay);
   const isConnectingRef = useRef(false); // Prevent multiple concurrent connection attempts
 
+  // 🔍 CONNECTION DEBOUNCING: Prevent rapid connect/disconnect cycles
+  const lastDisconnectTimeRef = useRef(0);
+  const CONNECTION_DEBOUNCE_MS = 200; // Minimum time between disconnect and connect
+
+  // 🔧 CONNECTION COORDINATION: Prevent connect/disconnect race conditions
+  const activeConnectionIdRef = useRef(null);
+  const pendingDisconnectIdRef = useRef(null);
+
   // Event handlers registry
   const eventHandlersRef = useRef(new Map());
 
@@ -350,6 +358,7 @@ export function useSSE(channels = [], options = {}) {
       if (parsedData.eventType === 'connection:established') {
         console.log('🎯 [SSE] Processing connection:established event:', parsedData.data);
         debugLog('Connection established', parsedData.data);
+
         console.log('🎯 [SSE] Setting connection state to CONNECTED');
         isConnectingRef.current = false; // Reset connecting flag on successful connection
         setConnectionState(SSE_CONNECTION_STATES.CONNECTED);
@@ -407,9 +416,14 @@ export function useSSE(channels = [], options = {}) {
   }, [resetHeartbeat, debugLog]);
 
 
-  // Connect to SSE endpoint
+  // ✅ STABLE: Connect to SSE endpoint with minimal dependencies
   const connect = useCallback(async () => {
-    console.log('🚀 [useSSE] connect() function called, isUnmounted:', isUnmountedRef.current);
+    const connectTime = Date.now();
+
+    console.log('🚀 [useSSE] connect() called at', new Date().toISOString(), {
+      isUnmounted: isUnmountedRef.current,
+      isConnecting: isConnectingRef.current
+    });
 
     if (isUnmountedRef.current) {
       console.log('❌ [useSSE] connect() aborted - component unmounted');
@@ -422,9 +436,16 @@ export function useSSE(channels = [], options = {}) {
       return;
     }
 
+    // Close existing connection if any
+    if (eventSourceRef.current) {
+      console.log('🔄 [useSSE] Closing existing connection before creating new one');
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+
     console.log('✅ [useSSE] connect() proceeding...');
     isConnectingRef.current = true;
-    // Read current config to avoid dependency issues
+
     const currentConfig = configRef.current;
     debugLog('Attempting to connect to SSE');
     setConnectionState(SSE_CONNECTION_STATES.CONNECTING);
@@ -541,15 +562,19 @@ export function useSSE(channels = [], options = {}) {
 
       // Setup event listeners
       eventSource.onopen = () => {
+        const openTime = Date.now();
+        const timeToOpen = openTime - connectTime;
         console.log('🎯 [SSE] EventSource.onopen triggered - connection opened!', {
           readyState: eventSource.readyState,
-          url: eventSource.url
+          url: eventSource.url,
+          timeToOpen: `${timeToOpen}ms`
         });
         debugLog('SSE connection opened');
         if (connectionTimeoutRef.current) {
           clearTimeout(connectionTimeoutRef.current);
           connectionTimeoutRef.current = null;
         }
+
         // Wait for connection:established event to set as connected
       };
 
@@ -604,7 +629,7 @@ export function useSSE(channels = [], options = {}) {
       const enhancedError = new Error(`Failed to create SSE connection: ${error.message}. Check if EventSource is supported and API server is accessible.`);
       const currentConfig = configRef.current;
       if (currentConfig.debugMode) {
-        console.log('[SSE] Failed to create SSE connection', { error, sseUrl: buildSSEUrl() });
+        console.log('[SSE] Failed to create SSE connection', { error });
       }
       isConnectingRef.current = false; // Reset connecting flag on exception
       setConnectionState(SSE_CONNECTION_STATES.ERROR);
@@ -614,7 +639,7 @@ export function useSSE(channels = [], options = {}) {
         scheduleReconnect();
       }
     }
-  }, [buildSSEUrl, handleSSEEvent]); // Remove debugLog dependency to prevent recreation loops
+  }, []); // ✅ STABLE: No dependencies to prevent recreation
 
   // Schedule reconnection with improved retry strategy
   const scheduleReconnect = useCallback(() => {
@@ -668,6 +693,7 @@ export function useSSE(channels = [], options = {}) {
 
       retryTimeoutRef.current = setTimeout(() => {
         if (!isUnmountedRef.current) {
+          // Call connect directly without dependency
           connect();
         }
       }, delay);
@@ -682,7 +708,7 @@ export function useSSE(channels = [], options = {}) {
 
       return newCount;
     });
-  }, [connect]); // Remove debugLog dependency to prevent loops
+  }, []); // ✅ STABLE: No dependencies to prevent loops
 
   // Set up scheduleReconnectRef for heartbeat timeout usage
   useEffect(() => {
@@ -702,36 +728,99 @@ export function useSSE(channels = [], options = {}) {
       eventSourceRef.current = null;
     }
 
-    clearTimers();
+    // Clear all timers directly
+    if (retryTimeoutRef.current) {
+      clearTimeout(retryTimeoutRef.current);
+      retryTimeoutRef.current = null;
+    }
+    if (heartbeatTimeoutRef.current) {
+      clearTimeout(heartbeatTimeoutRef.current);
+      heartbeatTimeoutRef.current = null;
+    }
+    if (connectionTimeoutRef.current) {
+      clearTimeout(connectionTimeoutRef.current);
+      connectionTimeoutRef.current = null;
+    }
+    if (fallbackIntervalRef.current) {
+      clearInterval(fallbackIntervalRef.current);
+      fallbackIntervalRef.current = null;
+    }
+    if (qualityCheckIntervalRef.current) {
+      clearInterval(qualityCheckIntervalRef.current);
+      qualityCheckIntervalRef.current = null;
+    }
+
     setRetryCount(0);
     setFallbackActive(false);
     // Read current config to avoid dependency issues
     currentRetryDelayRef.current = currentConfig.initialRetryDelay;
 
     connect();
-  }, [connect, clearTimers]); // Remove debugLog dependency
+  }, []); // ✅ STABLE: No dependencies to prevent recreation
 
-  // Disconnect from SSE
-  const disconnect = useCallback(() => {
+  // ✅ SIMPLIFIED: Disconnect from SSE
+  const disconnect = useCallback((reason = 'manual') => {
     const currentConfig = configRef.current;
+    const disconnectTime = Date.now();
+    const connectionDuration = connectionStartTimeRef.current ?
+      disconnectTime - connectionStartTimeRef.current : 0;
+
+    console.log(`🔌 [useSSE] DISCONNECT called: ${reason}`, {
+      reason,
+      connectionDuration: `${connectionDuration}ms`,
+      eventSourceExists: !!eventSourceRef.current,
+      eventSourceState: eventSourceRef.current?.readyState,
+      isUnmounted: isUnmountedRef.current
+    });
+
     if (currentConfig.debugMode) {
-      console.log('[SSE] Disconnecting from SSE');
+      console.log('[SSE] Disconnecting from SSE due to:', reason);
     }
 
     setConnectionState(SSE_CONNECTION_STATES.DISCONNECTED);
-    clearTimers();
 
+    // Clear all timers directly
+    if (retryTimeoutRef.current) {
+      clearTimeout(retryTimeoutRef.current);
+      retryTimeoutRef.current = null;
+    }
+    if (heartbeatTimeoutRef.current) {
+      clearTimeout(heartbeatTimeoutRef.current);
+      heartbeatTimeoutRef.current = null;
+    }
+    if (connectionTimeoutRef.current) {
+      clearTimeout(connectionTimeoutRef.current);
+      connectionTimeoutRef.current = null;
+    }
+    if (fallbackIntervalRef.current) {
+      clearInterval(fallbackIntervalRef.current);
+      fallbackIntervalRef.current = null;
+    }
+    if (qualityCheckIntervalRef.current) {
+      clearInterval(qualityCheckIntervalRef.current);
+      qualityCheckIntervalRef.current = null;
+    }
+
+    // Close EventSource connection
     if (eventSourceRef.current) {
+      console.log(`🔌 [useSSE] Closing EventSource (state: ${eventSourceRef.current.readyState})`);
       eventSourceRef.current.close();
       eventSourceRef.current = null;
     }
 
+    // Reset state
     setError(null);
     setRetryCount(0);
     setFallbackActive(false);
-    // Read current config to avoid dependency issues
+    isConnectingRef.current = false;
     currentRetryDelayRef.current = currentConfig.initialRetryDelay;
-  }, [clearTimers]); // Remove debugLog dependency
+
+    // Clear coordination refs
+    activeConnectionIdRef.current = null;
+    pendingDisconnectIdRef.current = null;
+
+    console.log(`🔌 [useSSE] Disconnected successfully`);
+  }, []); // ✅ STABLE: No dependencies to prevent recreation
 
   // Start fallback polling (if SSE completely fails)
   const startFallback = useCallback(() => {
@@ -819,44 +908,97 @@ export function useSSE(channels = [], options = {}) {
   const gameId = options.sessionContext?.gameId;
   const debugMode = options.debugMode;
 
-  // Auto-connect on mount or channel/config changes
+  // 🔍 RACE CONDITION DEBUGGING: Track effect executions and cleanup timing
+  const effectExecutionIdRef = useRef(0);
+  const connectionStartTimeRef = useRef(null);
+
+  // 🔍 REACT STRICT MODE DETECTION
+  const isStrictModeRef = useRef(false);
   useEffect(() => {
+    // React Strict Mode causes effects to run twice in development
+    const startTime = Date.now();
+    const effectId = ++effectExecutionIdRef.current;
+
+    setTimeout(() => {
+      if (effectExecutionIdRef.current !== effectId) {
+        isStrictModeRef.current = true;
+        console.log('⚠️ [useSSE] REACT STRICT MODE DETECTED - effects running multiple times');
+      }
+    }, 0);
+  }, []);
+
+  // 🔧 EFFECT STABILIZATION: Track last effect state to prevent duplicates
+  const effectStabilizationRef = useRef({
+    lastChannels: '',
+    lastGameId: null,
+    lastDebugMode: false,
+    stableConnectionTime: 0 // Will be set on first effect
+  });
+
+  // ✅ DEBOUNCED: Auto-connect with React Strict Mode protection
+  useEffect(() => {
+    const effectId = ++effectExecutionIdRef.current;
+    const effectStartTime = Date.now();
+
     // Reset unmounted flag since effect is running (component is mounted)
     isUnmountedRef.current = false;
 
-    console.log('🔄 [useSSE] Effect triggered - channels or gameId changed:', {
+    const currentChannelsStr = channels.join(',');
+
+    console.log(`🔄 [useSSE] EFFECT #${effectId} STARTING at ${new Date().toISOString()}`, {
       channels: channels,
       gameId: gameId,
-      debugMode: debugMode
+      debugMode: debugMode,
+      isStrictMode: isStrictModeRef.current
     });
 
-    console.log('🔄 [useSSE] About to call connect() for channels:', channels);
-
-    if (channels.length > 0) {
-      connect();
+    // ✅ SIMPLIFIED: Only skip if no channels provided
+    if (channels.length === 0) {
+      console.log(`🚫 [useSSE] EFFECT #${effectId} SKIPPED - No channels provided`);
+      return () => {
+        console.log(`🧹 [useSSE] CLEANUP #${effectId} SKIPPED - no channels`);
+      };
     }
 
+    // ✅ DEBOUNCE: Prevent React Strict Mode double effects
+    const connectTimeout = setTimeout(() => {
+      if (!isUnmountedRef.current) {
+        console.log(`✅ [useSSE] EFFECT #${effectId} PROCEEDING with connection (after debounce)`);
+        connectionStartTimeRef.current = effectStartTime;
+        connect();
+      }
+    }, 50); // 50ms debounce to prevent double effects
+
     return () => {
-      console.log('🧹 [useSSE] Effect cleanup function running - will disconnect');
-      // Don't set isUnmountedRef.current = true here - that's only for actual component unmounting
-      // This cleanup is just for reconnecting with new sessionContext
-      disconnect();
+      clearTimeout(connectTimeout); // Clear timeout if effect cleanup runs quickly
+
+      const cleanupTime = Date.now();
+      const connectionDuration = connectionStartTimeRef.current ?
+        cleanupTime - connectionStartTimeRef.current : 0;
+
+      console.log(`🧹 [useSSE] CLEANUP #${effectId} RUNNING at ${new Date().toISOString()}`, {
+        effectId,
+        connectionDuration: `${connectionDuration}ms`,
+        isUnmounted: isUnmountedRef.current,
+        eventSourceState: eventSourceRef.current?.readyState
+      });
+
+      // ✅ SIMPLIFIED: Only disconnect if component is actually unmounting or we have a connection
+      if (isUnmountedRef.current || eventSourceRef.current) {
+        console.log(`🔌 [useSSE] CLEANUP #${effectId} - Disconnecting`);
+        disconnect(`effect-cleanup-#${effectId}`);
+      } else {
+        console.log(`🔄 [useSSE] CLEANUP #${effectId} - No connection to clean up`);
+      }
     };
-  }, [
-    channels.join(','),
-    // Only reconnect for core changes that require a new connection
-    gameId, // Use extracted gameId instead of config.sessionContext?.gameId
-    // Note: Removed lobbyId, sessionId and other dynamic properties to prevent rapid reconnections
-    // These are sent as URL parameters but don't require reconnection when they change
-    debugMode // Use extracted debugMode to prevent config object recreation from triggering reconnections
-    // Removed connect, disconnect from dependencies to prevent recreation loops
-  ]); // Minimal dependencies to prevent unnecessary reconnections
+  }, [channels.join(','), gameId, debugMode]); // ✅ STABLE: Minimal dependencies
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      console.log('🗑️ [useSSE] Component unmounting - final cleanup');
       isUnmountedRef.current = true;
-      disconnect();
+      disconnect('component-unmount');
     };
   }, [disconnect]);
 

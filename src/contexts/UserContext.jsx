@@ -31,7 +31,7 @@ export function UserProvider({ children }) {
   // Retry mechanism for settings loading
   const retryIntervalRef = useRef(null);
 
-  // Load settings independently of user authentication
+  // Load settings independently of user authentication (parallel to settings)
   const loadSettings = useCallback(async () => {
     try {
       setSettingsLoading(true);
@@ -50,6 +50,7 @@ export function UserProvider({ children }) {
       setSettingsLoading(false);
     }
   }, []);
+
 
   // Silent retry function - doesn't show loading states or errors in UI
   const retryLoadSettings = useCallback(async () => {
@@ -273,30 +274,30 @@ export function UserProvider({ children }) {
   // Check for persisted auth state on mount and load settings
   useEffect(() => {
     const init = async () => {
-      // Load settings first (independent of user)
+      // Load settings (independent of user)
       await loadSettings();
     };
     init();
   }, [loadSettings]);
 
-  // Run auth check after settings are initially loaded
+  // Run auth check after settings is initially loaded
   useEffect(() => {
     if (settings !== null && !settingsLoading) {
       checkPersistedAuth(settings);
     }
   }, [settingsLoading]); // Run when settings finish loading (once)
 
-  // Additional effect: Trigger auth check when settings are updated by retry
+  // Additional effect: Trigger auth check when settings is updated by retry
   // This handles the case where auto-retry succeeds but auth check doesn't re-run
   useEffect(() => {
     if (settings !== null && !settingsLoading && isLoading && !settingsLoadFailed) {
-      // Settings were successfully loaded (either initially or via retry) but we're still in loading state
+      // Settings was successfully loaded (either initially or via retry) but we're still in loading state
       // Re-run auth check to complete the initialization
       checkPersistedAuth(settings);
     }
   }, [settings, settingsLoading, isLoading, settingsLoadFailed, checkPersistedAuth]);
 
-  // Start retry mechanism when settings fail to load or maintenance mode is active
+  // Start retry mechanism when settings fails to load or maintenance mode is active
   useEffect(() => {
     if (settingsLoadFailed || settings?.maintenance_mode) {
       startSettingsRetry();
@@ -464,7 +465,7 @@ export function UserProvider({ children }) {
         completeUser = user; // Fallback to provided data if fetch fails
       }
 
-      // Settings are already loaded independently, so get current settings
+      // Settings is already loaded independently, so get current settings
       const settingsObj = settings;
       let finalUser = completeUser;
 
@@ -657,7 +658,7 @@ export function UserProvider({ children }) {
   const clearAuth = useCallback(() => {
     clog('[UserContext] Clearing user authentication - user will be logged out');
     setCurrentUser(null);
-    // Don't clear settings - they should remain available for non-logged-in users
+    // Don't clear settings - it should remain available for non-logged-in users
     setIsAuthenticated(false);
     setUserDataFresh(false); // Reset fresh data flag when clearing auth
 

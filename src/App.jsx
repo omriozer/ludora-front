@@ -41,7 +41,7 @@ const SuspenseLoader = () => (
 
 // Student Portal Component (only allowed routes)
 function StudentPortal() {
-	const { currentUser, settings, settingsLoadFailed, login } = useUser();
+	const { currentUser, configuration, configurationLoadFailed, login } = useUser();
 	const { showLoginModal, openLoginModal, closeLoginModal, executeCallback, modalMessage } = useLoginModal();
 	const location = useLocation();
 
@@ -99,7 +99,7 @@ function StudentPortal() {
 	// Check admin bypass for maintenance mode
 	useEffect(() => {
 		const checkAdminBypass = async () => {
-			if (settings?.maintenance_mode || settingsLoadFailed) {
+			if (configuration?.maintenance_mode || configurationLoadFailed) {
 				setIsCheckingAdminBypass(true);
 				try {
 					const canBypass = await canBypassMaintenance(currentUser);
@@ -117,7 +117,7 @@ function StudentPortal() {
 		};
 
 		checkAdminBypass();
-	}, [currentUser, settings?.maintenance_mode, settingsLoadFailed]);
+	}, [currentUser, configuration?.maintenance_mode, configurationLoadFailed]);
 
 	// Mouse/touch handlers for draggable return button (same as Layout.jsx)
 	const handleMouseMove = useCallback((e) => {
@@ -236,8 +236,8 @@ function StudentPortal() {
 
 	// Show maintenance page if enabled OR if settings loading failed (but allow admins to bypass)
 	// IMPORTANT: Check maintenance/error state BEFORE loading state to prevent infinite spinner
-	if ((settings?.maintenance_mode || settingsLoadFailed) && !canAdminBypass) {
-		const isTemporaryIssue = settingsLoadFailed && !settings?.maintenance_mode;
+	if ((configuration?.maintenance_mode || configurationLoadFailed) && !canAdminBypass) {
+		const isTemporaryIssue = configurationLoadFailed && !configuration?.maintenance_mode;
 
 		// Show loading while checking admin bypass
 		if (isCheckingAdminBypass) {
