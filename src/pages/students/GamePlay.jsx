@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { GamepadIcon, Users, Home, Crown, AlertCircle, CheckCircle, XCircle, PlayIcon } from 'lucide-react';
 import GameTypeDisplay from '@/components/game/GameTypeDisplay';
-import logoSm from '../../assets/images/logo_sm.png';
+import LogoDisplay from '@/components/ui/LogoDisplay';
 
 /**
  * Student game play page
@@ -337,11 +337,7 @@ const GamePlay = () => {
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-2">
-            <img
-              src={logoSm}
-              alt="לודורה"
-              className="h-10 object-contain"
-            />
+            <LogoDisplay size="small" className="h-10 object-contain" />
           </div>
 
           {/* Game Info */}

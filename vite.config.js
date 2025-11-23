@@ -2,18 +2,73 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
+// Environment-aware fallbacks for Vite configuration
+// These match the centralized configuration patterns
+const getEnvFallback = (envVar, fallbacks) => {
+  const value = process.env[envVar]
+  if (value) return value
+
+  const nodeEnv = process.env.NODE_ENV || 'development'
+  switch (nodeEnv) {
+    case 'production':
+      return fallbacks.production
+    case 'staging':
+      return fallbacks.staging
+    case 'development':
+    default:
+      return fallbacks.development
+  }
+}
+
+// Configuration constants that match /src/config/environment.js patterns
+const VITE_CONFIG = {
+  api: {
+    domain: getEnvFallback('VITE_API_DOMAIN', {
+      development: 'localhost',
+      staging: 'api-staging.ludora.app',
+      production: 'api.ludora.app'
+    }),
+    port: getEnvFallback('VITE_API_PORT', {
+      development: '3003',
+      staging: '3003',
+      production: '3003'
+    })
+  },
+  frontend: {
+    port: getEnvFallback('VITE_FRONTEND_PORT', {
+      development: '5173',
+      staging: '5173',
+      production: '5173'
+    })
+  },
+  domains: {
+    student: getEnvFallback('VITE_STUDENT_PORTAL_DOMAIN', {
+      development: 'my.localhost',
+      staging: 'my-staging.ludora.app',
+      production: 'my.ludora.app'
+    })
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
   server: {
+    host: '0.0.0.0', // Allow access from any host including subdomains
     https: process.env.NODE_ENV !== 'development', // Enable HTTPS for PayPlus autofill functionality
-    allowedHosts: true,
+    allowedHosts: 'all', // Allow all hosts including my.localhost
+    origin: 'auto', // Auto-detect origin to handle subdomain access correctly
     proxy: {
       '/api': {
-        target: `http://localhost:${process.env.VITE_API_PORT || '3003'}`,
+        target: `http://${VITE_CONFIG.api.domain}:${VITE_CONFIG.api.port}`,
         changeOrigin: true,
         secure: false,
         ws: true, // Enable WebSocket proxying
+        headers: {
+          // Preserve original host for proper cookie domain matching
+          'X-Forwarded-Host': `${VITE_CONFIG.domains.student}:${VITE_CONFIG.frontend.port}`,
+          'X-Forwarded-Proto': 'http'
+        },
         // Preserve original request body and headers for multipart uploads
         configure: (proxy, options) => {
           proxy.on('proxyReq', (proxyReq, req, res) => {

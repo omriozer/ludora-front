@@ -29,40 +29,38 @@ const StudentLoginModal = ({ onClose, onLoginSuccess, message }) => {
 
   // Handle successful login
   const handleLoginSuccess = () => {
+    // Execute the login success callback if provided
     if (onLoginSuccess) {
       onLoginSuccess();
-    } else {
-      onClose(); // Default behavior - just close modal
     }
+
+    // ALWAYS close the modal after successful login
+    // This ensures the modal closes regardless of what the callback does
+    onClose();
   };
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
       onClick={handleBackdropClick}
       role="dialog"
       aria-modal="true"
       aria-labelledby="student-login-modal-title"
+      className="contents" // Use contents to avoid creating extra layout
     >
-      <div
-        className="relative w-full max-w-md mx-auto"
-        onClick={(e) => e.stopPropagation()} // Prevent backdrop click when clicking modal content
-      >
-        {/* Modal message if provided */}
-        {message && (
-          <div className="mb-4 text-center text-white bg-blue-600/90 px-4 py-2 rounded-lg text-sm">
-            {message}
-          </div>
-        )}
-
-        {/* StudentLogin component with modal-specific props */}
-        <div id="student-login-modal-title">
-          <StudentLogin
-            onLoginSuccess={handleLoginSuccess}
-            returnPath={null} // Don't navigate, just close modal
-            onClose={onClose} // Pass close handler for built-in close button
-          />
+      {/* Modal message if provided */}
+      {message && (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-[60] text-center text-white bg-blue-600/90 px-4 py-2 rounded-lg text-sm">
+          {message}
         </div>
+      )}
+
+      {/* StudentLogin component with modal-specific props - handles its own full background */}
+      <div id="student-login-modal-title">
+        <StudentLogin
+          onLoginSuccess={handleLoginSuccess}
+          returnPath={null} // Don't navigate, just close modal
+          onClose={onClose} // Pass close handler for built-in close button
+        />
       </div>
     </div>
   );

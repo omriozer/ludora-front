@@ -9,8 +9,11 @@ import { ApiError } from '@/utils/ApiError.js';
 // Re-export clog and cerror for use by other modules
 export { clog, cerror };
 
-// Use centralized API base configuration
-const API_BASE = getApiBase();
+// Use centralized API base configuration - dynamically evaluated
+// Don't cache as constant to allow runtime changes
+function getAPIBase() {
+  return getApiBase();
+}
 
 // Note: Authentication now uses httpOnly cookies instead of localStorage tokens
 
@@ -42,7 +45,7 @@ export async function apiRequest(endpoint, options = {}) {
 
 // Internal function to handle API requests with token refresh retry
 async function apiRequestWithRetry(endpoint, options = {}, isRetryAttempt = false) {
-  const url = `${API_BASE}${endpoint}`;
+  const url = `${getAPIBase()}${endpoint}`;
 
   const headers = {
     'Content-Type': 'application/json',
@@ -67,20 +70,41 @@ async function apiRequestWithRetry(endpoint, options = {}, isRetryAttempt = fals
 
     if (!response.ok) {
       // Handle 401 Unauthorized - attempt token refresh
-      if (response.status === 401 && !isRetryAttempt && !endpoint.includes('/auth/logout') && !endpoint.includes('/auth/refresh')) {
+      if (response.status === 401 && !isRetryAttempt && !endpoint.includes('/auth/logout') && !endpoint.includes('/auth/refresh') && !endpoint.includes('/players/logout') && !endpoint.includes('/players/refresh')) {
         try {
-          // Attempt to refresh tokens by making a simple authenticated request
-          // The auth middleware will automatically handle refresh token logic
-          const refreshResponse = await fetch(`${API_BASE}/auth/me`, {
+          // Determine if this is a player or user request
+          const isPlayerRequest = endpoint.startsWith('/players/');
+
+          // Choose appropriate refresh endpoint and method
+          const refreshEndpoint = isPlayerRequest ? '/players/refresh' : '/auth/me';
+          const refreshMethod = isPlayerRequest ? 'POST' : 'GET'; // Players use POST /refresh, users use GET /me
+
+          console.log(`[apiClient] 🔄 Got 401 for ${endpoint}, attempting refresh via ${refreshMethod} ${refreshEndpoint}`);
+
+          // Attempt to refresh tokens by calling the appropriate endpoint
+          // The middleware will automatically handle refresh token logic
+          // Use direct fetch with relative URL to go through Vite proxy
+          const refreshResponse = await fetch(getAPIBase() + refreshEndpoint, {
+            method: refreshMethod,
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' }
           });
 
+          console.log(`[apiClient] 📊 Refresh response:`, {
+            ok: refreshResponse.ok,
+            status: refreshResponse.status,
+            statusText: refreshResponse.statusText
+          });
+
           if (refreshResponse.ok) {
+            console.log(`[apiClient] ✅ Refresh successful, retrying original request: ${endpoint}`);
             // Retry the original request now that tokens are refreshed
             return apiRequestWithRetry(endpoint, options, true);
+          } else {
+            console.log(`[apiClient] ❌ Refresh failed with status ${refreshResponse.status}`);
           }
         } catch (refreshError) {
+          console.log(`[apiClient] ❌ Refresh error:`, refreshError);
           // Continue with original error handling
         }
       }
@@ -145,7 +169,7 @@ async function apiRequestWithRetry(endpoint, options = {}, isRetryAttempt = fals
 
 // Anonymous API request helper without credentials (for student portal)
 export async function apiRequestAnonymous(endpoint, options = {}) {
-  const url = `${API_BASE}${endpoint}`;
+  const url = `${getAPIBase()}${endpoint}`;
 
   const headers = {
     'Content-Type': 'application/json',
@@ -225,7 +249,7 @@ export async function apiRequestAnonymous(endpoint, options = {}) {
 
 // File download helper - returns blob instead of JSON
 export async function apiDownload(endpoint, options = {}) {
-  const url = `${API_BASE}${endpoint}`;
+  const url = `${getAPIBase()}${endpoint}`;
 
   const headers = {
     ...options.headers
@@ -270,17 +294,9 @@ export async function apiDownload(endpoint, options = {}) {
 
 // File/video upload with progress tracking
 export async function apiUploadWithProgress(endpoint, formData, onProgress = null, options = {}) {
-  // IMPORTANT: Bypass Vite proxy for uploads in development to avoid content-type corruption
-  // In development, Vite proxy can corrupt multipart/form-data, so we go directly to API server
-  let url;
-  if (import.meta.env.DEV) {
-    // In development, bypass the Vite proxy and go directly to the API server
-    const apiPort = import.meta.env.VITE_API_PORT || '3003';
-    url = `http://localhost:${apiPort}/api${endpoint}`;
-  } else {
-    // In production, use the normal API base
-    url = `${API_BASE}${endpoint}`;
-  }
+  // Use consistent API base for all requests to maintain same-origin and preserve cookies
+  // Modern Vite proxy handles multipart/form-data uploads correctly
+  const url = `${getAPIBase()}${endpoint}`;
 
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
@@ -801,10 +817,37 @@ export const Player = {
   /**
    * Get current player information (equivalent to User.getCurrentUser)
    * @param {boolean} suppressUserErrors - Whether to suppress error messages
-   * @returns {Promise<Object>} Current player data
+   * @returns {Promise<Object>} Current player data, or null if not authenticated
    */
   async getCurrentPlayer(suppressUserErrors = false) {
-    return apiRequest('/players/me', { suppressUserErrors });
+    // TODO remove debug - fix player authentication persistence
+    clog('[Player.getCurrentPlayer] 🎯 STARTING: Fetching /players/me with suppressUserErrors:', suppressUserErrors);
+
+    try {
+      const response = await apiRequest('/players/me', { suppressUserErrors });
+      // TODO remove debug - fix player authentication persistence
+      clog('[Player.getCurrentPlayer] ✅ SUCCESS: /players/me returned:', response);
+      return response;
+    } catch (error) {
+      // TODO remove debug - fix player authentication persistence
+      clog('[Player.getCurrentPlayer] ❌ ERROR: /players/me failed:', {
+        message: error.message,
+        statusCode: error.statusCode,
+        suppressUserErrors: suppressUserErrors
+      });
+
+      // Return null for 401 errors (not authenticated) instead of throwing
+      if (error.statusCode === 401) {
+        // TODO remove debug - fix player authentication persistence
+        clog('[Player.getCurrentPlayer] ℹ️ HANDLING 401: Returning null for 401 - not authenticated');
+        return null;
+      }
+
+      // Re-throw other errors (network issues, server errors, etc.)
+      // TODO remove debug - fix player authentication persistence
+      clog('[Player.getCurrentPlayer] 🔥 RE-THROWING: Non-401 error');
+      throw error;
+    }
   },
 
   /**
@@ -818,6 +861,33 @@ export const Player = {
   async updateProfile(data) {
     return apiRequest('/players/update-profile', {
       method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  },
+
+  /**
+   * Create anonymous player (no teacher required)
+   * @param {Object} data - Player data
+   * @param {string} data.display_name - Player display name
+   * @param {Object} data.metadata - Optional metadata
+   * @returns {Promise<Object>} Created player with privacy code
+   */
+  async createAnonymous(data) {
+    return apiRequest('/players/create-anonymous', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  },
+
+  /**
+   * Assign teacher to current anonymous player
+   * @param {Object} data - Assignment data
+   * @param {string} data.teacher_id - Teacher ID to assign
+   * @returns {Promise<Object>} Assignment response with teacher info
+   */
+  async assignTeacher(data) {
+    return apiRequest('/players/assign-teacher', {
+      method: 'POST',
       body: JSON.stringify(data)
     });
   },

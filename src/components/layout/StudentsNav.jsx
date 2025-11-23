@@ -8,7 +8,7 @@ import ConfirmationDialog from '@/components/ui/confirmation-dialog';
 import { checkCameraAvailability } from '@/utils/qrScannerUtils';
 import { useActivityCodeHandler } from '@/hooks/useActivityCodeHandler';
 import { useLoginModal } from '@/hooks/useLoginModal';
-import logo from '../../assets/images/logo.png';
+import LogoDisplay from '@/components/ui/LogoDisplay';
 
 /**
  * Top navigation header for the student portal
@@ -86,22 +86,11 @@ const StudentsNav = ({ teacherInfo = null }) => {
             className="flex items-center gap-2 hover:opacity-80 transition-opacity"
             aria-label="לחזור לעמוד הבית"
           >
-            {logo || settings?.logo_url ? (
-              <img
-                src={logo || settings?.logo_url}
-                alt={settings?.site_name || "לודורה"}
-                className="h-12 md:h-14 object-contain"
-              />
-            ) : (
-              <>
-                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg flex items-center justify-center">
-                  <GraduationCap className="w-7 h-7 text-white" />
-                </div>
-                <span className="text-xl font-bold text-gray-900 hidden sm:block">
-                  {settings?.site_name || "לודורה"}
-                </span>
-              </>
-            )}
+            <LogoDisplay
+              size="small"
+              className="h-12 md:h-14 object-contain"
+              alt={settings?.site_name || "לודורה"}
+            />
           </Link>
 
           {/* Teacher catalog info in the center */}

@@ -118,8 +118,8 @@ export function getCredentialPolicy(portalType, studentsAccessMode) {
   // Student portal - policy based on access mode
   switch (studentsAccessMode) {
     case STUDENTS_ACCESS_MODES.INVITE_ONLY:
-      // Privacy-compliant: player session only (no Firebase cookies)
-      return CREDENTIAL_POLICY.WITHOUT_CREDENTIALS;
+      // Privacy-compliant: player session only (try cookies for player auth, no Firebase required)
+      return CREDENTIAL_POLICY.TRY_BOTH;
 
     case STUDENTS_ACCESS_MODES.AUTHED_ONLY:
       // Firebase authentication required
@@ -143,11 +143,11 @@ export function getCredentialPolicy(portalType, studentsAccessMode) {
 export function getAuthMethod(studentsAccessMode) {
   switch (studentsAccessMode) {
     case STUDENTS_ACCESS_MODES.INVITE_ONLY:
-      return 'player_session'; // Anonymous player sessions only
+      return 'student_access_token'; // Student token authentication (matches backend)
     case STUDENTS_ACCESS_MODES.AUTHED_ONLY:
       return 'firebase'; // Firebase authentication required
     case STUDENTS_ACCESS_MODES.ALL:
-      return 'hybrid'; // Firebase first, player session fallback
+      return 'hybrid'; // Firebase first, student token fallback
     default:
       return 'hybrid'; // Safe fallback
   }

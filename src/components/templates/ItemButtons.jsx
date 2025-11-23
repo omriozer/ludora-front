@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Square, Minus, MoreHorizontal, Plus, Layers, Circle, Type, Link, Copyright, User } from 'lucide-react';
-import logo from '@/assets/images/logo_sm.png';
+import LogoDisplay from '@/components/ui/LogoDisplay';
 import ElementCard from './ElementCard';
 
 const ItemButtons = ({
@@ -57,7 +57,7 @@ const ItemButtons = ({
     // First section: Built-in elements in requested order
     logo: {
       name: 'לוגו',
-      icon: <img src={logo} alt="לוגו" className="w-4 h-4" />,
+      icon: <LogoDisplay size="small" alt="לוגו" className="w-4 h-4" />,
       color: 'border-purple-300 bg-purple-50 hover:bg-purple-100',
       isBuiltIn: true
     },

@@ -10,8 +10,9 @@ import {
   getElementDisplayContent,
   getElementDisplayHref
 } from '@/utils/templateContentResolver.js';
-import logo from '@/assets/images/logo.png';
+import LogoDisplay from '@/components/ui/LogoDisplay';
 import { clog, cerror } from '@/lib/utils';
+import { urls } from '@/config/urls';
 
 // Configure PDF.js worker - use CDN for compatibility
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
@@ -672,8 +673,8 @@ const TemplateCanvas = ({
             }}
             onMouseDown={(e) => handleMouseDown(elementKey, e)}
           >
-            <img
-              src={logo}
+            <LogoDisplay
+              size="small"
               alt={elementType === 'watermark-logo' ? 'Watermark Logo' : 'Logo'}
               style={{
                 width: `${element.style?.size || 60}px`,
@@ -742,7 +743,7 @@ const TemplateCanvas = ({
             onMouseDown={(e) => handleMouseDown(elementKey, e)}
             title={isLoadingResolvedContent ? 'טוען תוכן...' : ''}
           >
-            {displayHref || 'https://ludora.app'}
+            {displayHref || urls.external.marketing.main()}
           </div>
         );
 

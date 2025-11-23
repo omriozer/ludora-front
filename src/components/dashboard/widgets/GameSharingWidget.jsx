@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
 import { renderQRCode, LUDORA_OFFICIAL_PRESET } from '@/utils/qrCodeUtils';
 import { useNavigate } from 'react-router-dom';
+import { urls } from '@/config/urls';
 
 /**
  * GameSharingWidget - Dashboard widget for teachers to manage their invitation code
@@ -24,25 +25,16 @@ const GameSharingWidget = ({ widgetId, settings = {} }) => {
     return null;
   }
 
-  // Generate portal URL using environment variable
+  // Generate portal URL using centralized configuration
   const getStudentPortalUrl = () => {
-    const currentHost = window.location.hostname;
-    const currentProtocol = window.location.protocol;
-
-    // For localhost development
-    if (currentHost === 'localhost') {
-      const studentPort = import.meta.env.VITE_STUDENT_PORTAL_PORT || '5174';
-      const studentDomain = `localhost:${studentPort}`;
-      return invitationCode ? `${currentProtocol}//${studentDomain}/portal/${invitationCode}` : '';
+    if (!invitationCode) {
+      return '';
     }
 
-    // For production/staging
-    const studentDomain = import.meta.env.VITE_STUDENT_PORTAL_DOMAIN || 'my.ludora.app';
-    return invitationCode ? `https://${studentDomain}/portal/${invitationCode}` : '';
+    return urls.portal.student.portal(invitationCode);
   };
 
   const portalUrl = getStudentPortalUrl();
-  const studentDomain = portalUrl ? new URL(portalUrl).host : (import.meta.env.VITE_STUDENT_PORTAL_DOMAIN || 'my.ludora.app');
 
   // Generate invitation code
   const generateCode = async () => {
@@ -312,7 +304,7 @@ const GameSharingWidget = ({ widgetId, settings = {} }) => {
                     • הזנת הקוד{' '}
                     <button
                       onClick={() => {
-                        const homeUrl = portalUrl.replace(/\/portal\/.*$/, '');
+                        const homeUrl = urls.portal.student.home();
                         window.open(homeUrl, '_blank', 'noopener,noreferrer');
                       }}
                       className="text-blue-600 hover:text-blue-800 underline cursor-pointer transition-colors font-medium"

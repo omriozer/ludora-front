@@ -5,7 +5,7 @@ import ConfirmationDialog from '@/components/ui/confirmation-dialog';
 import { useUser } from '@/contexts/UserContext';
 import { checkCameraAvailability } from '@/utils/qrScannerUtils';
 import { useActivityCodeHandler } from '@/hooks/useActivityCodeHandler';
-import logo from '../../assets/images/logo.png';
+import LogoDisplay from '@/components/ui/LogoDisplay';
 
 /**
  * Beautiful home page for the student portal
@@ -104,17 +104,10 @@ const StudentHome = () => {
 
         <div className="relative max-w-4xl mx-auto">
           <div className="inline-flex items-center justify-center">
-            {logo || settings?.logo_url ? (
-              <img
-                src={logo || settings?.logo_url}
-                alt={settings?.site_name || "לודורה"}
-                className="h-40 w-40 md:h-48 md:w-48 object-contain transform hover:scale-105 transition-transform duration-300 drop-shadow-lg"
-              />
-            ) : (
-              <div className="inline-flex items-center justify-center w-40 h-40 md:w-48 md:h-48 bg-gradient-to-br from-purple-500 to-blue-500 rounded-3xl shadow-lg transform hover:scale-105 transition-transform">
-                <GraduationCap className="w-20 h-20 md:w-28 md:h-28 text-white" />
-              </div>
-            )}
+            <LogoDisplay
+              className="h-40 w-40 md:h-48 md:w-48 object-contain transform hover:scale-105 transition-transform duration-300 drop-shadow-lg"
+              alt={settings?.site_name || "לודורה"}
+            />
           </div>
 
           <p className="text-3xl md:text-4xl text-gray-800 mb-8 max-w-2xl mx-auto leading-relaxed font-bold">

@@ -6,7 +6,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { iconMap } from "@/lib/layoutUtils";
 import { NAV_ITEMS, getNavItemConfig, PRODUCT_TYPES } from "@/config/productTypes";
-import logoSm from "../../assets/images/logo_sm.png";
+import LogoDisplay from '@/components/ui/LogoDisplay';
 import { useCart } from "@/contexts/CartContext";
 
 // Helper function to check if user can see item based on visibility setting
@@ -287,22 +287,7 @@ const PublicNav = ({ currentUser, handleLogout, handleLogin, settings }) => {
                 isCollapsed ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'
               }`}
             >
-              {logoSm || settings?.logo_url ? (
-                <img
-                  src={logoSm || settings?.logo_url}
-                  alt={settings?.site_name || "לודורה"}
-                  className="h-8 w-auto object-contain rounded-lg max-w-[120px]"
-                />
-              ) : (
-                <>
-                  <div className="w-8 h-8 bg-gradient-to-br from-purple-600 via-pink-600 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
-                    <GraduationCap className="w-5 h-5 text-white" />
-                  </div>
-                  <h1 className="text-lg font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 bg-clip-text text-transparent">
-                    {settings?.site_name || "לודורה"}
-                  </h1>
-                </>
-              )}
+              <LogoDisplay size="small" className="h-8 w-auto object-contain rounded-lg max-w-[120px]" />
             </Link>
 
             {/* Cart Icon and Menu Toggle */}
@@ -372,25 +357,7 @@ const PublicNav = ({ currentUser, handleLogout, handleLogin, settings }) => {
                 to={currentUser ? '/dashboard' : '/'}
                 className="flex items-center gap-3 hover:scale-105 transition-transform duration-300"
               >
-                {logoSm || settings?.logo_url ? (
-                  <img
-                    src={logoSm || settings?.logo_url}
-                    alt={settings?.site_name || "לודורה"}
-                    className="h-12 w-auto max-w-[150px] object-contain rounded-lg transition-all duration-300"
-                  />
-                ) : (
-                  <>
-                    <div className="w-12 h-12 bg-gradient-to-br from-purple-600 via-pink-600 to-blue-600 rounded-xl flex items-center justify-center shadow-lg transition-all duration-300">
-                      <GraduationCap className="w-7 h-7 text-white transition-all duration-300" />
-                    </div>
-                    <div className="transition-all duration-300">
-                      <h1 className="text-xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 bg-clip-text text-transparent">
-                        {settings?.site_name || "לודורה"}
-                      </h1>
-                      <p className="text-xs text-gray-500 font-medium">פלטפורמה חינוכית מתקדמת</p>
-                    </div>
-                  </>
-                )}
+                <LogoDisplay size="small" className="h-12 w-auto max-w-[150px] object-contain rounded-lg transition-all duration-300" />
               </Link>
 
               {/* Collapse Toggle Button */}
@@ -409,17 +376,7 @@ const PublicNav = ({ currentUser, handleLogout, handleLogin, settings }) => {
                 to={currentUser ? '/dashboard' : '/'}
                 className="flex items-center justify-center hover:scale-105 transition-transform duration-300"
               >
-                {logoSm || settings?.logo_url ? (
-                  <img
-                    src={logoSm || settings?.logo_url}
-                    alt={settings?.site_name || "לודורה"}
-                    className="h-8 w-8 object-contain rounded-lg transition-all duration-300"
-                  />
-                ) : (
-                  <div className="w-8 h-8 bg-gradient-to-br from-purple-600 via-pink-600 to-blue-600 rounded-xl flex items-center justify-center shadow-lg transition-all duration-300">
-                    <GraduationCap className="w-5 h-5 text-white transition-all duration-300" />
-                  </div>
-                )}
+                <LogoDisplay size="small" className="h-8 w-8 object-contain rounded-lg transition-all duration-300" />
               </Link>
 
               {/* Expand button when collapsed */}

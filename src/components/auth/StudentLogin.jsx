@@ -15,7 +15,8 @@ import { showSuccess, showError } from '@/utils/messaging';
 import { STUDENTS_ACCESS_MODES } from '@/utils/portalContext';
 import { STUDENT_GRADIENTS } from '@/styles/studentsColorSchema';
 import { APP_VERSION } from '@/constants/version';
-import logo from '../../assets/images/logo.png';
+import PlayerWelcomeModal from '@/components/dialogs/PlayerWelcomeModal';
+import LogoDisplay from '@/components/ui/LogoDisplay';
 
 /**
  * StudentLogin Component
@@ -35,7 +36,8 @@ const StudentLogin = ({ onLoginSuccess, returnPath, onClose }) => {
     login,
     settings,
     isAuthenticated,
-    isPlayerAuthenticated
+    isPlayerAuthenticated,
+    refreshUser
   } = useUser();
 
   // Login states
@@ -47,6 +49,10 @@ const StudentLogin = ({ onLoginSuccess, returnPath, onClose }) => {
   const [displayName, setDisplayName] = useState('');
   const [loginMode, setLoginMode] = useState('existing'); // 'existing' or 'new'
   const [showPrivacyPopup, setShowPrivacyPopup] = useState(false);
+
+  // Welcome modal state
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [newPlayerData, setNewPlayerData] = useState(null);
 
   // Get students_access mode from settings (default to 'all' for maximum accessibility)
   const studentsAccessMode = settings?.students_access || STUDENTS_ACCESS_MODES.ALL;
@@ -130,31 +136,40 @@ const StudentLogin = ({ onLoginSuccess, returnPath, onClose }) => {
       if (loginMode === 'existing') {
         // Login with existing privacy code
         await playerLogin(privacyCode.trim().toUpperCase());
+        // Apply same fix as welcome modal - ensure proper state update and closure
+        await handleExistingPlayerLoginComplete();
       } else {
         // Create new player with display name
         await handleCreateNewPlayer(displayName.trim());
+        // Don't call handleLoginComplete here - it will be called after welcome modal closes
       }
-      handleLoginComplete();
     } catch (err) {
       cerror('Player login error:', err);
 
       let errorMessage;
-      if (loginMode === 'existing') {
-        errorMessage = 'קוד פרטיות שגוי או לא קיים. אנא בדוק את הקוד ונסה שוב.';
-        if (err.message?.includes('Invalid privacy code')) {
+
+      // Always show the actual API error message if available
+      if (err.message) {
+        // For specific known errors, provide Hebrew translations
+        if (err.message.includes('Invalid privacy code')) {
           errorMessage = 'קוד הפרטיות שהוזן אינו תקין';
-        } else if (err.message?.includes('Player not found')) {
+        } else if (err.message.includes('Player not found')) {
           errorMessage = 'לא נמצא שחקן עם קוד זה';
+        } else if (err.message.includes('Display name already exists')) {
+          errorMessage = 'שם זה כבר קיים, בחרו שם אחר';
+        } else if (err.message.includes('Network Error')) {
+          errorMessage = 'בעיית רשת. אנא בדוק את החיבור לאינטרנט';
+        } else {
+          // Show the actual API error message for everything else
+          errorMessage = err.message;
         }
       } else {
-        errorMessage = 'שגיאה ביצירת שחקן חדש. נסו שוב.';
-        if (err.message?.includes('Display name already exists')) {
-          errorMessage = 'שם זה כבר קיים, בחרו שם אחר';
+        // Only use generic message as last resort based on mode
+        if (loginMode === 'existing') {
+          errorMessage = 'קוד פרטיות שגוי או לא קיים. אנא בדוק את הקוד ונסה שוב.';
+        } else {
+          errorMessage = 'שגיאה ביצירת שחקן חדש. נסו שוב.';
         }
-      }
-
-      if (err.message?.includes('Network Error')) {
-        errorMessage = 'בעיית רשת. אנא בדוק את החיבור לאינטרנט';
       }
 
       setPlayerError(errorMessage);
@@ -166,30 +181,22 @@ const StudentLogin = ({ onLoginSuccess, returnPath, onClose }) => {
   // Create new player handler
   const handleCreateNewPlayer = async (name) => {
     try {
-      // Call Player API to create new player
-      // This will need to be implemented on the backend
-      const response = await fetch('/api/players/create-anonymous', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          display_name: name
-        })
+      // Call Player API to create anonymous player
+      const { Player } = await import('@/services/apiClient');
+
+      const data = await Player.createAnonymous({
+        display_name: name
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to create player');
-      }
-
-      const data = await response.json();
-
       if (data.success && data.player) {
-        // Login with the newly created player's privacy code
+        // Login with the newly created player's privacy code (background login)
         await playerLogin(data.player.privacy_code);
-        showSuccess(`ברוך הבא ${name}! קוד הפרטיות שלך: ${data.player.privacy_code}`);
+
+        // Store player data and show welcome modal
+        setNewPlayerData(data.player);
+        setShowWelcomeModal(true);
+
+        // The main login modal should remain open until welcome modal is closed
       } else {
         throw new Error('Failed to create player');
       }
@@ -197,6 +204,73 @@ const StudentLogin = ({ onLoginSuccess, returnPath, onClose }) => {
       cerror('Create player error:', error);
       throw error;
     }
+  };
+
+  // Existing player login completion handler (fixed - no refreshUser needed)
+  const handleExistingPlayerLoginComplete = async () => {
+    // TODO remove debug - debug player authentication modal and session persistence issues
+    console.log('[StudentLogin] 🔄 handleExistingPlayerLoginComplete called');
+    console.log('[StudentLogin] 📊 Component props:', {
+      hasOnLoginSuccess: !!onLoginSuccess,
+      returnPath: returnPath,
+      hasRefreshUser: !!refreshUser
+    });
+
+    // FIXED: Don't call refreshUser at all after successful login
+    // The playerLogin() function in UserContext already sets the correct authentication state
+    // Calling refreshUser() would make API calls that might fail and clear the state that was just set
+
+    // Give a small delay to ensure any UI updates are processed
+    setTimeout(() => {
+      // TODO remove debug - debug player authentication modal and session persistence issues
+      console.log('[StudentLogin] ⏰ Timeout callback executing...');
+      console.log('[StudentLogin] 📊 About to call:', {
+        onLoginSuccess: !!onLoginSuccess,
+        returnPath: returnPath,
+        willNavigateToHome: !onLoginSuccess && !returnPath
+      });
+
+      // Force close the login modal properly
+      if (onLoginSuccess) {
+        // TODO remove debug - debug player authentication modal and session persistence issues
+        console.log('[StudentLogin] 🚀 Calling onLoginSuccess()');
+        onLoginSuccess();
+      } else if (returnPath) {
+        // TODO remove debug - debug player authentication modal and session persistence issues
+        console.log('[StudentLogin] 🚀 Navigating to returnPath:', returnPath);
+        navigate(returnPath);
+      } else {
+        // TODO remove debug - debug player authentication modal and session persistence issues
+        console.log('[StudentLogin] 🚀 Navigating to home');
+        // If no specific callback, navigate to home
+        navigate('/');
+      }
+      // TODO remove debug - debug player authentication modal and session persistence issues
+      console.log('[StudentLogin] ✅ handleExistingPlayerLoginComplete completed');
+    }, 100); // Reduced delay since we're not calling refreshUser
+  };
+
+  // Welcome modal close handler (fixed - no refreshUser needed)
+  const handleWelcomeModalClose = async () => {
+    setShowWelcomeModal(false);
+    setNewPlayerData(null);
+
+    // FIXED: Don't call refreshUser at all after successful login
+    // The createAnonymous + playerLogin flow already sets the correct authentication state
+    // Calling refreshUser() would make API calls that might fail and clear the state that was just set
+
+    // Give a small delay to ensure any UI updates are processed
+    setTimeout(() => {
+      // Force close the login modal by calling onLoginSuccess directly
+      if (onLoginSuccess) {
+        onLoginSuccess();
+      } else if (returnPath) {
+        navigate(returnPath);
+      } else {
+        // If no specific callback, navigate to home
+        navigate('/');
+      }
+    }, 100); // Reduced delay since we're not calling refreshUser
   };
 
   // Get mode-specific messaging
@@ -214,7 +288,7 @@ const StudentLogin = ({ onLoginSuccess, returnPath, onClose }) => {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center p-4"
+      className={`${onClose ? 'fixed inset-0' : 'min-h-screen'} flex items-center justify-center p-4`}
       style={{ background: STUDENT_GRADIENTS.pageBackground, backgroundSize: '400% 400%' }}
     >
       <Card className="w-full max-w-md mx-auto bg-white/95 backdrop-blur-sm shadow-2xl border-0 rounded-3xl overflow-hidden">
@@ -223,17 +297,7 @@ const StudentLogin = ({ onLoginSuccess, returnPath, onClose }) => {
           <div className="flex flex-col items-center w-full">
             {/* Logo */}
             <div className="flex justify-center mb-4">
-              {logo || settings?.logo_url ? (
-                <img
-                  src={logo || settings?.logo_url}
-                  alt={settings?.site_name || "לודורה"}
-                  className="h-16 w-16 object-contain"
-                />
-              ) : (
-                <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-blue-500 rounded-2xl flex items-center justify-center shadow-lg">
-                  <GraduationCap className="w-10 h-10 text-white" />
-                </div>
-              )}
+              <LogoDisplay className="h-16 w-16 object-contain" />
             </div>
 
             <CardTitle className="text-2xl font-bold text-gray-900 text-center">
@@ -540,6 +604,13 @@ const StudentLogin = ({ onLoginSuccess, returnPath, onClose }) => {
           </div>
         </div>
       )}
+
+      {/* Player Welcome Modal */}
+      <PlayerWelcomeModal
+        player={newPlayerData}
+        isOpen={showWelcomeModal}
+        onClose={handleWelcomeModalClose}
+      />
     </div>
   );
 };

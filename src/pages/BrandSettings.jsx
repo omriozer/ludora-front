@@ -11,6 +11,7 @@ import { Settings } from "@/services/entities";
 import { UploadFile } from "@/services/integrations";
 import { showConfirm } from '@/utils/messaging';
 import { cerror } from "@/lib/utils";
+import { config } from '@/config/environment';
 import {
   Palette,
   Save,
@@ -327,7 +328,7 @@ export default function BrandSettings() {
                       type="email"
                       value={formData.contact_email}
                       onChange={(e) => handleInputChange('contact_email', e.target.value)}
-                      placeholder="support@ludora.app"
+                      placeholder={config.contact.SUPPORT_EMAIL}
                       className="pr-10"
                     />
                   </div>

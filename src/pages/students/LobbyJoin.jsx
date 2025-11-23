@@ -2,14 +2,15 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { GamepadIcon, PlayIcon, Home, Users, Clock, AlertCircle, CheckCircle, XCircle, Plus } from 'lucide-react';
+import { GamepadIcon, PlayIcon, Home, Users, Clock, AlertCircle, CheckCircle, XCircle, Plus, AlertTriangle } from 'lucide-react';
 import { useUser } from '@/contexts/UserContext';
 import GameTypeDisplay from '@/components/game/GameTypeDisplay';
 import ProductImage from '@/components/ui/ProductImage';
-import logoSm from '../../assets/images/logo_sm.png';
+import LogoDisplay from '@/components/ui/LogoDisplay';
 import socketClient, { useSocket } from '@/services/socketClient';
 import { isLobbyJoinable, getLobbyStatusConfig } from '@/utils/lobbyUtils';
 import { toast } from '@/components/ui/use-toast';
+import { clog } from '@/lib/utils';
 
 /**
  * Student lobby join page
@@ -20,7 +21,7 @@ const LobbyJoin = () => {
   const { code } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useUser();
+  const { user, currentPlayer, isPlayerAuthenticated, isLoading: isAuthLoading } = useUser();
 
   const [lobbyData, setLobbyData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -36,6 +37,52 @@ const LobbyJoin = () => {
   const [showAchievementAnimation, setShowAchievementAnimation] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
+
+  // State for teacher connection validation
+  const [showTeacherRequired, setShowTeacherRequired] = useState(false);
+  const [redirectCountdown, setRedirectCountdown] = useState(5);
+
+  // Check if player is connected to a teacher (required for game access)
+  useEffect(() => {
+    // Wait for auth to load
+    if (isAuthLoading) return;
+
+    // Only check for authenticated players
+    if (isPlayerAuthenticated && currentPlayer) {
+      const hasTeacherConnection = currentPlayer.teacher_id || currentPlayer.teacher;
+
+      clog('[LobbyJoin] Teacher connection check:', {
+        playerId: currentPlayer.id,
+        hasTeacherConnection,
+        teacher_id: currentPlayer.teacher_id,
+        teacher: currentPlayer.teacher
+      });
+
+      if (!hasTeacherConnection) {
+        setShowTeacherRequired(true);
+      } else {
+        setShowTeacherRequired(false);
+      }
+    }
+  }, [isPlayerAuthenticated, currentPlayer, isAuthLoading]);
+
+  // Redirect countdown when teacher connection is missing
+  useEffect(() => {
+    if (!showTeacherRequired) return;
+
+    const timer = setInterval(() => {
+      setRedirectCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          navigate('/');
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [showTeacherRequired, navigate]);
 
   // Helper function to determine if we can navigate back to teacher catalog
   const getBackNavigationInfo = () => {
@@ -122,7 +169,9 @@ const LobbyJoin = () => {
         setLobbyData(data);
 
         // Set default display name for authenticated users
-        if (user?.name) {
+        if (isPlayerAuthenticated && currentPlayer?.display_name) {
+          setDisplayName(currentPlayer.display_name);
+        } else if (user?.name) {
           setDisplayName(user.name);
         }
       } catch (err) {
@@ -135,7 +184,7 @@ const LobbyJoin = () => {
     if (code) {
       fetchLobbyData();
     }
-  }, [code, user]);
+  }, [code, user, isPlayerAuthenticated, currentPlayer]);
 
   // Enhanced function to refresh lobby data with join/leave animation tracking
   const refreshLobbyData = async () => {
@@ -241,15 +290,21 @@ const LobbyJoin = () => {
     }
   };
 
-  // Auto-remove notifications after 5 seconds
+  // Auto-remove notifications after 5 seconds using interval
   useEffect(() => {
-    const now = Date.now();
-    const fiveSecondsAgo = now - 5000;
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const fiveSecondsAgo = now - 5000;
 
-    setActivityNotifications(prev =>
-      prev.filter(notification => notification.timestamp > fiveSecondsAgo)
-    );
-  }, [activityNotifications]);
+      setActivityNotifications(prev => {
+        const filtered = prev.filter(notification => notification.timestamp > fiveSecondsAgo);
+        // Only update if there are changes to avoid unnecessary re-renders
+        return filtered.length !== prev.length ? filtered : prev;
+      });
+    }, 1000); // Check every second
+
+    return () => clearInterval(interval);
+  }, []); // Empty dependency array - runs once on mount
 
   // Gamification: Generate achievements based on user activity
   useEffect(() => {
@@ -422,7 +477,9 @@ const LobbyJoin = () => {
   }, [isConnected, code, lobbyData]);
 
   const handleJoinLobby = async () => {
-    if (!displayName.trim()) {
+    // Only require display name for non-authenticated users
+    const isAuthenticated = (isPlayerAuthenticated && currentPlayer?.display_name) || user?.name;
+    if (!displayName.trim() && !isAuthenticated) {
       toast({
         title: "שגיאה",
         description: "נא להזין שם תצוגה",
@@ -430,6 +487,12 @@ const LobbyJoin = () => {
       });
       return;
     }
+
+    // Use authenticated name as fallback if display name is empty
+    const finalDisplayName = displayName.trim() ||
+      (isPlayerAuthenticated && currentPlayer?.display_name) ||
+      user?.name ||
+      'אורח';
 
     if (lobbyData.settings.invitation_type === 'manual_selection' && !selectedSession) {
       toast({
@@ -450,7 +513,7 @@ const LobbyJoin = () => {
         },
         body: JSON.stringify({
           participant: {
-            display_name: displayName.trim(),
+            display_name: finalDisplayName,
             user_id: user?.id || null,
             guest_token: user?.id ? null : `guest_${Date.now()}`,
           },
@@ -485,7 +548,9 @@ const LobbyJoin = () => {
   };
 
   const handleCreateSession = async () => {
-    if (!displayName.trim()) {
+    // Only require display name for non-authenticated users
+    const isAuthenticated = (isPlayerAuthenticated && currentPlayer?.display_name) || user?.name;
+    if (!displayName.trim() && !isAuthenticated) {
       toast({
         title: "שגיאה",
         description: "נא להזין שם תצוגה לפני יצירת חדר",
@@ -493,6 +558,12 @@ const LobbyJoin = () => {
       });
       return;
     }
+
+    // Use authenticated name as fallback if display name is empty
+    const finalDisplayName = displayName.trim() ||
+      (isPlayerAuthenticated && currentPlayer?.display_name) ||
+      user?.name ||
+      'אורח';
 
     try {
       setCreatingSession(true);
@@ -504,7 +575,7 @@ const LobbyJoin = () => {
         },
         body: JSON.stringify({
           participant: {
-            display_name: displayName.trim(),
+            display_name: finalDisplayName,
             user_id: user?.id || null,
             guest_token: user?.id ? null : `guest_${Date.now()}`,
           }
@@ -561,7 +632,7 @@ const LobbyJoin = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen student-portal-background flex items-center justify-center">
+      <div className="fixed inset-0 min-h-screen student-portal-background flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-lg text-purple-700 font-medium">טוען נתוני לובי...</p>
@@ -572,7 +643,7 @@ const LobbyJoin = () => {
 
   if (error) {
     return (
-      <div className="student-error-page student-portal-background">
+      <div className="fixed inset-0 student-error-page student-portal-background overflow-y-auto">
         <div className="student-error-card">
           <div className="student-icon-container-error student-bounce mx-auto mb-6">
             <AlertCircle className="w-10 h-10 text-white" />
@@ -597,9 +668,46 @@ const LobbyJoin = () => {
     );
   }
 
+  // Show teacher connection required warning with redirect countdown
+  if (showTeacherRequired) {
+    return (
+      <div className="fixed inset-0 min-h-screen bg-gradient-to-br from-orange-200/40 via-yellow-200/30 to-red-200/40 flex items-center justify-center p-4">
+        <div className="max-w-md w-full text-center bg-white/80 backdrop-blur-sm rounded-3xl p-8 shadow-xl">
+          <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertTriangle className="w-8 h-8 text-orange-600" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">נדרשת התחברות למורה</h2>
+          <p className="text-gray-600 mb-4">
+            כדי להצטרף למשחקים, עליך להתחבר למורה תחילה.
+          </p>
+          <p className="text-gray-500 mb-6 text-sm">
+            בקש מהמורה שלך קוד הזמנה או קישור התחברות.
+          </p>
+
+          {/* Countdown indicator */}
+          <div className="mb-6">
+            <div className="w-12 h-12 mx-auto rounded-full bg-orange-100 flex items-center justify-center">
+              <span className="text-2xl font-bold text-orange-600">{redirectCountdown}</span>
+            </div>
+            <p className="text-sm text-gray-500 mt-2">
+              מעביר לעמוד הבית בעוד {redirectCountdown} שניות...
+            </p>
+          </div>
+
+          <Link to="/">
+            <Button className="bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 text-white px-6 py-3 rounded-2xl">
+              <Home className="w-4 h-4 ml-2" />
+              חזרה לעמוד הבית עכשיו
+            </Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   if (!lobbyData || !isLobbyJoinable(lobbyData.lobby)) {
     return (
-      <div className="student-error-page student-portal-background">
+      <div className="fixed inset-0 student-error-page student-portal-background overflow-y-auto">
         <div className="student-error-card">
           <div className="student-icon-container-warning student-wiggle mx-auto mb-6">
             <XCircle className="w-10 h-10 text-white" />
@@ -640,7 +748,7 @@ const LobbyJoin = () => {
 
   return (
     <div
-      className="min-h-screen student-immersive-background relative overflow-hidden"
+      className="fixed inset-0 min-h-screen student-immersive-background relative overflow-hidden"
       role="main"
       aria-label="lobby join page"
     >
@@ -675,7 +783,7 @@ const LobbyJoin = () => {
       </div>
 
       {/* Content with Glassmorphism - Mobile Optimized */}
-      <main className="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-8 relative z-10">
+      <main className="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-8 relative z-10 h-full overflow-y-auto">
         {/* Gamification Achievement Panel - Accessible */}
         {userAchievements.length > 0 && (
           <section
@@ -1010,25 +1118,56 @@ const LobbyJoin = () => {
             <CardContent className="p-6">
               <h2 className="text-lg font-bold text-gray-800 mb-4">הצטרפות למשחק</h2>
 
-            {/* Display Name Input - Accessible */}
+            {/* Display Name Input - Accessible with Auto-population Indicators */}
             <div className="mb-4">
               <label htmlFor="displayName" className="block text-sm font-medium text-gray-700 mb-2">
                 השם שלך במשחק
+                {/* Authentication Status Indicator */}
+                {isPlayerAuthenticated && currentPlayer?.display_name && (
+                  <span className="mr-2 px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full">
+                    ✅ מחובר
+                  </span>
+                )}
+                {user?.name && (
+                  <span className="mr-2 px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full">
+                    👩‍🏫 מורה
+                  </span>
+                )}
               </label>
-              <input
-                type="text"
-                id="displayName"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="הזן את השם שלך..."
-                className="student-glass-input focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                maxLength="30"
-                aria-required="true"
-                aria-describedby="displayName-help"
-                autoComplete="name"
-              />
+
+              <div className="relative">
+                <input
+                  type="text"
+                  id="displayName"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder={
+                    (isPlayerAuthenticated && currentPlayer?.display_name) || user?.name
+                      ? `השם שלך: ${(isPlayerAuthenticated && currentPlayer?.display_name) || user?.name}`
+                      : "הזן את השם שלך..."
+                  }
+                  className="student-glass-input focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  maxLength="30"
+                  aria-required={!isPlayerAuthenticated && !user?.name}
+                  aria-describedby="displayName-help"
+                  autoComplete="name"
+                />
+
+                {/* Auto-populated Name Badge */}
+                {((isPlayerAuthenticated && currentPlayer?.display_name) || user?.name) && displayName && (
+                  <div className="absolute left-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                    <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded-full text-xs font-medium">
+                      {isPlayerAuthenticated ? '👤 שחקן' : '👩‍🏫 מורה'}
+                    </span>
+                  </div>
+                )}
+              </div>
+
               <div id="displayName-help" className="text-xs text-gray-500 mt-1">
-                השם יופיע לשחקנים אחרים במשחק (עד 30 תווים)
+                {((isPlayerAuthenticated && currentPlayer?.display_name) || user?.name)
+                  ? `השם "${displayName}" נטען מהפרופיל שלך. תוכל לשנות אותו אם תרצה.`
+                  : 'השם יופיע לשחקנים אחרים במשחק (עד 30 תווים)'
+                }
               </div>
             </div>
 
@@ -1043,7 +1182,7 @@ const LobbyJoin = () => {
                 <div className="mb-3">
                   <Button
                     onClick={handleCreateSession}
-                    disabled={creatingSession || !displayName.trim()}
+                    disabled={creatingSession || (!displayName.trim() && !(isPlayerAuthenticated && currentPlayer?.display_name) && !user?.name)}
                     className="w-full sm:w-auto student-btn-primary"
                     variant="outline"
                   >
@@ -1118,7 +1257,7 @@ const LobbyJoin = () => {
             {/* Join Button - Mobile Optimized */}
             <Button
               onClick={handleJoinLobby}
-              disabled={joining || !displayName.trim() || (isManualSelection && !selectedSession)}
+              disabled={joining || (!displayName.trim() && !(isPlayerAuthenticated && currentPlayer?.display_name) && !user?.name) || (isManualSelection && !selectedSession)}
               className="w-full student-btn-primary py-4 sm:py-3 text-lg sm:text-base font-bold active:scale-95 transition-transform touch-manipulation"
             >
               {joining ? (

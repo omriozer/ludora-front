@@ -64,21 +64,34 @@ export default function LoginModal({ onClose, onLogin, message }) {
 
     try {
       await playerLogin(privacyCode.trim().toUpperCase());
-      // Close modal on successful player login
+      // Close modal on successful player login and call success callback
       onClose();
+      // Execute any pending retry callback if this was triggered by auth error handler
+      if (onLogin && typeof onLogin === 'function') {
+        // Call with no arguments since this is player auth, not user auth with rememberMe
+        onLogin();
+      }
     } catch (err) {
       cerror('Player login error:', err);
 
-      let errorMessage = 'קוד פרטיות שגוי או לא קיים. אנא בדוק את הקוד ונסה שוב.';
+      let errorMessage;
 
+      // Always show the actual API error message if available
       if (err.message) {
+        // For specific known errors, provide Hebrew translations
         if (err.message.includes('Invalid privacy code')) {
           errorMessage = 'קוד הפרטיות שהוזן אינו תקין';
         } else if (err.message.includes('Player not found')) {
           errorMessage = 'לא נמצא שחקן עם קוד זה';
         } else if (err.message.includes('Network Error')) {
           errorMessage = 'בעיית רשת. אנא בדוק את החיבור לאינטרנט';
+        } else {
+          // Show the actual API error message for everything else
+          errorMessage = err.message;
         }
+      } else {
+        // Only use generic message as last resort
+        errorMessage = 'קוד פרטיות שגוי או לא קיים. אנא בדוק את הקוד ונסה שוב.';
       }
 
       setPlayerError(errorMessage);

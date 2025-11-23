@@ -40,6 +40,7 @@ import { useSubscriptionState } from "@/hooks/useSubscriptionState";
 import SubscriptionBusinessLogic from "@/services/SubscriptionBusinessLogic";
 import { clog, cerror } from '@/lib/utils';
 import { toast } from '@/components/ui/use-toast';
+import { urls } from '@/config/urls';
 
 const MyAccount = () => {
   const navigate = useNavigate();
@@ -73,7 +74,7 @@ const MyAccount = () => {
 
   // Generate portal URL from invitation code
   const portalUrl = invitationCode
-    ? `https://my.ludora.app/portal/${invitationCode}`
+    ? urls.portal.student.portal(invitationCode)
     : '';
 
   // Generate invitation code
@@ -508,7 +509,7 @@ const MyAccount = () => {
                         <div className="text-center mb-4">
                           <div className="text-xs text-gray-500 mb-1">כתובת הקטלוג:</div>
                           <div className="text-sm text-blue-600 font-medium bg-blue-50 px-3 py-2 rounded-lg border border-blue-200 break-all">
-                            my.ludora.app/portal/{invitationCode}
+                            {urls.portal.student.portal(invitationCode).replace(/^https?:\/\//, '')}
                           </div>
                         </div>
                       </div>
@@ -980,7 +981,7 @@ const MyAccount = () => {
                     תלמידים יכולים לסרוק את ה-QR או להזין את הקוד באתר:
                   </p>
                   <p className="text-blue-600 font-medium mt-2">
-                    my.ludora.app/portal
+                    {urls.portal.student.home().replace(/^https?:\/\//, '')}/portal
                   </p>
                 </div>
 

@@ -4,23 +4,12 @@
 import { cerror } from '@/lib/utils';
 // Import and re-export apiRequest from centralized apiClient
 import { apiRequest as apiClientRequest } from '@/services/apiClient';
+// Import centralized configuration
+import { config } from '@/config/environment';
 
-// Get API base URL from environment
+// Get API base URL from centralized configuration
 export const getApiBase = () => {
-  const apiBase = import.meta.env.VITE_API_BASE;
-
-  if (!apiBase) {
-    console.error('❌ VITE_API_BASE environment variable is not set');
-    if (import.meta.env.PROD) {
-      return 'https://api.ludora.app/api';
-    } else {
-      // Use environment variable for port, fallback to 3003 for development
-      const port = import.meta.env.VITE_API_PORT || '3003';
-      return `http://localhost:${port}/api`;
-    }
-  }
-
-  return apiBase;
+  return config.api.getBaseUrl();
 };
 
 // Store authentication token

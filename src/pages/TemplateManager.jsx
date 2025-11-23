@@ -5,6 +5,7 @@ import { getApiBase } from "@/utils/api";
 import { clog, cerror } from "@/lib/utils";
 import { toast } from "@/components/ui/use-toast";
 import { apiRequest } from "@/services/apiClient.js";
+import { urls } from '@/config/urls';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import VisualTemplateEditor from "@/components/templates/VisualTemplateEditor";
-import logo from "@/assets/images/logo.png";
+import LogoDisplay from '@/components/ui/LogoDisplay';
 import {
   FileText,
   Plus,
@@ -275,7 +276,7 @@ export default function TemplateManager() {
           visible: true,
           hidden: false,
           rotation: 0,
-          href: 'https://ludora.app',
+          href: urls.external.marketing.main(),
           position: { x: 50, y: 85 },
           style: {
             fontSize: 12,

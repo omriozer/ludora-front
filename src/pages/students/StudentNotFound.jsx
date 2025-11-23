@@ -1,9 +1,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Home, SearchX, GamepadIcon, ArrowRight } from 'lucide-react';
+import { Home, SearchX, ArrowRight } from 'lucide-react';
 import { useUser } from '@/contexts/UserContext';
-import logo from '../../assets/images/logo.png';
+import LogoDisplay from '@/components/ui/LogoDisplay';
 
 /**
  * Fun 404 page for students with playful design and kid-friendly messaging
@@ -64,18 +64,10 @@ const StudentNotFound = () => {
 
           {/* Logo */}
           <div className="mb-6">
-            {logo || settings?.logo_url ? (
-              <img
-                src={logo || settings?.logo_url}
-                alt={settings?.site_name || "לודורה"}
-                className="h-24 w-24 md:h-32 md:w-32 object-contain mx-auto drop-shadow-lg"
-                style={{animation: 'wiggle 3s ease-in-out infinite'}}
-              />
-            ) : (
-              <div className="inline-flex items-center justify-center w-24 h-24 md:w-32 md:h-32 bg-gradient-to-br from-purple-500 to-blue-500 rounded-3xl shadow-lg mx-auto" style={{animation: 'wiggle 3s ease-in-out infinite'}}>
-                <GamepadIcon className="w-12 h-12 md:w-16 md:h-16 text-white" />
-              </div>
-            )}
+            <LogoDisplay
+              className="h-24 w-24 md:h-32 md:w-32 object-contain mx-auto drop-shadow-lg"
+              style={{animation: 'wiggle 3s ease-in-out infinite'}}
+            />
           </div>
 
           {/* 404 Section */}

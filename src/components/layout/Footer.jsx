@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { GraduationCap, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useUser } from '@/contexts/UserContext';
-import logo from '../../assets/images/logo.png';
+import LogoDisplay from '@/components/ui/LogoDisplay';
 import { getProductTypeName } from '@/config/productTypes';
 import {
   getContactEmail,
@@ -53,17 +53,7 @@ export default function Footer({ isMaintenanceMode = false }) {
             {/* Logo and description - compact */}
             <div className="flex items-center gap-3">
               <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-                {logo || settings?.logo_url ? (
-                  <img
-                    src={logo || settings?.logo_url}
-                    alt={settings?.site_name || "לודורה"}
-                    className="h-8 object-contain"
-                  />
-                ) : (
-                  <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                    <GraduationCap className="w-4 h-4 text-white" />
-                  </div>
-                )}
+                <LogoDisplay size="small" className="h-8 object-contain" />
               </Link>
               <span className="text-sm font-medium hidden md:block">
                 {settings?.site_description || 'בית ללמידה אחרת'}
@@ -134,23 +124,7 @@ export default function Footer({ isMaintenanceMode = false }) {
         <div className="grid md:grid-cols-4 gap-8 mb-8">
           <div>
             <Link to="/" className="flex items-center gap-2 mb-4 hover:opacity-80 transition-opacity cursor-pointer">
-              {logo || settings?.logo_url ? (
-                <img
-                  src={logo || settings?.logo_url}
-                  alt={settings?.site_name || "לודורה"}
-                  className="h-12 md:h-16 object-contain -mb-4" // smaller and negative margin to reduce gap
-                  style={{marginBottom: '-1.5rem'}} // extra negative margin for fine-tuning
-                />
-              ) : (
-                <>
-                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                    <GraduationCap className="w-5 h-5 text-white" />
-                  </div>
-                  <h3 className="text-lg font-bold text-gray-900">
-                    {settings?.site_name || "לודורה"}
-                  </h3>
-                </>
-              )}
+              <LogoDisplay className="h-12 md:h-16 object-contain -mb-4" style={{marginBottom: '-1.5rem'}} />
             </Link>
             <p className="font-semibold text-sm leading-relaxed">
               {settings?.site_description || 'בית ללמידה אחרת'}

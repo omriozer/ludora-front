@@ -9,10 +9,10 @@ import '@/styles/hebrew-fonts.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
     <BrowserRouter>
-        <UserProvider>
-            <LoginModalProvider>
+        <LoginModalProvider>
+            <UserProvider>
                 <App />
-            </LoginModalProvider>
-        </UserProvider>
+            </UserProvider>
+        </LoginModalProvider>
     </BrowserRouter>
 ) 

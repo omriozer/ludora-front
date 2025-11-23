@@ -102,7 +102,7 @@ function StudentPortal() {
 			if (settings?.maintenance_mode || settingsLoadFailed) {
 				setIsCheckingAdminBypass(true);
 				try {
-					const canBypass = await canBypassMaintenance(currentUser);
+					const canBypass = await canBypassMaintenance(currentUser, settings?.students_access);
 					setCanAdminBypass(canBypass);
 				} catch (error) {
 					console.warn('Error checking admin bypass:', error);
@@ -117,7 +117,7 @@ function StudentPortal() {
 		};
 
 		checkAdminBypass();
-	}, [currentUser, settings?.maintenance_mode, settingsLoadFailed]);
+	}, [currentUser, settings?.maintenance_mode, settings?.students_access, settingsLoadFailed]);
 
 	// Mouse/touch handlers for draggable return button (same as Layout.jsx)
 	const handleMouseMove = useCallback((e) => {
@@ -234,6 +234,21 @@ function StudentPortal() {
 		openLoginModal();
 	};
 
+	// Handle successful anonymous admin authentication
+	const handleAnonymousAdminSuccess = async () => {
+		// Re-check admin bypass status after anonymous admin login
+		setIsCheckingAdminBypass(true);
+		try {
+			const canBypass = await canBypassMaintenance(currentUser, settings?.students_access);
+			setCanAdminBypass(canBypass);
+		} catch (error) {
+			console.warn('Error re-checking admin bypass after anonymous login:', error);
+			setCanAdminBypass(false);
+		} finally {
+			setIsCheckingAdminBypass(false);
+		}
+	};
+
 	// Show maintenance page if enabled OR if settings loading failed (but allow admins to bypass)
 	// IMPORTANT: Check maintenance/error state BEFORE loading state to prevent infinite spinner
 	if ((settings?.maintenance_mode || settingsLoadFailed) && !canAdminBypass) {
@@ -265,6 +280,8 @@ function StudentPortal() {
 					handleTouchEnd={handleTouchEnd}
 					handleReturnToSelf={handleReturnToSelf}
 					handleLogin={handleLoginSubmit}
+					studentsAccessMode={settings?.students_access}
+					onAnonymousAdminSuccess={handleAnonymousAdminSuccess}
 					isTemporaryIssue={isTemporaryIssue}
 				/>
 
@@ -395,10 +412,8 @@ function App() {
 			<AudioCacheProvider>
 				<ConfirmationProvider>
 					<AuthErrorProvider>
-						<LoginModalProvider>
-							<StudentPortal />
-							<EnhancedToaster />
-						</LoginModalProvider>
+						<StudentPortal />
+						<EnhancedToaster />
 					</AuthErrorProvider>
 				</ConfirmationProvider>
 			</AudioCacheProvider>

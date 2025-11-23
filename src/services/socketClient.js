@@ -101,6 +101,7 @@ class SocketClient {
       auth: {
         portalType: portalContext.portalType,
         credentialPolicy: CREDENTIAL_POLICY.WITH_CREDENTIALS,
+        studentsAccessMode: portalContext.studentsAccessMode,
         authMethod: portalContext.authMethod
       },
       ...options
@@ -122,6 +123,7 @@ class SocketClient {
       auth: {
         portalType: portalContext.portalType,
         credentialPolicy: CREDENTIAL_POLICY.WITHOUT_CREDENTIALS,
+        studentsAccessMode: portalContext.studentsAccessMode,
         authMethod: portalContext.authMethod
       },
       ...options
@@ -165,9 +167,17 @@ class SocketClient {
   createSocketConnection(connectionConfig) {
     return new Promise((resolve, reject) => {
       try {
-        // Get base API URL and convert HTTP to Socket.IO URL
+        // Get base API URL and construct proper Socket.IO URL
         const apiBase = getApiBase();
-        const socketUrl = apiBase.replace('/api', '').replace('http', 'ws');
+        let socketUrl;
+
+        if (apiBase === '/api') {
+          // Development: Vite proxy - connect to API server directly
+          socketUrl = 'ws://localhost:3003';
+        } else {
+          // Staging/Production: Use API domain but convert HTTP to WebSocket
+          socketUrl = apiBase.replace('/api', '').replace('http://', 'ws://').replace('https://', 'wss://');
+        }
 
         // TODO remove debug - setup Socket.IO portal-aware authentication
         clog('🔌 Connecting to Socket.IO server:', socketUrl, 'Config:', connectionConfig);

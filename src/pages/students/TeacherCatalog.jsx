@@ -5,12 +5,15 @@ import { Card, CardContent } from '@/components/ui/card';
 import { GamepadIcon, UserIcon, Home, Crown, PlayIcon, Clock, Users, Wifi, WifiOff, AlertCircle } from 'lucide-react';
 import GameTypeDisplay from '@/components/game/GameTypeDisplay';
 import ProductImage from '@/components/ui/ProductImage';
-import logoSm from '../../assets/images/logo_sm.png';
+import LogoDisplay from '@/components/ui/LogoDisplay';
 import { useSocket } from '@/services/socketClient';
-import { apiRequestAnonymous } from '@/services/apiClient';
+import socketClient from '@/services/socketClient';
+import { apiRequestAnonymous, Player } from '@/services/apiClient';
 import { filterActiveLobbies, isLobbyActive, computeLobbyStatus, getLobbyClosureTimeText } from '@/utils/lobbyUtils';
 import { Badge } from '@/components/ui/badge';
 import ProtectedStudentRoute from '@/components/auth/ProtectedStudentRoute';
+import { useUser } from '@/contexts/UserContext';
+import TeacherAssignmentConfirmation from '@/components/dialogs/TeacherAssignmentConfirmation';
 
 /**
  * Teacher catalog page for students to view games shared by their teacher
@@ -25,8 +28,16 @@ const TeacherCatalogContent = () => {
   const [error, setError] = useState(null);
   const [gamesWithLobbies, setGamesWithLobbies] = useState([]);
 
+  // Teacher assignment state
+  const [showTeacherAssignment, setShowTeacherAssignment] = useState(false);
+  const [teacherAssignmentData, setTeacherAssignmentData] = useState(null);
+  const [isAssigningTeacher, setIsAssigningTeacher] = useState(false);
+
   // Socket.IO integration for real-time lobby updates
   const { connected: isSocketConnected, onLobbyUpdate } = useSocket();
+
+  // Get current player information
+  const { currentPlayer, isPlayerAuthenticated, refreshUser } = useUser();
 
   useEffect(() => {
     const fetchTeacherCatalog = async () => {
@@ -38,9 +49,10 @@ const TeacherCatalogContent = () => {
         const { teacher, games } = response;
 
         // Create catalog structure for UI
-        setCatalog({
+        const catalogData = {
           teacher: {
-            name: teacher?.name || "המורה",
+            name: teacher?.name || teacher?.full_name || "המורה",
+            full_name: teacher?.full_name || teacher?.name || "המורה",
             id: userCode
           },
           totals: {
@@ -48,7 +60,19 @@ const TeacherCatalogContent = () => {
             teacher_created: games.filter(game => game.creator_user_id === userCode).length,
             ludora_games: games.filter(game => !game.creator_user_id || game.creator_user_id !== userCode).length
           }
-        });
+        };
+
+        setCatalog(catalogData);
+
+        // Check for teacher assignment (anonymous players only)
+        if (isPlayerAuthenticated && currentPlayer && !currentPlayer.teacher_id) {
+          // This is an anonymous player without a teacher - show assignment dialog
+          setTeacherAssignmentData({
+            teacher: catalogData.teacher,
+            teacher_id: userCode
+          });
+          setShowTeacherAssignment(true);
+        }
 
         // Process lobby information that comes with each game (expect only one lobby per game)
         if (games && games.length > 0) {
@@ -125,7 +149,59 @@ const TeacherCatalogContent = () => {
     if (userCode) {
       fetchTeacherCatalog();
     }
-  }, [userCode]);
+  }, [userCode, isPlayerAuthenticated, currentPlayer]);
+
+  // Initialize Socket.IO connection for real-time updates
+  useEffect(() => {
+    console.log('🔌 [TeacherCatalog] Initializing Socket.IO connection');
+
+    // Connect to Socket.IO if not already connected
+    if (!isSocketConnected) {
+      socketClient.connect().then(() => {
+        console.log('✅ [TeacherCatalog] Socket.IO connected successfully');
+      }).catch((error) => {
+        console.error('❌ [TeacherCatalog] Socket.IO connection failed:', error);
+      });
+    }
+
+    // Cleanup on unmount
+    return () => {
+      console.log('🔌 [TeacherCatalog] Component unmounting');
+      // Note: Don't disconnect here as other components might be using the connection
+    };
+  }, []); // Run once on mount
+
+  // Teacher assignment handlers
+  const handleTeacherAssignmentConfirm = async () => {
+    if (!teacherAssignmentData) return;
+
+    try {
+      setIsAssigningTeacher(true);
+
+      // Call the teacher assignment API
+      await Player.assignTeacher({
+        teacher_id: teacherAssignmentData.teacher_id
+      });
+
+      // Refresh user data to get updated player info
+      await refreshUser();
+
+      // Close the dialog
+      setShowTeacherAssignment(false);
+      setTeacherAssignmentData(null);
+
+    } catch (error) {
+      console.error('Teacher assignment error:', error);
+      // Error handling is done in the confirmation dialog component
+    } finally {
+      setIsAssigningTeacher(false);
+    }
+  };
+
+  const handleTeacherAssignmentCancel = () => {
+    setShowTeacherAssignment(false);
+    setTeacherAssignmentData(null);
+  };
 
   // Socket.IO real-time updates for lobby status changes
   useEffect(() => {
@@ -395,11 +471,7 @@ const TeacherCatalogContent = () => {
                       </span>
                     ) : (
                       <span className="flex items-center gap-1">
-                        <img
-                          src={logoSm}
-                          alt="לודורה"
-                          className="w-4 h-4 object-contain"
-                        />
+                        <LogoDisplay size="small" className="w-4 h-4 object-contain" />
                       </span>
                     )}
                   </div>
@@ -492,6 +564,15 @@ const TeacherCatalogContent = () => {
           })}
         </div>
       </main>
+
+      {/* Teacher Assignment Confirmation Dialog */}
+      <TeacherAssignmentConfirmation
+        teacher={teacherAssignmentData?.teacher}
+        isOpen={showTeacherAssignment}
+        onConfirm={handleTeacherAssignmentConfirm}
+        onCancel={handleTeacherAssignmentCancel}
+        isLoading={isAssigningTeacher}
+      />
     </div>
   );
 };

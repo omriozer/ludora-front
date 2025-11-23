@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Play, Pause, Volume2, VolumeX, Maximize, SkipBack, SkipForward, AlertCircle } from 'lucide-react';
-import logoSm from '../assets/images/logo_sm.png';
+import LogoDisplay from '@/components/ui/LogoDisplay';
 import { clog, cerror } from '@/lib/utils';
 import { toast } from '@/components/ui/use-toast';
 import { getApiBase } from '@/utils/api.js';
@@ -761,13 +761,7 @@ const SecureVideoPlayer = ({
           className="absolute top-2 right-2 sm:top-4 sm:right-4 pointer-events-none select-none"
           style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
         >
-          <img
-            src={logoSm}
-            alt="Ludora"
-            className="h-6 sm:h-8 w-auto opacity-80"
-            draggable="false"
-            style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
-          />
+          <LogoDisplay size="small" className="h-6 sm:h-8 w-auto opacity-80" />
         </div>
       </div>
     </div>

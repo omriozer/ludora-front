@@ -37,6 +37,7 @@ import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
 import { toast } from '@/components/ui/use-toast';
 import { getProductTypeName } from '@/config/productTypes';
 import EnhancedLobbyCreationDialog from '@/components/game-lobbies/EnhancedLobbyActivationDialog';
+import { urls } from '@/config/urls';
 
 
 // Main component
@@ -928,7 +929,7 @@ function GameCard({
   useEffect(() => {
     if (showQRModal && qrContainer && lobbyCode) {
       try {
-        const studentPortalUrl = `https://my.ludora.app/play/${lobbyCode}`;
+        const studentPortalUrl = urls.portal.student.game(lobbyCode);
         renderQRCode(studentPortalUrl, qrContainer, LUDORA_OFFICIAL_PRESET, {
           width: 400,
           height: 400,
@@ -1256,7 +1257,7 @@ function GameCard({
                   תלמידים יכולים לסרוק את ה-QR או להזין את הקוד באתר:
                 </p>
                 <p className="text-blue-600 font-medium mt-2">
-                  my.ludora.app/play
+                  {urls.portal.student.home().replace(/^https?:\/\//, '')}/play
                 </p>
               </div>
             </div>

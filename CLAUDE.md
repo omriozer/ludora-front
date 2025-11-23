@@ -202,6 +202,36 @@ useEffect(() => {
 }, []);
 ```
 
+### Authentication Method Naming (CRITICAL)
+
+**🚨 CRITICAL: Frontend-backend authentication method naming must match exactly**
+
+```javascript
+// ✅ CORRECT: Authentication method names that match backend Socket.IO authentication
+export function getAuthMethod(studentsAccessMode) {
+  switch (studentsAccessMode) {
+    case STUDENTS_ACCESS_MODES.INVITE_ONLY:
+      return 'student_access_token'; // ✅ Matches backend Socket.IO authentication
+    case STUDENTS_ACCESS_MODES.AUTHED_ONLY:
+      return 'firebase'; // ✅ Matches backend Firebase authentication
+    case STUDENTS_ACCESS_MODES.ALL:
+      return 'hybrid'; // ✅ Matches backend TRY_BOTH policy
+    default:
+      return 'hybrid'; // ✅ Safe fallback
+  }
+}
+
+// ❌ WRONG: Mismatched authentication method names
+return 'player_token'; // ❌ Backend expects 'student_access_token'
+return 'student_session'; // ❌ Old authentication system name
+```
+
+**Why this matters:**
+- Backend Socket.IO authentication sets `socket.authMethod = 'student_access_token'` for player tokens
+- Frontend portal context must send matching `authMethod` values
+- Mismatch causes Socket.IO to use wrong authentication strategy
+- Cookie names and authentication flow depend on exact string matching
+
 ### File Upload Patterns
 
 ```javascript

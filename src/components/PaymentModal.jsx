@@ -10,8 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getCartPurchases } from "@/utils/purchaseHelpers";
 import { cerror } from "@/lib/utils";
+import { config } from "@/config/environment";
 
-export default function PaymentModal({ product, user, settings, isTestMode = (import.meta.env.VITE_API_BASE?.includes('localhost') || import.meta.env.DEV), onClose }) {
+export default function PaymentModal({ product, user, settings, isTestMode = (config.isDevelopment() || config.api.isLocalhost()), onClose }) {
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [couponError, setCouponError] = useState('');

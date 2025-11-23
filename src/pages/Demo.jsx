@@ -11,11 +11,15 @@ import {
   RefreshCw,
   Crown
 } from 'lucide-react';
+import { urls } from '@/config/urls';
 
 export default function Demo() {
   const [qrInstance, setQrInstance] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const qrRef = useRef(null);
+
+  // Get marketing URL from centralized configuration
+  const marketingUrl = urls.external.marketing.main();
 
   const generateLudoraQR = async () => {
     if (!qrRef.current) return;
@@ -27,7 +31,7 @@ export default function Demo() {
 
     try {
       const ludoraQR = renderQRCode(
-        'https://ludora.app',
+        marketingUrl,
         qrRef.current,
         LUDORA_OFFICIAL_PRESET,
         { width: 300, height: 300 }
@@ -133,7 +137,7 @@ export default function Demo() {
             {/* Info */}
             <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
               <div className="text-sm text-blue-800">
-                <strong>URL:</strong> https://ludora.app
+                <strong>URL:</strong> {marketingUrl}
               </div>
               <div className="text-sm text-blue-700 mt-1">
                 QR code זה מכיל את הלוגו של לודורא ומוביל לאתר הראשי
@@ -152,10 +156,12 @@ export default function Demo() {
           <CardContent>
             <pre className="bg-gray-900 text-green-400 p-4 rounded-lg overflow-x-auto text-sm">
 {`import { renderQRCode, LUDORA_OFFICIAL_PRESET } from '@/utils/qrCodeUtils';
+import { urls } from '@/config/urls';
 
 // יצירת QR עם לוגו לודורא
+const marketingUrl = urls.external.marketing.main();
 renderQRCode(
-  'https://ludora.app',
+  marketingUrl,
   containerElement,
   LUDORA_OFFICIAL_PRESET,
   { width: 300, height: 300 }

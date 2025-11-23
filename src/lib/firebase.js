@@ -2,22 +2,16 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import { clog, cerror } from '@/lib/utils';
+import { config } from '@/config/environment';
 
-// Debug environment variables
-clog('🔍 All import.meta.env:', import.meta.env);
-clog('🔍 VITE_FIREBASE_API_KEY:', import.meta.env.VITE_FIREBASE_API_KEY);
-clog('🔍 VITE_FIREBASE_PROJECT_ID:', import.meta.env.VITE_FIREBASE_PROJECT_ID);
+// Debug environment variables using centralized config (development only)
+if (import.meta.env.DEV) {
+  clog('🔍 Environment:', config.environment);
+  clog('🔍 Firebase Project ID:', config.firebase.projectId);
+}
 
-// Firebase configuration from environment variables
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
-};
+// Firebase configuration from centralized environment config
+const firebaseConfig = config.firebase;
 
 // Initialize Firebase
 let app;
@@ -25,8 +19,6 @@ let auth;
 let googleProvider;
 
 try {
-  clog('🔥 Firebase config being used:', firebaseConfig);
-
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
   googleProvider = new GoogleAuthProvider();
@@ -35,9 +27,9 @@ try {
   googleProvider.addScope('email');
   googleProvider.addScope('profile');
 
-  clog('✅ Firebase initialized successfully');
-  clog('🔑 Auth object:', auth);
-  clog('🔑 Google Provider:', googleProvider);
+  if (import.meta.env.DEV) {
+    clog('✅ Firebase initialized successfully');
+  }
 } catch (error) {
   cerror('❌ Firebase initialization error:', error);
   cerror('🔧 Please check your Firebase environment variables in .env.development');
@@ -74,7 +66,9 @@ export const firebaseAuth = {
     
     try {
       await signOut(auth);
-      clog('✅ Firebase sign out successful');
+      if (import.meta.env.DEV) {
+        clog('✅ Firebase sign out successful');
+      }
     } catch (error) {
       cerror('Firebase sign out error:', error);
       throw error;

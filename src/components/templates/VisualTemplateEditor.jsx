@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { X, Save, Palette, Undo2, Redo2, Eye, EyeOff, Layers, Trash2 } from 'lucide-react';
-import logo from '@/assets/images/logo.png';
+import LogoDisplay from '@/components/ui/LogoDisplay';
 import TemplateCanvas from './TemplateCanvas';
 import ItemButtons from './ItemButtons';
 import EnhancedSidebar from './EnhancedSidebar';
@@ -2014,11 +2014,11 @@ const VisualTemplateEditor = ({
       setTemplateConfig({
         ...initialTemplateConfig,
         text: { ...initialTemplateConfig.text, content: copyrightText },
-        logo: { ...initialTemplateConfig.logo, url: logo }
+        logo: { ...initialTemplateConfig.logo }
       });
     } else if (loadedBrandingSettings) {
       setTemplateConfig({
-        logo: { ...loadedBrandingSettings.logo, url: logo },
+        logo: { ...loadedBrandingSettings.logo },
         text: { ...loadedBrandingSettings.text, content: copyrightText },
         url: { ...loadedBrandingSettings.url }
       });

@@ -5,6 +5,7 @@ import { clog, cerror } from "@/lib/utils";
 import { toast } from "@/components/ui/use-toast";
 import { apiRequest } from "@/services/apiClient.js";
 import { getTextFontFamily } from "@/utils/hebrewUtils";
+import { urls } from '@/config/urls';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import VisualTemplateEditor from "@/components/templates/VisualTemplateEditor";
-import logo from "@/assets/images/logo.png";
+import LogoDisplay from '@/components/ui/LogoDisplay';
 import {
   ArrowRight,
   Save,
@@ -175,7 +176,7 @@ export default function TemplateEditor() {
           visible: true,
           hidden: false,
           rotation: 0,
-          href: 'https://ludora.app',
+          href: urls.external.marketing.main(),
           position: { x: 50, y: 85 },
           style: {
             fontSize: 12,
@@ -183,7 +184,7 @@ export default function TemplateEditor() {
             bold: false,
             italic: false,
             opacity: 100,
-            fontFamily: getTextFontFamily('https://ludora.app', false)
+            fontFamily: getTextFontFamily(urls.external.marketing.main(), false)
           }
         },
         customElements: {}
