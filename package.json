@@ -19,7 +19,14 @@
     "deploy:skip-build": "../ludora-utils/scripts/deploy-frontend.sh --skip-build",
     "deploy:firebase": "firebase deploy --only hosting",
     "deploy:firebase:staging": "firebase deploy --only hosting --project ludora-staging",
-    "deploy:firebase:project": "firebase deploy --only hosting --project"
+    "deploy:firebase:project": "firebase deploy --only hosting --project",
+    "env:check-prod": "node scripts/env-validator.js --check-prod",
+    "env:check-staging": "node scripts/env-validator.js --check-staging",
+    "env:check-dev": "node scripts/env-validator.js --check-dev",
+    "env:validate": "node scripts/env-validator.js --validate",
+    "hooks:install": "node scripts/install-hooks.js",
+    "hooks:remove": "node scripts/install-hooks.js --remove",
+    "hooks:check": "node scripts/install-hooks.js --check"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.937.0",
