@@ -484,7 +484,6 @@ class EntityAPI {
 export const Registration = new EntityAPI('registration');
 export const EmailTemplate = new EntityAPI('emailtemplate');
 export const Settings = new EntityAPI('settings');
-export const OldSettings = new EntityAPI('old_settings');
 export const Category = new EntityAPI('category');
 export const Coupon = new EntityAPI('coupon');
 export const SupportMessage = new EntityAPI('supportmessage');

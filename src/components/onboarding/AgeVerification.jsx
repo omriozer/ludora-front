@@ -6,11 +6,12 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Calendar,
   AlertTriangle,
-  CheckCircle
+  CheckCircle,
+  ArrowLeft
 } from 'lucide-react';
 import { clog } from '@/lib/utils';
 
-export default function AgeVerification({ onComplete, onboardingData, currentUser }) {
+export default function AgeVerification({ onComplete, onBack, onboardingData, currentUser }) {
   const [birthDate, setBirthDate] = useState('');
   const [age, setAge] = useState(null);
   const [error, setError] = useState('');
@@ -65,16 +66,16 @@ export default function AgeVerification({ onComplete, onboardingData, currentUse
   };
 
   const validateAndContinue = () => {
-    clog('[AgeVerification] 🔘 Continue button clicked');
-    clog('[AgeVerification] 📅 Current birthDate:', birthDate);
-    clog('[AgeVerification] 👶 Current age:', age);
+    clog('[AgeVerification] Continue button clicked');
+    clog('[AgeVerification] Current birthDate:', birthDate);
+    clog('[AgeVerification] Current age:', age);
 
     // Clear any previous errors
     setError('');
 
     // Check if date is provided
     if (!birthDate || birthDate.trim() === '') {
-      clog('[AgeVerification] ❌ Validation failed: No birth date');
+      clog('[AgeVerification] Validation failed: No birth date');
       setError('יש להזין תאריך לידה');
       return;
     }
@@ -82,14 +83,14 @@ export default function AgeVerification({ onComplete, onboardingData, currentUse
     // Check if date is valid
     const date = new Date(birthDate);
     if (isNaN(date.getTime())) {
-      clog('[AgeVerification] ❌ Validation failed: Invalid date');
+      clog('[AgeVerification] Validation failed: Invalid date');
       setError('תאריך לידה לא תקין');
       return;
     }
 
     // Check if date is not in the future
     if (date > new Date()) {
-      clog('[AgeVerification] ❌ Validation failed: Future date');
+      clog('[AgeVerification] Validation failed: Future date');
       setError('תאריך לידה לא יכול להיות בעתיד');
       return;
     }
@@ -97,29 +98,27 @@ export default function AgeVerification({ onComplete, onboardingData, currentUse
     // Calculate age
     const calculatedAge = calculateAge(birthDate);
     if (calculatedAge === null || calculatedAge < 0) {
-      clog('[AgeVerification] ❌ Validation failed: Invalid calculated age');
+      clog('[AgeVerification] Validation failed: Invalid calculated age');
       setError('תאריך לידה לא תקין');
       return;
     }
 
-    // Check if user is under 18
+    // Check if user is under 18 - teachers must be 18+
     if (calculatedAge < 18) {
-      clog('[AgeVerification] ❌ Validation failed: Under 18 years old');
-      setError('משתמשים מתחת לגיל 18 צריכים להירשם באמצעות הזמנה ממורה. אנא פנה למורה שלך לקבלת הזמנה למערכת.');
+      clog('[AgeVerification] Validation failed: Under 18 years old');
+      setError('הרשמה כמורה מיועדת למשתמשים בגיל 18 ומעלה בלבד.');
       return;
     }
 
     // All validations passed
-    clog('[AgeVerification] ✅ Validation passed, age:', calculatedAge);
+    clog('[AgeVerification] Validation passed, age:', calculatedAge);
 
     const stepData = {
       birthDate,
-      age: calculatedAge,
-      isUnder18: false,
-      requiresParentalConsent: false
+      age: calculatedAge
     };
 
-    clog('[AgeVerification] 📤 Calling onComplete with data:', stepData);
+    clog('[AgeVerification] Calling onComplete with data:', stepData);
 
     onComplete(stepData);
   };
@@ -138,36 +137,31 @@ export default function AgeVerification({ onComplete, onboardingData, currentUse
   });
 
   return (
-    <div className="space-y-6 md:space-y-8">
+    <div className="space-y-6">
       {/* Introduction */}
-      <div className="text-center px-4">
-        <div className="inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-blue-400 via-purple-500 to-pink-500 rounded-2xl md:rounded-3xl shadow-2xl mb-4 md:mb-6 relative">
-          <Calendar className="w-8 h-8 md:w-10 md:h-10 text-white" />
+      <div className="text-center">
+        <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-lg mb-4">
+          <Calendar className="w-6 h-6 text-blue-600" />
         </div>
-        <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3 md:mb-4">בואו נכיר! 🎂</h2>
-        <p className="text-lg md:text-xl text-gray-600 leading-relaxed max-w-2xl mx-auto">
-          אנחנו רוצים לוודא שהחוויה שלכם מותאמת בדיוק לכם
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">אימות גיל</h2>
+        <p className="text-gray-600 max-w-md mx-auto">
+          לצורך הרשמה כמורה במערכת, נדרש אימות גיל מינימלי של 18 שנים
         </p>
       </div>
 
-      {/* Birth Date Input */}
-      <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl md:rounded-3xl p-4 md:p-8 border border-blue-100">
-        <div className="max-w-sm md:max-w-md mx-auto space-y-4">
-          <div className="text-center">
-            <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">מתי נולדת? 📅</h3>
-            <p className="text-sm md:text-base text-gray-600">זה עוזר לנו להכין עבורך את החוויה הטובה ביותר</p>
-          </div>
-
+      {/* Birth Date Input Card */}
+      <div className="bg-gray-50 rounded-lg border border-gray-200 p-6">
+        <div className="max-w-sm mx-auto space-y-4">
           <div>
-            <Label htmlFor="birthDate" className="block text-base md:text-lg font-bold text-gray-900 mb-3 text-center">
-              תאריך הלידה שלך
+            <Label htmlFor="birthDate" className="block text-sm font-medium text-gray-700 mb-2">
+              תאריך לידה
             </Label>
             <Input
               id="birthDate"
               type="date"
               value={birthDate}
               onChange={handleDateChange}
-              className="h-12 md:h-16 text-lg md:text-xl border-2 border-blue-200 focus:border-purple-400 rounded-xl md:rounded-2xl text-center font-medium shadow-lg"
+              className="h-11 text-base border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-lg text-center"
               max={new Date().toISOString().split('T')[0]}
             />
           </div>
@@ -175,8 +169,8 @@ export default function AgeVerification({ onComplete, onboardingData, currentUse
           {/* Error Display */}
           {error && (
             <Alert className="bg-red-50 border-red-200">
-              <AlertTriangle className="h-5 w-5 text-red-500" />
-              <AlertDescription className="text-red-700 font-medium">
+              <AlertTriangle className="h-4 w-4 text-red-600" />
+              <AlertDescription className="text-red-700 text-sm">
                 {error}
               </AlertDescription>
             </Alert>
@@ -184,52 +178,66 @@ export default function AgeVerification({ onComplete, onboardingData, currentUse
 
           {/* Age Display */}
           {age !== null && isDateValid && (
-            <div className="bg-gradient-to-r from-green-400 to-emerald-500 rounded-xl p-4 text-white text-center">
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <CheckCircle className="w-6 h-6" />
-                <span className="text-xl font-bold">מעולה!</span>
+            <div className={`rounded-lg p-4 text-center ${age >= 18 ? 'bg-green-50 border border-green-200' : 'bg-amber-50 border border-amber-200'}`}>
+              <div className="flex items-center justify-center gap-2 mb-1">
+                <CheckCircle className={`w-5 h-5 ${age >= 18 ? 'text-green-600' : 'text-amber-600'}`} />
+                <span className={`font-medium ${age >= 18 ? 'text-green-800' : 'text-amber-800'}`}>
+                  {age >= 18 ? 'אומת בהצלחה' : 'שימו לב'}
+                </span>
               </div>
-              <p className="text-lg">
-                גילך: <span className="text-2xl font-black">{age}</span> שנים
+              <p className={`text-sm ${age >= 18 ? 'text-green-700' : 'text-amber-700'}`}>
+                גיל: <span className="font-semibold">{age}</span> שנים
               </p>
-              <div className="mt-2 text-green-100 text-sm">
-                {age >= 18 ? "אתה יכול להמשיך בהרשמה! 🎉" : "נצטרך אישור הורים 👨‍👩‍👧‍👦"}
-              </div>
+              {age < 18 && (
+                <p className="text-xs text-amber-600 mt-2">
+                  הרשמה כמורה מיועדת לגיל 18+
+                </p>
+              )}
             </div>
           )}
         </div>
       </div>
 
-      {/* Continue Button */}
-      <div className="text-center pt-4">
-        <button
+      {/* Navigation Buttons */}
+      <div className="flex flex-col sm:flex-row gap-3 justify-between items-center pt-4">
+        {/* Back Button */}
+        {onBack && (
+          <Button
+            onClick={onBack}
+            variant="outline"
+            className="w-full sm:w-auto px-6 py-2 text-gray-700 border-gray-300 hover:bg-gray-50"
+          >
+            <ArrowLeft className="w-4 h-4 ml-2" />
+            חזור
+          </Button>
+        )}
+
+        {/* Continue Button */}
+        <Button
           onClick={validateAndContinue}
           disabled={!canContinue}
-          className={`px-8 md:px-12 py-3 md:py-4 text-lg md:text-xl font-bold rounded-xl md:rounded-2xl shadow-2xl transition-all duration-300 transform ${
+          className={`w-full sm:w-auto px-8 py-2 font-medium rounded-lg transition-colors ${
             canContinue
-              ? 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white hover:scale-105 cursor-pointer'
-              : 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-60'
+              ? 'bg-blue-600 hover:bg-blue-700 text-white'
+              : 'bg-gray-200 text-gray-500 cursor-not-allowed'
           }`}
         >
-          <CheckCircle className="w-5 h-5 md:w-7 md:h-7 ml-2 inline" />
+          <CheckCircle className="w-4 h-4 ml-2" />
           {!isDateValid ? 'הזינו תאריך לידה' :
-           !isAgeValid ? 'נדרשת הזמנה ממורה' :
-           'בואו נמשיך! 🚀'}
-        </button>
-
-        {age !== null && age < 18 && (
-          <div className="mt-4 text-center bg-orange-50 rounded-xl p-4 border border-orange-200">
-            <div className="text-orange-600 font-bold mb-2">🏫 איך להירשם למערכת</div>
-            <p className="text-orange-700 text-sm">בגלל גילך, אתה צריך הזמנה ממורה כדי להצטרף למערכת</p>
-            <div className="bg-orange-100 rounded-lg p-3 mt-2 text-orange-800 text-xs">
-              <div className="font-bold mb-1">מה לעשות:</div>
-              <div>1. פנה למורה שלך 👨‍🏫</div>
-              <div>2. בקש ממנו לשלוח לך הזמנה למערכת 📧</div>
-              <div>3. קבל את ההזמנה במייל והירשם דרכה ✅</div>
-            </div>
-          </div>
-        )}
+           !isAgeValid ? 'נדרש גיל 18+' :
+           'המשך'}
+        </Button>
       </div>
+
+      {/* Info Notice */}
+      {age !== null && age < 18 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+          <p className="text-amber-800 text-sm font-medium mb-1">דרישת גיל מינימלי</p>
+          <p className="text-amber-700 text-sm">
+            הרשמה כמורה במערכת לודורה מיועדת למשתמשים בגיל 18 ומעלה בלבד.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

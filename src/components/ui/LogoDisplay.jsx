@@ -1,6 +1,7 @@
 import React from 'react';
 import { GraduationCap } from 'lucide-react';
 import { useUser } from '@/contexts/UserContext';
+import { BRANDING_KEYS, CONTACT_INFO_KEYS, getSetting } from '@/constants/settings';
 
 /**
  * Centralized logo display component
@@ -15,7 +16,7 @@ const LogoDisplay = ({
   const { settings } = useUser();
 
   // Use provided alt text, fallback to settings site name, or default
-  const logoAlt = alt || settings?.site_name || "לודורה";
+  const logoAlt = alt || getSetting(settings, CONTACT_INFO_KEYS.SITE_NAME, "לודורה");
 
   // Determine which logo path to use based on size prop (served from public folder)
   const logoPath = size === "small"
@@ -23,7 +24,7 @@ const LogoDisplay = ({
     : "/logo.png";
 
   // Always try to show image first - prioritize settings logo, then static logo
-  const imageSrc = settings?.logo_url || logoPath;
+  const imageSrc = getSetting(settings, BRANDING_KEYS.LOGO_URL) || logoPath;
 
   if (imageSrc) {
     return (

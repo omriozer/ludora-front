@@ -31,6 +31,7 @@ import { loginWithFirebase } from '@/services/apiClient';
 import { firebaseAuth } from '@/lib/firebase';
 import { showSuccess, showError } from '@/utils/messaging';
 import { canBypassMaintenance } from '@/utils/adminCheck';
+import { SYSTEM_KEYS, ACCESS_CONTROL_KEYS, getSetting } from '@/constants/settings';
 
 // Suspense fallback component
 const SuspenseLoader = () => (
@@ -99,10 +100,12 @@ function StudentPortal() {
 	// Check admin bypass for maintenance mode
 	useEffect(() => {
 		const checkAdminBypass = async () => {
-			if (settings?.maintenance_mode || settingsLoadFailed) {
+			const isMaintenanceMode = getSetting(settings, SYSTEM_KEYS.MAINTENANCE_MODE, false);
+			if (isMaintenanceMode || settingsLoadFailed) {
 				setIsCheckingAdminBypass(true);
 				try {
-					const canBypass = await canBypassMaintenance(currentUser, settings?.students_access);
+					const studentsAccess = getSetting(settings, ACCESS_CONTROL_KEYS.STUDENTS_ACCESS, 'all');
+					const canBypass = await canBypassMaintenance(currentUser, studentsAccess);
 					setCanAdminBypass(canBypass);
 				} catch (error) {
 					console.warn('Error checking admin bypass:', error);
@@ -117,7 +120,7 @@ function StudentPortal() {
 		};
 
 		checkAdminBypass();
-	}, [currentUser, settings?.maintenance_mode, settings?.students_access, settingsLoadFailed]);
+	}, [currentUser, settings, settingsLoadFailed]);
 
 	// Mouse/touch handlers for draggable return button (same as Layout.jsx)
 	const handleMouseMove = useCallback((e) => {
@@ -239,7 +242,8 @@ function StudentPortal() {
 		// Re-check admin bypass status after anonymous admin login
 		setIsCheckingAdminBypass(true);
 		try {
-			const canBypass = await canBypassMaintenance(currentUser, settings?.students_access);
+			const studentsAccess = getSetting(settings, ACCESS_CONTROL_KEYS.STUDENTS_ACCESS, 'all');
+			const canBypass = await canBypassMaintenance(currentUser, studentsAccess);
 			setCanAdminBypass(canBypass);
 		} catch (error) {
 			console.warn('Error re-checking admin bypass after anonymous login:', error);
@@ -251,8 +255,9 @@ function StudentPortal() {
 
 	// Show maintenance page if enabled OR if settings loading failed (but allow admins to bypass)
 	// IMPORTANT: Check maintenance/error state BEFORE loading state to prevent infinite spinner
-	if ((settings?.maintenance_mode || settingsLoadFailed) && !canAdminBypass) {
-		const isTemporaryIssue = settingsLoadFailed && !settings?.maintenance_mode;
+	const isMaintenanceMode = getSetting(settings, SYSTEM_KEYS.MAINTENANCE_MODE, false);
+	if ((isMaintenanceMode || settingsLoadFailed) && !canAdminBypass) {
+		const isTemporaryIssue = settingsLoadFailed && !isMaintenanceMode;
 
 		// Show loading while checking admin bypass
 		if (isCheckingAdminBypass) {
@@ -280,7 +285,7 @@ function StudentPortal() {
 					handleTouchEnd={handleTouchEnd}
 					handleReturnToSelf={handleReturnToSelf}
 					handleLogin={handleLoginSubmit}
-					studentsAccessMode={settings?.students_access}
+					studentsAccessMode={getSetting(settings, ACCESS_CONTROL_KEYS.STUDENTS_ACCESS, 'all')}
 					onAnonymousAdminSuccess={handleAnonymousAdminSuccess}
 					isTemporaryIssue={isTemporaryIssue}
 				/>

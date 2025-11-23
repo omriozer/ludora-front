@@ -1,59 +1,175 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
+import PropTypes from 'prop-types';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useUser } from '@/contexts/UserContext';
 import { StudentInvitation } from '@/services/apiClient';
 import { clog } from '@/lib/utils';
 import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
+import {
+  isProtectedFlow,
+  isOnboardingDeferred,
+  shouldShowOnboardingNow,
+  deferOnboarding,
+  clearDeferredOnboarding
+} from '@/utils/protectedFlowUtils';
 
+/**
+ * OnboardingRedirect component - handles redirecting users to onboarding or invitations
+ *
+ * Performance optimizations:
+ * - Memoized all computed values to prevent unnecessary re-renders
+ * - Single source of truth for redirect decisions
+ * - Loading state shown consistently during any pending redirect
+ * - No flash of content during navigation transitions
+ */
 export default function OnboardingRedirect({ children }) {
-  const { currentUser, needsOnboarding, isLoading, settingsLoading, userDataFresh } = useUser();
+  const { currentUser, needsOnboarding, isLoading, settingsLoading, userDataFresh, settings } = useUser();
   const navigate = useNavigate();
   const location = useLocation();
-  const [hasCheckedInvitations, setHasCheckedInvitations] = useState(true);
+
+  // Determine if we should check invitations based on classroom feature flag
+  const shouldCheckInvitations = useMemo(() => {
+    // Only check invitations if classrooms feature is enabled
+    // During settings loading, assume we might need to check (safer default)
+    if (settings === null || settings === undefined) {
+      return true; // Wait for settings to load before deciding
+    }
+    return settings.nav_classrooms_enabled === true;
+  }, [settings]);
+
+  // Invitation checking state - safer initialization that waits for settings
+  const [hasCheckedInvitations, setHasCheckedInvitations] = useState(false);
   const [hasInvitations, setHasInvitations] = useState(false);
 
+  // Memoize pathname checks to avoid recalculation on every render
+  const pathname = location.pathname;
+
+  const isOnOnboardingPage = useMemo(() => pathname.startsWith('/onboarding'), [pathname]);
+  const isOnInvitationPage = useMemo(() =>
+    pathname.includes('student-invitations') || pathname.includes('parent-consent'),
+    [pathname]
+  );
+  const inProtectedFlow = useMemo(() => isProtectedFlow(pathname), [pathname]);
+  const onboardingDeferred = useMemo(() => isOnboardingDeferred(), [pathname]);
+
+  // Determine if data is ready for decision making
+  const isDataReady = useMemo(() =>
+    !isLoading && !settingsLoading && userDataFresh && currentUser?.email && hasCheckedInvitations,
+    [isLoading, settingsLoading, userDataFresh, currentUser?.email, hasCheckedInvitations]
+  );
+
+  // Memoize the onboarding check result
+  const userNeedsOnboarding = useMemo(() => {
+    if (!currentUser) return false;
+    return needsOnboarding(currentUser);
+  }, [currentUser, needsOnboarding]);
+
+  // Determine the redirect target (if any) - memoized for performance
+  const redirectTarget = useMemo(() => {
+    clog('[OnboardingRedirect] REDIRECT CALCULATION:', {
+      isDataReady,
+      currentUser: !!currentUser,
+      isOnOnboardingPage,
+      isOnInvitationPage,
+      hasInvitations,
+      userNeedsOnboarding,
+      inProtectedFlow,
+      onboardingDeferred,
+      pathname,
+      settings: settings ? 'loaded' : 'null'
+    });
+
+    // Can't make decision yet
+    if (!isDataReady || !currentUser) {
+      clog('[OnboardingRedirect] Data not ready, no redirect');
+      return null;
+    }
+
+    // Already on target pages - no redirect needed
+    if (isOnOnboardingPage || isOnInvitationPage) {
+      clog('[OnboardingRedirect] Already on target page, no redirect needed');
+      return null;
+    }
+
+    // Priority 1: Invitations take precedence
+    if (hasInvitations) {
+      clog('[OnboardingRedirect] Has invitations, redirecting to student-invitations');
+      return { path: '/student-invitations', text: 'מפנה לדף הזמנות...' };
+    }
+
+    // Priority 2: Onboarding (if needed and not in protected flow)
+    if (userNeedsOnboarding) {
+      clog('[OnboardingRedirect] User needs onboarding, checking conditions...');
+
+      // In protected flow - defer onboarding, don't redirect
+      if (inProtectedFlow) {
+        clog('[OnboardingRedirect] In protected flow, deferring onboarding');
+        return null; // Will handle deferral in useEffect
+      }
+
+      // Onboarding was deferred - check if we should show it now
+      if (onboardingDeferred && !shouldShowOnboardingNow(pathname, location.search)) {
+        clog('[OnboardingRedirect] Onboarding deferred, not showing now');
+        return null;
+      }
+
+      clog('[OnboardingRedirect] Will redirect to onboarding');
+      return { path: '/onboarding', text: 'מפנה לדף הרשמה...' };
+    }
+
+    clog('[OnboardingRedirect] No redirect needed');
+    return null;
+  }, [
+    isDataReady, currentUser, isOnOnboardingPage, isOnInvitationPage,
+    hasInvitations, userNeedsOnboarding, inProtectedFlow, onboardingDeferred,
+    pathname, location.search
+  ]);
+
+  // Check invitations effect - only when classroom feature is enabled
   useEffect(() => {
     const checkInvitations = async () => {
-      if (!currentUser || hasCheckedInvitations) return;
-
-      clog('[OnboardingRedirect] 🔍 Starting invitation check for user:', currentUser.email);
-
-      // Set a timeout to prevent hanging
-      const timeoutId = setTimeout(() => {
-        clog('[OnboardingRedirect] ⏰ Invitation check timeout, proceeding without invitations');
+      // Skip invitation checks if classrooms are disabled
+      if (!shouldCheckInvitations) {
+        clog('[OnboardingRedirect] Skipping invitation checks - classrooms disabled');
         setHasCheckedInvitations(true);
         setHasInvitations(false);
-      }, 5000); // 5 second timeout
+        return;
+      }
+
+      if (!currentUser || hasCheckedInvitations) return;
+
+      clog('[OnboardingRedirect] Starting invitation check for user:', currentUser.email);
+
+      const timeoutId = setTimeout(() => {
+        clog('[OnboardingRedirect] Invitation check timeout, proceeding without invitations');
+        setHasCheckedInvitations(true);
+        setHasInvitations(false);
+      }, 5000);
 
       try {
-        clog('[OnboardingRedirect] 📨 Fetching student invitations...');
-        const studentInvitations = await StudentInvitation.filter({
-          student_email: currentUser.email,
-          status: ['pending_student_acceptance', 'pending_parent_consent']
-        });
-
-        clog('[OnboardingRedirect] 👨‍👩‍👧‍👦 Fetching parent invitations...');
-        const parentInvitations = await StudentInvitation.filter({
-          parent_email: currentUser.email,
-          status: ['pending_parent_consent']
-        });
+        const [studentInvitations, parentInvitations] = await Promise.all([
+          StudentInvitation.filter({
+            student_email: currentUser.email,
+            status: ['pending_student_acceptance', 'pending_parent_consent']
+          }),
+          StudentInvitation.filter({
+            parent_email: currentUser.email,
+            status: ['pending_parent_consent']
+          })
+        ]);
 
         const totalInvitations = [...studentInvitations, ...parentInvitations];
         setHasInvitations(totalInvitations.length > 0);
         setHasCheckedInvitations(true);
         clearTimeout(timeoutId);
 
-        clog('[OnboardingRedirect] ✅ Invitation check completed:', {
+        clog('[OnboardingRedirect] Invitation check completed:', {
           studentInvitations: studentInvitations.length,
           parentInvitations: parentInvitations.length,
-          totalInvitations: totalInvitations.length
+          total: totalInvitations.length
         });
-
-        if (totalInvitations.length > 0) {
-          clog('[OnboardingRedirect] User has pending invitations, prioritizing invitations over onboarding');
-        }
       } catch (error) {
-        clog('[OnboardingRedirect] ❌ Error checking invitations:', error);
+        clog('[OnboardingRedirect] Error checking invitations:', error);
         setHasCheckedInvitations(true);
         setHasInvitations(false);
         clearTimeout(timeoutId);
@@ -61,104 +177,88 @@ export default function OnboardingRedirect({ children }) {
     };
 
     checkInvitations();
-  }, [currentUser, hasCheckedInvitations]);
+  }, [currentUser, hasCheckedInvitations, shouldCheckInvitations]);
 
+  // Reset invitation state when shouldCheckInvitations changes
   useEffect(() => {
-    // Don't redirect if still loading, no user, or haven't checked invitations/fresh data
-    if (isLoading || settingsLoading || !currentUser || !hasCheckedInvitations || !userDataFresh) {
-      clog('[OnboardingRedirect] ⏳ Waiting for complete data:', {
-        isLoading,
-        settingsLoading,
-        hasUser: !!currentUser,
-        hasCheckedInvitations,
-        userDataFresh,
-        userEmail: currentUser?.email
-      });
+    // Only act when settings are loaded (not null/undefined)
+    if (settings !== null && settings !== undefined) {
+      if (!shouldCheckInvitations) {
+        // Classrooms disabled - mark as checked and no invitations
+        clog('[OnboardingRedirect] Classrooms disabled in settings - skipping invitation checks');
+        setHasCheckedInvitations(true);
+        setHasInvitations(false);
+      } else {
+        // Classrooms enabled - reset to check invitations
+        clog('[OnboardingRedirect] Classrooms enabled in settings - will check invitations');
+        setHasCheckedInvitations(false);
+      }
+    }
+  }, [shouldCheckInvitations, settings]);
+
+  // Handle redirect effect - executes when redirectTarget changes
+  useEffect(() => {
+    if (!isDataReady || !currentUser) return;
+
+    // Handle protected flow deferral
+    if (userNeedsOnboarding && inProtectedFlow && !isOnOnboardingPage) {
+      clog('[OnboardingRedirect] User in protected flow - deferring onboarding');
+      deferOnboarding();
       return;
     }
 
-    // Additional validation - ensure we have complete user data before proceeding
-    // Note: onboarding_completed can be undefined for new users - that's normal!
-    if (!currentUser.email) {
-      clog('[OnboardingRedirect] ⚠️ User data incomplete, waiting for complete data:', {
-        hasEmail: !!currentUser.email,
-        onboarding_completed: currentUser.onboarding_completed,
-        onboarding_completed_type: typeof currentUser.onboarding_completed
-      });
-      return;
+    // Clear deferred onboarding if user doesn't need it anymore
+    if (!userNeedsOnboarding && onboardingDeferred) {
+      clearDeferredOnboarding();
     }
 
-    // Don't redirect if already on onboarding page
-    if (location.pathname.startsWith('/onboarding')) return;
-
-    // Don't redirect if on invitation-related pages
-    if (location.pathname.includes('student-invitations') ||
-        location.pathname.includes('parent-consent')) return;
-
-    // If user has invitations, redirect to invitations page instead of onboarding
-    if (hasInvitations) {
-      clog('[OnboardingRedirect] User has invitations, redirecting to student-invitations from:', location.pathname);
-      navigate('/student-invitations', { replace: true });
-      return;
+    // Execute redirect if needed
+    if (redirectTarget) {
+      clog('[OnboardingRedirect] Redirecting to:', redirectTarget.path);
+      if (onboardingDeferred && redirectTarget.path === '/onboarding') {
+        clearDeferredOnboarding();
+      }
+      navigate(redirectTarget.path, { replace: true });
     }
+  }, [
+    isDataReady, currentUser, userNeedsOnboarding, inProtectedFlow,
+    isOnOnboardingPage, onboardingDeferred, redirectTarget, navigate
+  ]);
 
-    // Check if user needs onboarding (only if no invitations)
-    clog('[OnboardingRedirect] 🔍 Checking onboarding status for user:', currentUser?.email);
-    clog('[OnboardingRedirect] 🔍 User onboarding_completed:', currentUser?.onboarding_completed);
-    clog('[OnboardingRedirect] 🔍 User onboarding_completed type:', typeof currentUser?.onboarding_completed);
-    clog('[OnboardingRedirect] 🔍 Complete user data available:', {
-      birth_date: currentUser?.birth_date,
-      user_type: currentUser?.user_type,
-      email: currentUser?.email
-    });
+  // RENDER LOGIC - optimized to prevent flash of content
 
-    const userNeedsOnboarding = needsOnboarding(currentUser);
-    clog('[OnboardingRedirect] 🔍 needsOnboarding() result:', userNeedsOnboarding);
-
-    if (userNeedsOnboarding) {
-      clog('[OnboardingRedirect] User needs onboarding, redirecting from:', location.pathname);
-      navigate('/onboarding', { replace: true });
-    } else {
-      clog('[OnboardingRedirect] ✅ User does NOT need onboarding, staying on:', location.pathname);
-    }
-  }, [currentUser, needsOnboarding, isLoading, navigate, location.pathname, hasCheckedInvitations, hasInvitations, userDataFresh]);
-
-  // Show loading if we haven't checked invitations or fresh data yet (only for logged-in users)
-  if ((!hasCheckedInvitations || !userDataFresh || settingsLoading) && currentUser) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center" dir="rtl">
-        <LudoraLoadingSpinner size="lg" text="בודק הזמנות והגדרות..." />
-      </div>
-    );
-  }
-
-  // If no current user, render children immediately (onboarding is only for authenticated users)
+  // No user - render children immediately (onboarding is only for authenticated users)
   if (!currentUser) {
     return children;
   }
 
-  // If user has invitations and we're not on invitation pages, show loading while redirecting
-  if (!isLoading && !settingsLoading && currentUser && hasInvitations &&
-      !location.pathname.includes('student-invitations') &&
-      !location.pathname.includes('parent-consent')) {
+  // Data not ready - show loading with appropriate text
+  if (!isDataReady) {
+    const loadingText = shouldCheckInvitations
+      ? "בודק הזמנות והגדרות..."
+      : "טוען הגדרות...";
+
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center" dir="rtl">
-        <LudoraLoadingSpinner size="lg" text="מפנה לדף הזמנות..." />
+        <LudoraLoadingSpinner size="lg" text={loadingText} />
       </div>
-    ); // Will redirect via useEffect
+    );
   }
 
-  // If user needs onboarding and we're not on onboarding/invitation pages, show loading while redirecting
-  if (!isLoading && !settingsLoading && currentUser && !hasInvitations && userDataFresh && needsOnboarding(currentUser) &&
-      !location.pathname.startsWith('/onboarding') &&
-      !location.pathname.includes('student-invitations') &&
-      !location.pathname.includes('parent-consent')) {
+  // Redirect pending - show loading with specific text
+  // This prevents flash of content during redirect
+  if (redirectTarget) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center" dir="rtl">
-        <LudoraLoadingSpinner size="lg" text="מפנה לדף הרשמה..." />
+        <LudoraLoadingSpinner size="lg" text={redirectTarget.text} />
       </div>
-    ); // Will redirect via useEffect
+    );
   }
 
+  // All checks passed - render children
   return children;
 }
+
+OnboardingRedirect.propTypes = {
+  children: PropTypes.node.isRequired
+};

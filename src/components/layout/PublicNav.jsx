@@ -8,6 +8,12 @@ import { iconMap } from "@/lib/layoutUtils";
 import { NAV_ITEMS, getNavItemConfig, PRODUCT_TYPES } from "@/config/productTypes";
 import LogoDisplay from '@/components/ui/LogoDisplay';
 import { useCart } from "@/contexts/CartContext";
+import {
+  NAVIGATION_KEYS,
+  SYSTEM_KEYS,
+  getSetting,
+  getSettings
+} from "@/constants/settings";
 
 // Helper function to check if user can see item based on visibility setting
 function canUserSeeItem(visibility, currentUser, isActualAdmin, isContentCreator) {
@@ -29,19 +35,55 @@ function canUserSeeItem(visibility, currentUser, isActualAdmin, isContentCreator
 
 // Utility: get navigation items
 function getNavigationItems({ currentUser, settings, isActualAdmin, isContentCreator }) {
-  const navOrder = settings?.nav_order || Object.keys(NAV_ITEMS);
+  const navOrder = getSetting(settings, NAVIGATION_KEYS.NAV_ORDER, Object.keys(NAV_ITEMS));
   let navItems = [];
   navOrder.forEach((itemType) => {
     const navItemConfig = getNavItemConfig(itemType);
     if (!navItemConfig) return;
-    const isItemEnabled = settings?.[`nav_${itemType}_enabled`] !== false;
+    // Check if item type is enabled - use individual constants for each type
+    let isItemEnabled = true;
+    switch (itemType) {
+      case 'files':
+        isItemEnabled = getSetting(settings, NAVIGATION_KEYS.NAV_FILES_ENABLED, true);
+        break;
+      case 'games':
+        isItemEnabled = getSetting(settings, NAVIGATION_KEYS.NAV_GAMES_ENABLED, true);
+        break;
+      case 'workshops':
+        isItemEnabled = getSetting(settings, NAVIGATION_KEYS.NAV_WORKSHOPS_ENABLED, true);
+        break;
+      case 'courses':
+        isItemEnabled = getSetting(settings, NAVIGATION_KEYS.NAV_COURSES_ENABLED, true);
+        break;
+      case 'classrooms':
+        isItemEnabled = getSetting(settings, NAVIGATION_KEYS.NAV_CLASSROOMS_ENABLED, true);
+        break;
+      case 'account':
+        isItemEnabled = getSetting(settings, NAVIGATION_KEYS.NAV_ACCOUNT_ENABLED, true);
+        break;
+      case 'tools':
+        isItemEnabled = getSetting(settings, NAVIGATION_KEYS.NAV_TOOLS_ENABLED, true);
+        break;
+      case 'content_creators':
+        isItemEnabled = getSetting(settings, NAVIGATION_KEYS.NAV_CONTENT_CREATORS_ENABLED, true);
+        break;
+      case 'curriculum':
+        isItemEnabled = getSetting(settings, NAVIGATION_KEYS.NAV_CURRICULUM_ENABLED, true);
+        break;
+      case 'lesson_plans':
+        isItemEnabled = getSetting(settings, NAVIGATION_KEYS.NAV_LESSON_PLANS_ENABLED, true);
+        break;
+    }
+
     if (!isItemEnabled) return;
-    if (navItemConfig.requiresSubscription && !settings?.subscription_system_enabled) return;
+    const subscriptionSystemEnabled = getSetting(settings, SYSTEM_KEYS.SUBSCRIPTION_SYSTEM_ENABLED, true);
+    if (navItemConfig.requiresSubscription && !subscriptionSystemEnabled) return;
+
     switch (itemType) {
       case 'files': {
-        const filesVisibility = settings?.nav_files_visibility || 'public';
+        const filesVisibility = getSetting(settings, NAVIGATION_KEYS.NAV_FILES_VISIBILITY, 'public');
         if (canUserSeeItem(filesVisibility, currentUser, isActualAdmin, isContentCreator)) {
-          const iconName = settings?.nav_files_icon || navItemConfig.defaultIcon;
+          const iconName = getSetting(settings, NAVIGATION_KEYS.NAV_FILES_ICON, navItemConfig.defaultIcon);
           const IconComponent = iconMap[iconName] || FileText;
           navItems.push({
             title: navItemConfig.text,
@@ -54,9 +96,9 @@ function getNavigationItems({ currentUser, settings, isActualAdmin, isContentCre
         break;
       }
       case 'games': {
-        const gamesVisibility = settings?.nav_games_visibility || 'public';
+        const gamesVisibility = getSetting(settings, NAVIGATION_KEYS.NAV_GAMES_VISIBILITY, 'public');
         if (canUserSeeItem(gamesVisibility, currentUser, isActualAdmin, isContentCreator)) {
-          const iconName = settings?.nav_games_icon || navItemConfig.defaultIcon;
+          const iconName = getSetting(settings, NAVIGATION_KEYS.NAV_GAMES_ICON, navItemConfig.defaultIcon);
           const IconComponent = iconMap[iconName] || Play;
           navItems.push({
             title: navItemConfig.text,
@@ -69,9 +111,9 @@ function getNavigationItems({ currentUser, settings, isActualAdmin, isContentCre
         break;
       }
       case 'workshops': {
-        const workshopsVisibility = settings?.nav_workshops_visibility || 'public';
+        const workshopsVisibility = getSetting(settings, NAVIGATION_KEYS.NAV_WORKSHOPS_VISIBILITY, 'public');
         if (canUserSeeItem(workshopsVisibility, currentUser, isActualAdmin, isContentCreator)) {
-          const iconName = settings?.nav_workshops_icon || navItemConfig.defaultIcon;
+          const iconName = getSetting(settings, NAVIGATION_KEYS.NAV_WORKSHOPS_ICON, navItemConfig.defaultIcon);
           const IconComponent = iconMap[iconName] || Calendar;
           navItems.push({
             title: navItemConfig.text,
@@ -84,9 +126,9 @@ function getNavigationItems({ currentUser, settings, isActualAdmin, isContentCre
         break;
       }
       case 'courses': {
-        const coursesVisibility = settings?.nav_courses_visibility || 'public';
+        const coursesVisibility = getSetting(settings, NAVIGATION_KEYS.NAV_COURSES_VISIBILITY, 'public');
         if (canUserSeeItem(coursesVisibility, currentUser, isActualAdmin, isContentCreator)) {
-          const iconName = settings?.nav_courses_icon || navItemConfig.defaultIcon;
+          const iconName = getSetting(settings, NAVIGATION_KEYS.NAV_COURSES_ICON, navItemConfig.defaultIcon);
           const IconComponent = iconMap[iconName] || BookOpen;
           navItems.push({
             title: navItemConfig.text,
@@ -99,10 +141,11 @@ function getNavigationItems({ currentUser, settings, isActualAdmin, isContentCre
         break;
       }
       case 'classrooms': {
-        if (settings?.subscription_system_enabled) {
-          const classroomsVisibility = settings?.nav_classrooms_visibility || 'public';
+        const subscriptionSystemEnabled = getSetting(settings, SYSTEM_KEYS.SUBSCRIPTION_SYSTEM_ENABLED, true);
+        if (subscriptionSystemEnabled) {
+          const classroomsVisibility = getSetting(settings, NAVIGATION_KEYS.NAV_CLASSROOMS_VISIBILITY, 'public');
           if (canUserSeeItem(classroomsVisibility, currentUser, isActualAdmin, isContentCreator)) {
-            const iconName = settings?.nav_classrooms_icon || navItemConfig.defaultIcon;
+            const iconName = getSetting(settings, NAVIGATION_KEYS.NAV_CLASSROOMS_ICON, navItemConfig.defaultIcon);
             const IconComponent = iconMap[iconName] || GraduationCap;
             navItems.push({
               title: navItemConfig.text,
@@ -116,9 +159,9 @@ function getNavigationItems({ currentUser, settings, isActualAdmin, isContentCre
         break;
       }
       case 'account': {
-        const accountVisibility = settings?.nav_account_visibility || 'public';
+        const accountVisibility = getSetting(settings, NAVIGATION_KEYS.NAV_ACCOUNT_VISIBILITY, 'public');
         if (canUserSeeItem(accountVisibility, currentUser, isActualAdmin, isContentCreator)) {
-          const iconName = settings?.nav_account_icon || navItemConfig.defaultIcon;
+          const iconName = getSetting(settings, NAVIGATION_KEYS.NAV_ACCOUNT_ICON, navItemConfig.defaultIcon);
           const IconComponent = iconMap[iconName] || UserIcon;
           navItems.push({
             title: navItemConfig.text,
@@ -131,12 +174,13 @@ function getNavigationItems({ currentUser, settings, isActualAdmin, isContentCre
         break;
       }
       case 'tools': {
-        const toolsVisibility = settings?.nav_tools_visibility || 'public';
+        const toolsVisibility = getSetting(settings, NAVIGATION_KEYS.NAV_TOOLS_VISIBILITY, 'public');
         if (canUserSeeItem(toolsVisibility, currentUser, isActualAdmin, isContentCreator)) {
-          const iconName = settings?.nav_tools_icon || navItemConfig.defaultIcon;
+          const iconName = getSetting(settings, NAVIGATION_KEYS.NAV_TOOLS_ICON, navItemConfig.defaultIcon);
           const IconComponent = iconMap[iconName] || Settings;
+          const toolsText = getSetting(settings, NAVIGATION_KEYS.NAV_TOOLS_TEXT, navItemConfig.text);
           navItems.push({
-            title: settings?.nav_tools_text || navItemConfig.text,
+            title: toolsText,
             url: PRODUCT_TYPES.tool.url,
             icon: IconComponent,
             isAdminOnly: toolsVisibility === 'admin_only',
@@ -146,7 +190,7 @@ function getNavigationItems({ currentUser, settings, isActualAdmin, isContentCre
         break;
       }
       case 'content_creators': {
-        const contentCreatorsVisibility = settings?.nav_content_creators_visibility || 'admins_and_creators';
+        const contentCreatorsVisibility = getSetting(settings, NAVIGATION_KEYS.NAV_CONTENT_CREATORS_VISIBILITY, 'admins_and_creators');
 
         // Special handling for content creators - show to eligible users or for signup
         let shouldShow = false;
@@ -159,7 +203,7 @@ function getNavigationItems({ currentUser, settings, isActualAdmin, isContentCre
         }
 
         if (shouldShow) {
-          const iconName = settings?.nav_content_creators_icon || navItemConfig.defaultIcon;
+          const iconName = getSetting(settings, NAVIGATION_KEYS.NAV_CONTENT_CREATORS_ICON, navItemConfig.defaultIcon);
           const IconComponent = iconMap[iconName] || Users;
           navItems.push({
             title: navItemConfig.text,
@@ -172,12 +216,13 @@ function getNavigationItems({ currentUser, settings, isActualAdmin, isContentCre
         break;
       }
       case 'curriculum': {
-        const curriculumVisibility = settings?.nav_curriculum_visibility || 'logged_in_users';
+        const curriculumVisibility = getSetting(settings, NAVIGATION_KEYS.NAV_CURRICULUM_VISIBILITY, 'logged_in_users');
         if (canUserSeeItem(curriculumVisibility, currentUser, isActualAdmin, isContentCreator)) {
-          const iconName = settings?.nav_curriculum_icon || navItemConfig.defaultIcon;
+          const iconName = getSetting(settings, NAVIGATION_KEYS.NAV_CURRICULUM_ICON, navItemConfig.defaultIcon);
           const IconComponent = iconMap[iconName] || BookOpen;
+          const curriculumText = getSetting(settings, NAVIGATION_KEYS.NAV_CURRICULUM_TEXT, navItemConfig.text);
           navItems.push({
-            title: settings?.nav_curriculum_text || navItemConfig.text,
+            title: curriculumText,
             url: navItemConfig.url,
             icon: IconComponent,
             isAdminOnly: curriculumVisibility === 'admin_only',
@@ -187,9 +232,9 @@ function getNavigationItems({ currentUser, settings, isActualAdmin, isContentCre
         break;
       }
       case 'lesson_plans': {
-        const lessonPlansVisibility = settings?.nav_lesson_plans_visibility || 'public';
+        const lessonPlansVisibility = getSetting(settings, NAVIGATION_KEYS.NAV_LESSON_PLANS_VISIBILITY, 'public');
         if (canUserSeeItem(lessonPlansVisibility, currentUser, isActualAdmin, isContentCreator)) {
-          const iconName = settings?.nav_lesson_plans_icon || navItemConfig.defaultIcon;
+          const iconName = getSetting(settings, NAVIGATION_KEYS.NAV_LESSON_PLANS_ICON, navItemConfig.defaultIcon);
           const IconComponent = iconMap[iconName] || BookOpen;
           navItems.push({
             title: navItemConfig.text,
@@ -341,7 +386,7 @@ const PublicNav = ({ currentUser, handleLogout, handleLogin, settings }) => {
       `} dir="rtl">
 
         {/* Maintenance mode warning */}
-        {settings?.maintenance_mode && currentUser?.role === 'admin' && (
+        {getSetting(settings, SYSTEM_KEYS.MAINTENANCE_MODE, false) && currentUser?.role === 'admin' && (
           <div className="bg-gradient-to-r from-yellow-400 via-orange-400 to-red-400 text-black p-2 text-center text-xs font-bold flex items-center justify-center gap-1 shadow-lg animate-pulse">
             <ShieldAlert className="w-4 h-4 animate-bounce" />
             {!isCollapsed && <span>מצב תחזוקה</span>}

@@ -20,11 +20,6 @@ const GameSharingWidget = ({ widgetId, settings = {} }) => {
   const [showQRModal, setShowQRModal] = useState(false);
   const [qrContainer, setQrContainer] = useState(null);
 
-  // Only show widget for teachers
-  if (currentUser?.user_type !== 'teacher') {
-    return null;
-  }
-
   // Generate portal URL using centralized configuration
   const getStudentPortalUrl = () => {
     if (!invitationCode) {
@@ -127,6 +122,15 @@ const GameSharingWidget = ({ widgetId, settings = {} }) => {
       }
     }
   }, [showQRModal, qrContainer, portalUrl]);
+
+  // Basic check - only show widget for teachers
+  if (currentUser?.user_type !== 'teacher') {
+    return null;
+  }
+
+  // NOTE: Visibility checks for games navigation are now handled at the Dashboard level
+  // The dashboard filters widgets before rendering them, so if this component is rendered,
+  // it means the user has permission to see it
 
   return (
     <>

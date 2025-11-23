@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { User, SubscriptionPlan, SubscriptionHistory } from '@/services/apiClient';
 import { clog, cerror } from '@/lib/utils';
 import { toast } from '@/components/ui/use-toast';
-import { SETTINGS_RETRY_INTERVALS } from '@/constants/settings';
+import { SETTINGS_RETRY_INTERVALS, SYSTEM_KEYS, getSetting, validateSettings } from '@/constants/settings';
 import { useAuthErrorHandler } from '@/hooks/useAuthErrorHandler';
 import authManager from '@/services/AuthManager';
 
@@ -39,6 +39,36 @@ export function UserProvider({ children }) {
   // Retry mechanism for settings loading
   const retryIntervalRef = useRef(null);
 
+  // Settings validation for development (logs warnings for missing keys)
+  const validateSettingsInDev = useCallback((settings) => {
+    if (import.meta.env?.DEV && settings) {
+      const validation = validateSettings(settings);
+
+      if (!validation.isValid) {
+        if (validation.error) {
+          cerror('[UserContext] Settings validation error:', validation.error);
+        } else {
+          clog('[UserContext] Settings validation:', {
+            totalExpected: validation.totalExpected,
+            totalFound: validation.totalFound,
+            missingKeys: validation.missingKeys,
+            extraKeys: validation.extraKeys.length > 0 ? validation.extraKeys : 'none'
+          });
+
+          if (validation.missingKeys.length > 0) {
+            cerror('[UserContext] Missing settings keys:', validation.missingKeys);
+          }
+
+          if (validation.extraKeys.length > 0) {
+            clog('[UserContext] Extra settings keys (not in constants):', validation.extraKeys);
+          }
+        }
+      } else {
+        clog('[UserContext] Settings validation passed - all', validation.totalExpected, 'keys found');
+      }
+    }
+  }, []);
+
   // AuthManager authentication state listener
   const handleAuthStateChange = useCallback((newAuthState) => {
     setAuthState(newAuthState);
@@ -55,13 +85,18 @@ export function UserProvider({ children }) {
       setPlayerDataFresh(false);
     }
 
+    // Validate settings in development mode
+    if (newAuthState.settings) {
+      validateSettingsInDev(newAuthState.settings);
+    }
+
     // Handle settings load failures
     if (newAuthState.settings === null && newAuthState.isInitialized) {
       setSettingsLoadFailed(true);
     } else {
       setSettingsLoadFailed(false);
     }
-  }, []);
+  }, [validateSettingsInDev]);
 
   // Stop the settings retry mechanism
   const stopSettingsRetry = useCallback(() => {
@@ -87,7 +122,7 @@ export function UserProvider({ children }) {
     let interval;
     if (settingsLoadFailed) {
       interval = SETTINGS_RETRY_INTERVALS.SYSTEM_ERROR;
-    } else if (authState.settings?.maintenance_mode) {
+    } else if (getSetting(authState.settings, SYSTEM_KEYS.MAINTENANCE_MODE, false)) {
       interval = SETTINGS_RETRY_INTERVALS.MAINTENANCE;
     } else {
       return;
@@ -96,7 +131,7 @@ export function UserProvider({ children }) {
     retryIntervalRef.current = setInterval(() => {
       retryLoadSettings();
     }, interval);
-  }, [settingsLoadFailed, authState.settings?.maintenance_mode, retryLoadSettings, stopSettingsRetry]);
+  }, [settingsLoadFailed, authState.settings, retryLoadSettings, stopSettingsRetry]);
 
   // Initialize AuthManager on mount
   useEffect(() => {
@@ -125,12 +160,13 @@ export function UserProvider({ children }) {
 
   // Start retry mechanism when settings fails to load or maintenance mode is active
   useEffect(() => {
-    if (settingsLoadFailed || authState.settings?.maintenance_mode) {
+    const isMaintenanceMode = getSetting(authState.settings, SYSTEM_KEYS.MAINTENANCE_MODE, false);
+    if (settingsLoadFailed || isMaintenanceMode) {
       startSettingsRetry();
     } else {
       stopSettingsRetry();
     }
-  }, [settingsLoadFailed, authState.settings?.maintenance_mode, startSettingsRetry, stopSettingsRetry]);
+  }, [settingsLoadFailed, authState.settings, startSettingsRetry, stopSettingsRetry]);
 
   // Delegate to AuthManager for onboarding check
   const needsOnboarding = useCallback((user) => {
@@ -384,6 +420,47 @@ export function UserProvider({ children }) {
     await authManager.initialize(true); // Force refresh to reload settings
   }, []);
 
+  // CENTRALIZED ROLE CHECKING FUNCTIONS
+  // These functions provide a single source of truth for role-based access control
+
+  // Check if current user is an actual admin (not impersonated)
+  const isAdmin = useCallback(() => {
+    return authState.user?.role === 'admin' && !authState.user?._isImpersonated;
+  }, [authState.user]);
+
+  // Check if current user is a content creator (based on content creator agreement)
+  const isContentCreator = useCallback(() => {
+    // Content creator status is based on signing the content creator agreement
+    return authState.user?.role === 'content_creator' && authState.user?.content_creator_agreement_signed;
+  }, [authState.user]);
+
+  // Check if current user can see an item based on navigation visibility setting
+  const canUserSeeNavItem = useCallback((visibility) => {
+    const user = authState.user;
+    const adminStatus = isAdmin();
+    const contentCreatorStatus = isContentCreator();
+
+    switch (visibility) {
+      case 'public':
+        return true;
+      case 'logged_in_users':
+        return !!user;
+      case 'admins_and_creators':
+        return adminStatus || contentCreatorStatus;
+      case 'admin_only':
+        return adminStatus;
+      case 'hidden':
+        return false; // Hidden means invisible to everyone
+      default:
+        return true; // Default to visible for unknown visibility settings
+    }
+  }, [authState.user, isAdmin, isContentCreator]);
+
+  // Check if current user is any kind of authenticated user (not player)
+  const isAuthenticatedUser = useCallback(() => {
+    return authState.authType === 'user' && !!authState.user;
+  }, [authState.authType, authState.user]);
+
   // Update last activity on user interactions
   useEffect(() => {
     if (hasAnyAuthentication()) {
@@ -436,7 +513,13 @@ export function UserProvider({ children }) {
     hasAnyAuthentication,
     isFullyLoaded,
     refreshUser,
-    refreshSettings
+    refreshSettings,
+
+    // Role checking functions (centralized)
+    isAdmin,
+    isContentCreator,
+    canUserSeeNavItem,
+    isAuthenticatedUser
   };
 
   return (

@@ -4,6 +4,7 @@ import { getApiBase } from "@/utils/api.js";
 import { apiRequest } from "@/services/apiClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { NAVIGATION_KEYS, getSetting } from '@/constants/settings';
 import {
   Crown,
   Gift,
@@ -340,7 +341,7 @@ const WidgetRenderer = ({ widget, isEditMode, onRemove, onMoveUp, onMoveDown, ca
 };
 
 export default function Dashboard() {
-  const { currentUser, isLoading: userLoading } = useUser();
+  const { currentUser, isLoading: userLoading, settings: globalSettings, canUserSeeNavItem } = useUser();
   const [isLoading, setIsLoading] = useState(true);
   const [availableWidgets, setAvailableWidgets] = useState({});
   const [userWidgets, setUserWidgets] = useState([]);
@@ -348,6 +349,22 @@ export default function Dashboard() {
   const [showWidgetPicker, setShowWidgetPicker] = useState(false);
   const [draggedWidget, setDraggedWidget] = useState(null);
   const [dragOverIndex, setDragOverIndex] = useState(null);
+
+  // Filter widgets based on visibility settings
+  const filterWidgetsByVisibility = useCallback((widgets) => {
+    // Check games visibility permission using centralized function
+    const gamesVisibility = getSetting(globalSettings, NAVIGATION_KEYS.NAV_GAMES_VISIBILITY, 'public');
+    const canSeeGames = canUserSeeNavItem(gamesVisibility);
+
+    const filteredWidgets = { ...widgets };
+
+    // Filter out game-sharing widget if user cannot see games navigation
+    if (!canSeeGames && filteredWidgets['game-sharing']) {
+      delete filteredWidgets['game-sharing'];
+    }
+
+    return filteredWidgets;
+  }, [globalSettings, canUserSeeNavItem]);
 
   // Load available widgets from API
   const loadAvailableWidgets = useCallback(async () => {
@@ -374,7 +391,9 @@ export default function Dashboard() {
           };
         }
 
-        setAvailableWidgets(widgets);
+        // Filter out game-sharing widget based on NAV_GAMES_VISIBILITY setting
+        const filteredWidgets = filterWidgetsByVisibility(widgets);
+        setAvailableWidgets(filteredWidgets);
       }
     } catch (error) {
       cerror('[Dashboard] Error loading available widgets:', error);
@@ -425,6 +444,53 @@ export default function Dashboard() {
         }
       });
 
+      // Filter fallback widgets as well
+      const filteredFallbackWidgets = filterWidgetsByVisibility({
+        'lesson-mode': {
+          id: 'lesson-mode',
+          name: 'מצב שיעור',
+          description: 'כלים למצב מצגת עם טיימר ואפקטים',
+          category: 'classroom'
+        },
+        'dice-roller': {
+          id: 'dice-roller',
+          name: 'קוביות',
+          description: 'זריקת קוביות אקראיות לפעילויות',
+          category: 'tools'
+        },
+        'color-wheel': {
+          id: 'color-wheel',
+          name: 'גלגל צבעים',
+          description: 'בחירת צבע אקראי מגלגל מסתובב',
+          category: 'tools'
+        },
+        'table-display': {
+          id: 'table-display',
+          name: 'הצגת טבלה',
+          description: 'טבלה לארגון מידע עם יכולות CSV',
+          category: 'tools'
+        },
+        'my-products': {
+          id: 'my-products',
+          name: 'המוצרים שלי',
+          description: 'גישה מהירה למוצרים שרכשת ללא פרטי רכישה',
+          category: 'purchases'
+        },
+        'purchase-history': {
+          id: 'purchase-history',
+          name: 'היסטוריית רכישות',
+          description: 'צפייה מפורטת בהיסטוריית הרכישות שלך',
+          category: 'purchases'
+        },
+        'game-sharing': {
+          id: 'game-sharing',
+          name: 'שיתוף המשחקים',
+          description: 'שתף את קטלוג המשחקים שלך עם תלמידים',
+          category: 'classroom'
+        }
+      });
+      setAvailableWidgets(filteredFallbackWidgets);
+
       toast({
         title: "טעינה חלקית",
         description: "טענו ווידג'טים בסיסיים - חלק מהתכונות עלולות להיות מוגבלות",
@@ -444,7 +510,20 @@ export default function Dashboard() {
         const config = data.data || { widgets: [] };
         // Sort widgets by order
         const sortedWidgets = config.widgets.sort((a, b) => a.order - b.order);
-        setUserWidgets(sortedWidgets);
+
+        // Filter widgets based on visibility settings
+        const visibleWidgets = sortedWidgets.filter(widget => {
+          // Check if this widget type should be visible
+          if (widget.type === 'game-sharing') {
+            const gamesVisibility = getSetting(globalSettings, NAVIGATION_KEYS.NAV_GAMES_VISIBILITY, 'public');
+            return canUserSeeNavItem(gamesVisibility);
+          }
+
+          // For other widget types, allow them (can add more checks later)
+          return true;
+        });
+
+        setUserWidgets(visibleWidgets);
       }
     } catch (error) {
       cerror('[Dashboard] Error loading dashboard config:', error);
@@ -454,7 +533,7 @@ export default function Dashboard() {
         variant: "destructive"
       });
     }
-  }, []);
+  }, [globalSettings, canUserSeeNavItem]);
 
   // Save dashboard configuration
   const saveDashboardConfig = useCallback(async (widgets) => {

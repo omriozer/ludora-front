@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { User } from "@/services/entities"; // Keep User for updateMyUserData calls only
 import { useUser } from "@/contexts/UserContext";
@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Play,
   Calendar,
@@ -30,7 +31,9 @@ import {
   Share2,
   QrCode,
   Copy,
-  UserPlus
+  UserPlus,
+  GraduationCap,
+  BookOpen
 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
@@ -41,6 +44,38 @@ import SubscriptionBusinessLogic from "@/services/SubscriptionBusinessLogic";
 import { clog, cerror } from '@/lib/utils';
 import { toast } from '@/components/ui/use-toast';
 import { urls } from '@/config/urls';
+
+// Static fallback arrays for specializations - defined outside component
+const FALLBACK_SPECIALIZATIONS = [
+  { name: 'מתמטיקה', emoji: '' },
+  { name: 'עברית', emoji: '' },
+  { name: 'אנגלית', emoji: '' },
+  { name: 'מדעים', emoji: '' },
+  { name: 'היסטוריה', emoji: '' },
+  { name: 'גיאוגרפיה', emoji: '' },
+  { name: 'ספורט', emoji: '' },
+  { name: 'אמנות', emoji: '' },
+  { name: 'מוזיקה', emoji: '' },
+  { name: 'מחשבים', emoji: '' },
+  { name: 'פיזיקה', emoji: '' },
+  { name: 'כימיה', emoji: '' },
+  { name: 'ביולוגיה', emoji: '' },
+  { name: 'ספרות', emoji: '' },
+  { name: 'אזרחות', emoji: '' },
+  { name: 'פסיכולוגיה', emoji: '' },
+  { name: 'חינוך מיוחד', emoji: '' },
+  { name: 'גן ילדים', emoji: '' },
+  { name: 'חינוך מוקדם', emoji: '' },
+  { name: 'חינוך גופני', emoji: '' }
+];
+
+// Education level options based on User model validation constraints
+const EDUCATION_LEVELS = [
+  { value: 'no_education_degree', label: 'ללא תואר אקדמי' },
+  { value: 'bachelor_education', label: 'תואר ראשון (B.A/B.Sc/B.Ed)' },
+  { value: 'master_education', label: 'תואר שני (M.A/M.Sc/M.Ed)' },
+  { value: 'phd_education', label: 'תואר שלישי (Ph.D)' }
+];
 
 const MyAccount = () => {
   const navigate = useNavigate();
@@ -71,6 +106,16 @@ const MyAccount = () => {
 
   // Use the new subscription state hook
   const subscriptionState = useSubscriptionState(currentUser);
+
+  // Use settings-driven data or fallback arrays for specializations
+  const availableSpecializations = useMemo(() => {
+    if (settings?.available_specializations) {
+      return settings.available_specializations
+        .filter(spec => spec.enabled)
+        .map(spec => ({ name: spec.name, emoji: spec.emoji }));
+    }
+    return FALLBACK_SPECIALIZATIONS;
+  }, [settings]);
 
   // Generate portal URL from invitation code
   const portalUrl = invitationCode
@@ -231,7 +276,10 @@ const MyAccount = () => {
       if (!isSubscriptionSystemEnabled) {
         setEditedProfile({
           display_name: currentUser?.display_name || currentUser?.full_name || '',
-          phone: currentUser?.phone || ''
+          phone: currentUser?.phone || '',
+          birth_date: currentUser?.birth_date || '',
+          education_level: currentUser?.education_level || '',
+          specializations: currentUser?.specializations || []
         });
 
         // Clear legacy data since Registration is removed
@@ -271,7 +319,10 @@ const MyAccount = () => {
 
       setEditedProfile({
         display_name: currentUser?.display_name || currentUser?.full_name || '',
-        phone: currentUser?.phone || ''
+        phone: currentUser?.phone || '',
+        birth_date: currentUser?.birth_date || '',
+        education_level: currentUser?.education_level || '',
+        specializations: currentUser?.specializations || []
       });
 
       // Note: Subscription state is now handled by useSubscriptionState hook
@@ -310,10 +361,28 @@ const MyAccount = () => {
   const handleCancelEdit = () => {
     setEditedProfile({
       display_name: currentUser.display_name || currentUser.full_name || '',
-      phone: currentUser.phone || ''
+      phone: currentUser.phone || '',
+      birth_date: currentUser?.birth_date || '',
+      education_level: currentUser?.education_level || '',
+      specializations: currentUser?.specializations || []
     });
     setIsEditingProfile(false);
   };
+
+  // Handle specialization toggle in edit mode
+  const handleSpecializationToggle = useCallback((specializationName) => {
+    setEditedProfile(prev => {
+      const currentSpecs = prev.specializations || [];
+      const newSpecializations = currentSpecs.includes(specializationName)
+        ? currentSpecs.filter(s => s !== specializationName)
+        : [...currentSpecs, specializationName];
+
+      return {
+        ...prev,
+        specializations: newSpecializations
+      };
+    });
+  }, []);
 
 
   const handleSubscriptionChange = (plan) => {
@@ -481,6 +550,137 @@ const MyAccount = () => {
                     </p>
                   )}
                 </div>
+
+                {/* Birth Date Field - Only for teachers */}
+                {currentUser?.user_type === 'teacher' && (
+                  <div>
+                    <Label className="text-xs sm:text-sm font-medium text-gray-700 block mb-1 flex items-center gap-1">
+                      <Calendar className="w-3.5 h-3.5" />
+                      תאריך לידה
+                    </Label>
+                    {isEditingProfile ? (
+                      <div className="space-y-2">
+                        <Input
+                          type="date"
+                          value={editedProfile.birth_date || ''}
+                          onChange={(e) => setEditedProfile(prev => ({ ...prev, birth_date: e.target.value }))}
+                          className="text-sm sm:text-base h-9 sm:h-10"
+                        />
+                        {currentUser?.birth_date && editedProfile.birth_date !== currentUser?.birth_date && (
+                          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-2 text-xs text-yellow-800">
+                            <div className="flex items-center gap-1">
+                              <AlertTriangle className="w-3 h-3 flex-shrink-0" />
+                              <span>שינוי תאריך לידה עשוי להשפיע על אימות הגיל במערכת</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-sm sm:text-base lg:text-lg text-gray-900 break-words leading-relaxed">
+                        {currentUser?.birth_date
+                          ? new Date(currentUser.birth_date).toLocaleDateString('he-IL')
+                          : 'לא הוגדר'}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Education Level Field - Only for teachers */}
+                {currentUser?.user_type === 'teacher' && (
+                  <div>
+                    <Label className="text-xs sm:text-sm font-medium text-gray-700 block mb-1 flex items-center gap-1">
+                      <GraduationCap className="w-3.5 h-3.5" />
+                      רמת השכלה
+                    </Label>
+                    {isEditingProfile ? (
+                      <Select
+                        value={editedProfile.education_level || ''}
+                        onValueChange={(value) => setEditedProfile(prev => ({ ...prev, education_level: value }))}
+                      >
+                        <SelectTrigger className="h-9 sm:h-10 text-sm sm:text-base">
+                          <SelectValue placeholder="בחר רמת השכלה" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {EDUCATION_LEVELS.map((level) => (
+                            <SelectItem key={level.value} value={level.value}>
+                              {level.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <p className="text-sm sm:text-base lg:text-lg text-gray-900 break-words leading-relaxed">
+                        {EDUCATION_LEVELS.find(l => l.value === currentUser?.education_level)?.label || 'לא הוגדר'}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Specializations Field - Only for teachers */}
+                {currentUser?.user_type === 'teacher' && (
+                  <div>
+                    <Label className="text-xs sm:text-sm font-medium text-gray-700 block mb-1 flex items-center gap-1">
+                      <BookOpen className="w-3.5 h-3.5" />
+                      התמחויות
+                    </Label>
+                    {isEditingProfile ? (
+                      <div className="space-y-2">
+                        <p className="text-gray-500 text-xs">בחר את התחומים שבהם אתה מתמחה:</p>
+                        <div className="grid grid-cols-2 gap-1.5 max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-2">
+                          {availableSpecializations.map((specialization) => (
+                            <div
+                              key={specialization.name}
+                              className={`
+                                flex items-center gap-1.5 p-1.5 rounded-md border cursor-pointer transition-all duration-150 text-xs
+                                ${(editedProfile.specializations || []).includes(specialization.name)
+                                  ? 'bg-blue-50 border-blue-300 text-blue-800'
+                                  : 'bg-white border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700'
+                                }
+                              `}
+                              onClick={() => handleSpecializationToggle(specialization.name)}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={(editedProfile.specializations || []).includes(specialization.name)}
+                                onChange={() => handleSpecializationToggle(specialization.name)}
+                                className="w-3 h-3 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                              />
+                              <span className="font-medium truncate">
+                                {specialization.name}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        {(editedProfile.specializations || []).length > 0 && (
+                          <div className="bg-green-50 border border-green-200 rounded-lg p-2">
+                            <p className="text-green-800 text-xs font-medium">
+                              נבחרו {(editedProfile.specializations || []).length} התמחויות
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div>
+                        {currentUser?.specializations && currentUser.specializations.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {currentUser.specializations.map((spec, index) => (
+                              <span
+                                key={index}
+                                className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                              >
+                                {spec}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm sm:text-base lg:text-lg text-gray-500 leading-relaxed">
+                            לא הוגדרו התמחויות
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
 

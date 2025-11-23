@@ -38,6 +38,7 @@ import { toast } from '@/components/ui/use-toast';
 import { getProductTypeName } from '@/config/productTypes';
 import EnhancedLobbyCreationDialog from '@/components/game-lobbies/EnhancedLobbyActivationDialog';
 import { urls } from '@/config/urls';
+import { cerror } from '@/lib/utils';
 
 
 // Main component
@@ -56,21 +57,10 @@ export default function GameLobbies() {
         // This endpoint returns games the user owns/created or has access to, with embedded product data
         const games = await apiRequest('/games');
 
-        // DEBUG: Log the first game to see data structure
-        if (games && games.length > 0) {
-          console.log('🔍 [DEBUG] First game data structure:', games[0]);
-          console.log('🔍 [DEBUG] Game title source (should be from product):', {
-            'game.product?.title': games[0].product?.title,
-            'game.product?.name': games[0].product?.name,
-            'product exists': !!games[0].product,
-            'note': 'Games do not have title/name fields - title comes from associated Product'
-          });
-        }
-
         setUserGames(games || []);
         setLoading(false);
       } catch (error) {
-        console.error('Error fetching user games:', error);
+        cerror('[GameLobbies] Error fetching user games:', error);
         // Handle error gracefully by showing empty state
         setUserGames([]);
         setLoading(false);
@@ -150,23 +140,18 @@ function MainLobbyView({ userGames, loading }) {
 
   // Socket.IO connection for real-time lobby updates
   useEffect(() => {
-    console.log('🔌 [GameLobbies] Connecting to Socket.IO');
     setSocketConnectionState('connecting');
 
     // Connect to Socket.IO
     socketClient.connect().then(() => {
-      console.log('✅ [GameLobbies] Socket.IO connected successfully');
       setSocketConnectionState('connected');
-    }).catch((error) => {
-      console.error('❌ [GameLobbies] Socket.IO connection failed:', error);
+    }).catch(() => {
       setSocketConnectionState('error');
     });
 
     // Listen for lobby updates
     const unsubscribeLobbyUpdate = socketClient.onLobbyUpdate('lobby:update', (eventData) => {
       try {
-        console.log('📨 [GameLobbies] Received lobby update:', eventData);
-
         // Look for lobby-related events that affect game cards
         if (eventData.type && (
           eventData.type === 'lobby_created' ||
@@ -179,34 +164,29 @@ function MainLobbyView({ userGames, loading }) {
           eventData.type === 'session_started' ||
           eventData.type === 'session_finished'
         )) {
-          console.log('🎯 [GameLobbies] Relevant lobby event detected, triggering game refresh');
           // Trigger all game cards to refresh their lobby data
           setGameUpdateTrigger(prev => prev + 1);
         }
       } catch (error) {
-        console.error('❌ [GameLobbies] Failed to process lobby update:', error);
+        // Silent fail - lobby updates are non-critical
       }
     });
 
     // Listen for connection state changes
     const unsubscribeConnect = socketClient.onLobbyUpdate('connect', () => {
-      console.log('🔌 [GameLobbies] Socket.IO reconnected');
       setSocketConnectionState('connected');
     });
 
     const unsubscribeDisconnect = socketClient.onLobbyUpdate('disconnect', () => {
-      console.log('🔌 [GameLobbies] Socket.IO disconnected');
       setSocketConnectionState('disconnected');
     });
 
     const unsubscribeReconnect = socketClient.onLobbyUpdate('reconnect', () => {
-      console.log('🔌 [GameLobbies] Socket.IO reconnected after disconnect');
       setSocketConnectionState('connected');
     });
 
     // Cleanup on unmount
     return () => {
-      console.log('🔌 [GameLobbies] Cleaning up Socket.IO listeners');
       unsubscribeLobbyUpdate();
       unsubscribeConnect();
       unsubscribeDisconnect();
@@ -549,7 +529,6 @@ function GameCard({
     // When the parent component detects a relevant Socket.IO event, it increments gameUpdateTrigger
     // This causes all game cards to refresh their lobby data
     if (gameUpdateTrigger > 0) {
-      console.log(`🔄 [GameCard:${stableGameId}] Socket.IO event triggered lobby refresh (trigger: ${gameUpdateTrigger})`);
       processLobbyData(false); // Don't show loading during Socket.IO updates
     }
   }, [gameUpdateTrigger, stableGameId]);
@@ -566,12 +545,7 @@ function GameCard({
       // Use lobbies data that comes with the game from /games endpoint
       const lobbies = game.lobbies || [];
 
-      // Each game should have only one lobby - warn if multiple
-      if (lobbies.length > 1) {
-        console.warn(`🚨 [WARNING] Game ${gameTitle} (${game.id}) has ${lobbies.length} lobbies but should only have one!`);
-      }
-
-      // Use the first/only lobby
+      // Use the first/only lobby (each game should have only one)
       const lobby = lobbies.length > 0 ? lobbies[0] : null;
 
       let totalActiveSessions = 0;
@@ -582,15 +556,6 @@ function GameCard({
       if (lobby) {
         currentLobbyStatus = computeLobbyStatus(lobby);
         lobbyCode = lobby.lobby_code;
-
-        // DEBUG: Log lobby data
-        console.log(`🔍 [DEBUG] Teacher Portal - Game ${gameTitle} (${game.id}):`, {
-          hasLobby: true,
-          lobbyCode: lobbyCode,
-          status: currentLobbyStatus,
-          expiresAt: lobby.expires_at,
-          closedAt: lobby.closed_at
-        });
 
         // Count sessions - only if lobby is active
         if (isLobbyActive(lobby) && lobby.sessions) {
@@ -604,8 +569,6 @@ function GameCard({
             return sum + (session.participants ? session.participants.length : 0);
           }, 0);
         }
-      } else {
-        console.log(`🔍 [DEBUG] Teacher Portal - Game ${gameTitle} (${game.id}): No lobby`);
       }
 
       setLobbyData({
@@ -617,7 +580,7 @@ function GameCard({
       });
 
     } catch (error) {
-      console.error('Error processing lobby data for game:', game.id, error);
+      cerror('[GameLobbies] Error processing lobby data for game:', game.id, error);
       // Set default values on error
       setLobbyData({
         status: 'no_lobby',
@@ -746,7 +709,7 @@ function GameCard({
       processLobbyData();
 
     } catch (error) {
-      console.error('Error handling lobby:', error);
+      cerror('[GameLobbies] Error handling lobby:', error);
       const action = isEditMode ? 'עריכת' : 'יצירת';
       toast({
         title: `שגיאה ב${action} לובי`,
@@ -824,7 +787,7 @@ function GameCard({
       }
 
     } catch (error) {
-      console.error('Error activating lobby:', error);
+      cerror('[GameLobbies] Error activating lobby:', error);
       toast({
         title: "שגיאה בהפעלת לובי",
         description: error.message || "אירעה שגיאה בלתי צפויה",
@@ -879,7 +842,7 @@ function GameCard({
       }
 
     } catch (error) {
-      console.error('Error closing lobby:', error);
+      cerror('[GameLobbies] Error closing lobby:', error);
       toast({
         title: "שגיאה בסגירת לובי",
         description: error.message || "אירעה שגיאה בלתי צפויה",
@@ -936,7 +899,7 @@ function GameCard({
           margin: 0  // Remove all padding/margin
         });
       } catch (error) {
-        console.error('Error generating QR code:', error);
+        cerror('[GameLobbies] Error generating QR code:', error);
       }
     }
   }, [showQRModal, qrContainer, lobbyCode]);

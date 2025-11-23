@@ -17,6 +17,7 @@ import { User, Player, Settings } from '@/services/apiClient';
 import { isStudentPortal } from '@/utils/domainUtils';
 import { loadSettingsWithRetry } from '@/lib/appUser';
 import { clog, cerror } from '@/lib/utils';
+import { ACCESS_CONTROL_KEYS, getSetting, STUDENTS_ACCESS_MODES } from '@/constants/settings';
 
 export class AuthManager {
   constructor() {
@@ -254,7 +255,7 @@ export class AuthManager {
    */
   determineAuthStrategy() {
     const onStudentPortal = isStudentPortal();
-    const studentsAccess = this.settings?.students_access || 'invite_only';
+    const studentsAccess = getSetting(this.settings, ACCESS_CONTROL_KEYS.STUDENTS_ACCESS, STUDENTS_ACCESS_MODES.INVITE_ONLY);
 
     if (!onStudentPortal) {
       // Teachers portal - Firebase only
@@ -268,12 +269,12 @@ export class AuthManager {
       const strategy = {
         portal: 'student',
         methods: [],
-        allowAnonymous: studentsAccess !== 'invite_only'
+        allowAnonymous: studentsAccess !== STUDENTS_ACCESS_MODES.INVITE_ONLY
       };
 
       // CRITICAL: Try Player authentication FIRST on student portal
       // This ensures player sessions take priority over admin Firebase sessions
-      if (studentsAccess === 'invite_only' || studentsAccess === 'authed_only') {
+      if (studentsAccess === STUDENTS_ACCESS_MODES.INVITE_ONLY || studentsAccess === STUDENTS_ACCESS_MODES.AUTHED_ONLY) {
         strategy.methods.push('player');
       } else {
         // 'all' mode - always try player auth
@@ -341,7 +342,8 @@ export class AuthManager {
   async checkFirebaseAuth(strategy) {
     try {
       // Special handling for student portal with invite_only
-      if (strategy.portal === 'student' && this.settings?.students_access === 'invite_only') {
+      const studentsAccess = getSetting(this.settings, ACCESS_CONTROL_KEYS.STUDENTS_ACCESS, STUDENTS_ACCESS_MODES.INVITE_ONLY);
+      if (strategy.portal === 'student' && studentsAccess === STUDENTS_ACCESS_MODES.INVITE_ONLY) {
         const user = await User.getCurrentUser(true);
         if (!user) {
           return { success: false, reason: 'No Firebase session found' };
@@ -412,21 +414,42 @@ export class AuthManager {
 
   /**
    * Login with Firebase credentials
+   *
+   * IMPORTANT: After Firebase authentication, we must fetch fresh user data
+   * from /auth/me to get computed fields like onboarding_completed.
+   * The /auth/verify endpoint only returns basic user info without computed fields.
    */
-  async loginFirebase(userData, rememberMe = false) {
+  async loginFirebase(userData, _rememberMe = false) {
     try {
-      // Firebase login is handled by Firebase SDK, we just need to update our state
-      this.currentAuth = {
-        type: 'user',
-        entity: userData
-      };
+      // Firebase login is handled by Firebase SDK and cookies are set
+      // Now we need to fetch the COMPLETE user data from /auth/me
+      // This ensures computed fields like onboarding_completed are available
+      clog('[AuthManager] Firebase login - fetching fresh user data from /auth/me');
+
+      const freshUser = await User.getCurrentUser(true);
+
+      if (!freshUser) {
+        // Fallback to provided userData if /auth/me fails
+        cerror('[AuthManager] Failed to fetch fresh user data, using provided userData');
+        this.currentAuth = {
+          type: 'user',
+          entity: userData
+        };
+      } else {
+        // Use fresh user data with computed fields
+        clog('[AuthManager] Fresh user data fetched successfully, onboarding_completed:', freshUser.onboarding_completed);
+        this.currentAuth = {
+          type: 'user',
+          entity: freshUser
+        };
+      }
 
       this.notifyAuthListeners();
 
       // Update activity
       this.updateLastActivity();
 
-      return { success: true, user: userData };
+      return { success: true, user: this.currentAuth.entity };
     } catch (error) {
       cerror('[AuthManager] Firebase login error:', error);
       throw error;
@@ -494,13 +517,25 @@ export class AuthManager {
    * Check if user needs onboarding
    */
   needsOnboarding(user) {
-    if (!user || this.currentAuth?.type !== 'user') return false;
+    if (!user || this.currentAuth?.type !== 'user') {
+      clog('[AuthManager] needsOnboarding: No user or not user type');
+      return false;
+    }
+
+    clog('[AuthManager] needsOnboarding check:', {
+      onboarding_completed: user.onboarding_completed,
+      birth_date: user.birth_date,
+      user_type: user.user_type,
+      education_level: user.education_level
+    });
 
     if (user.onboarding_completed === true) {
       const hasRequiredFields = user.birth_date && user.user_type;
+      clog('[AuthManager] onboarding_completed=true, hasRequiredFields:', hasRequiredFields);
       return !hasRequiredFields;
     }
 
+    clog('[AuthManager] onboarding_completed not true, user needs onboarding');
     return true;
   }
 

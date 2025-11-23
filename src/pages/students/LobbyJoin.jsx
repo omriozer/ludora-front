@@ -10,7 +10,6 @@ import LogoDisplay from '@/components/ui/LogoDisplay';
 import socketClient, { useSocket } from '@/services/socketClient';
 import { isLobbyJoinable, getLobbyStatusConfig } from '@/utils/lobbyUtils';
 import { toast } from '@/components/ui/use-toast';
-import { clog } from '@/lib/utils';
 
 /**
  * Student lobby join page
@@ -50,13 +49,6 @@ const LobbyJoin = () => {
     // Only check for authenticated players
     if (isPlayerAuthenticated && currentPlayer) {
       const hasTeacherConnection = currentPlayer.teacher_id || currentPlayer.teacher;
-
-      clog('[LobbyJoin] Teacher connection check:', {
-        playerId: currentPlayer.id,
-        hasTeacherConnection,
-        teacher_id: currentPlayer.teacher_id,
-        teacher: currentPlayer.teacher
-      });
 
       if (!hasTeacherConnection) {
         setShowTeacherRequired(true);
@@ -213,11 +205,9 @@ const LobbyJoin = () => {
         }
 
         setLobbyData(newData);
-        console.log('[LobbyJoin] Refreshed lobby data via Socket.IO');
       }
     } catch (error) {
-      console.error('[LobbyJoin] Error refreshing lobby data:', error);
-      // Don't update error state for Socket.IO refreshes, only log the error
+      // Don't update error state for Socket.IO refreshes - silent failure for real-time updates
     }
   };
 
@@ -249,7 +239,6 @@ const LobbyJoin = () => {
     // Update animation state and create notifications
     if (joinedPlayers.size > 0) {
       setRecentlyJoinedPlayers(joinedPlayers);
-      console.log('[LobbyJoin] Players joined:', [...joinedPlayers]);
 
       // Create join notifications
       const joinNotifications = [...joinedPlayers].map(playerId => ({
@@ -270,7 +259,6 @@ const LobbyJoin = () => {
 
     if (leftPlayers.size > 0) {
       setRecentlyLeftPlayers(leftPlayers);
-      console.log('[LobbyJoin] Players left:', [...leftPlayers]);
 
       // Create leave notifications
       const leaveNotifications = [...leftPlayers].map(playerId => ({
@@ -418,8 +406,6 @@ const LobbyJoin = () => {
     if (!lobbyData) return; // No lobby data yet, nothing to listen for
 
     const handleLobbyEvent = (eventData) => {
-      console.log('[LobbyJoin] Received lobby event:', eventData);
-
       // Check if this event is for our lobby
       const lobbyId = eventData?.id || eventData?.lobby_id;
       if (lobbyId === lobbyData.lobby?.id) {
@@ -429,8 +415,6 @@ const LobbyJoin = () => {
     };
 
     const handleSessionEvent = (eventData) => {
-      console.log('[LobbyJoin] Received session event:', eventData);
-
       // Check if this session event is for sessions in our lobby
       const sessionId = eventData?.id || eventData?.session_id;
       const lobbyId = eventData?.lobby_id;
@@ -469,12 +453,6 @@ const LobbyJoin = () => {
     };
   }, [lobbyData, onLobbyUpdate, code, user]);
 
-  // Show Socket.IO connection status in console for debugging
-  useEffect(() => {
-    if (lobbyData?.lobby?.id) {
-      console.log(`[LobbyJoin] Socket.IO ${isConnected ? 'connected' : 'disconnected'} for lobby ${code}`);
-    }
-  }, [isConnected, code, lobbyData]);
 
   const handleJoinLobby = async () => {
     // Only require display name for non-authenticated users
