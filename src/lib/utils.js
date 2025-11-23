@@ -3,22 +3,23 @@ import { twMerge } from "tailwind-merge"
 
 export function cn(...inputs) {
   return twMerge(clsx(inputs))
-} 
+}
 
+// Re-export error logger for backwards compatibility
+export { error } from './errorLogger.js';
+
+// Deprecated logging functions - will be removed
+// Use error.group() from errorLogger.js instead
 const ENV = import.meta.env;
 
-export function clog(...args) {
-    if (ENV.NODE_ENV !== 'production' || ENV.DEBUG_USER) {
-         
-        console.log(...args);
-    }
-};
+// DEPRECATED - Remove in next major version
+export function clog() {
+  // Silent - all clog calls should be removed
+}
 
-export function cerror(...args) {
-    if (ENV.NODE_ENV !== 'production' || ENV.DEBUG_USER) {
-         
-        console.error(...args);
-    }
+// DEPRECATED - Use error.group() instead
+export function cerror() {
+  // Silent - use error logger instead
 }
 
 /**

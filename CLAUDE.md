@@ -729,6 +729,24 @@ function getCachedData(key) {
 - **Performance:** Unnecessary refetches waste resources
 - **Offline support:** Data-driven caching enables better offline behavior
 
+### ESLint Automated Enforcement (NEW)
+
+**🚨 CRITICAL: ESLint rules now automatically detect and block time-based caching patterns.**
+
+```bash
+# Run linting before ANY code submission
+npm run lint        # Check for violations
+npm run lint:fix    # Auto-fix where possible
+```
+
+**Ludora Custom ESLint Rules:**
+- **`ludora/no-time-based-caching`** (Error) - BLOCKS PR APPROVAL
+- **`ludora/require-data-driven-cache`** (Warning) - Suggests proper patterns
+- **`ludora/no-unused-cache-keys`** (Warning) - Detects orphaned cache operations
+- **`ludora/no-console-log`** (Error) - Enforces clog/cerror usage
+
+**See `/ludora-utils/eslint-plugin-ludora/README.md` for full documentation.**
+
 ---
 
 ## 10. KEY FILE LOCATIONS
