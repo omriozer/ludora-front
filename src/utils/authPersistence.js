@@ -111,17 +111,6 @@ export function logAuthDebugInfo(context, authState = {}) {
   // This function is intentionally a no-op in production
   // It exists as a development aid that can be enabled manually when debugging
   if (!isDevelopment()) return;
-
-  // Development debugging is disabled by default to reduce console noise
-  // Uncomment below for manual debugging when needed:
-  /*
-  const cookies = document.cookie.split(';').map(c => c.trim().split('=')[0]);
-  const persistedState = getPersistedAuthState();
-  console.group(`[authPersistence] Debug Info - ${context}`);
-  console.log('Current auth type:', authState.authType || 'none');
-  console.log('Is authenticated:', authState.isAuthenticated || false);
-  console.groupEnd();
-  */
 }
 
 export default {

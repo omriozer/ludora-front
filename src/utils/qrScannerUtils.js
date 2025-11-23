@@ -183,7 +183,6 @@ export const openQRScanner = async ({ onSuccess, onError, onClose }) => {
       qrScanner = new QrScanner(
         videoElement,
         (result) => {
-          console.log('QR Code detected:', result.data);
           cleanup();
           if (onSuccess) onSuccess(result.data);
         },
@@ -268,15 +267,12 @@ export const scanQRCode = async ({ onSuccess, onError } = {}) => {
   try {
     const scannerResult = await openQRScanner({
       onSuccess: (scannedData) => {
-        // Just return the raw scanned data, let the component handle processing
-        console.log('QR Code scanned:', scannedData);
         if (onSuccess) onSuccess(scannedData);
       },
       onError: (error) => {
         if (onError) onError(error);
       },
       onClose: () => {
-        console.log('QR scanner closed');
       }
     });
 

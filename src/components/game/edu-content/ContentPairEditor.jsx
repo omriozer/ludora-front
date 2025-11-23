@@ -565,31 +565,20 @@ const ContentPairEditor = ({
       const isCardA = editingCard === 'A';
       const targetCard = isCardA ? contentA : contentB;
 
-      console.log('🎨 Saving styles for card:', editingCard);
-      console.log('🎮 Game ID:', gameId);
-      console.log('🎯 Target card:', targetCard);
-      console.log('🎨 New styles:', newStyles);
-
       if (targetCard?.isSubPair) {
-        console.log('📝 Updating sub-pair with ID:', targetCard.id);
-
         // Reconstruct the contents array from bgContent and dataContent
         const contents = [
           { id: targetCard.bgContent.id, source: 'eduContent' },
           { id: targetCard.dataContent.id, source: 'eduContent' }
         ];
 
-        console.log('📦 Reconstructed contents:', contents);
-
         // Update the sub-pair with both contents and usage_metadata (backend requires both)
-        const result = await GameContent.updateContentUse(gameId, targetCard.id, {
+        await GameContent.updateContentUse(gameId, targetCard.id, {
           contents: contents,
           usage_metadata: {
             textStyles: newStyles
           }
         });
-
-        console.log('✅ Update result:', result);
 
         // Update local state
         if (isCardA) {

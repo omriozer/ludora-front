@@ -646,7 +646,92 @@ useEffect(() => {
 
 ---
 
-## 9. KEY FILE LOCATIONS
+## 9. CACHE INVALIDATION PATTERNS (FRONTEND)
+
+### 🚨 CRITICAL: Data-Driven Cache Invalidation Only
+
+**This is a HARD ARCHITECTURAL RULE that blocks PR approval if violated:**
+
+Frontend caching must follow the same data-driven principles as backend. Never use time-based expiration.
+
+### ❌ PROHIBITED: Time-Based Cache Patterns
+
+```javascript
+// ❌ NEVER: Time-based cache expiration in React
+const [cache, setCache] = useState({});
+useEffect(() => {
+  const timer = setTimeout(() => setCache({}), 60000); // BLOCKS PR
+  return () => clearTimeout(timer);
+}, []);
+
+// ❌ NEVER: localStorage with time-based expiration
+localStorage.setItem('data', JSON.stringify({ value, expires: Date.now() + 60000 }));
+
+// ❌ NEVER: React Query with only time-based stale time
+useQuery('key', fetchData, {
+  staleTime: 5 * 60 * 1000, // BLOCKS PR without refetchOnWindowFocus
+  cacheTime: 10 * 60 * 1000  // BLOCKS PR without data validation
+});
+```
+
+### ✅ REQUIRED: Data-Driven Cache Patterns
+
+```javascript
+// ✅ CORRECT: Cache key includes data version from API
+const { data: settings } = useQuery(
+  ['settings', settingsVersion], // Version in cache key
+  fetchSettings,
+  {
+    staleTime: Infinity, // Never stale by time
+    refetchOnWindowFocus: true, // Check on focus
+    refetchOnReconnect: true // Check on reconnect
+  }
+);
+
+// ✅ CORRECT: Invalidate cache on data mutation
+const mutation = useMutation(updateSettings, {
+  onSuccess: () => {
+    // Invalidate all settings queries
+    queryClient.invalidateQueries(['settings']);
+  }
+});
+
+// ✅ CORRECT: Event-driven cache invalidation via WebSocket/SSE
+useEffect(() => {
+  const eventSource = new EventSource('/api/sse/events');
+
+  eventSource.addEventListener('settings-updated', (event) => {
+    // Invalidate cache when server notifies of change
+    queryClient.invalidateQueries(['settings']);
+  });
+
+  return () => eventSource.close();
+}, []);
+
+// ✅ CORRECT: localStorage with version checking
+function getCachedData(key) {
+  const cached = JSON.parse(localStorage.getItem(key) || '{}');
+
+  // Validate against server version
+  if (cached.version !== serverDataVersion) {
+    localStorage.removeItem(key);
+    return null;
+  }
+
+  return cached.data;
+}
+```
+
+### Why This Matters for Frontend
+
+- **User experience:** Stale data confuses users
+- **Data consistency:** Frontend/backend data must match
+- **Performance:** Unnecessary refetches waste resources
+- **Offline support:** Data-driven caching enables better offline behavior
+
+---
+
+## 10. KEY FILE LOCATIONS
 
 ### Essential Frontend Files
 - **API Client**: `/src/services/apiClient.js`
@@ -662,7 +747,7 @@ useEffect(() => {
 
 ---
 
-## Frontend Development Checklist
+## 11. Frontend Development Checklist
 
 **Before implementing:**
 - [ ] Determine which portal this component/page serves (teacher vs student)

@@ -332,7 +332,7 @@ export default function Products() {
       // The dialog now handles the success/error states and loading spinner
       // No need for additional toast calls here
     } catch (error) {
-      console.error('❌ Error in confirmation dialog:', error);
+      // Error handled by confirmation dialog
     }
   };
 

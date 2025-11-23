@@ -76,7 +76,6 @@ export const BasicInfoSection = ({
 
   // Handle immediate content topic save
   const handleContentTopicChange = async (topicIds) => {
-    console.log('✅ Content topic changed to:', topicIds);
     const newTopicId = topicIds.length > 0 ? topicIds[0] : null;
 
     // Update form data immediately
