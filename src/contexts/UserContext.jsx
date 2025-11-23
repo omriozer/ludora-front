@@ -41,7 +41,6 @@ export function UserProvider({ children }) {
 
   // AuthManager authentication state listener
   const handleAuthStateChange = useCallback((newAuthState) => {
-    clog('[UserContext] 🔄 AuthManager state changed:', newAuthState);
     setAuthState(newAuthState);
 
     // Update data freshness based on authentication type
@@ -75,10 +74,9 @@ export function UserProvider({ children }) {
   // Silent retry function for settings
   const retryLoadSettings = useCallback(async () => {
     try {
-      clog('[UserContext] 🔄 Retrying authentication initialization...');
       await authManager.initialize();
     } catch (error) {
-      cerror('[UserContext] Silent retry failed:', error);
+      // Silent retry failed - will retry again on next interval
     }
   }, []);
 
@@ -102,21 +100,17 @@ export function UserProvider({ children }) {
 
   // Initialize AuthManager on mount
   useEffect(() => {
-    console.log('[UserContext] 🚀 useEffect triggered for AuthManager initialization');
     const initAuth = async () => {
       try {
-        console.log('[UserContext] 🚀 Starting AuthManager initialization...');
-        clog('[UserContext] 🚀 Initializing AuthManager...');
         // Register for auth state changes
         authManager.addAuthListener(handleAuthStateChange);
 
-        // Initialize authentication
-        console.log('[UserContext] 🔄 Calling authManager.initialize()...');
-        await authManager.initialize();
-        console.log('[UserContext] ✅ AuthManager initialization completed');
+        // Initialize authentication with forceRefresh=true
+        // COOKIE PERSISTENCE FIX: Always force refresh on mount to ensure
+        // /players/me is called on every page load to recover auth from cookies
+        await authManager.initialize(true);
       } catch (error) {
-        console.error('[UserContext] ❌ AuthManager initialization failed:', error);
-        cerror('[UserContext] ❌ AuthManager initialization failed:', error);
+        cerror('[UserContext] AuthManager initialization failed:', error);
       }
     };
 
@@ -147,12 +141,10 @@ export function UserProvider({ children }) {
     try {
       // Don't auto-assign subscription if user needs onboarding
       if (needsOnboarding(user)) {
-        clog('[UserContext] User needs onboarding, skipping auto-subscription assignment');
         return user;
       }
 
       if (!user.current_subscription_plan_id || user.subscription_status !== 'active') {
-        clog('[UserContext] User has no active subscription, checking for free plans');
 
         const allPlans = await SubscriptionPlan.find({ is_active: true });
         const freePlans = allPlans.filter(plan =>
@@ -197,7 +189,6 @@ export function UserProvider({ children }) {
 
   const login = useCallback(async (userData, rememberMe = false) => {
     try {
-      clog('[UserContext] 🔥 Delegating Firebase login to AuthManager');
       const result = await authManager.loginFirebase(userData, rememberMe);
 
       // Show success message
@@ -224,7 +215,6 @@ export function UserProvider({ children }) {
 
   const playerLogin = useCallback(async (privacyCode) => {
     try {
-      clog('[UserContext] 🎮 Delegating player login to AuthManager');
       const result = await authManager.loginPlayer(privacyCode);
 
       // Show success message
@@ -270,7 +260,6 @@ export function UserProvider({ children }) {
 
   const logout = useCallback(async () => {
     try {
-      clog('[UserContext] 🚪 Delegating logout to AuthManager');
       await authManager.logout();
 
       // Show success message
@@ -293,7 +282,6 @@ export function UserProvider({ children }) {
 
   const playerLogout = useCallback(async () => {
     try {
-      clog('[UserContext] 🎮 Delegating player logout to AuthManager');
       await authManager.logout();
 
       // Show success message
@@ -315,7 +303,6 @@ export function UserProvider({ children }) {
   }, []);
 
   const clearAuth = useCallback(() => {
-    clog('[UserContext] 🚪 Clearing authentication via AuthManager');
     authManager.reset();
 
     // Clear any Firebase session data that might be persisting
@@ -334,7 +321,6 @@ export function UserProvider({ children }) {
   }, []);
 
   const clearPlayerAuth = useCallback(() => {
-    clog('[UserContext] 🎮 Clearing player authentication via AuthManager');
     authManager.reset();
   }, []);
 
@@ -390,8 +376,12 @@ export function UserProvider({ children }) {
 
   // Refresh user authentication state (for use after login/logout events)
   const refreshUser = useCallback(async () => {
-    clog('[UserContext] 🔄 Refreshing authentication state via AuthManager...');
     await authManager.initialize();
+  }, []);
+
+  // Force refresh settings (for use after settings updates)
+  const refreshSettings = useCallback(async () => {
+    await authManager.initialize(true); // Force refresh to reload settings
   }, []);
 
   // Update last activity on user interactions
@@ -445,7 +435,8 @@ export function UserProvider({ children }) {
     getCurrentEntity,
     hasAnyAuthentication,
     isFullyLoaded,
-    refreshUser
+    refreshUser,
+    refreshSettings
   };
 
   return (

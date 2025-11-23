@@ -36,7 +36,7 @@ import { showSuccess, showError } from '@/utils/messaging';
 import { APP_VERSION } from '@/constants/version';
 
 export default function FloatingAdminMenu({ currentUser }) {
-  const { settings } = useUser();
+  const { settings, refreshSettings } = useUser();
   const [isOpen, setIsOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isImpersonating, setIsImpersonating] = useState(false);
@@ -203,15 +203,12 @@ export default function FloatingAdminMenu({ currentUser }) {
         maintenance_mode: newMaintenanceState
       });
 
-      setSettings({
-        ...settings,
-        maintenance_mode: newMaintenanceState
-      });
+      // Force refresh settings to get updated values immediately
+      await refreshSettings();
 
       // Show confirmation
       showSuccess(newMaintenanceState ? 'מצב תחזוקה הופעל' : 'מצב תחזוקה בוטל');
     } catch (error) {
-      console.error('Error toggling maintenance mode:', error);
       showError('שגיאה בעדכון מצב תחזוקה');
     }
     setIsUpdatingMaintenance(false);

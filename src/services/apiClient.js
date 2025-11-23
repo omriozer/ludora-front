@@ -79,8 +79,6 @@ async function apiRequestWithRetry(endpoint, options = {}, isRetryAttempt = fals
           const refreshEndpoint = isPlayerRequest ? '/players/refresh' : '/auth/me';
           const refreshMethod = isPlayerRequest ? 'POST' : 'GET'; // Players use POST /refresh, users use GET /me
 
-          console.log(`[apiClient] 🔄 Got 401 for ${endpoint}, attempting refresh via ${refreshMethod} ${refreshEndpoint}`);
-
           // Attempt to refresh tokens by calling the appropriate endpoint
           // The middleware will automatically handle refresh token logic
           // Use direct fetch with relative URL to go through Vite proxy
@@ -90,22 +88,12 @@ async function apiRequestWithRetry(endpoint, options = {}, isRetryAttempt = fals
             headers: { 'Content-Type': 'application/json' }
           });
 
-          console.log(`[apiClient] 📊 Refresh response:`, {
-            ok: refreshResponse.ok,
-            status: refreshResponse.status,
-            statusText: refreshResponse.statusText
-          });
-
           if (refreshResponse.ok) {
-            console.log(`[apiClient] ✅ Refresh successful, retrying original request: ${endpoint}`);
             // Retry the original request now that tokens are refreshed
             return apiRequestWithRetry(endpoint, options, true);
-          } else {
-            console.log(`[apiClient] ❌ Refresh failed with status ${refreshResponse.status}`);
           }
         } catch (refreshError) {
-          console.log(`[apiClient] ❌ Refresh error:`, refreshError);
-          // Continue with original error handling
+          // Refresh error - continue with original error handling
         }
       }
 
@@ -820,32 +808,16 @@ export const Player = {
    * @returns {Promise<Object>} Current player data, or null if not authenticated
    */
   async getCurrentPlayer(suppressUserErrors = false) {
-    // TODO remove debug - fix player authentication persistence
-    clog('[Player.getCurrentPlayer] 🎯 STARTING: Fetching /players/me with suppressUserErrors:', suppressUserErrors);
-
     try {
       const response = await apiRequest('/players/me', { suppressUserErrors });
-      // TODO remove debug - fix player authentication persistence
-      clog('[Player.getCurrentPlayer] ✅ SUCCESS: /players/me returned:', response);
       return response;
     } catch (error) {
-      // TODO remove debug - fix player authentication persistence
-      clog('[Player.getCurrentPlayer] ❌ ERROR: /players/me failed:', {
-        message: error.message,
-        statusCode: error.statusCode,
-        suppressUserErrors: suppressUserErrors
-      });
-
       // Return null for 401 errors (not authenticated) instead of throwing
       if (error.statusCode === 401) {
-        // TODO remove debug - fix player authentication persistence
-        clog('[Player.getCurrentPlayer] ℹ️ HANDLING 401: Returning null for 401 - not authenticated');
         return null;
       }
 
       // Re-throw other errors (network issues, server errors, etc.)
-      // TODO remove debug - fix player authentication persistence
-      clog('[Player.getCurrentPlayer] 🔥 RE-THROWING: Non-401 error');
       throw error;
     }
   },

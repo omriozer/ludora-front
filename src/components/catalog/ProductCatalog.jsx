@@ -16,6 +16,42 @@ import ProductGrid from './ProductGrid';
 import EmptyState from './EmptyState';
 import useProductCatalog from './hooks/useProductCatalog';
 
+// Helper function to convert Tailwind color format to CSS gradient (defined outside component)
+const getGradientStyle = (colorString) => {
+  if (!colorString) return {};
+
+  try {
+    // Parse "from-blue-500 to-blue-600" format
+    const parts = colorString.split(' ');
+    if (parts.length >= 3) {
+      const fromColor = parts[0].replace('from-', '');
+      const toColor = parts[2].replace('to-', '');
+      // Convert Tailwind color names to CSS colors
+      const colorMap = {
+        'blue-500': '#3B82F6',
+        'blue-600': '#2563EB',
+        'green-500': '#10B981',
+        'green-600': '#059669',
+        'purple-500': '#8B5CF6',
+        'purple-600': '#7C3AED',
+        'pink-500': '#EC4899',
+        'red-600': '#DC2626'
+      };
+
+      const from = colorMap[fromColor] || '#3B82F6';
+      const to = colorMap[toColor] || '#2563EB';
+
+      return {
+        background: `linear-gradient(to right, ${from}, ${to})`
+      };
+    }
+  } catch (error) {
+    // Silently fail for gradient parsing - use default styles
+  }
+
+  return {};
+};
+
 /**
  * Unified Product Catalog Component
  * Handles all product types (games, files, workshops, courses, tools) with a single interface
@@ -27,57 +63,13 @@ export default function ProductCatalog({ productType: propProductType }) {
   // Determine product type from prop or URL
   const productType = propProductType || getProductTypeFromPath(location.pathname);
 
-  // Helper function to convert Tailwind color format to CSS gradient
-  const getGradientStyle = (colorString) => {
-    if (!colorString) return {};
+  // Get config early - needed for initial state values
+  // Use fallback values if config is not available to ensure hooks are always called
+  const config = productType ? getCatalogConfig(productType) : null;
+  const typeConfig = productType ? PRODUCT_TYPES[productType] : null;
 
-    try {
-      // Parse "from-blue-500 to-blue-600" format
-      const parts = colorString.split(' ');
-      if (parts.length >= 3) {
-        const fromColor = parts[0].replace('from-', '');
-        const toColor = parts[2].replace('to-', '');
-        // Convert Tailwind color names to CSS colors
-        const colorMap = {
-          'blue-500': '#3B82F6',
-          'blue-600': '#2563EB',
-          'green-500': '#10B981',
-          'green-600': '#059669',
-          'purple-500': '#8B5CF6',
-          'purple-600': '#7C3AED',
-          'pink-500': '#EC4899',
-          'red-600': '#DC2626'
-        };
-
-        const from = colorMap[fromColor] || '#3B82F6';
-        const to = colorMap[toColor] || '#2563EB';
-
-        return {
-          background: `linear-gradient(to right, ${from}, ${to})`
-        };
-      }
-    } catch (error) {
-      console.warn('Error parsing gradient color:', colorString);
-    }
-
-    return {};
-  };
-
-  if (!productType) {
-    console.error('ProductCatalog: Unable to determine product type from props or URL');
-    return <div>Error: Unknown product type</div>;
-  }
-
-  const config = getCatalogConfig(productType);
-  const typeConfig = PRODUCT_TYPES[productType];
-
-  if (!config || !typeConfig) {
-    console.error(`ProductCatalog: No configuration found for product type: ${productType}`);
-    return <div>Error: Invalid product type configuration</div>;
-  }
-
-  // State management
-  const [activeTab, setActiveTab] = useState(config.tabs?.[0]?.key || 'all');
+  // State management - MUST be called before any conditional returns (Rules of Hooks)
+  const [activeTab, setActiveTab] = useState(config?.tabs?.[0]?.key || 'all');
   const [filters, setFilters] = useState({
     search: '',
     category: 'all',
@@ -92,7 +84,8 @@ export default function ProductCatalog({ productType: propProductType }) {
     sortOrder: 'DESC'
   });
 
-  // Load data using unified hook
+  // Load data using unified hook - MUST be called before any conditional returns (Rules of Hooks)
+  // Pass productType even if invalid - the hook will handle it gracefully
   const {
     products,
     filteredProducts,
@@ -104,7 +97,16 @@ export default function ProductCatalog({ productType: propProductType }) {
     error,
     userAnalytics,
     loadData
-  } = useProductCatalog(productType, filters, activeTab);
+  } = useProductCatalog(productType || 'game', filters, activeTab);
+
+  // Now we can do conditional returns AFTER all hooks have been called
+  if (!productType) {
+    return <div>Error: Unknown product type</div>;
+  }
+
+  if (!config || !typeConfig) {
+    return <div>Error: Invalid product type configuration</div>;
+  }
 
   // Handle filter changes
   const handleFiltersChange = (newFilters) => {

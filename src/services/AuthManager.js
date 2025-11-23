@@ -25,9 +25,8 @@ export class AuthManager {
     this.settings = null;
     this.currentAuth = null; // { type: 'user'|'player'|null, entity: user|player|null }
     this.authListeners = new Set();
+    this._initializationPromise = null; // COOKIE PERSISTENCE FIX: Track ongoing initialization
 
-    // Immediate debug to confirm AuthManager is loading
-    console.log('[AuthManager] 🚀 AuthManager class instantiated');
   }
 
   /**
@@ -79,47 +78,107 @@ export class AuthManager {
 
   /**
    * Initialize authentication system
-   * This should be called once at app startup
+   * This should be called once at app startup, or on page reload with forceRefresh=true
+   *
+   * COOKIE PERSISTENCE FIX: Added forceRefresh parameter to ensure /players/me
+   * is called on every page load, even if AuthManager was previously initialized.
+   *
+   * @param {boolean} forceRefresh - Force re-check authentication even if already initialized
    */
-  async initialize() {
-    if (this.isInitialized) {
-      clog('[AuthManager] Already initialized, returning current state');
+  async initialize(forceRefresh = false) {
+    // COOKIE PERSISTENCE FIX: Allow re-initialization if forced or never successfully authenticated
+    // This ensures /players/me is called on page reload to recover auth state from cookies
+    if (this.isInitialized && !forceRefresh && this.currentAuth) {
       return this.getAuthState();
     }
 
+    // Prevent concurrent initialization
+    if (this._initializationPromise && !forceRefresh) {
+      return this._initializationPromise;
+    }
+
+    this._initializationPromise = this._performInitialization(forceRefresh);
+
     try {
-      clog('[AuthManager] 🚀 Starting unified authentication initialization...');
+      const result = await this._initializationPromise;
+      return result;
+    } finally {
+      this._initializationPromise = null;
+    }
+  }
+
+  /**
+   * Internal initialization logic - separated for better control flow
+   */
+  async _performInitialization(forceRefresh) {
+    try {
       this.isLoading = true;
       this.notifyAuthListeners();
-
-      // Player authentication is prioritized first in determineAuthStrategy()
-      // No need to force clear Firebase - let the strategy handle conflicts
 
       // Step 1: Load settings (required for authentication decisions)
       await this.loadSettings();
 
       // Step 2: Determine authentication strategy based on domain and settings
       const authStrategy = this.determineAuthStrategy();
-      clog('[AuthManager] 📋 Authentication strategy:', authStrategy);
 
-      // Step 3: Execute authentication strategy sequentially
-      await this.executeAuthStrategy(authStrategy);
+      // Step 3: Execute authentication strategy with retry logic
+      await this.executeAuthStrategyWithRetry(authStrategy);
 
-      // Step 4: Mark as initialized and notify listeners
+      // Only mark as initialized if we have a definitive result
       this.isInitialized = true;
       this.isLoading = false;
 
-      clog('[AuthManager] ✅ Authentication initialization complete:', this.getAuthState());
       this.notifyAuthListeners();
 
       return this.getAuthState();
     } catch (error) {
-      cerror('[AuthManager] ❌ Authentication initialization failed:', error);
+      cerror('[AuthManager] Authentication initialization failed:', error);
       this.isLoading = false;
-      this.isInitialized = true; // Still mark as initialized to prevent retries
+      // COOKIE PERSISTENCE FIX: Don't mark as initialized on failure
+      // This allows retry on next page load
       this.notifyAuthListeners();
       throw error;
     }
+  }
+
+  /**
+   * Execute authentication strategy with retry logic for network failures
+   * COOKIE PERSISTENCE FIX: Added exponential backoff for transient network errors
+   */
+  async executeAuthStrategyWithRetry(strategy, maxRetries = 3) {
+    let lastError = null;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        await this.executeAuthStrategy(strategy);
+
+        // If we got here without error, auth completed (success or allowed anonymous)
+        return;
+      } catch (error) {
+        lastError = error;
+
+        // Check if it's a network error worth retrying
+        const isNetworkError =
+          error.message?.includes('network') ||
+          error.message?.includes('fetch') ||
+          error.message?.includes('NetworkError') ||
+          error.message?.includes('Failed to fetch') ||
+          error.name === 'TypeError'; // fetch throws TypeError on network failure
+
+        if (isNetworkError && attempt < maxRetries) {
+          // Exponential backoff: 1s, 2s, 4s (max 5s)
+          const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        } else if (!isNetworkError) {
+          // Other errors (auth failed) - don't retry
+          throw error;
+        }
+      }
+    }
+
+    // All retries exhausted
+    cerror('[AuthManager] All auth retries exhausted');
+    throw lastError || new Error('Auth failed after all retries');
   }
 
   /**
@@ -128,8 +187,6 @@ export class AuthManager {
    */
   async clearFirebaseAuthenticationState() {
     try {
-      clog('[AuthManager] 🧹 Clearing Firebase authentication state for student portal...');
-
       // Clear localStorage Firebase tokens
       const firebaseKeys = [
         'firebase:authUser:ludora-af706:[DEFAULT]',
@@ -143,14 +200,12 @@ export class AuthManager {
 
       firebaseKeys.forEach(key => {
         if (localStorage.getItem(key)) {
-          clog(`[AuthManager] 🗑️ Removing localStorage key: ${key}`);
           localStorage.removeItem(key);
         }
       });
 
       // Clear sessionStorage Firebase tokens
       sessionStorage.clear();
-      clog('[AuthManager] 🗑️ Cleared sessionStorage');
 
       // Force sign out from Firebase SDK and API
       try {
@@ -160,28 +215,22 @@ export class AuthManager {
           const auth = getAuth();
           if (auth.currentUser) {
             await signOut(auth);
-            clog('[AuthManager] 🚪 Firebase SDK signOut completed');
-          } else {
-            clog('[AuthManager] ℹ️ No Firebase currentUser to sign out');
           }
         } catch (firebaseError) {
-          clog('[AuthManager] ⚠️ Firebase SDK signOut error:', firebaseError.message);
+          // Firebase SDK signOut error - continue
         }
 
         // Then API logout
         const { logout: apiLogout } = await import('@/services/apiClient');
         await apiLogout();
-        clog('[AuthManager] 🚪 Firebase API logout completed');
       } catch (logoutError) {
-        clog('[AuthManager] ⚠️ Firebase API logout error (expected on student portal):', logoutError.message);
+        // Firebase API logout error (expected on student portal) - continue
       }
 
       // Clear any cached auth state
       this.currentAuth = null;
-
-      clog('[AuthManager] ✅ Firebase authentication state cleared for student portal');
     } catch (error) {
-      cerror('[AuthManager] ❌ Error clearing Firebase state:', error);
+      cerror('[AuthManager] Error clearing Firebase state:', error);
       // Continue anyway - this is a best effort cleanup
     }
   }
@@ -191,15 +240,10 @@ export class AuthManager {
    */
   async loadSettings() {
     try {
-      clog('[AuthManager] 📖 Loading application settings...');
       const appSettings = await loadSettingsWithRetry(Settings);
       this.settings = appSettings && appSettings.length > 0 ? appSettings[0] : null;
-      clog('[AuthManager] ✅ Settings loaded:', {
-        hasSettings: !!this.settings,
-        studentsAccess: this.settings?.students_access
-      });
     } catch (error) {
-      cerror('[AuthManager] ❌ Failed to load settings:', error);
+      cerror('[AuthManager] Failed to load settings:', error);
       this.settings = null;
       // Continue without settings - use defaults
     }
@@ -245,22 +289,23 @@ export class AuthManager {
 
   /**
    * Execute authentication strategy sequentially
+   * COOKIE PERSISTENCE FIX: Added offline detection and handling
    */
   async executeAuthStrategy(strategy) {
-    clog('[AuthManager] 🔄 Executing auth strategy:', strategy);
+    // COOKIE PERSISTENCE FIX: Handle offline scenarios gracefully
+    if (!navigator.onLine) {
+      // Allow anonymous access if strategy permits
+      if (strategy.allowAnonymous) {
+        this.currentAuth = null;
+        return;
+      }
 
-    // TODO remove debug - fix player authentication persistence
-    clog('[AuthManager] 🔍 DETAILED STRATEGY:', {
-      portal: strategy.portal,
-      methods: strategy.methods,
-      allowAnonymous: strategy.allowAnonymous,
-      methodCount: strategy.methods.length
-    });
+      // No cached state and no network - throw to allow retry later
+      throw new Error('Offline and no cached authentication');
+    }
 
     for (const method of strategy.methods) {
       try {
-        clog(`[AuthManager] 🔍 Trying authentication method: ${method}`);
-
         let result;
         switch (method) {
           case 'firebase':
@@ -270,34 +315,24 @@ export class AuthManager {
             result = await this.checkPlayerAuth(strategy);
             break;
           default:
-            clog(`[AuthManager] ⚠️ Unknown auth method: ${method}`);
             continue;
         }
 
         if (result.success) {
-          clog(`[AuthManager] ✅ Authentication successful via ${method}:`, result.authType);
           this.currentAuth = {
             type: result.authType,
             entity: result.entity
           };
           return;
-        } else {
-          clog(`[AuthManager] ❌ Authentication failed via ${method}:`, result.reason);
         }
       } catch (error) {
-        cerror(`[AuthManager] ❌ Error during ${method} auth:`, error);
+        cerror(`[AuthManager] Error during ${method} auth:`, error);
         // Continue to next method
       }
     }
 
     // No authentication method succeeded
-    if (strategy.allowAnonymous) {
-      clog('[AuthManager] 🔓 No authentication found, allowing anonymous access');
-      this.currentAuth = null;
-    } else {
-      clog('[AuthManager] 🚫 No authentication found, anonymous access not allowed');
-      this.currentAuth = null;
-    }
+    this.currentAuth = null;
   }
 
   /**
@@ -305,14 +340,8 @@ export class AuthManager {
    */
   async checkFirebaseAuth(strategy) {
     try {
-      clog('[AuthManager] 🔥 Checking Firebase authentication...');
-
-      // Firebase authentication works as fallback after player auth
-
       // Special handling for student portal with invite_only
       if (strategy.portal === 'student' && this.settings?.students_access === 'invite_only') {
-        clog('[AuthManager] 🔍 Student portal invite_only mode - checking for admin session...');
-
         const user = await User.getCurrentUser(true);
         if (!user) {
           return { success: false, reason: 'No Firebase session found' };
@@ -325,7 +354,6 @@ export class AuthManager {
           };
         }
 
-        clog('[AuthManager] ✅ Admin user authenticated for student portal');
         return {
           success: true,
           authType: 'user',
@@ -335,7 +363,6 @@ export class AuthManager {
         // Standard Firebase auth check
         const user = await User.getCurrentUser(true);
         if (user) {
-          clog('[AuthManager] ✅ Firebase user authenticated:', user.email);
           return {
             success: true,
             authType: 'user',
@@ -361,38 +388,21 @@ export class AuthManager {
    */
   async checkPlayerAuth(strategy) {
     try {
-      clog('[AuthManager] 🎮 Checking Player authentication...');
-
-      // Add detailed debugging for player authentication
-      clog('[AuthManager] 🔍 About to call Player.getCurrentPlayer(true)...');
-
       const player = await Player.getCurrentPlayer(true);
 
-      clog('[AuthManager] 📊 Player.getCurrentPlayer result:', {
-        hasPlayer: !!player,
-        playerData: player ? {
-          id: player.id,
-          display_name: player.display_name,
-          is_online: player.is_online
-        } : null
-      });
-
       if (player) {
-        clog('[AuthManager] ✅ Player authenticated:', player.display_name);
         return {
           success: true,
           authType: 'player',
           entity: player
         };
       } else {
-        clog('[AuthManager] ❌ No player data returned from getCurrentPlayer');
         return {
           success: false,
           reason: 'No Player session found'
         };
       }
     } catch (error) {
-      cerror('[AuthManager] ❌ Player auth check failed:', error);
       return {
         success: false,
         reason: `Player auth error: ${error.message}`
@@ -405,8 +415,6 @@ export class AuthManager {
    */
   async loginFirebase(userData, rememberMe = false) {
     try {
-      clog('[AuthManager] 🔥 Firebase login initiated');
-
       // Firebase login is handled by Firebase SDK, we just need to update our state
       this.currentAuth = {
         type: 'user',
@@ -430,8 +438,6 @@ export class AuthManager {
    */
   async loginPlayer(privacyCode) {
     try {
-      clog('[AuthManager] 🎮 Player login initiated with code:', privacyCode);
-
       const response = await Player.login({ privacy_code: privacyCode });
 
       if (response.success && response.player) {
@@ -458,8 +464,6 @@ export class AuthManager {
    */
   async logout() {
     try {
-      clog('[AuthManager] 🚪 Logout initiated for:', this.currentAuth?.type);
-
       if (this.currentAuth?.type === 'user') {
         const { logout: apiLogout } = await import('@/services/apiClient');
         await apiLogout();
@@ -470,8 +474,6 @@ export class AuthManager {
       // Clear authentication state
       this.currentAuth = null;
       this.notifyAuthListeners();
-
-      clog('[AuthManager] ✅ Logout completed');
     } catch (error) {
       cerror('[AuthManager] Logout error:', error);
       // Still clear local state

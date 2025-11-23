@@ -33,14 +33,8 @@ export const STUDENTS_ACCESS_MODES = {
  */
 export async function getPortalContext() {
   try {
-    // TODO remove debug - setup Socket.IO portal-aware authentication
-    console.log('🔍 [PortalContext] Determining portal context...');
-
     // Step 1: Detect portal type from domain
     const portalType = getDomainType();
-
-    // TODO remove debug - setup Socket.IO portal-aware authentication
-    console.log('🔍 [PortalContext] Detected portal type:', portalType);
 
     // Step 2: For teacher portal - always use Firebase authentication
     if (portalType === PORTAL_TYPES.TEACHER) {
@@ -58,19 +52,12 @@ export async function getPortalContext() {
       const response = await apiRequestAnonymous('/settings/public');
       studentsAccessMode = response.students_access || STUDENTS_ACCESS_MODES.ALL;
     } catch (error) {
-      console.error('🔍 [PortalContext] Error fetching students_access setting:', error);
       // Safe fallback to 'all' mode for privacy compliance
       studentsAccessMode = STUDENTS_ACCESS_MODES.ALL;
     }
 
-    // TODO remove debug - setup Socket.IO portal-aware authentication
-    console.log('🔍 [PortalContext] Students access mode:', studentsAccessMode);
-
     // Step 4: Determine credential policy based on students_access setting
     const credentialPolicy = getCredentialPolicy(portalType, studentsAccessMode);
-
-    // TODO remove debug - setup Socket.IO portal-aware authentication
-    console.log('🔍 [PortalContext] Determined credential policy:', credentialPolicy);
 
     return {
       portalType: PORTAL_TYPES.STUDENT,
@@ -80,8 +67,6 @@ export async function getPortalContext() {
     };
 
   } catch (error) {
-    console.error('🔍 [PortalContext] Error determining portal context:', error);
-
     // Safe fallback: detect portal and use safe defaults
     const portalType = getDomainType();
 

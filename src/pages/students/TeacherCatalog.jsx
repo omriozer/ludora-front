@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { GamepadIcon, UserIcon, Home, Crown, PlayIcon, Clock, Users, Wifi, WifiOff, AlertCircle } from 'lucide-react';
+import { GamepadIcon, UserIcon, Home, Crown, PlayIcon, Clock, Users, Wifi, WifiOff, AlertCircle, AlertTriangle } from 'lucide-react';
 import GameTypeDisplay from '@/components/game/GameTypeDisplay';
 import ProductImage from '@/components/ui/ProductImage';
 import LogoDisplay from '@/components/ui/LogoDisplay';
@@ -37,7 +37,46 @@ const TeacherCatalogContent = () => {
   const { connected: isSocketConnected, onLobbyUpdate } = useSocket();
 
   // Get current player information
-  const { currentPlayer, isPlayerAuthenticated, refreshUser } = useUser();
+  const { currentPlayer, isPlayerAuthenticated, refreshUser, isLoading } = useUser();
+
+  // State for teacher connection validation
+  const [showTeacherRequired, setShowTeacherRequired] = useState(false);
+  const [redirectCountdown, setRedirectCountdown] = useState(5);
+
+  // Check if player is connected to a teacher (required for game access)
+  useEffect(() => {
+    // Wait for auth to load
+    if (isLoading) return;
+
+    // Only check for authenticated players
+    if (isPlayerAuthenticated && currentPlayer) {
+      const hasTeacherConnection = currentPlayer.teacher_id || currentPlayer.teacher;
+
+      if (!hasTeacherConnection) {
+        setShowTeacherRequired(true);
+      } else {
+        setShowTeacherRequired(false);
+      }
+    }
+  }, [isPlayerAuthenticated, currentPlayer, isLoading]);
+
+  // Redirect countdown when teacher connection is missing
+  useEffect(() => {
+    if (!showTeacherRequired) return;
+
+    const timer = setInterval(() => {
+      setRedirectCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          navigate('/');
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [showTeacherRequired, navigate]);
 
   useEffect(() => {
     const fetchTeacherCatalog = async () => {
@@ -53,7 +92,7 @@ const TeacherCatalogContent = () => {
           teacher: {
             name: teacher?.name || teacher?.full_name || "המורה",
             full_name: teacher?.full_name || teacher?.name || "המורה",
-            id: userCode
+            id: teacher?.id || userCode
           },
           totals: {
             all: games.length,
@@ -69,7 +108,7 @@ const TeacherCatalogContent = () => {
           // This is an anonymous player without a teacher - show assignment dialog
           setTeacherAssignmentData({
             teacher: catalogData.teacher,
-            teacher_id: userCode
+            teacher_id: teacher?.id
           });
           setShowTeacherAssignment(true);
         }
@@ -82,9 +121,6 @@ const TeacherCatalogContent = () => {
             // Each game should have only one lobby - use the first/only lobby
             const lobby = lobbies.length > 0 ? lobbies[0] : null;
 
-            if (lobbies.length > 1) {
-              console.warn(`🚨 [WARNING] Game ${game.product?.title || game.id} (${game.id}) has ${lobbies.length} lobbies but should only have one!`);
-            }
 
             let hasActiveLobby = false;
             let lobbyCode = null;
@@ -95,21 +131,6 @@ const TeacherCatalogContent = () => {
               lobbyStatus = computedStatus;
               hasActiveLobby = isLobbyActive(lobby);
               lobbyCode = lobby.lobby_code;
-
-              // DEBUG: Log lobby and game data
-              console.log(`🔍 [DEBUG] Student Portal - Game ${game.product?.title || game.id} (${game.id}):`, {
-                gameTitle: game.product?.title || game.product?.name,
-                gameData: { id: game.id, title: game.product?.title || game.product?.name, description: game.description },
-                hasLobby: true,
-                lobbyCode: lobbyCode,
-                status: computedStatus,
-                isActive: hasActiveLobby,
-                expiresAt: lobby.expires_at,
-                closedAt: lobby.closed_at,
-                closureTimeText: getLobbyClosureTimeText(lobby)
-              });
-            } else {
-              console.log(`🔍 [DEBUG] Student Portal - Game ${game.product?.title || game.id} (${game.id}): No lobby`);
             }
 
             return {
@@ -153,22 +174,12 @@ const TeacherCatalogContent = () => {
 
   // Initialize Socket.IO connection for real-time updates
   useEffect(() => {
-    console.log('🔌 [TeacherCatalog] Initializing Socket.IO connection');
-
     // Connect to Socket.IO if not already connected
     if (!isSocketConnected) {
-      socketClient.connect().then(() => {
-        console.log('✅ [TeacherCatalog] Socket.IO connected successfully');
-      }).catch((error) => {
-        console.error('❌ [TeacherCatalog] Socket.IO connection failed:', error);
+      socketClient.connect().catch(() => {
+        // Socket.IO connection failed - will retry automatically
       });
     }
-
-    // Cleanup on unmount
-    return () => {
-      console.log('🔌 [TeacherCatalog] Component unmounting');
-      // Note: Don't disconnect here as other components might be using the connection
-    };
   }, []); // Run once on mount
 
   // Teacher assignment handlers
@@ -191,7 +202,6 @@ const TeacherCatalogContent = () => {
       setTeacherAssignmentData(null);
 
     } catch (error) {
-      console.error('Teacher assignment error:', error);
       // Error handling is done in the confirmation dialog component
     } finally {
       setIsAssigningTeacher(false);
@@ -207,28 +217,25 @@ const TeacherCatalogContent = () => {
   useEffect(() => {
     if (!isSocketConnected || !gamesWithLobbies.length) return;
 
-    const handleLobbyUpdate = (eventType, eventData) => {
-      console.log('[TeacherCatalog] Received lobby update:', eventType, eventData);
+    const handleLobbyUpdate = (eventData) => {
+      // eventData contains { type, data, timestamp } from backend
+      const lobbyData = eventData?.data || eventData;
 
       // Find if any of our games are affected by this lobby update
       const affectedGameIds = gamesWithLobbies
         .map(game => game.id)
         .filter(gameId => {
           // Check if this lobby update affects any of our games
-          return eventData?.gameId === gameId ||
-                 (eventData?.lobby?.game_id === gameId) ||
-                 (eventData?.game_id === gameId);
+          return lobbyData?.game_id === gameId ||
+                 lobbyData?.gameId === gameId ||
+                 lobbyData?.lobby?.game_id === gameId;
         });
 
       if (affectedGameIds.length > 0) {
-        console.log('[TeacherCatalog] Lobby update affects our games:', affectedGameIds);
-
         // Refresh the affected games' lobby data
         setGamesWithLobbies(prevGames =>
           prevGames.map(game => {
             if (affectedGameIds.includes(game.id)) {
-              // For now, refetch data for affected games
-              // In a more sophisticated implementation, we could update specific fields
               return { ...game, needsRefresh: true };
             }
             return game;
@@ -240,8 +247,8 @@ const TeacherCatalogContent = () => {
       }
     };
 
-    // Subscribe to all lobby updates
-    const unsubscribe = onLobbyUpdate('all', handleLobbyUpdate);
+    // Subscribe to lobby:update event (receives all lobby events)
+    const unsubscribe = onLobbyUpdate('lobby:update', handleLobbyUpdate);
 
     return () => {
       unsubscribe?.();
@@ -290,10 +297,9 @@ const TeacherCatalogContent = () => {
         });
 
         setGamesWithLobbies(sortedGames);
-        console.log('[TeacherCatalog] Refreshed lobby data via Socket.IO update');
       }
     } catch (error) {
-      console.error('[TeacherCatalog] Error refreshing affected games:', error);
+      // Error refreshing affected games - data will be stale until next manual refresh
     }
   };
 
@@ -318,7 +324,6 @@ const TeacherCatalogContent = () => {
         alert('אין כרגע לובי פעיל למשחק הזה. בדקו עם המורה שלכם או נסו שוב מאוחר יותר.');
       }
     } catch (error) {
-      console.error('Error finding active lobby:', error);
       alert('שגיאה בחיפוש לובי פעיל. נסו שוב מאוחר יותר.');
     }
   };
@@ -347,6 +352,43 @@ const TeacherCatalogContent = () => {
             <Button className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white px-6 py-3 rounded-2xl">
               <Home className="w-4 h-4 ml-2" />
               חזרה לעמוד הבית
+            </Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Show teacher connection required warning with redirect countdown
+  if (showTeacherRequired) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-200/40 via-yellow-200/30 to-red-200/40 flex items-center justify-center p-4">
+        <div className="max-w-md w-full text-center bg-white/80 backdrop-blur-sm rounded-3xl p-8 shadow-xl">
+          <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertTriangle className="w-8 h-8 text-orange-600" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">נדרשת התחברות למורה</h2>
+          <p className="text-gray-600 mb-4">
+            כדי לגשת לתוכן ומשחקים, עליך להתחבר למורה תחילה.
+          </p>
+          <p className="text-gray-500 mb-6 text-sm">
+            בקש מהמורה שלך קוד הזמנה או קישור התחברות.
+          </p>
+
+          {/* Countdown indicator */}
+          <div className="mb-6">
+            <div className="w-12 h-12 mx-auto rounded-full bg-orange-100 flex items-center justify-center">
+              <span className="text-2xl font-bold text-orange-600">{redirectCountdown}</span>
+            </div>
+            <p className="text-sm text-gray-500 mt-2">
+              מעביר לעמוד הבית בעוד {redirectCountdown} שניות...
+            </p>
+          </div>
+
+          <Link to="/">
+            <Button className="bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 text-white px-6 py-3 rounded-2xl">
+              <Home className="w-4 h-4 ml-2" />
+              חזרה לעמוד הבית עכשיו
             </Button>
           </Link>
         </div>

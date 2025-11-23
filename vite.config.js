@@ -59,11 +59,28 @@ export default defineConfig({
     allowedHosts: 'all', // Allow all hosts including my.localhost
     origin: 'auto', // Auto-detect origin to handle subdomain access correctly
     proxy: {
+      // Socket.IO WebSocket proxy - must be before /api to handle Socket.IO connections
+      // This enables WebSocket authentication cookies to be properly sent through the proxy
+      '/socket.io': {
+        target: `http://${VITE_CONFIG.api.domain}:${VITE_CONFIG.api.port}`,
+        changeOrigin: true,
+        secure: false,
+        ws: true // Enable WebSocket proxying for Socket.IO
+      },
       '/api': {
         target: `http://${VITE_CONFIG.api.domain}:${VITE_CONFIG.api.port}`,
         changeOrigin: true,
         secure: false,
-        ws: true, // Enable WebSocket proxying
+        ws: true, // Enable WebSocket proxying (for SSE fallback)
+        // COOKIE PERSISTENCE FIX: Rewrite cookie domains for proper development handling
+        // This ensures Set-Cookie headers from the API are properly forwarded to the browser
+        cookieDomainRewrite: {
+          '.localhost': 'localhost',  // Rewrite any .localhost domain
+          'localhost': 'localhost'    // Keep localhost as-is
+        },
+        cookiePathRewrite: {
+          '*': '/'  // Ensure cookies are available for all paths
+        },
         headers: {
           // Preserve original host for proper cookie domain matching
           'X-Forwarded-Host': `${VITE_CONFIG.domains.student}:${VITE_CONFIG.frontend.port}`,
@@ -72,14 +89,8 @@ export default defineConfig({
         // Preserve original request body and headers for multipart uploads
         configure: (proxy, options) => {
           proxy.on('proxyReq', (proxyReq, req, res) => {
-            // Don't modify the body for multipart uploads
-            if (req.headers['content-type'] && req.headers['content-type'].includes('multipart/form-data')) {
-              console.log('📤 Vite proxy: Preserving multipart/form-data upload');
-            }
-
             // Special handling for Server-Sent Events (SSE)
             if (req.url && req.url.includes('/sse/')) {
-              console.log('📡 Vite proxy: Handling SSE request', req.url);
               // Ensure proper SSE headers are preserved
               proxyReq.setHeader('Accept', 'text/event-stream');
               proxyReq.setHeader('Cache-Control', 'no-cache');
@@ -90,17 +101,8 @@ export default defineConfig({
           proxy.on('proxyRes', (proxyRes, req, res) => {
             // Special handling for SSE responses
             if (req.url && req.url.includes('/sse/')) {
-              console.log('📡 Vite proxy: SSE response received', {
-                url: req.url,
-                statusCode: proxyRes.statusCode,
-                contentType: proxyRes.headers['content-type'],
-                headers: proxyRes.headers
-              });
-
               // Critical: Disable buffering for SSE streams
               if (proxyRes.headers['content-type'] && proxyRes.headers['content-type'].includes('text/event-stream')) {
-                console.log('📡 Vite proxy: Configuring SSE streaming response');
-
                 // Set proper SSE headers
                 res.setHeader('Content-Type', 'text/event-stream');
                 res.setHeader('Cache-Control', 'no-cache');
@@ -114,15 +116,7 @@ export default defineConfig({
 
                 // Pipe the response directly without buffering
                 proxyRes.pipe(res, { end: true });
-
-                console.log('📡 Vite proxy: SSE stream pipe established');
               }
-            }
-          });
-
-          proxy.on('error', (err, req, res) => {
-            if (req.url && req.url.includes('/sse/')) {
-              console.error('📡 Vite proxy: SSE proxy error', err);
             }
           });
         }

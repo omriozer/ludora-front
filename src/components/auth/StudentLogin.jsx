@@ -208,45 +208,21 @@ const StudentLogin = ({ onLoginSuccess, returnPath, onClose }) => {
 
   // Existing player login completion handler (fixed - no refreshUser needed)
   const handleExistingPlayerLoginComplete = async () => {
-    // TODO remove debug - debug player authentication modal and session persistence issues
-    console.log('[StudentLogin] 🔄 handleExistingPlayerLoginComplete called');
-    console.log('[StudentLogin] 📊 Component props:', {
-      hasOnLoginSuccess: !!onLoginSuccess,
-      returnPath: returnPath,
-      hasRefreshUser: !!refreshUser
-    });
-
     // FIXED: Don't call refreshUser at all after successful login
     // The playerLogin() function in UserContext already sets the correct authentication state
     // Calling refreshUser() would make API calls that might fail and clear the state that was just set
 
     // Give a small delay to ensure any UI updates are processed
     setTimeout(() => {
-      // TODO remove debug - debug player authentication modal and session persistence issues
-      console.log('[StudentLogin] ⏰ Timeout callback executing...');
-      console.log('[StudentLogin] 📊 About to call:', {
-        onLoginSuccess: !!onLoginSuccess,
-        returnPath: returnPath,
-        willNavigateToHome: !onLoginSuccess && !returnPath
-      });
-
       // Force close the login modal properly
       if (onLoginSuccess) {
-        // TODO remove debug - debug player authentication modal and session persistence issues
-        console.log('[StudentLogin] 🚀 Calling onLoginSuccess()');
         onLoginSuccess();
       } else if (returnPath) {
-        // TODO remove debug - debug player authentication modal and session persistence issues
-        console.log('[StudentLogin] 🚀 Navigating to returnPath:', returnPath);
         navigate(returnPath);
       } else {
-        // TODO remove debug - debug player authentication modal and session persistence issues
-        console.log('[StudentLogin] 🚀 Navigating to home');
         // If no specific callback, navigate to home
         navigate('/');
       }
-      // TODO remove debug - debug player authentication modal and session persistence issues
-      console.log('[StudentLogin] ✅ handleExistingPlayerLoginComplete completed');
     }, 100); // Reduced delay since we're not calling refreshUser
   };
 

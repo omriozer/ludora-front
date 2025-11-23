@@ -30,9 +30,6 @@ class SocketClient {
     // Portal context for authentication strategy
     this.portalContext = null;
     this.connectionAttempts = []; // Track different connection attempts
-
-    // TODO remove debug - setup Socket.IO portal-aware authentication
-    clog('🔌 SocketClient instance created (portal-aware)');
   }
 
   /**
@@ -49,8 +46,6 @@ class SocketClient {
     // Get portal context for authentication strategy
     try {
       this.portalContext = await getPortalContext();
-      // TODO remove debug - setup Socket.IO portal-aware authentication
-      clog('🔌 Portal context determined:', this.portalContext);
     } catch (error) {
       cerror('🔌 Error getting portal context:', error);
       throw error;
@@ -67,9 +62,6 @@ class SocketClient {
    */
   async connectWithCredentialPolicy(portalContext, options = {}) {
     const { credentialPolicy } = portalContext;
-
-    // TODO remove debug - setup Socket.IO portal-aware authentication
-    clog('🔌 Connecting with credential policy:', credentialPolicy);
 
     switch (credentialPolicy) {
       case CREDENTIAL_POLICY.WITH_CREDENTIALS:
@@ -93,9 +85,6 @@ class SocketClient {
    * @returns {Promise<void>}
    */
   connectWithCredentials(portalContext, options = {}) {
-    // TODO remove debug - setup Socket.IO portal-aware authentication
-    clog('🔌 Connecting WITH credentials (Firebase auth)');
-
     return this.createSocketConnection({
       withCredentials: true,
       auth: {
@@ -115,9 +104,6 @@ class SocketClient {
    * @returns {Promise<void>}
    */
   connectWithoutCredentials(portalContext, options = {}) {
-    // TODO remove debug - setup Socket.IO portal-aware authentication
-    clog('🔌 Connecting WITHOUT credentials (anonymous)');
-
     return this.createSocketConnection({
       withCredentials: false, // No cookies sent
       auth: {
@@ -139,21 +125,13 @@ class SocketClient {
   async connectWithFallback(portalContext, options = {}) {
     try {
       // Try with credentials first
-      // TODO remove debug - setup Socket.IO portal-aware authentication
-      clog('🔌 Trying connection WITH credentials first...');
-
       await this.connectWithCredentials(portalContext, options);
-      clog('🔌 Connected with credentials successfully');
 
     } catch (error) {
-      cerror('🔌 Connection with credentials failed, trying anonymous:', error);
-
       try {
         // Fallback to anonymous connection
         await this.connectWithoutCredentials(portalContext, options);
-        clog('🔌 Connected anonymously successfully');
       } catch (fallbackError) {
-        cerror('🔌 Both connection attempts failed:', fallbackError);
         throw fallbackError;
       }
     }
@@ -172,15 +150,15 @@ class SocketClient {
         let socketUrl;
 
         if (apiBase === '/api') {
-          // Development: Vite proxy - connect to API server directly
-          socketUrl = 'ws://localhost:3003';
+          // Development: Connect through same origin to preserve cookies
+          // Socket.IO will use the current page's origin (localhost:5173)
+          // and Vite will proxy WebSocket connections to the API server
+          // This ensures cookies set on localhost:5173 are sent with the connection
+          socketUrl = window.location.origin;
         } else {
           // Staging/Production: Use API domain but convert HTTP to WebSocket
           socketUrl = apiBase.replace('/api', '').replace('http://', 'ws://').replace('https://', 'wss://');
         }
-
-        // TODO remove debug - setup Socket.IO portal-aware authentication
-        clog('🔌 Connecting to Socket.IO server:', socketUrl, 'Config:', connectionConfig);
 
         // Create Socket.IO client with portal-aware authentication
         this.socket = io(socketUrl, {
@@ -197,11 +175,11 @@ class SocketClient {
           this.connected = true;
           this.reconnectAttempts = 0;
 
-          // TODO remove debug - create frontend socket client service
-          clog('🔌 Socket connected successfully:', this.socket.id);
-
           // Auto-join lobby updates channel
           this.joinLobbyUpdates();
+
+          // Notify listeners of successful connection
+          this.notifyListeners('connect', { socketId: this.socket.id });
 
           resolve();
         });
@@ -217,9 +195,6 @@ class SocketClient {
         this.socket.on('disconnect', (reason) => {
           this.connected = false;
 
-          // TODO remove debug - create frontend socket client service
-          clog('🔌 Socket disconnected:', reason);
-
           // Notify listeners of disconnection
           this.notifyListeners('disconnect', { reason });
         });
@@ -228,9 +203,6 @@ class SocketClient {
         this.socket.on('reconnect', (attemptNumber) => {
           this.connected = true;
           this.reconnectAttempts = 0;
-
-          // TODO remove debug - create frontend socket client service
-          clog('🔌 Socket reconnected after', attemptNumber, 'attempts');
 
           // Re-join lobby updates channel
           this.joinLobbyUpdates();
@@ -241,9 +213,6 @@ class SocketClient {
 
         this.socket.on('reconnect_attempt', (attemptNumber) => {
           this.reconnectAttempts = attemptNumber;
-
-          // TODO remove debug - create frontend socket client service
-          clog('🔌 Socket reconnection attempt:', attemptNumber);
         });
 
         this.socket.on('reconnect_failed', () => {
@@ -272,9 +241,6 @@ class SocketClient {
       return;
     }
 
-    // TODO remove debug - create frontend socket client service
-    clog('🔌 Joining lobby updates channel:', this.lobbyUpdateChannel);
-
     this.socket.emit('join', this.lobbyUpdateChannel);
   }
 
@@ -287,9 +253,6 @@ class SocketClient {
       return;
     }
 
-    // TODO remove debug - create frontend socket client service
-    clog('🔌 Leaving lobby updates channel:', this.lobbyUpdateChannel);
-
     this.socket.emit('leave', this.lobbyUpdateChannel);
   }
 
@@ -301,10 +264,7 @@ class SocketClient {
 
     // Listen for lobby updates
     this.socket.on('lobby:update', (eventData) => {
-      // TODO remove debug - create frontend socket client service
-      clog('🔌 Received lobby update:', eventData.type, eventData.data?.id || eventData.data?.lobby_id);
-
-      // Notify registered listeners
+      // Notify registered listeners for general 'lobby:update' event
       this.notifyListeners('lobby:update', eventData);
 
       // Emit specific event types for easier component integration
@@ -328,15 +288,9 @@ class SocketClient {
 
     const listenerId = this.addListener(eventType, callback);
 
-    // TODO remove debug - create frontend socket client service
-    clog('🔌 Added lobby update listener:', eventType, 'ID:', listenerId);
-
     // Return unsubscribe function
     return () => {
       this.removeListener(eventType, listenerId);
-
-      // TODO remove debug - create frontend socket client service
-      clog('🔌 Removed lobby update listener:', eventType, 'ID:', listenerId);
     };
   }
 
@@ -396,9 +350,6 @@ class SocketClient {
    */
   disconnect() {
     if (this.socket) {
-      // TODO remove debug - create frontend socket client service
-      clog('🔌 Disconnecting Socket.IO client');
-
       this.socket.disconnect();
       this.socket = null;
       this.connected = false;
@@ -429,9 +380,6 @@ class SocketClient {
       cerror('❌ Cannot send test: Socket not connected');
       return;
     }
-
-    // TODO remove debug - create frontend socket client service
-    clog('🔌 Sending test message:', message);
 
     this.socket.emit('test', { message, timestamp: new Date().toISOString() });
   }
@@ -558,8 +506,7 @@ export function useLobbyUpdates() {
           break;
 
         default:
-          // TODO remove debug - create frontend socket client service
-          clog('🔌 Unhandled lobby update type:', eventData.type);
+          break;
       }
     });
 
