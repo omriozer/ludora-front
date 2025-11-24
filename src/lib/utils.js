@@ -5,22 +5,18 @@ export function cn(...inputs) {
   return twMerge(clsx(inputs))
 }
 
-// Re-export error logger for backwards compatibility
-export { error } from './errorLogger.js';
+// Export new professional logging API (recommended)
+export {
+  log,
+  error,
+  ComponentLogger,
+  ApiLogger,
+  PerfLogger,
+  shouldLog
+} from './logger.js';
 
-// Deprecated logging functions - will be removed
-// Use error.group() from errorLogger.js instead
-const ENV = import.meta.env;
-
-// DEPRECATED - Remove in next major version
-export function clog() {
-  // Silent - all clog calls should be removed
-}
-
-// DEPRECATED - Use error.group() instead
-export function cerror() {
-  // Silent - use error logger instead
-}
+// Export deprecated legacy functions (for backward compatibility)
+export { clog, cerror } from './logger.js';
 
 /**
  * Formats price with consistent display rules

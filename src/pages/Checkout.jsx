@@ -32,8 +32,6 @@ import { he } from "date-fns/locale";
 import LudoraLoadingSpinner from "@/components/ui/LudoraLoadingSpinner";
 import { PRODUCT_TYPES, getProductTypeName } from "@/config/productTypes";
 import {
-  getUserIdFromToken,
-  requireAuthentication,
   getCartPurchases,
   calculateTotalPrice,
   groupPurchasesByType,
@@ -130,21 +128,15 @@ export default function Checkout() {
     setError(null);
 
     try {
-
-      // Check authentication
-      if (!requireAuthentication(navigate, '/checkout')) {
-        setIsLoading(false);
-        return;
-      }
-
-      const userId = getUserIdFromToken();
-      if (!userId) {
-        setError('לא ניתן לזהות את המשתמש');
+      // Check authentication using UserContext
+      if (!currentUser) {
+        setError('נדרשת התחברות לצפייה בעגלת הקניות');
         setIsLoading(false);
         return;
       }
 
       // User data and settings are now available from global UserContext
+      const userId = currentUser.id;
 
       // Load cart purchases (cart items)
       const cartPurchases = await getCartPurchases(userId);
@@ -162,7 +154,7 @@ export default function Checkout() {
     }
 
     setIsLoading(false);
-  }, [navigate]);
+  }, [currentUser, loadCartItemProducts]);
 
   // Calculate pricing breakdown with applied coupons
   const calculatePricing = (purchases, coupons = appliedCoupons) => {

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { getCartPurchases, getUserIdFromToken, isAuthenticated } from '@/utils/purchaseHelpers';
+import { getCartPurchases } from '@/utils/purchaseHelpers';
+import { useUser } from '@/contexts/UserContext';
 import { clog, cerror } from '@/lib/utils';
 
 // Custom event for cart changes
@@ -11,10 +12,11 @@ export function CartProvider({ children }) {
   const [cartItems, setCartItems] = useState([]);
   const [cartCount, setCartCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const { currentUser, isAuthenticated } = useUser();
 
   // Load cart items from server
   const loadCartItems = useCallback(async () => {
-    if (!isAuthenticated()) {
+    if (!isAuthenticated || !currentUser) {
       setCartItems([]);
       setCartCount(0);
       return;
@@ -22,7 +24,7 @@ export function CartProvider({ children }) {
 
     setIsLoading(true);
     try {
-      const userId = getUserIdFromToken();
+      const userId = currentUser.id;
       if (!userId) {
         setCartItems([]);
         setCartCount(0);
@@ -40,7 +42,7 @@ export function CartProvider({ children }) {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isAuthenticated, currentUser]);
 
   // Refresh cart data and notify other components
   const refreshCart = useCallback(() => {
@@ -67,10 +69,12 @@ export function CartProvider({ children }) {
     setCartCount(0);
   }, []);
 
-  // Load cart items when context is first created
+  // Load cart items when authentication state changes
   useEffect(() => {
-    loadCartItems();
-  }, [loadCartItems]);
+    if (isAuthenticated && currentUser) {
+      loadCartItems();
+    }
+  }, [isAuthenticated, currentUser, loadCartItems]);
 
   const value = {
     cartItems,

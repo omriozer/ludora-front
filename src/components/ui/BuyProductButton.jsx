@@ -2,14 +2,13 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ShoppingCart } from 'lucide-react';
-import { cerror } from '@/lib/utils';
+import { cerror, clog } from '@/lib/utils';
 import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
 import { useLoginModal } from '@/hooks/useLoginModal';
 import { useCart } from '@/contexts/CartContext';
 import { useProductAccess, getPurchaseActionText } from '@/hooks/useProductAccess';
+import { useUser } from '@/contexts/UserContext';
 import {
-  getUserIdFromToken,
-  isAuthenticated,
   showPurchaseSuccessToast,
   showPurchaseErrorToast
 } from '@/utils/purchaseHelpers';
@@ -35,6 +34,7 @@ export default function BuyProductButton({
   const [isProcessing, setIsProcessing] = useState(false);
   const { openLoginModal } = useLoginModal();
   const { addToCart, refreshCart } = useCart();
+  const { currentUser, isAuthenticated } = useUser();
 
   const {
     canPurchase,
@@ -57,17 +57,17 @@ export default function BuyProductButton({
       return;
     }
 
-    // Check authentication
-    if (!isAuthenticated()) {
+    // Check authentication using UserContext
+    if (!isAuthenticated || !currentUser) {
       openLoginModal(() => {
         handlePurchase(e);
       });
       return;
     }
 
-    const userId = getUserIdFromToken();
+    const userId = currentUser.id;
     if (!userId) {
-      cerror('Could not get user ID from token');
+      cerror('Could not get user ID from currentUser');
       return;
     }
 

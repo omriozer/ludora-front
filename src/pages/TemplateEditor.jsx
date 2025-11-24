@@ -152,7 +152,7 @@ export default function TemplateEditor() {
           visible: true,
           hidden: false,
           rotation: 0,
-          url: logo,
+          url: '/logo.png',
           position: { x: 50, y: 95 },
           style: { size: 80, opacity: 100 }
         },

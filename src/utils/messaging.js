@@ -9,7 +9,6 @@
  * Usage Guidelines:
  * - Use showToast() for temporary feedback (success, error, info)
  * - Use showConfirm() for user confirmations before destructive actions
- * - Use showGlobalMessage() for critical system-wide announcements
  *
  * All functions support Hebrew/RTL content and maintain design consistency.
  */
@@ -101,33 +100,6 @@ export function showWarning(title, description, options = {}) {
  */
 export function showInfo(title, description, options = {}) {
   return showToast('info', title, description, options);
-}
-
-/**
- * Legacy global message functions - now redirect to enhanced toasts
- * @deprecated Use showToast() functions instead
- */
-
-/**
- * Show a global message (now uses top-center toast)
- * @param {string} type - 'error' | 'info'
- * @param {string} message - The message to display
- */
-export function showGlobalMessage(type, message) {
-  console.warn('showGlobalMessage is deprecated. Use showError() or showInfo() instead.');
-
-  if (type === 'error') {
-    showError(message, null, { position: 'top-center', duration: 12000 });
-  } else {
-    showInfo(message, null, { position: 'top-center', duration: 10000 });
-  }
-}
-
-/**
- * @deprecated Global messages are now toasts that auto-dismiss
- */
-export function hideGlobalMessage() {
-  console.warn('hideGlobalMessage is deprecated. Toasts auto-dismiss or can be closed manually.');
 }
 
 // Global reference to confirmation provider (will be set by ConfirmationProvider)

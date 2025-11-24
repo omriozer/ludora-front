@@ -6,10 +6,7 @@ import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
 import { useLoginModal } from '@/hooks/useLoginModal';
 import { useCart } from '@/contexts/CartContext';
 import { useProductAccess } from '@/hooks/useProductAccess';
-import {
-  getUserIdFromToken,
-  isAuthenticated
-} from '@/utils/purchaseHelpers';
+import { useUser } from '@/contexts/UserContext';
 import paymentClient from '@/services/paymentClient';
 import { toast } from '@/components/ui/use-toast';
 
@@ -29,6 +26,7 @@ export default function AddToCartButton({
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const { openLoginModal } = useLoginModal();
   const { addToCart, refreshCart } = useCart();
+  const { currentUser, isAuthenticated } = useUser();
 
   const {
     canAddToCart,
@@ -49,15 +47,15 @@ export default function AddToCartButton({
       return;
     }
 
-    // Check authentication
-    if (!isAuthenticated()) {
-      openLoginModal(() => handleAddToCart());
+    // Check authentication using UserContext
+    if (!isAuthenticated || !currentUser) {
+      openLoginModal(() => handleAddToCart(e));
       return;
     }
 
-    const userId = getUserIdFromToken();
+    const userId = currentUser.id;
     if (!userId) {
-      cerror('Could not get user ID from token');
+      cerror('Could not get user ID from currentUser');
       return;
     }
 

@@ -6,19 +6,15 @@ import { cerror } from '@/lib/utils';
 import { getProductTypeName } from '@/config/productTypes';
 import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
 import {
-  getUserIdFromToken,
-  requireAuthentication,
-  isAuthenticated,
   findProductForEntity,
   createPendingPurchase,
   createFreePurchase,
   showPurchaseSuccessToast,
   showPurchaseErrorToast,
-  checkExistingPurchase
 } from '@/utils/purchaseHelpers';
-import { toast } from '@/components/ui/use-toast';
 import { useLoginModal } from '@/hooks/useLoginModal';
 import { useCart } from '@/contexts/CartContext';
+import { useUser } from '@/contexts/UserContext';
 
 /**
  * Unified Get Access Button Component
@@ -47,6 +43,7 @@ export default function GetAccessButton({
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const { openLoginModal } = useLoginModal();
   const { addToCart } = useCart();
+  const { currentUser, isAuthenticated } = useUser();
 
   // Use purchase data from product prop (coming from API response)
   const existingPurchase = product?.purchase || null;
@@ -62,16 +59,16 @@ export default function GetAccessButton({
       return;
     }
 
-    // Check authentication - open login modal if not logged in
-    if (!isAuthenticated()) {
+    // Check authentication using UserContext
+    if (!isAuthenticated || !currentUser) {
       // Pass the callback to continue after login
       openLoginModal(() => handleGetAccess());
       return;
     }
 
-    const userId = getUserIdFromToken();
+    const userId = currentUser.id;
     if (!userId) {
-      cerror('Could not get user ID from token');
+      cerror('Could not get user ID from currentUser');
       return;
     }
 
@@ -227,16 +224,16 @@ export default function GetAccessButton({
       return;
     }
 
-    // Check authentication - open login modal if not logged in
-    if (!isAuthenticated()) {
+    // Check authentication using UserContext
+    if (!isAuthenticated || !currentUser) {
       // Pass the callback to continue after login
       openLoginModal(() => handleAddToCart());
       return;
     }
 
-    const userId = getUserIdFromToken();
+    const userId = currentUser.id;
     if (!userId) {
-      cerror('Could not get user ID from token');
+      cerror('Could not get user ID from currentUser');
       return;
     }
 

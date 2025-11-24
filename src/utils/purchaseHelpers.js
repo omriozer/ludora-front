@@ -6,35 +6,31 @@ import { showSuccess, showError } from '@/utils/messaging';
 import { clog, cerror } from '@/lib/utils';
 import { Product } from '@/services/entities';
 
-/**
- * Get user ID from JWT token
- * @returns {string|null} User ID or null if not authenticated
- */
-export function getUserIdFromToken() {
-  try {
-    // Note: This function is deprecated with cookie-based authentication
-    // Authentication is now handled automatically via httpOnly cookies
-    // This function is kept for backward compatibility only
-
-    const authToken = localStorage.getItem('authToken');
-    if (!authToken) return null;
-
-    const payload = JSON.parse(atob(authToken.split('.')[1]));
-    return payload.id; // Updated from uid to id for consistency
-  } catch (error) {
-    cerror('Error decoding auth token:', error);
-    return null;
-  }
-}
 
 /**
  * Check if user is authenticated
  * @returns {boolean} Authentication status
+ * @deprecated This function should not be used directly - use hooks instead
  */
 export function isAuthenticated() {
-  // Use correct localStorage key that matches apiClient.js
-  const authToken = localStorage.getItem('authToken');
-  return !!authToken && !!getUserIdFromToken();
+  // WARNING: This function is deprecated - components should use useUser() hook instead
+  // Temporary fix: check for authentication cookies until full migration to hooks
+  try {
+    const cookies = document.cookie.split(';').reduce((acc, cookie) => {
+      const [key, value] = cookie.trim().split('=');
+      acc[key] = value;
+      return acc;
+    }, {});
+
+    // Check for either teacher or student authentication tokens
+    const hasTeacherAuth = cookies.teacher_access_token || cookies.teacher_refresh_token;
+    const hasStudentAuth = cookies.student_access_token || cookies.student_refresh_token;
+
+    return !!(hasTeacherAuth || hasStudentAuth);
+  } catch (error) {
+    cerror('Error checking authentication cookies:', error);
+    return false;
+  }
 }
 
 /**
@@ -304,41 +300,6 @@ export async function clearPendingPurchases(userId) {
   }
 }
 
-/**
- * Handle authentication requirement with toast (no redirect)
- * @param {function} navigate - React Router navigate function (unused but kept for compatibility)
- * @param {string} redirectTo - Where to redirect after login (unused but kept for compatibility)
- * @returns {boolean} False (indicating user is not authenticated)
- */
-export function requireAuthentication(navigate, redirectTo = '/checkout') { // eslint-disable-line no-unused-vars
-  if (!isAuthenticated()) {
-    showError(
-      "נדרשת התחברות",
-      "יש להתחבר כדי לבצע פעולה זו. לחצו על כפתור 'התחבר' בתפריט העליון."
-    );
-    return false;
-  }
-  return true;
-}
-
-/**
- * Handle authentication requirement with login modal
- * @param {function} showLoginModal - Function to show login modal (from useLoginModal hook)
- * @param {function} setCallbackAction - Function to set action to perform after login
- * @returns {boolean} False (indicating user is not authenticated)
- */
-export function requireAuthenticationWithModal(showLoginModal, setCallbackAction = null) { // eslint-disable-line no-unused-vars
-  if (!isAuthenticated()) {
-    if (typeof showLoginModal === 'function') {
-      showLoginModal();
-      return false;
-    }
-
-    // Fallback if modal function not available
-    return false;
-  }
-  return true;
-}
 
 /**
  * Show success toast for purchase operations

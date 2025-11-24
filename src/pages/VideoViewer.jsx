@@ -25,8 +25,6 @@ import {
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import {
-  requireAuthentication,
-  getUserIdFromToken,
   findProductForEntity,
   createPendingPurchase,
   showPurchaseSuccessToast,
@@ -339,15 +337,13 @@ export default function VideoViewer() {
                 <Button
                   onClick={async () => {
                     try {
-                      if (!requireAuthentication(navigate, '/checkout')) {
+                      // Check authentication using UserContext
+                      if (!currentUser) {
+                        showPurchaseErrorToast('יש להתחבר כדי לבצע רכישה', 'בהוספה לעגלה');
                         return;
                       }
 
-                      const userId = getUserIdFromToken();
-                      if (!userId) {
-                        showPurchaseErrorToast('לא ניתן לזהות את המשתמש', 'בהוספה לעגלה');
-                        return;
-                      }
+                      const userId = currentUser.id;
 
                       const productRecord = await findProductForEntity('workshop', workshop?.id);
 
