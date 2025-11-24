@@ -251,7 +251,7 @@ function LayoutContent({ children }) {
 
   // Show maintenance page if enabled OR if settings loading failed (but allow admins to bypass)
   // IMPORTANT: Check maintenance/error state BEFORE loading state to prevent infinite spinner
-  if ((settings?.maintenance_mode || settingsLoadFailed) && !canAdminBypass) {
+  if (true || (settings?.maintenance_mode || settingsLoadFailed) && !canAdminBypass) {
     const isTemporaryIssue = settingsLoadFailed && !settings?.maintenance_mode;
 
     // Show loading while checking admin bypass
