@@ -44,6 +44,7 @@ import SubscriptionBusinessLogic from "@/services/SubscriptionBusinessLogic";
 import { clog, cerror } from '@/lib/utils';
 import { toast } from '@/components/ui/use-toast';
 import { urls } from '@/config/urls';
+import { NAV_VISIBILITY_OPTIONS, NAVIGATION_KEYS } from "@/constants/settingsKeys";
 
 // Static fallback arrays for specializations - defined outside component
 const FALLBACK_SPECIALIZATIONS = [
@@ -685,7 +686,7 @@ const MyAccount = () => {
             </Card>
 
             {/* Teacher Invitation Code Card - Only for teachers */}
-            {currentUser?.user_type === 'teacher' && (
+            {currentUser?.user_type === 'teacher' && settings[NAVIGATION_KEYS.NAV_GAMES_VISIBILITY] === NAV_VISIBILITY_OPTIONS.PUBLIC &&(
               <Card className="shadow-lg sm:shadow-xl border-0 bg-white/80 backdrop-blur-sm rounded-lg sm:rounded-xl lg:rounded-2xl overflow-hidden mx-1 sm:mx-0">
                 <CardHeader className="bg-gradient-to-r from-teal-500 to-blue-600 text-white p-3 sm:p-4 lg:p-6">
                   <CardTitle className="flex items-center gap-2 sm:gap-3">

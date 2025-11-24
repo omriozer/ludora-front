@@ -3,35 +3,8 @@
 
 import { apiRequest } from '@/services/apiClient';
 import { showSuccess, showError } from '@/utils/messaging';
-import { log, error } from '@/lib/logger';
+import { log, error, cerror, clog } from '@/lib/logger';
 import { Product } from '@/services/entities';
-
-
-/**
- * Check if user is authenticated
- * @returns {boolean} Authentication status
- * @deprecated This function should not be used directly - use hooks instead
- */
-export function isAuthenticated() {
-  // WARNING: This function is deprecated - components should use useUser() hook instead
-  // Temporary fix: check for authentication cookies until full migration to hooks
-  try {
-    const cookies = document.cookie.split(';').reduce((acc, cookie) => {
-      const [key, value] = cookie.trim().split('=');
-      acc[key] = value;
-      return acc;
-    }, {});
-
-    // Check for either teacher or student authentication tokens
-    const hasTeacherAuth = cookies.teacher_access_token || cookies.teacher_refresh_token;
-    const hasStudentAuth = cookies.student_access_token || cookies.student_refresh_token;
-
-    return !!(hasTeacherAuth || hasStudentAuth);
-  } catch (err) {
-    error.auth('Error checking authentication cookies', err);
-    return false;
-  }
-}
 
 /**
  * Find Product record for an entity (handles polymorphic structure)

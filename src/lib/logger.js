@@ -29,7 +29,7 @@ export function clog(...args) {
  * @returns {null} Always returns null
  */
 export function cerror(...args) {
-  return null; // No-op for backward compatibility
+  return shouldLog() && console.error(...args)
 }
 
 /**
