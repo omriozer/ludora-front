@@ -15,8 +15,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          repository: omriozer/ludora-front
-          path: ludora-front
           fetch-depth: 0
 
       - name: Checkout ludora-utils
@@ -29,16 +27,17 @@ jobs:
       - name: Setup workspace
         run: |
           echo "Current directory structure:"
+          pwd
           ls -la
-          echo "Ludora-front contents:"
-          ls -la ludora-front/
-          echo "Ludora-utils contents:"
-          ls -la ludora-utils/
-          cd ludora-front
+          echo "Moving ludora-utils to parent directory for package.json dependency:"
+          mv ludora-utils ../ludora-utils
+          echo "Parent directory:"
+          ls -la ../
+          echo "Ludora-utils check:"
+          ls -la ../ludora-utils/ || echo "ludora-utils not found"
 
       - name: Get commit message
         id: commit
-        working-directory: ludora-front
         run: |
           COMMIT_MSG=$(git log -1 --pretty=format:"%s")
           echo "message<<EOF" >> $GITHUB_OUTPUT
@@ -46,7 +45,7 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Notify deployment started
-        uses: ./ludora-front/.github/actions/telegram-notify
+        uses: ./.github/actions/telegram-notify
         continue-on-error: true
         with:
           bot-token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -60,7 +59,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'yarn'
-          cache-dependency-path: ludora-front/yarn.lock
+          cache-dependency-path: yarn.lock
 
       - name: Configure Git for SSH dependencies
         run: |
@@ -73,14 +72,12 @@ jobs:
           echo "✅ Git configuration complete"
 
       - name: Install dependencies
-        working-directory: ludora-front
         run: |
           echo "Installing dependencies..."
           yarn install --frozen-lockfile
           echo "✅ Dependencies installed"
 
       - name: Setup dynamic environment variables
-        working-directory: ludora-front
         run: |
           echo "Setting up dynamic environment variables for production..."
           echo "🔧 Creating .env.production file for production deployment from GitHub Secrets..."
@@ -102,7 +99,6 @@ jobs:
           cat .env.production | sed 's/=.*/=***/' | head -10
 
       - name: Build application
-        working-directory: ludora-front
         run: |
           echo "Building application..."
           yarn build
@@ -126,7 +122,6 @@ jobs:
           echo "✅ Service account configured"
 
       - name: Deploy to Firebase
-        working-directory: ludora-front
         run: |
           echo "Deploying to Firebase..."
           firebase deploy --only hosting --project ludora-af706
@@ -141,7 +136,7 @@ jobs:
 
       - name: Notify deployment success
         if: success()
-        uses: ./ludora-front/.github/actions/telegram-notify
+        uses: ./.github/actions/telegram-notify
         continue-on-error: true
         with:
           bot-token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -156,7 +151,7 @@ jobs:
 
       - name: Notify deployment failure
         if: failure()
-        uses: ./ludora-front/.github/actions/telegram-notify
+        uses: ./.github/actions/telegram-notify
         continue-on-error: true
         with:
           bot-token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
