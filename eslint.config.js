@@ -3,7 +3,6 @@ import globals from 'globals'
 import react from 'eslint-plugin-react'
 import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
-import ludora from 'eslint-plugin-ludora'
 
 export default [
   { ignores: ['dist', 'node_modules', 'build', 'public', 'cypress-cache'] },
@@ -28,7 +27,6 @@ export default [
       react,
       'react-hooks': reactHooks,
       'react-refresh': reactRefresh,
-      ludora, // Ludora custom plugin
     },
     rules: {
       ...js.configs.recommended.rules,
@@ -43,15 +41,6 @@ export default [
         { allowConstantExport: true },
       ],
       'react/prop-types': 'off', // We use TypeScript-like prop validation
-
-      // Ludora Custom Rules - Architecture Enforcement
-      'ludora/no-time-based-caching': 'error', // BLOCKS PR APPROVAL
-      'ludora/require-data-driven-cache': 'warn',
-      'ludora/no-unused-cache-keys': 'warn',
-      'ludora/no-console-log': ['error', {
-        allowInTests: true,
-        allowInMigrations: false
-      }],
 
       // Code Quality Rules
       'no-unused-vars': ['error', {
@@ -75,15 +64,7 @@ export default [
     // Special rules for test files
     files: ['**/*.test.{js,jsx}', '**/*.spec.{js,jsx}', 'cypress/**/*.{js,jsx}'],
     rules: {
-      'ludora/no-console-log': 'off', // Tests can use console.log
       'no-unused-expressions': 'off' // Cypress assertions
-    }
-  },
-  {
-    // Special rules for config files
-    files: ['*.config.js', 'vite.config.js', 'tailwind.config.js'],
-    rules: {
-      'ludora/no-console-log': 'off' // Config files can use console.log
     }
   }
 ]

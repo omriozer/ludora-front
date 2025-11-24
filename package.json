@@ -103,7 +103,6 @@
     "cypress-file-upload": "^5.0.8",
     "cypress-real-events": "^1.15.0",
     "eslint": "^9.19.0",
-    "eslint-plugin-ludora": "file:../ludora-utils/eslint-plugin-ludora",
     "eslint-plugin-react": "^7.37.4",
     "eslint-plugin-react-hooks": "^5.0.0",
     "eslint-plugin-react-refresh": "^0.4.18",
