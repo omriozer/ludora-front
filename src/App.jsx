@@ -27,11 +27,8 @@ import StudentsNav from '@/components/layout/StudentsNav';
 import MaintenancePage from '@/components/layout/MaintenancePage';
 import StudentLoginModal from '@/components/auth/StudentLoginModal';
 import { useLoginModal, LoginModalProvider } from '@/hooks/useLoginModal';
-import { loginWithFirebase } from '@/services/apiClient';
-import { firebaseAuth } from '@/lib/firebase';
-import { showSuccess, showError } from '@/utils/messaging';
 import { canBypassMaintenance } from '@/utils/adminCheck';
-import { SYSTEM_KEYS, ACCESS_CONTROL_KEYS, getSetting } from '@/constants/settings';
+import { SYSTEM_KEYS, getSetting } from '@/constants/settings';
 
 // Suspense fallback component
 const SuspenseLoader = () => (
@@ -104,8 +101,7 @@ function StudentPortal() {
 			if (isMaintenanceMode || settingsLoadFailed) {
 				setIsCheckingAdminBypass(true);
 				try {
-					const studentsAccess = getSetting(settings, ACCESS_CONTROL_KEYS.STUDENTS_ACCESS, 'all');
-					const canBypass = await canBypassMaintenance(currentUser, studentsAccess);
+					const canBypass = await canBypassMaintenance(currentUser);
 					setCanAdminBypass(canBypass);
 				} catch (error) {
 					console.warn('Error checking admin bypass:', error);
@@ -200,57 +196,15 @@ function StudentPortal() {
 		setIsDraggingReturn(false);
 	};
 
-	// Login handler (same as Layout.jsx)
-	const handleLoginSubmit = async (rememberMe = false) => {
-		try {
-			const { user, idToken } = await firebaseAuth.signInWithGoogle();
-			const firebaseResult = { user, idToken };
-			const apiResult = await loginWithFirebase({ idToken: firebaseResult.idToken });
-
-			if (apiResult.valid && apiResult.user) {
-				await login(apiResult.user, rememberMe);
-				showSuccess('התחברת בהצלחה!');
-				closeLoginModal();
-				setTimeout(() => {
-					executeCallback();
-				}, 500);
-			} else {
-				throw new Error('Authentication failed');
-			}
-		} catch (error) {
-			let errorMessage = 'שגיאה בכניסה. נסו שוב.';
-			if (error.message) {
-				if (error.message.includes('popup-closed-by-user')) {
-					errorMessage = 'ההתחברות בוטלה על ידי המשתמש.';
-				} else if (error.message.includes('Firebase not initialized')) {
-					errorMessage = 'שירות ההתחברות אינו זמין כעת.';
-				} else if (error.message.includes('auth/invalid-api-key')) {
-					errorMessage = 'בעיה בהגדרות הזיהוי. צרו קשר עם התמיכה.';
-				}
-			}
-			showError(errorMessage);
-			throw error;
-		}
-	};
+	// Removed Firebase login handler - admin password bypass only
 
 	const onLogin = () => {
 		openLoginModal();
 	};
 
 	// Handle successful anonymous admin authentication
-	const handleAnonymousAdminSuccess = async () => {
-		// Re-check admin bypass status after anonymous admin login
-		setIsCheckingAdminBypass(true);
-		try {
-			const studentsAccess = getSetting(settings, ACCESS_CONTROL_KEYS.STUDENTS_ACCESS, 'all');
-			const canBypass = await canBypassMaintenance(currentUser, studentsAccess);
-			setCanAdminBypass(canBypass);
-		} catch (error) {
-			console.warn('Error re-checking admin bypass after anonymous login:', error);
-			setCanAdminBypass(false);
-		} finally {
-			setIsCheckingAdminBypass(false);
-		}
+	const handleAnonymousAdminSuccess = () => {
+		setCanAdminBypass(true);
 	};
 
 	// Show maintenance page if enabled OR if settings loading failed (but allow admins to bypass)
@@ -284,8 +238,6 @@ function StudentPortal() {
 					handleTouchMove={handleTouchMove}
 					handleTouchEnd={handleTouchEnd}
 					handleReturnToSelf={handleReturnToSelf}
-					handleLogin={handleLoginSubmit}
-					studentsAccessMode={getSetting(settings, ACCESS_CONTROL_KEYS.STUDENTS_ACCESS, 'all')}
 					onAnonymousAdminSuccess={handleAnonymousAdminSuccess}
 					isTemporaryIssue={isTemporaryIssue}
 				/>

@@ -272,6 +272,7 @@ function LayoutContent({ children }) {
       <>
 
         <MaintenancePage
+          onAnonymousAdminSuccess={() => setCanAdminBypass(true)}
           showReturnButton={showReturnButton}
           isDraggingReturn={isDraggingReturn}
           returnButtonPosition={returnButtonPosition}
@@ -280,7 +281,6 @@ function LayoutContent({ children }) {
           handleTouchMove={handleTouchMove}
           handleTouchEnd={handleTouchEnd}
           handleReturnToSelf={handleReturnToSelf}
-          handleLogin={handleLoginSubmit}
           isTemporaryIssue={isTemporaryIssue}
         />
 

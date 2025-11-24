@@ -9,7 +9,7 @@ import Footer from "./Footer";
 import { riddles } from "@/assets/riddles";
 import { useUser } from "@/contexts/UserContext";
 import { cerror } from "@/lib/utils";
-import { validateAdminPassword, canBypassMaintenanceAnonymously } from "@/utils/adminCheck";
+import { validateAdminPassword } from "@/utils/adminCheck";
 
 export default function MaintenancePage({
   showReturnButton,
@@ -20,18 +20,12 @@ export default function MaintenancePage({
   handleTouchMove,
   handleTouchEnd,
   handleReturnToSelf,
-  handleLogin,
-  studentsAccessMode,
   onAnonymousAdminSuccess,
   isTemporaryIssue = false
 }) {
   const { isAuthenticated } = useUser();
 
-  // Login state
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const [loginError, setLoginError] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
-  const [showLoginSection, setShowLoginSection] = useState(false);
+  // Removed Firebase login state - admin password only
 
   // Anonymous admin password state
   const [adminPassword, setAdminPassword] = useState('');
@@ -60,38 +54,7 @@ export default function MaintenancePage({
     return () => clearTimeout(timer);
   }, []);
 
-  // Firebase login handler
-  const handleFirebaseLogin = async () => {
-    setIsLoggingIn(true);
-    setLoginError('');
-
-    try {
-      // Call the passed handleLogin function if available
-      if (handleLogin) {
-        await handleLogin(rememberMe);
-      } else {
-        throw new Error('Login handler not available');
-      }
-    } catch (err) {
-      cerror('Firebase sign-in error during maintenance:', err);
-
-      let errorMessage = 'שגיאה בכניסה. נסו שוב.';
-
-      if (err.message) {
-        if (err.message.includes('popup-closed-by-user')) {
-          errorMessage = 'ההתחברות בוטלה על ידי המשתמש.';
-        } else if (err.message.includes('Firebase not initialized')) {
-          errorMessage = 'שירות ההתחברות אינו זמין כעת.';
-        } else if (err.message.includes('auth/invalid-api-key')) {
-          errorMessage = 'בעיה בהגדרות הזיהוי. צרו קשר עם התמיכה.';
-        }
-      }
-
-      setLoginError(errorMessage);
-    } finally {
-      setIsLoggingIn(false);
-    }
-  };
+  // Removed Firebase login handler - admin password only
 
   // Anonymous admin password validation handler
   const handlePasswordSubmit = async (e) => {
@@ -244,13 +207,7 @@ export default function MaintenancePage({
               <div
                 className="relative w-full h-full bg-gradient-to-br from-purple-500 to-blue-600 rounded-3xl flex items-center justify-center shadow-2xl transform hover:scale-105 transition-all duration-300 cursor-pointer hover:rotate-6"
                 onClick={() => {
-                  if (studentsAccessMode === 'invite_only') {
-                    setShowPasswordSection(!showPasswordSection);
-                    setShowLoginSection(false);
-                  } else {
-                    setShowLoginSection(!showLoginSection);
-                    setShowPasswordSection(false);
-                  }
+                  setShowPasswordSection(!showPasswordSection);
                 }}
               >
                 <ShieldAlert className="w-12 h-12 text-white drop-shadow-lg" />
@@ -297,79 +254,9 @@ export default function MaintenancePage({
             </p>
           </div>
 
-          {/* Firebase Login Section - Only during maintenance mode */}
-          {showLoginSection && !isAuthenticated && (
-            <div className="bg-white/95 backdrop-blur-xl rounded-3xl p-6 md:p-8 shadow-2xl border border-white/30 relative overflow-hidden mb-8 max-w-md mx-auto">
-              {/* Background pattern */}
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 via-transparent to-purple-50/50"></div>
 
-              <div className="relative z-10">
-                <h3 className="text-xl font-bold text-gray-900 text-center mb-4">
-                  התחברות מנהלים בזמן תחזוקה
-                </h3>
-                <p className="text-sm text-gray-600 text-center mb-6">
-                  רק משתמשים מורשים יכולים להתחבר בזמן תחזוקה
-                </p>
-
-                {loginError && (
-                  <Alert variant="destructive" className="mb-4">
-                    <AlertDescription className="text-right">
-                      {loginError}
-                    </AlertDescription>
-                  </Alert>
-                )}
-
-                <Button
-                  onClick={handleFirebaseLogin}
-                  disabled={isLoggingIn}
-                  className="w-full h-12 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 shadow-sm flex items-center justify-center gap-3 mb-4"
-                >
-                  {isLoggingIn ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      מתחבר...
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-5 h-5" viewBox="0 0 24 24">
-                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                      </svg>
-                      המשיכו עם Google
-                    </>
-                  )}
-                </Button>
-
-                <div className="flex items-center space-x-2 rtl:space-x-reverse">
-                  <Checkbox
-                    id="remember-me"
-                    className="me-2"
-                    checked={rememberMe}
-                    onCheckedChange={setRememberMe}
-                  />
-                  <Label
-                    htmlFor="remember-me"
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                  >
-                    זכור אותי במחשב זה
-                  </Label>
-                </div>
-
-                <Button
-                  onClick={() => setShowLoginSection(false)}
-                  variant="ghost"
-                  className="w-full mt-4 text-gray-500 hover:text-gray-700"
-                >
-                  ביטול
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Anonymous Admin Password Section - Only when students_access is invite_only */}
-          {showPasswordSection && !isAuthenticated && studentsAccessMode === 'invite_only' && (
+          {/* Admin Password Section - Always available during maintenance */}
+          {showPasswordSection && !isAuthenticated && (
             <div className="bg-white/95 backdrop-blur-xl rounded-3xl p-6 md:p-8 shadow-2xl border border-white/30 relative overflow-hidden mb-8 max-w-md mx-auto">
               {/* Background pattern */}
               <div className="absolute inset-0 bg-gradient-to-br from-orange-50/50 via-transparent to-red-50/50"></div>

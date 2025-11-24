@@ -51,16 +51,16 @@ export async function quickAdminCheck() {
 
 /**
  * Comprehensive admin check for maintenance mode bypass
- * First checks for current user, then checks for tokens across portals, then checks anonymous admin
+ * Checks admin password bypass first, then current user, then tokens across portals
  */
 export async function canBypassMaintenance(currentUser, studentsAccessMode = null) {
-  // Primary check: current user is admin and not impersonated
-  if (currentUser?.role === 'admin' && !currentUser?._isImpersonated) {
+  // Primary check: anonymous admin password bypass (always available)
+  if (isAnonymousAdmin()) {
     return true;
   }
 
-  // Secondary check: anonymous admin access for student portal invite_only mode
-  if (studentsAccessMode === 'invite_only' && isAnonymousAdmin()) {
+  // Secondary check: current user is admin and not impersonated
+  if (currentUser?.role === 'admin' && !currentUser?._isImpersonated) {
     return true;
   }
 
@@ -161,8 +161,9 @@ export function isAnonymousAdmin() {
         return false;
       }
 
-      // Check if it's for student portal
-      if (payload.aud !== 'ludora-student-portal') {
+      // Check if it's for a valid portal
+      const validAudiences = ['ludora-student-portal', 'ludora-teacher-portal'];
+      if (!validAudiences.includes(payload.aud)) {
         clearAnonymousAdminToken(); // Wrong audience
         return false;
       }
@@ -220,13 +221,12 @@ export async function validateAdminPassword(password) {
 }
 
 /**
- * Check if anonymous admin can bypass maintenance for given access mode
- * @param {string} studentsAccessMode - Current students_access setting
+ * Check if anonymous admin can bypass maintenance (always allowed now)
  * @returns {boolean} True if anonymous admin access is allowed
  */
-export function canBypassMaintenanceAnonymously(studentsAccessMode) {
-  // Anonymous admin only works in invite_only mode
-  return studentsAccessMode === 'invite_only' && isAnonymousAdmin();
+export function canBypassMaintenanceAnonymously() {
+  // Anonymous admin always works regardless of access mode
+  return isAnonymousAdmin();
 }
 
 /**
