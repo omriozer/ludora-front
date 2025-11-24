@@ -3,7 +3,7 @@
 
 import { apiRequest } from '@/services/apiClient';
 import { showSuccess, showError } from '@/utils/messaging';
-import { clog, cerror } from '@/lib/utils';
+import { log, error } from '@/lib/logger';
 import { Product } from '@/services/entities';
 
 
@@ -27,8 +27,8 @@ export function isAuthenticated() {
     const hasStudentAuth = cookies.student_access_token || cookies.student_refresh_token;
 
     return !!(hasTeacherAuth || hasStudentAuth);
-  } catch (error) {
-    cerror('Error checking authentication cookies:', error);
+  } catch (err) {
+    error.auth('Error checking authentication cookies', err);
     return false;
   }
 }
@@ -47,8 +47,8 @@ export async function findProductForEntity(entityType, entityId) {
     });
 
     return products && products.length > 0 ? products[0] : null;
-  } catch (error) {
-    cerror(`Error finding Product for ${entityType}:${entityId}:`, error);
+  } catch (err) {
+    error.payment(`Error finding Product for ${entityType}:${entityId}`, err);
     return null;
   }
 }
@@ -71,7 +71,7 @@ export async function createPendingPurchase({
   metadata = {}
 }) {
   try {
-    clog('Creating pending purchase:', { entityType, entityId, price, userId });
+    log.payment('Creating pending purchase', { entityType, entityId, price, userId });
 
     // Find the Product record for this entity to get the price
     const productRecord = await findProductForEntity(entityType, entityId);
@@ -96,7 +96,7 @@ export async function createPendingPurchase({
     );
 
     if (existingPurchase) {
-      clog('Found existing non-refunded purchase for this product:', existingPurchase);
+      log.payment('Found existing non-refunded purchase for this product', existingPurchase);
       throw new Error(`כבר יש לך רכישה עבור המוצר הזה. סטטוס: ${existingPurchase.payment_status}. לא ניתן לרכוש מוצר כפול אלא אם הרכישה הקודמת הוחזרה.`);
     }
 
