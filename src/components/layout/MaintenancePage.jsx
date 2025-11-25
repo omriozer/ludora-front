@@ -202,10 +202,10 @@ export default function MaintenancePage({
           <div className="mb-6 sm:mb-8 relative">
             <div className="relative mx-auto w-20 h-20 md:w-24 md:h-24 group">
               {/* Glow effect */}
-              <div className="absolute inset-0 bg-gradient-to-r from-purple-400 to-blue-500 rounded-3xl blur-xl opacity-75 group-hover:opacity-100 transition-opacity duration-300 animate-pulse"></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-purple-400 to-blue-500 rounded-3xl blur-xl opacity-75"></div>
               {/* Main icon */}
               <div
-                className="relative w-full h-full bg-gradient-to-br from-purple-500 to-blue-600 rounded-3xl flex items-center justify-center shadow-2xl transform hover:scale-105 transition-all duration-300 cursor-pointer hover:rotate-6"
+                className="relative w-full h-full bg-gradient-to-br from-purple-500 to-blue-600 rounded-3xl flex items-center justify-center"
                 onClick={() => {
                   setShowPasswordSection(!showPasswordSection);
                 }}
@@ -213,8 +213,8 @@ export default function MaintenancePage({
                 <ShieldAlert className="w-12 h-12 text-white drop-shadow-lg" />
               </div>
               {/* Floating particles around icon */}
-              <div className="absolute -top-2 -right-2 w-3 h-3 bg-purple-300 rounded-full animate-ping"></div>
-              <div className="absolute -bottom-2 -left-2 w-2 h-2 bg-blue-300 rounded-full animate-ping delay-300"></div>
+              <div className="absolute -top-2 -right-2 w-3 h-3 bg-purple-300 rounded-full"></div>
+              <div className="absolute -bottom-2 -left-2 w-2 h-2 bg-blue-300 rounded-full"></div>
             </div>
           </div>
 
