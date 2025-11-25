@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Game, Purchase, User, Workshop, Course, File, Tool, Product, Transaction } from "@/services/entities";
+import { purchaseUtils } from "@/utils/api.js";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -149,12 +150,25 @@ export default function PaymentResult() {
           console.log('🔍 Field mapping: PayPlus page_request_uid → Database payment_page_request_uid');
 
           // Find transaction by PayPlus payment_page_request_uid
-          const transactions = await Transaction.filter({
-            payment_page_request_uid: pageRequestUid
-          });
+          console.log('🔍 About to call Transaction.filter with:', { payment_page_request_uid: pageRequestUid });
 
-          // TODO remove debug - fix payment result page transaction lookup
-          console.log('🔍 Transaction search result:', transactions);
+          let transactions;
+          try {
+            transactions = await Transaction.filter({
+              payment_page_request_uid: pageRequestUid
+            });
+
+            // TODO remove debug - fix payment result page transaction lookup
+            console.log('🔍 Transaction search result:', transactions);
+          } catch (transactionApiError) {
+            console.error('❌ Transaction.filter API error:', transactionApiError);
+            console.error('❌ Error details:', {
+              message: transactionApiError.message,
+              status: transactionApiError.status,
+              response: transactionApiError.response
+            });
+            throw transactionApiError; // Re-throw to trigger outer catch
+          }
 
           if (transactions && transactions.length > 0) {
             const transactionData = transactions[0];
