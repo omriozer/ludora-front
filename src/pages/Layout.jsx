@@ -211,10 +211,10 @@ function LayoutContent({ children }) {
         await login(apiResult.user, rememberMe);
 
         showSuccess('התחברת בהצלחה!');
+
+        // Execute callback first, then close modal to ensure proper flow
+        executeCallback();
         closeLoginModal();
-        setTimeout(() => {
-          executeCallback();
-        }, 500);
 
       } else {
         throw new Error('Authentication failed');
