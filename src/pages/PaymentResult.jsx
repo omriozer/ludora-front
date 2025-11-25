@@ -146,6 +146,7 @@ export default function PaymentResult() {
         try {
           // TODO remove debug - fix payment result page transaction lookup
           console.log('🔍 Searching for transaction with payment_page_request_uid:', pageRequestUid);
+          console.log('🔍 Field mapping: PayPlus page_request_uid → Database payment_page_request_uid');
 
           // Find transaction by PayPlus payment_page_request_uid
           const transactions = await Transaction.filter({
