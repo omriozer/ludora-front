@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Game, Purchase, User, Workshop, Course, File, Tool, Product, Transaction } from "@/services/entities";
 import { purchaseUtils } from "@/utils/api.js";
+import { error } from '@/lib/logger';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -87,8 +88,8 @@ export default function PaymentResult() {
         // Fallback to account page if no product ID found
         navigate('/account');
       }
-    } catch (error) {
-      console.error('Error determining redirect destination:', error);
+    } catch (err) {
+      error.navigation('Error determining redirect destination', err);
       // Fallback to account page on error
       navigate('/account');
     }
@@ -106,8 +107,8 @@ export default function PaymentResult() {
         const foundProductId = products[0].id;
         setProductId(foundProductId);
       }
-    } catch (error) {
-      console.error('Error finding Product ID:', error);
+    } catch (err) {
+      error.api('Error finding Product ID', err, { entityType, entityId });
     }
   };
 
@@ -246,7 +247,7 @@ export default function PaymentResult() {
                 // Find the corresponding Product ID
                 await findProductId(entityType, entityId);
               } catch (itemError) {
-                console.error('Error loading item:', itemError);
+                error.payment('Error loading item', itemError, { entityType, entityId });
                 setError('לא ניתן לטעון את פרטי הפריט שנרכש');
               }
             } else if (purchaseData.product_id) {
@@ -262,30 +263,30 @@ export default function PaymentResult() {
                 }
                 setItem(itemData);
               } catch (itemError) {
-                console.error('Error loading item:', itemError);
+                error.payment('Error loading legacy item', itemError, { productId: purchaseData.product_id, type });
                 // Try Game as fallback for legacy data
                 try {
                   const fallbackItem = await Game.findById(purchaseData.product_id);
                   setItem(fallbackItem);
                   setItemType('game');
                 } catch (fallbackError) {
-                  console.error('Fallback also failed:', fallbackError);
+                  error.payment('Fallback Game lookup also failed', fallbackError, { productId: purchaseData.product_id });
                   setError('לא ניתן לטעון את פרטי המוצר');
                 }
               }
             }
           } else {
-            console.error('Purchase not found for order:', finalOrderNumber);
+            error.payment('Purchase not found for order', null, { finalOrderNumber });
             setError('רכישה לא נמצאה');
           }
         } catch (purchaseError) {
-          console.error('Error finding purchase:', purchaseError);
+          error.payment('Error finding purchase', purchaseError, { finalOrderNumber });
           setError('שגיאה בחיפוש הרכישה');
         }
       }
 
-    } catch (error) {
-      console.error('Error loading payment result:', error);
+    } catch (err) {
+      error.payment('Error loading payment result', err);
       setError('שגיאה בטעינת תוצאות התשלום');
     }
     
