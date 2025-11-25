@@ -135,10 +135,16 @@ export default function PaymentResult() {
         console.log('🔍 PayPlus redirect detected, finding transaction by payment_page_request_uid:', pageRequestUid);
 
         try {
+          // TODO remove debug - fix payment result page transaction lookup
+          console.log('🔍 Searching for transaction with payment_page_request_uid:', pageRequestUid);
+
           // Find transaction by PayPlus payment_page_request_uid
           const transactions = await Transaction.filter({
             payment_page_request_uid: pageRequestUid
           });
+
+          // TODO remove debug - fix payment result page transaction lookup
+          console.log('🔍 Transaction search result:', transactions);
 
           if (transactions && transactions.length > 0) {
             const transactionData = transactions[0];
