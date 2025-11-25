@@ -114,12 +114,21 @@ export default function PaymentResult() {
   };
 
   const loadPaymentResult = async () => {
+    // TODO remove debug - fix payment result page transaction lookup
+    console.log('🚀 loadPaymentResult function called');
+    console.log('🚀 window.location.search:', window.location.search);
+
     try {
       const urlParams = new URLSearchParams(window.location.search);
+      // TODO remove debug - fix payment result page transaction lookup
+      console.log('🚀 URLSearchParams created:', urlParams.toString());
 
       // Check for PayPlus parameters first
       const transactionUid = urlParams.get('transaction_uid');
       const pageRequestUid = urlParams.get('page_request_uid');
+
+      // TODO remove debug - fix payment result page transaction lookup
+      console.log('🚀 Extracted parameters:', { transactionUid, pageRequestUid });
 
       // Fallback to original parameters
       const paymentStatus = urlParams.get('status');
