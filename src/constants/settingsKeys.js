@@ -42,7 +42,6 @@ export const SYSTEM_KEYS = {
   MAINTENANCE_MODE: 'maintenance_mode',
   SUBSCRIPTION_SYSTEM_ENABLED: 'subscription_system_enabled',  // Legacy
   TEACHER_ONBOARDING_ENABLED: 'teacher_onboarding_enabled',
-  IS_SAMPLE: 'is_sample'  // Sample data flag for development/testing
 };
 
 /**
