@@ -29,18 +29,15 @@ export function hasAdminTokensInEitherPortal() {
  */
 export async function quickAdminCheck() {
   try {
-    const response = await fetch('/api/auth/me', {
+    // Import the API client dynamically to avoid circular dependencies
+    const { apiRequest } = await import('@/services/apiClient');
+
+    const user = await apiRequest('/auth/me', {
       method: 'GET',
-      credentials: 'include', // Include cookies
-      headers: {
-        'Content-Type': 'application/json'
-      }
+      suppressUserErrors: true // Don't show error messages for failed admin checks
     });
 
-    if (response.ok) {
-      const user = await response.json();
-      return user && user.role === 'admin' && !user._isImpersonated;
-    }
+    return user && user.role === 'admin' && !user._isImpersonated;
   } catch (error) {
     // If API call fails, don't bypass maintenance mode
     console.warn('Quick admin check failed:', error);
@@ -53,7 +50,7 @@ export async function quickAdminCheck() {
  * Comprehensive admin check for maintenance mode bypass
  * Checks admin password bypass first, then current user, then tokens across portals
  */
-export async function canBypassMaintenance(currentUser, studentsAccessMode = null) {
+export async function canBypassMaintenance(currentUser) {
   // Primary check: anonymous admin password bypass (always available)
   if (isAnonymousAdmin()) {
     return true;
@@ -191,19 +188,13 @@ export async function validateAdminPassword(password) {
       throw new Error('Password is required');
     }
 
-    const response = await fetch('/api/auth/validate-admin-password', {
+    // Import the API client dynamically to avoid circular dependencies
+    const { apiRequest } = await import('@/services/apiClient');
+
+    const result = await apiRequest('/auth/validate-admin-password', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
       body: JSON.stringify({ password })
     });
-
-    const result = await response.json();
-
-    if (!response.ok) {
-      throw new Error(result.error || 'Password validation failed');
-    }
 
     // Store the token if validation successful
     if (result.success && result.anonymousAdminToken) {
