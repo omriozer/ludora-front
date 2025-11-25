@@ -140,7 +140,7 @@ export default function PaymentResult() {
       let finalOrderNumber = orderNumber;
 
       // Handle PayPlus redirect parameters
-      if (pageRequestUid && !paymentStatus) {
+      if (pageRequestUid) {
         console.log('🔍 PayPlus redirect detected, finding transaction by payment_page_request_uid:', pageRequestUid);
 
         try {
