@@ -83,7 +83,7 @@ export default function PaymentResult() {
       // Single product - redirect to product details page
       const redirectProductId = productId || purchase.product_id;
       if (redirectProductId) {
-        navigate(`/product/${redirectProductId}`);
+        navigate(`/product-details/${redirectProductId}`);
       } else {
         // Fallback to account page if no product ID found
         navigate('/account');
@@ -423,7 +423,7 @@ export default function PaymentResult() {
       buttons.push(
         <Button
           key="view-product"
-          onClick={() => navigate(`/product/${viewProductId}`)}
+          onClick={() => navigate(`/product-details/${viewProductId}`)}
           className="w-full bg-blue-600 hover:bg-blue-700"
         >
           <FileText className="w-4 h-4 ml-2" />
