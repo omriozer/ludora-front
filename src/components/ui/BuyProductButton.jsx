@@ -6,7 +6,7 @@ import { cerror, clog } from '@/lib/utils';
 import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
 import { useLoginModal } from '@/hooks/useLoginModal';
 import { useCart } from '@/contexts/CartContext';
-import { useProductAccess, getPurchaseActionText } from '@/hooks/useProductAccess';
+import { getPurchaseActionText } from '@/hooks/useProductAccess';
 import { useUser } from '@/contexts/UserContext';
 import {
   showPurchaseSuccessToast,
@@ -36,18 +36,8 @@ export default function BuyProductButton({
   const { addToCart, refreshCart } = useCart();
   const { currentUser, isAuthenticated } = useUser();
 
-  const {
-    canPurchase,
-    isFree,
-    purchaseAction,
-    productType,
-    isInCart
-  } = useProductAccess(product);
-
-  // Don't render if purchase is not available
-  if (!canPurchase) {
-    return null;
-  }
+  // Parent ProductActionBar already determined canPurchase and renders this only when appropriate
+  // No need for additional access checks
 
   const handlePurchase = async (e) => {
     e.stopPropagation(); // Prevent event bubbling to parent card
@@ -71,16 +61,10 @@ export default function BuyProductButton({
       return;
     }
 
-    // If already in cart, redirect to checkout
-    if (isInCart) {
-      navigate('/checkout');
-      return;
-    }
-
     setIsProcessing(true);
 
     try {
-      const entityType = productType;
+      const entityType = product.product_type || 'file';
       const entityId = product.entity_id || product.id;
 
       // Create purchase using new API
@@ -148,7 +132,13 @@ export default function BuyProductButton({
     }
   };
 
-  const buttonText = getPurchaseActionText(purchaseAction, productType);
+  // Determine button text based on product price
+  const isFree = !product.price || product.price === 0 || product.price === "0";
+  const productType = product.product_type || 'file';
+
+  const buttonText = isFree
+    ? 'הוספה לספרייה'
+    : getPurchaseActionText('buy', productType);
 
   return (
     <Button

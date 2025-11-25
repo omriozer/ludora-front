@@ -3,10 +3,10 @@ import { getProductTypeName, getAttributeSchema, validateTypeAttributes } from '
 import { clog } from '@/lib/utils';
 
 /**
- * Custom hook for managing product access control and validation
- * Determines what sections are accessible and validates form data
+ * Custom hook for managing product form validation and section access
+ * Determines what sections are accessible and validates form data during product creation/editing
  */
-export const useProductAccess = (editingProduct, formData, uploadedFileInfo, productId = null, isLoadingData = false) => {
+export const useProductFormValidation = (editingProduct, formData, uploadedFileInfo, productId = null, isLoadingData = false) => {
   // Determine if this is a new product
   // If productId exists, we're editing (even if editingProduct is still loading)
   // If no productId, we're creating a new product

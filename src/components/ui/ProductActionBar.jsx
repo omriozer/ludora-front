@@ -13,6 +13,7 @@ import { clog } from '@/lib/utils';
 /**
  * Product Action Bar - Smart container that shows appropriate buttons based on product state
  * @param {Object} product - Product object with purchase data
+ * @param {Array} userPurchases - Array of user purchases (optional, for ProductDetails consistency)
  * @param {string} className - Additional CSS classes
  * @param {string} size - Button size
  * @param {boolean} fullWidth - Whether buttons should be full width
@@ -26,6 +27,7 @@ import { clog } from '@/lib/utils';
  */
 export default function ProductActionBar({
   product,
+  userPurchases = [],
   className = '',
   size = 'lg',
   fullWidth = false,
@@ -47,22 +49,9 @@ export default function ProductActionBar({
     canPurchase,
     isFree,
     productType
-  } = useProductAccess(product);
+  } = useProductAccess(product, userPurchases);
 
-  // DEBUG: Log ProductActionBar data
-  clog('ProductActionBar Debug:', {
-    productId: product?.id,
-    productTitle: product?.title,
-    embeddedPurchase: product?.purchase,
-    hasAccess,
-    isInCart,
-    isPurchased,
-    canAddToCart,
-    canPurchase,
-    isFree,
-    productType,
-    paymentStatus: product?.purchase?.payment_status
-  });
+
 
   // If user has access, show the appropriate access button
   if (hasAccess) {

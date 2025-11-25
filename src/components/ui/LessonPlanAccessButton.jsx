@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Play } from 'lucide-react';
-import { useProductAccess } from '@/hooks/useProductAccess';
 
 /**
  * Lesson Plan Access Button - Handles lesson plan presentation viewing for users with access
@@ -22,12 +21,8 @@ export default function LessonPlanAccessButton({
   const [isAccessing, setIsAccessing] = useState(false);
   const navigate = useNavigate();
 
-  const { hasAccess, productType } = useProductAccess(product);
-
-  // Only render for lesson plans when user has access
-  if (!hasAccess || productType !== 'lesson_plan') {
-    return null;
-  }
+  // Parent ProductActionBar already determined access and product type
+  // This component is only rendered for lesson plans when user has access
 
   const handleLessonPlanAccess = async (e) => {
     e.stopPropagation(); // Prevent event bubbling to parent card

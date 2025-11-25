@@ -64,6 +64,7 @@ export const useProductAccess = (product, userPurchases = []) => {
 
     // Use centralized purchase finding logic
     const purchase = findUserPurchaseForProduct(product, userPurchases);
+
     const productType = product.product_type || 'file';
     const isFree = !product.price || product.price === 0 || product.price === "0";
 

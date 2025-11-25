@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Eye, Download } from 'lucide-react';
-import { useProductAccess } from '@/hooks/useProductAccess';
 import { apiDownload } from '@/services/apiClient';
 
 /**
@@ -23,12 +22,8 @@ export default function FileAccessButton({
 }) {
   const [isAccessing, setIsAccessing] = useState(false);
 
-  const { hasAccess, productType } = useProductAccess(product);
-
-  // Only render for files when user has access
-  if (!hasAccess || productType !== 'file') {
-    return null;
-  }
+  // Parent ProductActionBar already determined access and product type
+  // This component is only rendered for files when user has access
 
   const handleFileAccess = async (e) => {
     e.stopPropagation(); // Prevent event bubbling to parent card

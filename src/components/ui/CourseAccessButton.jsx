@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { BookOpen, Play } from 'lucide-react';
-import { useProductAccess } from '@/hooks/useProductAccess';
 
 /**
  * Course Access Button - Handles course access for users with access
@@ -19,12 +18,9 @@ export default function CourseAccessButton({
   onCourseAccess
 }) {
   const navigate = useNavigate();
-  const { hasAccess, productType } = useProductAccess(product);
 
-  // Only render for courses when user has access
-  if (!hasAccess || productType !== 'course') {
-    return null;
-  }
+  // Parent ProductActionBar already determined access and product type
+  // This component is only rendered for courses when user has access
 
   const handleCourseAccess = () => {
     if (onCourseAccess) {

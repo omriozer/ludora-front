@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 // Import product modal components and logic
 import { useProductForm } from '@/components/product/hooks/useProductForm';
 import { useProductUploads } from '@/components/product/hooks/useProductUploadsCompat';
-import { useProductAccess } from '@/components/product/hooks/useProductAccess';
+import { useProductFormValidation } from '@/components/product/hooks/useProductFormValidation';
 import { WizardLayout } from '@/components/product/layouts/WizardLayout';
 import { BasicInfoSection } from '@/components/product/sections/BasicInfoSection';
 import { ProductSpecificSection } from '@/components/product/sections/ProductSpecificSection';
@@ -78,7 +78,7 @@ export default function ProductPage() {
     canPublish,
     isNewProduct,
     isFileProduct
-  } = useProductAccess(editingProduct, formData, uploadedFileInfo, productId, isLoadingData);
+  } = useProductFormValidation(editingProduct, formData, uploadedFileInfo, productId, isLoadingData);
 
   // Load initial data
   useEffect(() => {

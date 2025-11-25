@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Users, Play, Video } from 'lucide-react';
-import { useProductAccess } from '@/hooks/useProductAccess';
 
 /**
  * Workshop Access Button - Handles workshop access for users with access
@@ -19,12 +18,9 @@ export default function WorkshopAccessButton({
   onWorkshopAccess
 }) {
   const navigate = useNavigate();
-  const { hasAccess, productType } = useProductAccess(product);
 
-  // Only render for workshops when user has access
-  if (!hasAccess || productType !== 'workshop') {
-    return null;
-  }
+  // Parent ProductActionBar already determined access and product type
+  // This component is only rendered for workshops when user has access
 
   const handleWorkshopAccess = () => {
     if (onWorkshopAccess) {

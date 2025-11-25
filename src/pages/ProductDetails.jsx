@@ -47,6 +47,7 @@ import ProductActionBar from "@/components/ui/ProductActionBar";
 import PdfViewer from "@/components/pdf/PdfViewer";
 import GameDetailsSection from "@/components/game/details/GameDetailsSection";
 import { useLoginModal } from "@/hooks/useLoginModal";
+import { useProductAccess } from "@/hooks/useProductAccess";
 
 export default function ProductDetails() {
   const navigate = useNavigate();
@@ -56,12 +57,14 @@ export default function ProductDetails() {
   const [item, setItem] = useState(null); // Renamed from product to item for generic use
   const [itemType, setItemType] = useState(null); // Track what type of entity we're viewing
   const [userPurchases, setUserPurchases] = useState([]);
-  const [hasAccess, setHasAccess] = useState(false);
   const [purchase, setPurchase] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [detailsTexts, setDetailsTexts] = useState({});
   const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
+
+  // Use centralized product access logic - same as ProductActionBar
+  const { hasAccess } = useProductAccess(item, userPurchases);
 
   // Track if component is mounted to avoid calling setState on unmounted component
   const isMountedRef = useRef(true);
@@ -310,9 +313,7 @@ export default function ProductDetails() {
       // Use embedded purchase data from API response
       // The API returns purchase information directly in productDetails.purchase
       const userPurchase = productDetails.purchase || null;
-      const hasUserAccess = hasActiveAccess(userPurchase);
 
-      setHasAccess(hasUserAccess);
       setPurchase(userPurchase);
 
       // Ensure the item includes the purchase data immediately
@@ -544,6 +545,7 @@ export default function ProductDetails() {
                   {/* Enhanced Purchase Button - Unified Design */}
                   <ProductActionBar
                     product={item}
+                    userPurchases={userPurchases}
                     className="px-4 sm:px-6 md:px-8 lg:px-10 py-3 sm:py-3.5 md:py-4 flex-shrink-0 text-sm sm:text-base md:text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02]"
                     size="lg"
                     showCartButton={false}
@@ -651,6 +653,7 @@ export default function ProductDetails() {
                 <div className="space-y-3 sm:space-y-4">
                   <ProductActionBar
                     product={item}
+                    userPurchases={userPurchases}
                     className="py-3 sm:py-4 text-base sm:text-lg font-semibold rounded-2xl shadow-lg"
                     size="lg"
                     fullWidth={true}
@@ -733,6 +736,7 @@ export default function ProductDetails() {
                 <div className="flex flex-col gap-3 sm:gap-4 max-w-md mx-auto">
                   <ProductActionBar
                     product={item}
+                    userPurchases={userPurchases}
                     className="py-3 sm:py-4 px-8 sm:px-12 text-base sm:text-lg font-semibold rounded-2xl shadow-xl"
                     size="lg"
                     fullWidth={true}
@@ -809,6 +813,7 @@ export default function ProductDetails() {
                   <p className="text-sm sm:text-base text-gray-600 mb-3 sm:mb-4">צפייה ב{getProductTypeName('workshop', 'singular')} המוקלטת זמינה לאחר רכישה</p>
                   <ProductActionBar
                     product={item}
+                    userPurchases={userPurchases}
                     className="py-3 px-6 sm:py-4 sm:px-12 text-base sm:text-lg font-semibold rounded-xl sm:rounded-2xl shadow-xl"
                     size="lg"
                     showCartButton={false}

@@ -5,7 +5,6 @@ import { cerror } from '@/lib/utils';
 import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
 import { useLoginModal } from '@/hooks/useLoginModal';
 import { useCart } from '@/contexts/CartContext';
-import { useProductAccess } from '@/hooks/useProductAccess';
 import { useUser } from '@/contexts/UserContext';
 import paymentClient from '@/services/paymentClient';
 import { toast } from '@/components/ui/use-toast';
@@ -28,16 +27,8 @@ export default function AddToCartButton({
   const { addToCart, refreshCart } = useCart();
   const { currentUser, isAuthenticated } = useUser();
 
-  const {
-    canAddToCart,
-    productType,
-    isFree
-  } = useProductAccess(product);
-
-  // Don't render for free products or if can't add to cart
-  if (!canAddToCart || isFree) {
-    return null;
-  }
+  // Parent ProductActionBar already determined canAddToCart and renders this only when appropriate
+  // No need for additional access checks
 
   const handleAddToCart = async (e) => {
     e.stopPropagation(); // Prevent event bubbling to parent card
@@ -62,7 +53,7 @@ export default function AddToCartButton({
     setIsAddingToCart(true);
 
     try {
-      const entityType = productType;
+      const entityType = product.product_type || 'file';
       const entityId = product.entity_id || product.id;
 
       // Create purchase using new API
