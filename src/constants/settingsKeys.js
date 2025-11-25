@@ -167,7 +167,16 @@ export const ACCESS_DURATION_KEYS = {
 export const ADVANCED_FEATURES_KEYS = {
   AVAILABLE_DASHBOARD_WIDGETS: 'available_dashboard_widgets',
   AVAILABLE_SPECIALIZATIONS: 'available_specializations',
-  AVAILABLE_GRADE_LEVELS: 'available_grade_levels'
+  AVAILABLE_GRADE_LEVELS: 'available_grade_levels',
+  // Legacy keys with typos (kept for backwards compatibility)
+  AUDIANCE_TARGETS: 'audiance_targets',  // TODO: Fix typo to 'audience_targets'
+  LANGUADE_OPTIONS: 'languade_options',  // TODO: Fix typo to 'language_options'
+  // Additional legacy configuration keys
+  SCHOOL_GRADES: 'school_grades',
+  STUDY_SUBJECTS: 'study_subjects',
+  // Product type configuration
+  FILE_TYPES_CONFIG: 'file_types_config',
+  GAME_TYPES: 'game_types'
 };
 
 /**
