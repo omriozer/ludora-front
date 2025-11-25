@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Game, Purchase, User, Workshop, Course, File, Tool, Product, Transaction } from "@/services/entities";
 import { purchaseUtils } from "@/utils/api.js";
-import { log, error } from '@/lib/logger';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -97,8 +96,6 @@ export default function PaymentResult() {
 
   const findProductId = async (entityType, entityId) => {
     try {
-      console.log(`🔍 Finding Product ID for ${entityType}:`, entityId);
-
       // Search for Product with matching product_type and entity_id
       const products = await Product.filter({
         product_type: entityType,
@@ -108,31 +105,19 @@ export default function PaymentResult() {
       if (products && products.length > 0) {
         const foundProductId = products[0].id;
         setProductId(foundProductId);
-        console.log(`✅ Found Product ID:`, foundProductId);
-      } else {
-        console.log(`⚠️ No Product found for ${entityType}:${entityId}`);
       }
     } catch (error) {
-      console.error('❌ Error finding Product ID:', error);
+      console.error('Error finding Product ID:', error);
     }
   };
 
   const loadPaymentResult = async () => {
-    // TODO remove debug - fix payment result page transaction lookup
-    console.log('🚀 loadPaymentResult function called');
-    console.log('🚀 window.location.search:', window.location.search);
-
     try {
       const urlParams = new URLSearchParams(window.location.search);
-      // TODO remove debug - fix payment result page transaction lookup
-      console.log('🚀 URLSearchParams created:', urlParams.toString());
 
       // Check for PayPlus parameters first
       const transactionUid = urlParams.get('transaction_uid');
       const pageRequestUid = urlParams.get('page_request_uid');
-
-      // TODO remove debug - fix payment result page transaction lookup
-      console.log('🚀 Extracted parameters:', { transactionUid, pageRequestUid });
 
       // Fallback to original parameters
       const paymentStatus = urlParams.get('status');
@@ -145,31 +130,14 @@ export default function PaymentResult() {
 
       // Handle PayPlus redirect parameters
       if (pageRequestUid) {
-        console.log('🔍 PayPlus redirect detected, finding transaction by payment_page_request_uid:', pageRequestUid);
-
         try {
-          // TODO remove debug - fix payment result page transaction lookup
-          console.log('🔍 Searching for transaction with payment_page_request_uid:', pageRequestUid);
-          console.log('🔍 Field mapping: PayPlus page_request_uid → Database payment_page_request_uid');
-
           // Find transaction by PayPlus payment_page_request_uid
-          console.log('🔍 About to call Transaction.filter with:', { payment_page_request_uid: pageRequestUid });
-
           let transactions;
           try {
             transactions = await Transaction.filter({
               payment_page_request_uid: pageRequestUid
             });
-
-            // TODO remove debug - fix payment result page transaction lookup
-            console.log('🔍 Transaction search result:', transactions);
           } catch (transactionApiError) {
-            console.error('❌ Transaction.filter API error:', transactionApiError);
-            console.error('❌ Error details:', {
-              message: transactionApiError.message,
-              status: transactionApiError.status,
-              response: transactionApiError.response
-            });
             throw transactionApiError; // Re-throw to trigger outer catch
           }
 
@@ -177,23 +145,13 @@ export default function PaymentResult() {
             const transactionData = transactions[0];
             finalOrderNumber = transactionData.id;
 
-            // TODO remove debug - debug transaction status mapping issue
-            log.payment('Transaction data found', { transactionData });
-            log.payment('Transaction status analysis', {
-              status: transactionData.status,
-              payment_status: transactionData.payment_status,
-              type: typeof transactionData.payment_status,
-              hasTransactionUid: !!transactionUid
-            });
-
-            // BUG FIX: Use payment_status field, not status field
+            // Use payment_status field, not status field
             const actualStatus = transactionData.payment_status || transactionData.status;
 
             // Determine status from transaction presence and status
             if (transactionUid && actualStatus === 'pending') {
               // Payment completed (we have transaction_uid), but webhook may not have fired yet
               finalStatus = 'success';
-              log.payment('Status set to success (pending + transaction_uid)');
             } else {
               // Use existing transaction status
               const statusMap = {
@@ -204,23 +162,14 @@ export default function PaymentResult() {
               };
 
               finalStatus = statusMap[actualStatus] || 'unknown';
-              log.payment('Status mapping result', {
-                originalStatus: actualStatus,
-                rawStatus: transactionData.status,
-                rawPaymentStatus: transactionData.payment_status,
-                mappedStatus: statusMap[actualStatus],
-                finalStatus: finalStatus
-              });
             }
 
             // Set the transaction as our order number for later lookup
             finalOrderNumber = transactionData.id;
           } else {
-            console.log('⚠️ No transaction found for payment_page_request_uid:', pageRequestUid);
             finalStatus = transactionUid ? 'success' : 'unknown';
           }
         } catch (searchError) {
-          console.error('Error searching for transaction by PayPlus UID:', searchError);
           finalStatus = transactionUid ? 'success' : 'unknown';
         }
       }
@@ -256,26 +205,12 @@ export default function PaymentResult() {
           }
           
           if (purchases.length > 0) {
-            // TODO remove debug - debug multi-product display issue
-            log.payment('Found purchases', {
-              count: purchases.length,
-              purchases: purchases
-            });
-
             // Track multi-product transaction state
             setTotalPurchases(purchases.length);
             setIsMultiProduct(purchases.length > 1);
 
             const purchaseData = purchases[0];
             setPurchase(purchaseData);
-
-            log.payment('Processing first purchase', {
-              purchase: purchaseData,
-              totalPurchases: purchases.length,
-              isMultiProduct: purchases.length > 1,
-              isPolymorphic: !!purchaseData.purchasable_type,
-              isLegacy: !!purchaseData.product_id
-            });
 
             // Load the associated item (product or game)
             // Handle both new polymorphic and legacy purchase structures
@@ -311,7 +246,7 @@ export default function PaymentResult() {
                 // Find the corresponding Product ID
                 await findProductId(entityType, entityId);
               } catch (itemError) {
-                console.error('❌ Error loading item:', itemError);
+                console.error('Error loading item:', itemError);
                 setError('לא ניתן לטעון את פרטי הפריט שנרכש');
               }
             } else if (purchaseData.product_id) {
