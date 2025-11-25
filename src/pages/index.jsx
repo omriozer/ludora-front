@@ -10,9 +10,7 @@ import TermsOfService from './TermsOfService';
 import Accessibility from './Accessibility';
 import Contact from './Contact';
 import SupportMessages from './SupportMessages';
-import PaymentSuccess from './PaymentSuccess';
 import PaymentResult from './PaymentResult';
-import PaymentResultIframe from './PaymentResultIframe';
 import VideoViewer from './VideoViewer';
 import LessonPlanPresentation from './LessonPlanPresentation';
 import Checkout from './Checkout';
@@ -30,7 +28,6 @@ import ContentCreatorPortal from './ContentCreatorPortal';
 import FeatureControl from './FeatureControl';
 import BrandSettings from './BrandSettings';
 import ProductSettings from './ProductSettings';
-import DevelopmentTools from './DevelopmentTools';
 import CategoryManagement from './CategoryManagement';
 import AudioManagement from './AudioManagement';
 import SubscriptionSettings from './SubscriptionSettings';
@@ -68,9 +65,7 @@ export {
   Accessibility,
   Contact,
   SupportMessages,
-  PaymentSuccess,
   PaymentResult,
-  PaymentResultIframe,
   VideoViewer,
   LessonPlanPresentation,
   Checkout,
@@ -88,7 +83,6 @@ export {
   FeatureControl,
   BrandSettings,
   ProductSettings,
-  DevelopmentTools,
   CategoryManagement,
   AudioManagement,
   SubscriptionSettings,

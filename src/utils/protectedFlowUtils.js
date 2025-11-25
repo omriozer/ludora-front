@@ -25,9 +25,7 @@ const MAX_DEFERRED_AGE_MS = 30 * 60 * 1000;
 const PROTECTED_ROUTES = [
   // Purchase and checkout flows
   '/checkout',
-  '/payment-success',
   '/payment-result',
-  '/payment-result-iframe',
 
   // Product details page (user may be trying to purchase)
   '/product-details',

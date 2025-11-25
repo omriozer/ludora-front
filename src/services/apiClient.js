@@ -685,6 +685,7 @@ ContentList.getContentItems = async function(listId) {
 export const ContentRelationship = new EntityAPI('contentrelationship');
 export const SubscriptionPlan = new EntityAPI('subscriptionplan');
 export const WebhookLog = new EntityAPI('webhooklog');
+export const Transaction = new EntityAPI('transaction');
 export const PendingSubscription = new EntityAPI('pendingsubscription');
 export const SubscriptionHistory = new EntityAPI('subscriptionhistory');
 export const GameSession = new EntityAPI('gamesession');

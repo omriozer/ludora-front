@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Game, Purchase, User, Workshop, Course, File, Tool, Product } from "@/services/entities";
+import { Game, Purchase, User, Workshop, Course, File, Tool, Product, Transaction } from "@/services/entities";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -132,54 +132,41 @@ export default function PaymentResult() {
 
       // Handle PayPlus redirect parameters
       if (pageRequestUid && !paymentStatus) {
-        console.log('🔍 PayPlus redirect detected, finding purchase by page_request_uid:', pageRequestUid);
+        console.log('🔍 PayPlus redirect detected, finding transaction by payment_page_request_uid:', pageRequestUid);
 
         try {
-          // Find purchase by PayPlus page_request_uid in metadata
-          const purchases = await Purchase.filter({
-            metadata: {
-              payplus_page_request_uid: pageRequestUid
-            }
+          // Find transaction by PayPlus payment_page_request_uid
+          const transactions = await Transaction.filter({
+            payment_page_request_uid: pageRequestUid
           });
 
-          if (purchases && purchases.length > 0) {
-            const purchaseData = purchases[0];
-            finalOrderNumber = purchaseData.metadata?.transaction_uid || purchaseData.id;
+          if (transactions && transactions.length > 0) {
+            const transactionData = transactions[0];
+            finalOrderNumber = transactionData.id;
 
-            // Determine status from purchase and transaction presence
-            if (transactionUid && purchaseData.payment_status === 'pending') {
+            // Determine status from transaction presence and status
+            if (transactionUid && transactionData.status === 'pending') {
               // Payment completed (we have transaction_uid), but webhook may not have fired yet
               finalStatus = 'success';
-
-              // Try to update purchase status in background (webhook fallback)
-              try {
-                await Purchase.update(purchaseData.id, {
-                  payment_status: 'completed',
-                  metadata: {
-                    ...purchaseData.metadata,
-                    transaction_uid: transactionUid,
-                    payment_completed_via_fallback: true,
-                    payment_completed_at: new Date().toISOString()
-                  }
-                });
-              } catch (updateError) {
-                console.error('Could not update purchase status via fallback:', updateError);
-              }
             } else {
-              // Use existing purchase status
+              // Use existing transaction status
               const statusMap = {
                 'completed': 'success',
                 'failed': 'failure',
                 'cancelled': 'cancel',
                 'pending': transactionUid ? 'success' : 'pending'
               };
-              finalStatus = statusMap[purchaseData.payment_status] || 'unknown';
+              finalStatus = statusMap[transactionData.status] || 'unknown';
             }
+
+            // Set the transaction as our order number for later lookup
+            finalOrderNumber = transactionData.id;
           } else {
+            console.log('⚠️ No transaction found for payment_page_request_uid:', pageRequestUid);
             finalStatus = transactionUid ? 'success' : 'unknown';
           }
         } catch (searchError) {
-          console.error('Error searching for purchase by PayPlus UID:', searchError);
+          console.error('Error searching for transaction by PayPlus UID:', searchError);
           finalStatus = transactionUid ? 'success' : 'unknown';
         }
       }
@@ -191,12 +178,23 @@ export default function PaymentResult() {
       // Current user is already available from global state via useUser()
 
       if (finalOrderNumber) {
-        // Find purchase by transaction_uid or purchase ID
+        // Find purchase by transaction_id, transaction_uid, or purchase ID
         try {
-          // First try to find by transaction_uid in metadata
-          let purchases = await Purchase.filter({
-            metadata: { transaction_uid: finalOrderNumber }
-          });
+          let purchases = [];
+
+          // First try to find by transaction_id (for new Transaction-based lookups)
+          if (finalOrderNumber.startsWith('txn_')) {
+            purchases = await Purchase.filter({
+              transaction_id: finalOrderNumber
+            });
+          }
+
+          // If not found, try by transaction_uid in metadata (legacy)
+          if (purchases.length === 0) {
+            purchases = await Purchase.filter({
+              metadata: { transaction_uid: finalOrderNumber }
+            });
+          }
 
           // If not found and finalOrderNumber looks like a purchase ID, try direct ID lookup
           if (purchases.length === 0 && finalOrderNumber.startsWith('pur_')) {
