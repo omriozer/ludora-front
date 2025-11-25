@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Game, Purchase, User, Workshop, Course, File, Tool, Product, Transaction } from "@/services/entities";
 import { purchaseUtils } from "@/utils/api.js";
+import { log, error } from '@/lib/logger';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -174,10 +175,19 @@ export default function PaymentResult() {
             const transactionData = transactions[0];
             finalOrderNumber = transactionData.id;
 
+            // TODO remove debug - debug transaction status mapping issue
+            log.payment('Transaction data found', { transactionData });
+            log.payment('Transaction status analysis', {
+              status: transactionData.status,
+              type: typeof transactionData.status,
+              hasTransactionUid: !!transactionUid
+            });
+
             // Determine status from transaction presence and status
             if (transactionUid && transactionData.status === 'pending') {
               // Payment completed (we have transaction_uid), but webhook may not have fired yet
               finalStatus = 'success';
+              log.payment('Status set to success (pending + transaction_uid)');
             } else {
               // Use existing transaction status
               const statusMap = {
@@ -186,7 +196,13 @@ export default function PaymentResult() {
                 'cancelled': 'cancel',
                 'pending': transactionUid ? 'success' : 'pending'
               };
+
               finalStatus = statusMap[transactionData.status] || 'unknown';
+              log.payment('Status mapping result', {
+                originalStatus: transactionData.status,
+                mappedStatus: statusMap[transactionData.status],
+                finalStatus: finalStatus
+              });
             }
 
             // Set the transaction as our order number for later lookup
@@ -232,8 +248,20 @@ export default function PaymentResult() {
           }
           
           if (purchases.length > 0) {
+            // TODO remove debug - debug multi-product display issue
+            log.payment('Found purchases', {
+              count: purchases.length,
+              purchases: purchases
+            });
+
             const purchaseData = purchases[0];
             setPurchase(purchaseData);
+
+            log.payment('Processing first purchase', {
+              purchase: purchaseData,
+              isPolymorphic: !!purchaseData.purchasable_type,
+              isLegacy: !!purchaseData.product_id
+            });
 
             // Load the associated item (product or game)
             // Handle both new polymorphic and legacy purchase structures
