@@ -50,11 +50,7 @@ export default function PaymentResult() {
       const countdownInterval = setInterval(() => {
         setAutoRedirectSeconds(prev => {
           if (prev === 1) {
-            // Redirect to product details page using the correct Product ID
-            const redirectProductId = productId || purchase.product_id;
-            if (redirectProductId) {
-              navigate(`/product/${redirectProductId}`);
-            }
+            handleAutoRedirect();
             return 0;
           }
           return prev - 1;
@@ -64,6 +60,37 @@ export default function PaymentResult() {
       return () => clearInterval(countdownInterval);
     }
   }, [status, purchase, item, isLoading, navigate]);
+
+  const handleAutoRedirect = async () => {
+    try {
+      // Check if this is part of a multi-product transaction
+      if (purchase?.transaction_id) {
+        // Find all purchases with the same transaction_id
+        const relatedPurchases = await Purchase.filter({
+          transaction_id: purchase.transaction_id
+        });
+
+        if (relatedPurchases && relatedPurchases.length > 1) {
+          // Multiple products - redirect to account page
+          navigate('/account');
+          return;
+        }
+      }
+
+      // Single product - redirect to product details page
+      const redirectProductId = productId || purchase.product_id;
+      if (redirectProductId) {
+        navigate(`/product/${redirectProductId}`);
+      } else {
+        // Fallback to account page if no product ID found
+        navigate('/account');
+      }
+    } catch (error) {
+      cerror('Error determining redirect destination:', error);
+      // Fallback to account page on error
+      navigate('/account');
+    }
+  };
 
   const findProductId = async (entityType, entityId) => {
     try {
