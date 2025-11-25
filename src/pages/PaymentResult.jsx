@@ -37,6 +37,8 @@ export default function PaymentResult() {
   const [isFree, setIsFree] = useState(false);
   const [autoRedirectSeconds, setAutoRedirectSeconds] = useState(null);
   const [productId, setProductId] = useState(null);
+  const [totalPurchases, setTotalPurchases] = useState(1);
+  const [isMultiProduct, setIsMultiProduct] = useState(false);
 
   useEffect(() => {
     loadPaymentResult();
@@ -179,12 +181,16 @@ export default function PaymentResult() {
             log.payment('Transaction data found', { transactionData });
             log.payment('Transaction status analysis', {
               status: transactionData.status,
-              type: typeof transactionData.status,
+              payment_status: transactionData.payment_status,
+              type: typeof transactionData.payment_status,
               hasTransactionUid: !!transactionUid
             });
 
+            // BUG FIX: Use payment_status field, not status field
+            const actualStatus = transactionData.payment_status || transactionData.status;
+
             // Determine status from transaction presence and status
-            if (transactionUid && transactionData.status === 'pending') {
+            if (transactionUid && actualStatus === 'pending') {
               // Payment completed (we have transaction_uid), but webhook may not have fired yet
               finalStatus = 'success';
               log.payment('Status set to success (pending + transaction_uid)');
@@ -197,10 +203,12 @@ export default function PaymentResult() {
                 'pending': transactionUid ? 'success' : 'pending'
               };
 
-              finalStatus = statusMap[transactionData.status] || 'unknown';
+              finalStatus = statusMap[actualStatus] || 'unknown';
               log.payment('Status mapping result', {
-                originalStatus: transactionData.status,
-                mappedStatus: statusMap[transactionData.status],
+                originalStatus: actualStatus,
+                rawStatus: transactionData.status,
+                rawPaymentStatus: transactionData.payment_status,
+                mappedStatus: statusMap[actualStatus],
                 finalStatus: finalStatus
               });
             }
@@ -254,11 +262,17 @@ export default function PaymentResult() {
               purchases: purchases
             });
 
+            // Track multi-product transaction state
+            setTotalPurchases(purchases.length);
+            setIsMultiProduct(purchases.length > 1);
+
             const purchaseData = purchases[0];
             setPurchase(purchaseData);
 
             log.payment('Processing first purchase', {
               purchase: purchaseData,
+              totalPurchases: purchases.length,
+              isMultiProduct: purchases.length > 1,
               isPolymorphic: !!purchaseData.purchasable_type,
               isLegacy: !!purchaseData.product_id
             });
@@ -381,9 +395,12 @@ export default function PaymentResult() {
         return 'המוצר נוסף לחשבון שלך. תוכל לגשת אליו עכשיו!';
       }
     }
-    
+
     switch (status) {
       case 'success':
+        if (isMultiProduct) {
+          return `תודה על הרכישה! ${totalPurchases} מוצרים זמינים עכשיו בחשבון שלך.`;
+        }
         return 'תודה על הרכישה! המוצר זמין עכשיו בחשבון שלך.';
       case 'failure':
         return 'התשלום לא הושלם. אנא נסה שוב או פנה לתמיכה.';
@@ -621,7 +638,14 @@ export default function PaymentResult() {
                 <div className="flex items-start gap-3">
                   {getItemIcon()}
                   <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900">{item.title}</h3>
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-semibold text-gray-900">{item.title}</h3>
+                      {isMultiProduct && (
+                        <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full">
+                          1 מתוך {totalPurchases}
+                        </span>
+                      )}
+                    </div>
                     {item.short_description && (
                       <p className="text-sm text-gray-600 mt-1">{item.short_description}</p>
                     )}
@@ -647,6 +671,13 @@ export default function PaymentResult() {
                         </span>
                       )}
                     </div>
+                    {isMultiProduct && (
+                      <div className="mt-3 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-400">
+                        <p className="text-sm text-blue-800">
+                          <strong>רכישה מרובת מוצרים:</strong> זהו אחד מ-{totalPurchases} המוצרים שרכשת. לצפייה בכל המוצרים עבור לחשבון שלך.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
