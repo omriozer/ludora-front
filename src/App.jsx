@@ -18,7 +18,7 @@ import { AuthErrorProvider } from '@/components/providers/AuthErrorProvider';
 import { AudioCacheProvider } from '@/contexts/AudioCacheContext';
 import { PRODUCT_TYPES } from './config/productTypes';
 import OnboardingWizard from '@/components/onboarding/OnboardingWizard';
-import { toast } from '@/components/ui/use-toast';
+import { showSuccess, showError } from '@/utils/messaging';
 import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
 // Student Portal
 import { isStudentPortal } from '@/utils/domainUtils';
@@ -393,22 +393,20 @@ function App() {
 		const params = new URLSearchParams(location.search);
 
 		if (params.get('subscription_success') === 'true') {
-			toast({
-				variant: "default",
-				title: "תשלום המנוי הושלם בהצלחה!",
-				description: "המנוי שלך מתעדכן במערכת. ייתכן שיידרש רענון הדף לראות את השינויים."
-			});
+			showSuccess(
+				"תשלום המנוי הושלם בהצלחה!",
+				"המנוי שלך מתעדכן במערכת. ייתכן שיידרש רענון הדף לראות את השינויים."
+			);
 			// Clean up URL parameter
 			const newUrl = window.location.pathname;
 			window.history.replaceState({}, '', newUrl);
 		}
 
 		if (params.get('subscription_failed') === 'true') {
-			toast({
-				variant: "destructive",
-				title: "תשלום המנוי נכשל",
-				description: "התשלום לא הושלם בהצלחה. אנא נסה שוב או פנה לתמיכה."
-			});
+			showError(
+				"תשלום המנוי נכשל",
+				"התשלום לא הושלם בהצלחה. אנא נסה שוב או פנה לתמיכה."
+			);
 			// Clean up URL parameter
 			const newUrl = window.location.pathname;
 			window.history.replaceState({}, '', newUrl);
