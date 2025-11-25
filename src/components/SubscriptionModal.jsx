@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { getProductTypeName } from "@/config/productTypes";
 import { useToast } from "@/components/ui/use-toast";
 import LudoraLoadingSpinner from "@/components/ui/LudoraLoadingSpinner";
-import PayPlusEnvironmentSelector from "@/components/PayPlusEnvironmentSelector";
 import useSubscriptionState from "@/hooks/useSubscriptionState";
 import SubscriptionBusinessLogic from "@/services/SubscriptionBusinessLogic";
 import { User, SubscriptionHistory } from "@/services/entities";
@@ -51,7 +50,6 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
   // Legacy payment states - kept for compatibility with existing payment modal
   const [paymentInProgress, setPaymentInProgress] = useState(false);
   const [pendingMessage, setPendingMessage] = useState('');
-  const [paymentEnvironment, setPaymentEnvironment] = useState('production');
 
   // Payment modal states (using Portal)
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -691,17 +689,6 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
                   </div>
                 </div>
 
-                {/* PayPlus Environment Selector */}
-                <div className="bg-white border-b border-gray-200 py-6">
-                  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <PayPlusEnvironmentSelector
-                      value={paymentEnvironment}
-                      onChange={setPaymentEnvironment}
-                      user={currentUser}
-                      disabled={processing || paymentInProgress}
-                    />
-                  </div>
-                </div>
 
                 {/* Main Content */}
                 <div className="flex-1 py-12">

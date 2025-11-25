@@ -44,7 +44,6 @@ import { toast } from "@/components/ui/use-toast";
 import { useCart } from "@/contexts/CartContext";
 import CouponInput from "@/components/CouponInput";
 import couponClient from "@/services/couponClient";
-import PayPlusEnvironmentSelector from "@/components/PayPlusEnvironmentSelector";
 import { clog, cerror } from "@/lib/utils";
 
 
@@ -58,7 +57,6 @@ export default function Checkout() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
-  const [paymentEnvironment, setPaymentEnvironment] = useState('production');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentUrl, setPaymentUrl] = useState('');
   const [isIframeLoading, setIsIframeLoading] = useState(true);
@@ -327,7 +325,6 @@ export default function Checkout() {
     try {
       const paymentResponse = await createPayplusPaymentPage({
         cartItems: cartItems,
-        environment: paymentEnvironment,
         frontendOrigin: 'cart'
       });
 
@@ -632,13 +629,6 @@ export default function Checkout() {
                     />
                   </div>
 
-                  {/* PayPlus Environment Selector */}
-                  <PayPlusEnvironmentSelector
-                    value={paymentEnvironment}
-                    onChange={setPaymentEnvironment}
-                    user={currentUser}
-                    disabled={isProcessingPayment}
-                  />
 
                   {/* Payment Button */}
                   <Button
@@ -658,11 +648,6 @@ export default function Checkout() {
                       <>
                         <CreditCard className="w-6 h-6 ml-3" />
                         {checkoutTexts.proceedToPayment} (₪{pricingBreakdown.total.toFixed(2)})
-                        {currentUser?.role === 'admin' && (
-                          <span className="text-xs opacity-80 mr-2">
-                            [{paymentEnvironment === 'production' ? 'LIVE' : 'TEST'}]
-                          </span>
-                        )}
                       </>
                     )}
                   </Button>
