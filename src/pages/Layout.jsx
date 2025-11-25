@@ -251,7 +251,7 @@ function LayoutContent({ children }) {
 
   // Show maintenance page if enabled OR if settings loading failed (but allow admins to bypass)
   // IMPORTANT: Check maintenance/error state BEFORE loading state to prevent infinite spinner
-  if (true || (settings?.maintenance_mode || settingsLoadFailed) && !canAdminBypass) {
+  if ((settings?.maintenance_mode || settingsLoadFailed) && !canAdminBypass) {
     const isTemporaryIssue = settingsLoadFailed && !settings?.maintenance_mode;
 
     // Show loading while checking admin bypass
@@ -272,7 +272,19 @@ function LayoutContent({ children }) {
       <>
 
         <MaintenancePage
-          onAnonymousAdminSuccess={() => setCanAdminBypass(true)}
+          onAnonymousAdminSuccess={async () => {
+            // Re-check admin bypass status after anonymous admin login
+            setIsCheckingAdminBypass(true);
+            try {
+              const canBypass = await canBypassMaintenance(currentUser);
+              setCanAdminBypass(canBypass);
+            } catch (error) {
+              console.warn('Error re-checking admin bypass after anonymous login:', error);
+              setCanAdminBypass(false);
+            } finally {
+              setIsCheckingAdminBypass(false);
+            }
+          }}
           showReturnButton={showReturnButton}
           isDraggingReturn={isDraggingReturn}
           returnButtonPosition={returnButtonPosition}

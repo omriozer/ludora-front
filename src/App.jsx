@@ -203,8 +203,18 @@ function StudentPortal() {
 	};
 
 	// Handle successful anonymous admin authentication
-	const handleAnonymousAdminSuccess = () => {
-		setCanAdminBypass(true);
+	const handleAnonymousAdminSuccess = async () => {
+		// Re-check admin bypass status after anonymous admin login
+		setIsCheckingAdminBypass(true);
+		try {
+			const canBypass = await canBypassMaintenance(currentUser);
+			setCanAdminBypass(canBypass);
+		} catch (error) {
+			console.warn('Error re-checking admin bypass after anonymous login:', error);
+			setCanAdminBypass(false);
+		} finally {
+			setIsCheckingAdminBypass(false);
+		}
 	};
 
 	// Show maintenance page if enabled OR if settings loading failed (but allow admins to bypass)
