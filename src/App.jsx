@@ -517,18 +517,6 @@ function App() {
 						}
 					/>
 					<Route
-						path='/payment-success'
-						element={
-							<ProtectedRoute>
-								<OnboardingRedirect>
-									<Suspense fallback={<SuspenseLoader />}>
-										<LazyPages.PaymentSuccess />
-									</Suspense>
-								</OnboardingRedirect>
-							</ProtectedRoute>
-						}
-					/>
-					<Route
 						path='/payment-result'
 						element={
 							<ProtectedRoute>
@@ -538,14 +526,6 @@ function App() {
 									</Suspense>
 								</OnboardingRedirect>
 							</ProtectedRoute>
-						}
-					/>
-					<Route
-						path='/payment-result-iframe'
-						element={
-							<Suspense fallback={<SuspenseLoader />}>
-								<LazyPages.PaymentResultIframe />
-							</Suspense>
 						}
 					/>
 					<Route

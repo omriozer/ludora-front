@@ -20,7 +20,6 @@ import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { PRODUCT_TYPES, getProductTypeName } from "@/config/productTypes";
 import { useUser } from "@/contexts/UserContext";
-import { cerror, clog } from "@/lib/utils";
 import { toast } from "@/components/ui/use-toast";
 
 export default function PaymentResult() {
@@ -86,7 +85,7 @@ export default function PaymentResult() {
         navigate('/account');
       }
     } catch (error) {
-      cerror('Error determining redirect destination:', error);
+      console.error('Error determining redirect destination:', error);
       // Fallback to account page on error
       navigate('/account');
     }
@@ -94,7 +93,7 @@ export default function PaymentResult() {
 
   const findProductId = async (entityType, entityId) => {
     try {
-      clog(`🔍 Finding Product ID for ${entityType}:`, entityId);
+      console.log(`🔍 Finding Product ID for ${entityType}:`, entityId);
 
       // Search for Product with matching product_type and entity_id
       const products = await Product.filter({
@@ -105,12 +104,12 @@ export default function PaymentResult() {
       if (products && products.length > 0) {
         const foundProductId = products[0].id;
         setProductId(foundProductId);
-        clog(`✅ Found Product ID:`, foundProductId);
+        console.log(`✅ Found Product ID:`, foundProductId);
       } else {
-        clog(`⚠️ No Product found for ${entityType}:${entityId}`);
+        console.log(`⚠️ No Product found for ${entityType}:${entityId}`);
       }
     } catch (error) {
-      cerror('❌ Error finding Product ID:', error);
+      console.error('❌ Error finding Product ID:', error);
     }
   };
 
@@ -133,7 +132,7 @@ export default function PaymentResult() {
 
       // Handle PayPlus redirect parameters
       if (pageRequestUid && !paymentStatus) {
-        clog('🔍 PayPlus redirect detected, finding purchase by page_request_uid:', pageRequestUid);
+        console.log('🔍 PayPlus redirect detected, finding purchase by page_request_uid:', pageRequestUid);
 
         try {
           // Find purchase by PayPlus page_request_uid in metadata
@@ -164,7 +163,7 @@ export default function PaymentResult() {
                   }
                 });
               } catch (updateError) {
-                cerror('Could not update purchase status via fallback:', updateError);
+                console.error('Could not update purchase status via fallback:', updateError);
               }
             } else {
               // Use existing purchase status
@@ -180,7 +179,7 @@ export default function PaymentResult() {
             finalStatus = transactionUid ? 'success' : 'unknown';
           }
         } catch (searchError) {
-          cerror('Error searching for purchase by PayPlus UID:', searchError);
+          console.error('Error searching for purchase by PayPlus UID:', searchError);
           finalStatus = transactionUid ? 'success' : 'unknown';
         }
       }
@@ -242,7 +241,7 @@ export default function PaymentResult() {
                 // Find the corresponding Product ID
                 await findProductId(entityType, entityId);
               } catch (itemError) {
-                cerror('❌ Error loading item:', itemError);
+                console.error('❌ Error loading item:', itemError);
                 setError('לא ניתן לטעון את פרטי הפריט שנרכש');
               }
             } else if (purchaseData.product_id) {
@@ -258,30 +257,30 @@ export default function PaymentResult() {
                 }
                 setItem(itemData);
               } catch (itemError) {
-                cerror('Error loading item:', itemError);
+                console.error('Error loading item:', itemError);
                 // Try Game as fallback for legacy data
                 try {
                   const fallbackItem = await Game.findById(purchaseData.product_id);
                   setItem(fallbackItem);
                   setItemType('game');
                 } catch (fallbackError) {
-                  cerror('Fallback also failed:', fallbackError);
+                  console.error('Fallback also failed:', fallbackError);
                   setError('לא ניתן לטעון את פרטי המוצר');
                 }
               }
             }
           } else {
-            cerror('Purchase not found for order:', finalOrderNumber);
+            console.error('Purchase not found for order:', finalOrderNumber);
             setError('רכישה לא נמצאה');
           }
         } catch (purchaseError) {
-          cerror('Error finding purchase:', purchaseError);
+          console.error('Error finding purchase:', purchaseError);
           setError('שגיאה בחיפוש הרכישה');
         }
       }
 
     } catch (error) {
-      cerror('Error loading payment result:', error);
+      console.error('Error loading payment result:', error);
       setError('שגיאה בטעינת תוצאות התשלום');
     }
     

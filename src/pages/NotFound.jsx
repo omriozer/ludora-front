@@ -80,6 +80,15 @@ export default function NotFound() {
     });
   }
 
+  if (shouldShowNavItem('lesson_plans')) {
+    availablePages.push({
+      title: settings?.nav_lesson_plans_text || getProductTypeName('lesson_plan', 'plural'),
+      url: PRODUCT_TYPES.lesson_plan.url,
+      icon: BookOpen,
+      description: `${getProductTypeName('lesson_plan', 'plural')} מוכנים עם מצגות ונכסים`
+    });
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/40 to-blue-50/60 flex items-center justify-center p-4">
       <div className="max-w-4xl w-full text-center">
