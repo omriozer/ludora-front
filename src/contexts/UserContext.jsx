@@ -223,9 +223,9 @@ export function UserProvider({ children }) {
     }
   }, [needsOnboarding]);
 
-  const login = useCallback(async (userData, rememberMe = false) => {
+  const login = useCallback(async (userData) => {
     try {
-      const result = await authManager.loginFirebase(userData, rememberMe);
+      const result = await authManager.loginFirebase(userData);
 
       // Show success message
       toast({

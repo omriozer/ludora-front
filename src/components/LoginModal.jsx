@@ -18,7 +18,6 @@ export default function LoginModal({ onClose, onLogin, message }) {
   const [isPlayerLoggingIn, setIsPlayerLoggingIn] = useState(false);
   const [error, setError] = useState('');
   const [playerError, setPlayerError] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
   const [privacyCode, setPrivacyCode] = useState('');
 
   const handleGoogleSignIn = async () => {
@@ -27,7 +26,7 @@ export default function LoginModal({ onClose, onLogin, message }) {
     setPlayerError(''); // Clear player errors when switching to user login
 
     try {
-      await onLogin(rememberMe);
+      await onLogin();
       // Don't call onClose() here - let the parent component handle modal closing
     } catch (err) {
       cerror('Google sign-in error:', err);
@@ -68,7 +67,6 @@ export default function LoginModal({ onClose, onLogin, message }) {
       onClose();
       // Execute any pending retry callback if this was triggered by auth error handler
       if (onLogin && typeof onLogin === 'function') {
-        // Call with no arguments since this is player auth, not user auth with rememberMe
         onLogin();
       }
     } catch (err) {
@@ -155,22 +153,6 @@ export default function LoginModal({ onClose, onLogin, message }) {
               </>
             )}
           </Button>
-
-          {/* Remember Me Checkbox */}
-          <div className="flex items-center space-x-2 rtl:space-x-reverse">
-            <Checkbox
-              id="remember-me"
-              className="me-2"
-              checked={rememberMe}
-              onCheckedChange={setRememberMe}
-            />
-            <Label
-              htmlFor="remember-me"
-              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-            >
-              זכור אותי במחשב זה
-            </Label>
-          </div>
 
           {/* Conditionally show player login section - hide during maintenance mode */}
           {!settings?.maintenance_mode && (

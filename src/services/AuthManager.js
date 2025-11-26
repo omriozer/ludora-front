@@ -419,7 +419,7 @@ export class AuthManager {
    * from /auth/me to get computed fields like onboarding_completed.
    * The /auth/verify endpoint only returns basic user info without computed fields.
    */
-  async loginFirebase(userData, _rememberMe = false) {
+  async loginFirebase(userData) {
     try {
       // Firebase login is handled by Firebase SDK and cookies are set
       // Now we need to fetch the COMPLETE user data from /auth/me

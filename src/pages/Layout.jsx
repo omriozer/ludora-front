@@ -199,7 +199,7 @@ function LayoutContent({ children }) {
   };
 
   // Login handler
-  const handleLoginSubmit = async (rememberMe = false) => {
+  const handleLoginSubmit = async () => {
     try {
       // Use the firebaseAuth helper for Google sign-in
       const { user, idToken } = await firebaseAuth.signInWithGoogle();
@@ -208,7 +208,7 @@ function LayoutContent({ children }) {
       const apiResult = await loginWithFirebase({ idToken: firebaseResult.idToken });
 
       if (apiResult.valid && apiResult.user) {
-        await login(apiResult.user, rememberMe);
+        await login(apiResult.user);
 
         showSuccess('התחברת בהצלחה!');
 
