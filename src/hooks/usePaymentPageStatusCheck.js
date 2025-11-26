@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { apiRequest } from '@/services/apiClient';
 import { Purchase } from '@/services/entities';
 import { toast } from '@/components/ui/use-toast';
@@ -6,6 +6,8 @@ import { toast } from '@/components/ui/use-toast';
 // GLOBAL REQUEST DEDUPLICATION: Prevent multiple simultaneous calls to same API
 let globalRequestPromise = null;
 let globalRequestTime = 0;
+
+// DEBOUNCING: Prevent rapid-fire calls
 let debounceTimer = null;
 
 /**
@@ -35,7 +37,7 @@ export const usePaymentPageStatusCheck = (options = {}) => {
   const [error, setError] = useState(null);
 
   /**
-   * Check payment page status for user's pending payments
+   * Check payment page status for user's pending payments (DEBOUNCED & DEDUPLICATED)
    */
   const checkPaymentPageStatus = useCallback(async () => {
     if (!enabled || isChecking) {
@@ -43,18 +45,17 @@ export const usePaymentPageStatusCheck = (options = {}) => {
     }
 
     // DEBOUNCING: Clear any existing timer and set new one
-    return new Promise((resolve, reject) => {
-      if (debounceTimer) {
-        clearTimeout(debounceTimer);
-      }
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+    }
 
+    return new Promise((resolve, reject) => {
       debounceTimer = setTimeout(async () => {
         try {
+          // GLOBAL DEDUPLICATION: Check if request is already in progress
           const now = Date.now();
-
-          // GLOBAL REQUEST DEDUPLICATION: Check if request is already in progress
-          if (globalRequestPromise && (now - globalRequestTime) < 5000) { // 5 second window
-            console.log('🔄 usePaymentPageStatusCheck: Using existing request in progress...');
+          if (globalRequestPromise && (now - globalRequestTime) < 5000) {
+            console.log('🔍 usePaymentPageStatusCheck: Using existing API request (deduplication)');
             const result = await globalRequestPromise;
             resolve(result);
             return;
@@ -62,18 +63,21 @@ export const usePaymentPageStatusCheck = (options = {}) => {
 
           setIsChecking(true);
           setError(null);
+
+          console.log('🔍 usePaymentPageStatusCheck: Starting new payment page status check...');
+
+          // Create new global request
           globalRequestTime = now;
-
-          console.log('🔍 usePaymentPageStatusCheck: Checking payment page status...');
-
-          // Create and store global request promise
           globalRequestPromise = apiRequest('/api/payments/check-payment-page-status', {
             method: 'POST'
           });
 
           const response = await globalRequestPromise;
 
-          console.log('✅ Payment page status check completed:', response.summary);
+          // Clear global request after completion
+          globalRequestPromise = null;
+
+              console.log('✅ Payment page status check completed:', response.summary);
 
           setStatusSummary(response.summary);
           setPendingCount(response.summary.total_pending);
@@ -115,42 +119,42 @@ export const usePaymentPageStatusCheck = (options = {}) => {
             console.warn(`⚠️ ${response.summary.errors} payment status checks had errors`);
           }
 
-          // Clear global request after successful completion
-          globalRequestPromise = null;
+          setIsChecking(false);
           resolve(response);
-          return response;
 
         } catch (err) {
+          // Clear global request on error
+          globalRequestPromise = null;
+
           console.error('❌ Error checking payment page status:', err);
           setError(err.message);
+          setIsChecking(false);
 
-          // Handle rate limit errors gracefully
-          if (err.message?.includes('429') || err.message?.includes('Too Many Requests')) {
-            console.log('⏳ Rate limited - will retry later');
+          // Handle rate limiting gracefully
+          if (err.response?.status === 429) {
+            console.log('⏳ Rate limited, will retry later');
             if (showToasts) {
               toast({
-                title: "בדיקת סטטוס מעוכבת",
-                description: "נבדוק שוב בעוד כמה דקות",
+                title: "בדיקת תשלום מוגבלת זמנית",
+                description: "יותר מדי בדיקות - ננסה שוב בקרוב",
                 variant: "default"
               });
             }
-          } else if (showToasts) {
-            toast({
-              title: "שגיאה בבדיקת סטטוס תשלום",
-              description: "לא ניתן לבדוק את סטטוס התשלומים הממתינים",
-              variant: "destructive"
-            });
+          } else {
+            if (showToasts) {
+              toast({
+                title: "שגיאה בבדיקת סטטוס תשלום",
+                description: "לא ניתן לבדוק את סטטוס התשלומים הממתינים",
+                variant: "destructive"
+              });
+            }
           }
 
-          // Clear global request on error
-          globalRequestPromise = null;
           reject(err);
-        } finally {
-          setIsChecking(false);
         }
       }, 2000); // 2 second debounce delay
     });
-  }, [enabled, onStatusUpdate, showToasts]); // FIX: Removed isChecking from dependencies to prevent infinite loops
+  }, [enabled, onStatusUpdate, showToasts]); // FIX: Removed isChecking from deps to prevent infinite loop
 
   /**
    * Get user's current pending purchases count
@@ -170,7 +174,19 @@ export const usePaymentPageStatusCheck = (options = {}) => {
     }
   }, []);
 
-  // Run initial check on mount
+  // Use refs to avoid dependency issues
+  const enabledRef = useRef(enabled);
+  const onStatusUpdateRef = useRef(onStatusUpdate);
+  const showToastsRef = useRef(showToasts);
+
+  // Update refs when props change
+  useEffect(() => {
+    enabledRef.current = enabled;
+    onStatusUpdateRef.current = onStatusUpdate;
+    showToastsRef.current = showToasts;
+  });
+
+  // Run initial check on mount (FIXED: No function dependencies)
   useEffect(() => {
     if (enabled) {
       // First get pending count quickly
@@ -186,9 +202,9 @@ export const usePaymentPageStatusCheck = (options = {}) => {
         }
       });
     }
-  }, [enabled]); // FIX: Removed callback functions to prevent infinite loops
+  }, [enabled]); // FIXED: Only depend on enabled, not functions
 
-  // Set up interval checking if requested
+  // Set up interval checking if requested (FIXED: No function dependencies)
   useEffect(() => {
     if (enabled && checkInterval && checkInterval > 0) {
       const intervalId = setInterval(() => {
@@ -201,7 +217,7 @@ export const usePaymentPageStatusCheck = (options = {}) => {
 
       return () => clearInterval(intervalId);
     }
-  }, [enabled, checkInterval]); // FIX: Removed callback functions to prevent infinite loops
+  }, [enabled, checkInterval]); // FIXED: Only depend on primitive values, not functions
 
   return {
     // State
