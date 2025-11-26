@@ -256,23 +256,40 @@ export default function PaymentResult() {
         try {
           let purchases = [];
 
+          clog('PaymentResult: Searching for purchases with order number:', finalOrderNumber);
+
           // First try to find by transaction_id (for new Transaction-based lookups)
           if (finalOrderNumber.startsWith('txn_')) {
-            purchases = await Purchase.filter({
-              transaction_id: finalOrderNumber
-            });
+            try {
+              purchases = await Purchase.filter({
+                transaction_id: finalOrderNumber
+              });
+              clog('PaymentResult: Found purchases by transaction_id:', purchases.length);
+            } catch (txnError) {
+              cerror('PaymentResult: Error searching by transaction_id:', txnError);
+            }
           }
 
           // If not found, try by transaction_uid in metadata (legacy)
           if (purchases.length === 0) {
-            purchases = await Purchase.filter({
-              metadata: { transaction_uid: finalOrderNumber }
-            });
+            try {
+              purchases = await Purchase.filter({
+                metadata: { transaction_uid: finalOrderNumber }
+              });
+              clog('PaymentResult: Found purchases by transaction_uid:', purchases.length);
+            } catch (metadataError) {
+              cerror('PaymentResult: Error searching by metadata transaction_uid:', metadataError);
+            }
           }
 
           // If not found and finalOrderNumber looks like a purchase ID, try direct ID lookup
           if (purchases.length === 0 && finalOrderNumber.startsWith('pur_')) {
-            purchases = await Purchase.filter({ id: finalOrderNumber });
+            try {
+              purchases = await Purchase.filter({ id: finalOrderNumber });
+              clog('PaymentResult: Found purchases by direct ID:', purchases.length);
+            } catch (directError) {
+              cerror('PaymentResult: Error searching by direct ID:', directError);
+            }
           }
           
           if (purchases.length > 0) {
@@ -288,9 +305,11 @@ export default function PaymentResult() {
             if (purchaseData.purchasable_type && purchaseData.purchasable_id) {
               // New polymorphic structure
               try {
-                let itemData;
+                let itemData = null;
                 const entityType = purchaseData.purchasable_type;
                 const entityId = purchaseData.purchasable_id;
+
+                clog('PaymentResult: Loading item data for:', { entityType, entityId });
 
                 switch (entityType) {
                   case 'workshop':
@@ -309,16 +328,37 @@ export default function PaymentResult() {
                     itemData = await Game.findById(entityId);
                     break;
                   default:
-                    throw new Error(`Unknown entity type: ${entityType}`);
+                    cerror('PaymentResult: Unknown entity type:', entityType);
+                    // Don't throw error - just set a placeholder
+                    itemData = {
+                      id: entityId,
+                      title: `${entityType} (${entityId})`,
+                      short_description: 'פרטי המוצר זמינים בחשבון שלך'
+                    };
                 }
-                setItem(itemData);
-                setItemType(entityType);
 
-                // Find the corresponding Product ID
-                await findProductId(entityType, entityId);
+                if (itemData) {
+                  setItem(itemData);
+                  setItemType(entityType);
+                  clog('PaymentResult: Item loaded successfully:', itemData.title);
+
+                  // Find the corresponding Product ID (non-blocking)
+                  try {
+                    await findProductId(entityType, entityId);
+                  } catch (productIdError) {
+                    cerror('PaymentResult: Error finding product ID (non-critical):', productIdError);
+                  }
+                } else {
+                  cerror('PaymentResult: No item data returned for:', { entityType, entityId });
+                  // Don't set error - payment was successful, just item details missing
+                }
               } catch (itemError) {
-                error.payment('Error loading item', itemError, { entityType, entityId });
-                setError('לא ניתן לטעון את פרטי הפריט שנרכש');
+                cerror('PaymentResult: Error loading item:', itemError, { entityType, entityId });
+                // Don't break the flow - payment was successful
+                setItem({
+                  title: 'מוצר שנרכש',
+                  short_description: 'פרטי המוצר זמינים בחשבון שלך'
+                });
               }
             } else if (purchaseData.product_id) {
               // Legacy structure - try different entities
@@ -346,18 +386,65 @@ export default function PaymentResult() {
               }
             }
           } else {
-            error.payment('Purchase not found for order', null, { finalOrderNumber });
-            setError('רכישה לא נמצאה');
+            cerror('PaymentResult: Purchase not found for order:', { finalOrderNumber });
+            // For PayPlus redirects, don't show error if we have transaction_uid (payment likely successful)
+            if (transactionUid && finalStatus === 'success') {
+              clog('PaymentResult: Payment successful but purchase not found yet - may be processing');
+              setItem({
+                title: 'תשלום הושלם בהצלחה',
+                short_description: 'המוצר יופיע בחשבון שלך בקרוב'
+              });
+            } else {
+              setError('רכישה לא נמצאה');
+            }
           }
         } catch (purchaseError) {
-          error.payment('Error finding purchase', purchaseError, { finalOrderNumber });
-          setError('שגיאה בחיפוש הרכישה');
+          cerror('PaymentResult: Error finding purchase:', purchaseError, { finalOrderNumber });
+          // For PayPlus redirects, be more forgiving with errors if payment seemed successful
+          if (transactionUid && finalStatus === 'success') {
+            clog('PaymentResult: Payment successful but purchase lookup failed - may be processing');
+            setItem({
+              title: 'תשלום הושלם בהצלחה',
+              short_description: 'המוצר יופיע בחשבון שלך בקרוב'
+            });
+          } else {
+            setError('שגיאה בחיפוש הרכישה');
+          }
+        }
+      } else {
+        // No order number at all
+        cerror('PaymentResult: No order number found in URL parameters');
+        if (finalStatus === 'success') {
+          clog('PaymentResult: Success status without order number - showing generic success');
+          setItem({
+            title: 'תשלום הושלם בהצלחה',
+            short_description: 'המוצר יופיע בחשבון שלך בקרוב'
+          });
+        } else {
+          setError('חסרים פרמטרי תשלום');
         }
       }
 
     } catch (err) {
-      error.payment('Error loading payment result', err);
-      setError('שגיאה בטעינת תוצאות התשלום');
+      cerror('PaymentResult: Error loading payment result:', err);
+
+      // Check if we have any indicators that payment was successful
+      const urlParams = new URLSearchParams(window.location.search);
+      const transactionUid = urlParams.get('transaction_uid');
+      const paymentStatus = urlParams.get('status');
+
+      if (transactionUid || paymentStatus === 'success') {
+        // Payment seems successful - show optimistic message instead of error
+        clog('PaymentResult: Error occurred but payment indicators suggest success');
+        setStatus('success');
+        setItem({
+          title: 'תשלום הושלם בהצלחה',
+          short_description: 'המוצר יופיע בחשבון שלך בקרוב. אם יש בעיה, פנה לתמיכה.'
+        });
+      } else {
+        // No success indicators - show error
+        setError('שגיאה בטעינת תוצאות התשלום');
+      }
     }
     
     setIsLoading(false);
