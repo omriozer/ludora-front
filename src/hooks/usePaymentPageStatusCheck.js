@@ -1,7 +1,14 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { apiRequest } from '@/services/apiClient';
 import { Purchase } from '@/services/entities';
 import { toast } from '@/components/ui/use-toast';
+
+// GLOBAL REQUEST DEDUPLICATION: Prevent multiple simultaneous calls to same API
+let globalRequestPromise = null;
+let globalRequestTime = 0;
+
+// DEBOUNCING: Prevent rapid-fire calls
+let debounceTimer = null;
 
 /**
  * usePaymentPageStatusCheck - React hook for checking PayPlus payment page status
@@ -30,85 +37,124 @@ export const usePaymentPageStatusCheck = (options = {}) => {
   const [error, setError] = useState(null);
 
   /**
-   * Check payment page status for user's pending payments
+   * Check payment page status for user's pending payments (DEBOUNCED & DEDUPLICATED)
    */
   const checkPaymentPageStatus = useCallback(async () => {
     if (!enabled || isChecking) {
       return;
     }
 
-    setIsChecking(true);
-    setError(null);
-
-    try {
-      console.log('🔍 usePaymentPageStatusCheck: Checking payment page status...');
-
-      // Call our payment page status API
-      const response = await apiRequest('/api/payments/check-payment-page-status', {
-        method: 'POST'
-      });
-
-      console.log('✅ Payment page status check completed:', response.summary);
-
-      setStatusSummary(response.summary);
-      setPendingCount(response.summary.total_pending);
-      setLastCheckTime(new Date());
-
-      // Handle results and provide user feedback
-      if (response.summary.reverted_to_cart > 0) {
-        if (showToasts) {
-          toast({
-            title: "עגלת קניות עודכנה",
-            description: `${response.summary.reverted_to_cart} פריטים הוחזרו לעגלה לאחר ביטול תשלום`,
-            variant: "default"
-          });
-        }
-
-        // Notify parent component about status update
-        if (onStatusUpdate) {
-          onStatusUpdate({
-            type: 'reverted_to_cart',
-            count: response.summary.reverted_to_cart,
-            summary: response.summary
-          });
-        }
-      }
-
-      if (response.summary.continue_polling > 0) {
-        console.log(`💳 ${response.summary.continue_polling} payments are being processed, continuing monitoring`);
-
-        if (onStatusUpdate) {
-          onStatusUpdate({
-            type: 'continue_polling',
-            count: response.summary.continue_polling,
-            summary: response.summary
-          });
-        }
-      }
-
-      if (response.summary.errors > 0) {
-        console.warn(`⚠️ ${response.summary.errors} payment status checks had errors`);
-      }
-
-      return response;
-
-    } catch (err) {
-      console.error('❌ Error checking payment page status:', err);
-      setError(err.message);
-
-      if (showToasts) {
-        toast({
-          title: "שגיאה בבדיקת סטטוס תשלום",
-          description: "לא ניתן לבדוק את סטטוס התשלומים הממתינים",
-          variant: "destructive"
-        });
-      }
-
-      throw err;
-    } finally {
-      setIsChecking(false);
+    // DEBOUNCING: Clear any existing timer and set new one
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
     }
-  }, [enabled, isChecking, onStatusUpdate, showToasts]);
+
+    return new Promise((resolve, reject) => {
+      debounceTimer = setTimeout(async () => {
+        try {
+          // GLOBAL DEDUPLICATION: Check if request is already in progress
+          const now = Date.now();
+          if (globalRequestPromise && (now - globalRequestTime) < 5000) {
+            console.log('🔍 usePaymentPageStatusCheck: Using existing API request (deduplication)');
+            const result = await globalRequestPromise;
+            resolve(result);
+            return;
+          }
+
+          setIsChecking(true);
+          setError(null);
+
+          console.log('🔍 usePaymentPageStatusCheck: Starting new payment page status check...');
+
+          // Create new global request
+          globalRequestTime = now;
+          globalRequestPromise = apiRequest('/api/payments/check-payment-page-status', {
+            method: 'POST'
+          });
+
+          const response = await globalRequestPromise;
+
+          // Clear global request after completion
+          globalRequestPromise = null;
+
+              console.log('✅ Payment page status check completed:', response.summary);
+
+          setStatusSummary(response.summary);
+          setPendingCount(response.summary.total_pending);
+          setLastCheckTime(new Date());
+
+          // Handle results and provide user feedback
+          if (response.summary.reverted_to_cart > 0) {
+            if (showToasts) {
+              toast({
+                title: "עגלת קניות עודכנה",
+                description: `${response.summary.reverted_to_cart} פריטים הוחזרו לעגלה לאחר ביטול תשלום`,
+                variant: "default"
+              });
+            }
+
+            // Notify parent component about status update
+            if (onStatusUpdate) {
+              onStatusUpdate({
+                type: 'reverted_to_cart',
+                count: response.summary.reverted_to_cart,
+                summary: response.summary
+              });
+            }
+          }
+
+          if (response.summary.continue_polling > 0) {
+            console.log(`💳 ${response.summary.continue_polling} payments are being processed, continuing monitoring`);
+
+            if (onStatusUpdate) {
+              onStatusUpdate({
+                type: 'continue_polling',
+                count: response.summary.continue_polling,
+                summary: response.summary
+              });
+            }
+          }
+
+          if (response.summary.errors > 0) {
+            console.warn(`⚠️ ${response.summary.errors} payment status checks had errors`);
+          }
+
+          setIsChecking(false);
+          resolve(response);
+
+        } catch (err) {
+          // Clear global request on error
+          globalRequestPromise = null;
+
+          console.error('❌ Error checking payment page status:', err);
+          setError(err.message);
+          setIsChecking(false);
+
+          // Handle rate limiting gracefully
+          if (err.response?.status === 429) {
+            console.log('⏳ Rate limited, will retry later');
+            if (showToasts) {
+              toast({
+                title: "בדיקת תשלום מוגבלת זמנית",
+                description: "יותר מדי בדיקות - ננסה שוב בקרוב",
+                variant: "default"
+              });
+            }
+          } else {
+            if (showToasts) {
+              toast({
+                title: "שגיאה בבדיקת סטטוס תשלום",
+                description: "לא ניתן לבדוק את סטטוס התשלומים הממתינים",
+                variant: "destructive"
+              });
+            }
+          }
+
+          reject(err);
+        }
+      }, 2000); // 2 second debounce delay
+    });
+  }, [enabled, onStatusUpdate, showToasts]); // FIX: Removed isChecking from deps to prevent infinite loop
 
   /**
    * Get user's current pending purchases count
@@ -128,7 +174,19 @@ export const usePaymentPageStatusCheck = (options = {}) => {
     }
   }, []);
 
-  // Run initial check on mount
+  // Use refs to avoid dependency issues
+  const enabledRef = useRef(enabled);
+  const onStatusUpdateRef = useRef(onStatusUpdate);
+  const showToastsRef = useRef(showToasts);
+
+  // Update refs when props change
+  useEffect(() => {
+    enabledRef.current = enabled;
+    onStatusUpdateRef.current = onStatusUpdate;
+    showToastsRef.current = showToasts;
+  });
+
+  // Run initial check on mount (FIXED: No function dependencies)
   useEffect(() => {
     if (enabled) {
       // First get pending count quickly
@@ -144,9 +202,9 @@ export const usePaymentPageStatusCheck = (options = {}) => {
         }
       });
     }
-  }, [enabled, checkPaymentPageStatus, getPendingPurchasesCount]);
+  }, [enabled]); // FIXED: Only depend on enabled, not functions
 
-  // Set up interval checking if requested
+  // Set up interval checking if requested (FIXED: No function dependencies)
   useEffect(() => {
     if (enabled && checkInterval && checkInterval > 0) {
       const intervalId = setInterval(() => {
@@ -159,7 +217,7 @@ export const usePaymentPageStatusCheck = (options = {}) => {
 
       return () => clearInterval(intervalId);
     }
-  }, [enabled, checkInterval, checkPaymentPageStatus, getPendingPurchasesCount]);
+  }, [enabled, checkInterval]); // FIXED: Only depend on primitive values, not functions
 
   return {
     // State
