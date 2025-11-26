@@ -9,6 +9,7 @@ import { Download, Trash2, Loader2, Eye, AlertCircle, Shield, Settings } from 'l
 import AccessControlEditor from '@/components/admin/AccessControlEditor';
 import TemplateSelector from '@/components/product/TemplateSelector';
 import VisualTemplateEditor from '@/components/templates/VisualTemplateEditor';
+import { fixHebrewFilename } from '@/utils/fileEncodingUtils';
 
 /**
  * FileProductSection - Handles file-specific settings
@@ -27,6 +28,22 @@ const FileProductSection = ({
   showFooterPreview,
   setShowFooterPreview
 }) => {
+  // Track selected file for displaying fixed Hebrew filename
+  const [selectedFileName, setSelectedFileName] = useState('');
+
+  const handleFileInputChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Fix Hebrew filename encoding and store for display
+      const fixedName = fixHebrewFilename(file.name);
+      setSelectedFileName(fixedName);
+    } else {
+      setSelectedFileName('');
+    }
+
+    // Call the original handler
+    handleFileUpload(e, 'file');
+  };
 
   const getAcceptAttribute = (fileType) => {
     switch (fileType) {
@@ -58,14 +75,22 @@ const FileProductSection = ({
         <div className="space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="flex items-center gap-2">
-              <Input
-                type="file"
-                accept={getAcceptAttribute('file')}
-                onChange={(e) => handleFileUpload(e, 'file')}
-                disabled={isUploading('file') || !editingProduct}
-                className={`w-full sm:w-auto ${(isUploading('file') || !editingProduct) ? 'opacity-50' : ''}`}
-                title={!editingProduct ? "יש לשמור את המוצר תחילה" : isUploading('file') ? "העלאה בתהליך" : "העלה קובץ"}
-              />
+              <div className="flex-1">
+                <Input
+                  type="file"
+                  accept={getAcceptAttribute('file')}
+                  onChange={handleFileInputChange}
+                  disabled={isUploading('file') || !editingProduct}
+                  className={`w-full sm:w-auto ${(isUploading('file') || !editingProduct) ? 'opacity-50' : ''}`}
+                  title={!editingProduct ? "יש לשמור את המוצר תחילה" : isUploading('file') ? "העלאה בתהליך" : "העלה קובץ"}
+                />
+                {/* Display fixed Hebrew filename if selected */}
+                {selectedFileName && isUploading('file') && (
+                  <div className="mt-1 text-xs text-gray-600">
+                    <span className="font-medium">קובץ נבחר:</span> {selectedFileName}
+                  </div>
+                )}
+              </div>
               {isUploading('file') && (
                 <div className="flex items-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin text-blue-600 flex-shrink-0" />
@@ -108,9 +133,14 @@ const FileProductSection = ({
             <div className="flex items-center gap-2 mt-2">
               <Download className="w-4 h-4 text-green-600 flex-shrink-0" />
               <span className="text-sm text-green-700">
-                {uploadedFileInfo.filename && uploadedFileInfo.filename.length > 30
-                  ? uploadedFileInfo.filename.substring(0, 30) + '...'
-                  : uploadedFileInfo.filename || 'קובץ הועלה בהצלחה'}
+                {(() => {
+                  const displayName = uploadedFileInfo.filename
+                    ? fixHebrewFilename(uploadedFileInfo.filename)
+                    : 'קובץ הועלה בהצלחה';
+                  return displayName.length > 30
+                    ? displayName.substring(0, 30) + '...'
+                    : displayName;
+                })()}
               </span>
               <div className="flex items-center gap-2">
                 <Button

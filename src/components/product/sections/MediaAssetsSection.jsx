@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Upload, Play, Trash2, Loader2, Eye, UploadIcon } from 'lucide-react';
 import SecureVideoPlayer from '@/components/SecureVideoPlayer';
 import { getMarketingVideoUrl, getProductImageUrl } from '@/utils/videoUtils.js';
+import { fixHebrewFilename } from '@/utils/fileEncodingUtils';
 
 /**
  * MediaAssetsSection - Handles product image and marketing video uploads
@@ -27,6 +28,10 @@ export const MediaAssetsSection = ({
   const [marketingVideoType, setMarketingVideoType] = useState(
     formData.marketing_video_type || 'youtube'
   );
+
+  // Track selected filenames for displaying fixed Hebrew filenames
+  const [selectedImageName, setSelectedImageName] = useState('');
+  const [selectedVideoName, setSelectedVideoName] = useState('');
 
   // Extract YouTube video ID from various URL formats
   const extractYouTubeId = (url) => {
@@ -84,6 +89,15 @@ export const MediaAssetsSection = ({
 
   // Handle image upload with error handling
   const handleImageUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Fix Hebrew filename encoding and store for display
+      const fixedName = fixHebrewFilename(file.name);
+      setSelectedImageName(fixedName);
+    } else {
+      setSelectedImageName('');
+    }
+
     try {
       const result = await handleFileUpload(event, 'image');
       return result;
@@ -95,6 +109,7 @@ export const MediaAssetsSection = ({
       if (fileInput) {
         fileInput.value = '';
       }
+      setSelectedImageName('');
 
       return { success: false, error: error.message };
     }
@@ -102,6 +117,15 @@ export const MediaAssetsSection = ({
 
   // Handle video upload with error handling
   const handleVideoUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Fix Hebrew filename encoding and store for display
+      const fixedName = fixHebrewFilename(file.name);
+      setSelectedVideoName(fixedName);
+    } else {
+      setSelectedVideoName('');
+    }
+
     try {
       const result = await handleFileUpload(event, 'marketing_video');
       return result;
@@ -113,6 +137,7 @@ export const MediaAssetsSection = ({
       if (fileInput) {
         fileInput.value = '';
       }
+      setSelectedVideoName('');
 
       return { success: false, error: error.message };
     }
@@ -168,16 +193,24 @@ export const MediaAssetsSection = ({
           <div className="space-y-4">
             <Label className="text-sm font-medium">תמונה למוצר</Label>
             <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-              <div className="flex items-center gap-2">
-                <Input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  disabled={isUploading('image')}
-                  className="w-full sm:w-auto"
-                />
-                {isUploading('image') && (
-                  <Loader2 className="w-4 h-4 animate-spin text-blue-600 flex-shrink-0" />
+              <div className="flex flex-col gap-2 flex-1">
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    disabled={isUploading('image')}
+                    className="w-full sm:w-auto"
+                  />
+                  {isUploading('image') && (
+                    <Loader2 className="w-4 h-4 animate-spin text-blue-600 flex-shrink-0" />
+                  )}
+                </div>
+                {/* Display fixed Hebrew filename if selected */}
+                {selectedImageName && isUploading('image') && (
+                  <div className="text-xs text-gray-600">
+                    <span className="font-medium">תמונה נבחרה:</span> {selectedImageName}
+                  </div>
                 )}
               </div>
 
@@ -320,6 +353,12 @@ export const MediaAssetsSection = ({
                           </div>
                         )}
                       </label>
+                      {/* Display fixed Hebrew filename if selected */}
+                      {selectedVideoName && isUploading('marketing_video') && (
+                        <div className="text-xs text-gray-600 text-center mt-2">
+                          <span className="font-medium">סרטון נבחר:</span> {selectedVideoName}
+                        </div>
+                      )}
                     </div>
                   </TabsContent>
 

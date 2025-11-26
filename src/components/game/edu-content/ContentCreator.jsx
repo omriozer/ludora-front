@@ -22,6 +22,7 @@ import { Progress } from '@/components/ui/progress';
 import { Upload, Plus, AlertTriangle } from 'lucide-react';
 import { EduContent } from '@/services/apiClient';
 import { showSuccess, showError } from '@/utils/messaging';
+import { fixHebrewFilename, getFilenameWithoutExtension } from '@/utils/fileEncodingUtils';
 
 const ContentCreator = ({
   isOpen,
@@ -88,11 +89,13 @@ const ContentCreator = ({
       setSelectedFile(file);
       setError('');
 
-      // Auto-set content to filename if empty
+      // Auto-set content to filename if empty (with Hebrew encoding fix)
       if (!formData.content) {
+        const fixedFilename = fixHebrewFilename(file.name);
+        const filenameWithoutExt = getFilenameWithoutExtension(fixedFilename);
         setFormData(prev => ({
           ...prev,
-          content: file.name.split('.')[0]
+          content: filenameWithoutExt
         }));
       }
     }
@@ -227,7 +230,7 @@ const ContentCreator = ({
                   <Upload className="w-8 h-8" />
                   {selectedFile ? (
                     <>
-                      <span className="font-medium">{selectedFile.name}</span>
+                      <span className="font-medium">{fixHebrewFilename(selectedFile.name)}</span>
                       <span className="text-xs">
                         ({(selectedFile.size / 1024 / 1024).toFixed(1)} MB)
                       </span>
