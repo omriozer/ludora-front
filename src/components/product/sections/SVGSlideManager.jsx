@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -11,12 +11,11 @@ import {
   ChevronUp,
   ChevronDown,
   Eye,
-  Download,
-  GripVertical
+  Download
 } from 'lucide-react';
-import { apiUploadWithProgress, apiRequest } from '@/services/apiClient';
+import { apiRequest } from '@/services/apiClient';
 import { getApiBase } from '@/utils/api';
-import { clog, cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 import { toast } from '@/components/ui/use-toast';
 import { showConfirm } from '@/utils/messaging';
 
@@ -51,15 +50,8 @@ const SVGSlideManager = ({
     failedFiles: []
   });
 
-  // Load slides on mount
-  useEffect(() => {
-    if (lessonPlanId) {
-      loadSlides();
-    }
-  }, [lessonPlanId]);
-
   // Load slides from API
-  const loadSlides = async () => {
+  const loadSlides = useCallback(async () => {
     try {
       setLoadingSlides(true);
 
@@ -73,7 +65,7 @@ const SVGSlideManager = ({
         throw new Error(result.message || 'Failed to load slides');
       }
     } catch (error) {
-      cerror('Error loading SVG slides:', error);
+      luderror.ui('Error loading SVG slides:', error);
       toast({
         title: "שגיאה בטעינת שקפים",
         description: error.message || "לא ניתן לטעון את השקפים",
@@ -82,7 +74,14 @@ const SVGSlideManager = ({
     } finally {
       setLoadingSlides(false);
     }
-  };
+  }, [lessonPlanId, onSlidesChange]);
+
+  // Load slides on mount
+  useEffect(() => {
+    if (lessonPlanId) {
+      loadSlides();
+    }
+  }, [lessonPlanId, loadSlides]);
 
   // Enhanced upload with real-time individual file feedback and cancel functionality
   const handleSlideUpload = async (files) => {
@@ -146,7 +145,7 @@ const SVGSlideManager = ({
       for (let i = 0; i < sessionFiles.length; i++) {
         // Check if upload was cancelled
         if (abortController.signal.aborted) {
-          clog('Upload cancelled by user');
+          ludlog.media('Upload cancelled by user');
           break;
         }
 
@@ -166,7 +165,7 @@ const SVGSlideManager = ({
           const formData = new FormData();
           formData.append('slides', file);
 
-          clog(`Uploading file ${i + 1}/${fileArray.length}: ${file.name}`);
+          ludlog.media(`Uploading file ${i + 1}/${fileArray.length}: ${file.name}`);
 
           // Upload individual file with abort signal
           const result = await fetch(`${getApiBase()}/svg-slides/${lessonPlanId}/upload`, {
@@ -196,7 +195,7 @@ const SVGSlideManager = ({
             // Update progress
             setUploadProgress({ current: i + 1, total: fileArray.length });
 
-            clog(`File ${i + 1} uploaded successfully:`, slideData.filename);
+            ludlog.media(`File ${i + 1} uploaded successfully:`, { data: slideData.filename });
 
           } else {
             throw new Error(result.message || 'Upload failed');
@@ -205,11 +204,11 @@ const SVGSlideManager = ({
         } catch (fileError) {
           // Check if this was a cancellation
           if (fileError.name === 'AbortError') {
-            clog(`Upload cancelled for file: ${file.name}`);
+            ludlog.media(`Upload cancelled for file: ${file.name}`);
             break;
           }
 
-          cerror(`Error uploading file ${file.name}:`, fileError);
+          luderror.media(`Error uploading file ${file.name}:`, fileError);
 
           // Update file status to failed
           setUploadSession(prev => {
@@ -257,7 +256,7 @@ const SVGSlideManager = ({
           variant: "destructive"
         });
       } else {
-        cerror('Error during SVG slides upload:', error);
+        luderror.media('Error during SVG slides upload:', error);
         toast({
           title: "שגיאה בהעלאת שקפים",
           description: error.message || "לא ניתן להעלות את השקפים. אנא נסה שנית.",
@@ -292,7 +291,7 @@ const SVGSlideManager = ({
     // If no files completed yet, simple cancel
     if (completedFiles.length === 0) {
       uploadSession.abortController.abort();
-      clog('Upload cancelled - no completed files to handle');
+      ludlog.auth('Upload cancelled - no completed files to handle');
       return;
     }
 
@@ -303,7 +302,7 @@ const SVGSlideManager = ({
       if (choice === 'keep') {
         // Cancel remaining uploads but keep completed files
         uploadSession.abortController.abort();
-        clog(`Upload cancelled - keeping ${completedFiles.length} completed files`);
+        ludlog.auth(`Upload cancelled - keeping ${completedFiles.length} completed files`);
 
         toast({
           title: "העלאה בוטלה",
@@ -323,7 +322,7 @@ const SVGSlideManager = ({
 
         await removeUploadedFiles(completedFiles);
 
-        clog(`Upload cancelled - removed ${completedFiles.length} completed files`);
+        ludlog.media(`Upload cancelled - removed ${completedFiles.length} completed files`);
 
         toast({
           title: "העלאה בוטלה וקבצים נמחקו",
@@ -345,7 +344,7 @@ const SVGSlideManager = ({
       } // else choice === 'cancel' - do nothing, continue upload
 
     } catch (error) {
-      cerror('Error during cancel upload:', error);
+      luderror.media('Error during cancel upload:', error);
       // Fallback to simple cancel
       uploadSession.abortController.abort();
     }
@@ -432,9 +431,9 @@ const SVGSlideManager = ({
         });
       }
 
-      clog(`Successfully removed ${slideIds.length} uploaded files`);
+      ludlog.media(`Successfully removed ${slideIds.length} uploaded files`);
     } catch (error) {
-      cerror('Error removing uploaded files:', error);
+      luderror.media('Error removing uploaded files:', error);
       throw error;
     }
   };
@@ -464,7 +463,7 @@ const SVGSlideManager = ({
         throw new Error(result.message || 'Reorder failed');
       }
     } catch (error) {
-      cerror('Error reordering slides:', error);
+      luderror.ui('Error reordering slides:', error);
       toast({
         title: "שגיאה בסידור שקפים",
         description: error.message || "לא ניתן לשנות את סדר השקפים",
@@ -503,7 +502,7 @@ const SVGSlideManager = ({
         throw new Error(result.message || 'Delete failed');
       }
     } catch (error) {
-      cerror('Error deleting slide:', error);
+      luderror.ui('Error deleting slide:', error);
       toast({
         title: "שגיאה במחיקת שקף",
         description: error.message || "לא ניתן למחוק את השקף",
@@ -625,9 +624,9 @@ const SVGSlideManager = ({
 
                     {/* Real-time File Status */}
                     <div className="max-h-48 overflow-y-auto space-y-1">
-                      {uploadSession.files.map((fileStatus, index) => (
+                      {uploadSession.files.map((fileStatus, _index) => (
                         <div
-                          key={index}
+                          key={`${fileStatus.file.name}-${fileStatus.file.size}-${fileStatus.file.lastModified}`}
                           className={`flex items-center gap-2 p-2 rounded text-sm ${
                             fileStatus.status === 'completed' ? 'bg-green-100 text-green-800' :
                             fileStatus.status === 'uploading' ? 'bg-yellow-100 text-yellow-800' :
