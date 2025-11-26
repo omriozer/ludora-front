@@ -201,6 +201,46 @@ export default function Checkout() {
         try {
           const data = JSON.parse(event.data);
 
+          // CRITICAL: Handle PayPlus payment submission event
+          if (data.event === 'pp_submitProcess' && data.value === true) {
+            // Payment submission started - trigger status change to "pending"
+            // This will start automatic polling since webhooks are disabled
+            console.log('🚀 PayPlus payment submission detected - triggering pending status and polling');
+
+            if (currentTransactionId) {
+              try {
+                // Call update-status API to trigger status change and polling
+                await apiRequest('/payments/update-status', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    transaction_id: currentTransactionId,
+                    status: 'pending'
+                  })
+                });
+
+                // Update local cart state to show pending status
+                const updatedCartItems = cartItems.map(item => {
+                  if (item.id === currentTransactionId) {
+                    return {
+                      ...item,
+                      payment_status: 'pending'
+                    };
+                  }
+                  return item;
+                });
+                setCartItems(updatedCartItems);
+
+                console.log('✅ Payment status updated to pending, polling started');
+              } catch (error) {
+                cerror('Error updating payment status to pending:', error);
+              }
+            }
+            return; // Don't process other events if this was handled
+          }
+
           if (data.type === 'payplus_payment_complete') {
 
             // Payment detected via immediate notification (no polling needed)
