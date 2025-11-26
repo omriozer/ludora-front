@@ -189,6 +189,18 @@ export default function Checkout() {
   // Handle iframe messages from PayPlus
   useEffect(() => {
     const handleMessage = async (event) => {
+      // DEBUG: Log ALL iframe messages to see what PayPlus is sending
+      if (event.data &&
+          event.data.source !== 'react-devtools-bridge' &&
+          event.data.source !== 'react-devtools-content-script' &&
+          event.data.source !== 'react-devtools-inject-script') {
+        console.log('🔍 PayPlus iframe message received:', {
+          origin: event.origin,
+          data: event.data,
+          type: typeof event.data
+        });
+      }
+
       // Filter out non-PayPlus messages (React DevTools, etc.)
       if (!event.data ||
           event.data.source === 'react-devtools-bridge' ||
@@ -197,85 +209,106 @@ export default function Checkout() {
         return;
       }
 
+      // Handle both string and object messages from PayPlus
+      let data = null;
       if (typeof event.data === 'string') {
         try {
-          const data = JSON.parse(event.data);
-
-          // CRITICAL: Handle PayPlus payment submission event
-          if (data.event === 'pp_submitProcess' && data.value === true) {
-            // Payment submission started - trigger status change to "pending"
-            // This will start automatic polling since webhooks are disabled
-            console.log('🚀 PayPlus payment submission detected - triggering pending status and polling');
-
-            if (currentTransactionId) {
-              try {
-                // Call update-status API to trigger status change and polling
-                await apiRequest('/payments/update-status', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify({
-                    transaction_id: currentTransactionId,
-                    status: 'pending'
-                  })
-                });
-
-                // Update local cart state to show pending status
-                const updatedCartItems = cartItems.map(item => {
-                  if (item.id === currentTransactionId) {
-                    return {
-                      ...item,
-                      payment_status: 'pending'
-                    };
-                  }
-                  return item;
-                });
-                setCartItems(updatedCartItems);
-
-                console.log('✅ Payment status updated to pending, polling started');
-              } catch (error) {
-                cerror('Error updating payment status to pending:', error);
-              }
-            }
-            return; // Don't process other events if this was handled
-          }
-
-          if (data.type === 'payplus_payment_complete') {
-
-            // Payment detected via immediate notification (no polling needed)
-
-            // NEW: Notify API that payment was submitted (regardless of success/failure)
-            if (currentTransactionId) {
-              try {
-                await apiRequest(`/payments/confirm/${currentTransactionId}`, {
-                  method: 'POST'
-                });
-              } catch (confirmError) {
-                cerror('Error sending payment confirmation to API:', confirmError);
-                // Continue with normal flow even if confirmation fails
-              }
-            }
-
-            if (data.status === 'success') {
-              // Payment was successful - trigger success handler
-              await handlePaymentSuccess();
-            } else {
-              // Payment failed/cancelled - just close modal
-              handlePaymentModalClose();
-
-              toast({
-                title: "תשלום לא הושלם",
-                description: "התשלום בוטל או נכשל. הפריטים נשמרו בעגלה.",
-                variant: "destructive",
-              });
-            }
-          }
+          data = JSON.parse(event.data);
+          console.log('📨 Parsed PayPlus JSON message:', data);
         } catch (e) {
-          // Silently ignore non-JSON messages
+          console.log('⚠️ Non-JSON string message:', event.data);
           return;
         }
+      } else if (typeof event.data === 'object') {
+        data = event.data;
+        console.log('📨 PayPlus object message:', data);
       }
+
+      if (data) {
+        // CATCH-ALL: Log any PayPlus event to understand the format
+        console.log('🎯 Processing PayPlus event:', {
+          event: data.event,
+          type: data.type,
+          value: data.value,
+          status: data.status,
+          fullData: data
+        });
+
+        // CRITICAL: Handle PayPlus payment submission event
+        if (data.event === 'pp_submitProcess' && data.value === true) {
+          // Payment submission started - trigger status change to "pending"
+          // This will start automatic polling since webhooks are disabled
+          console.log('🚀 PayPlus payment submission detected - triggering pending status and polling');
+
+          if (currentTransactionId) {
+            try {
+              // Call update-status API to trigger status change and polling
+              await apiRequest('/payments/update-status', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  transaction_id: currentTransactionId,
+                  status: 'pending'
+                })
+              });
+
+              // Update local cart state to show pending status
+              const updatedCartItems = cartItems.map(item => {
+                if (item.id === currentTransactionId) {
+                  return {
+                    ...item,
+                    payment_status: 'pending'
+                  };
+                }
+                return item;
+              });
+              setCartItems(updatedCartItems);
+
+              console.log('✅ Payment status updated to pending, polling started');
+            } catch (error) {
+              cerror('Error updating payment status to pending:', error);
+            }
+          }
+          return; // Don't process other events if this was handled
+        }
+
+        if (data.type === 'payplus_payment_complete') {
+
+          // Payment detected via immediate notification (no polling needed)
+
+          // NEW: Notify API that payment was submitted (regardless of success/failure)
+          if (currentTransactionId) {
+            try {
+              await apiRequest(`/payments/confirm/${currentTransactionId}`, {
+                method: 'POST'
+              });
+            } catch (confirmError) {
+              cerror('Error sending payment confirmation to API:', confirmError);
+              // Continue with normal flow even if confirmation fails
+            }
+          }
+
+          if (data.status === 'success') {
+            // Payment was successful - trigger success handler
+            await handlePaymentSuccess();
+          } else {
+            // Payment failed/cancelled - just close modal
+            handlePaymentModalClose();
+
+            toast({
+              title: "תשלום לא הושלם",
+              description: "התשלום בוטל או נכשל. הפריטים נשמרו בעגלה.",
+              variant: "destructive",
+            });
+          }
+        }
+      }
+    } catch (e) {
+      // Silently ignore non-JSON messages
+      return;
+    }
     };
 
     if (showPaymentModal && paymentUrl) {
