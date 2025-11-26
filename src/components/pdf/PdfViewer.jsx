@@ -18,6 +18,7 @@ import {
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { apiDownload } from '@/services/apiClient';
 import { clog, cerror } from '@/lib/utils';
+import { fixHebrewFilename } from '@/utils/fileEncodingUtils';
 
 // Configure PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
@@ -123,7 +124,7 @@ const PdfViewer = ({
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = fileName || 'download.pdf';
+      link.download = fixHebrewFilename(fileName) || 'download.pdf';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -165,7 +166,7 @@ const PdfViewer = ({
               </Button>
             )}
             <div className="text-xs sm:text-sm font-medium text-gray-700 truncate">
-              {fileName || 'קובץ PDF'}
+              {fixHebrewFilename(fileName) || 'קובץ PDF'}
               {isPreviewMode && !hasAccess && (
                 <span className="text-orange-600 mr-1 sm:mr-2 text-xs">(תצוגה מקדימה)</span>
               )}
