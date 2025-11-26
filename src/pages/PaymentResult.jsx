@@ -23,6 +23,8 @@ import { he } from "date-fns/locale";
 import { PRODUCT_TYPES, getProductTypeName } from "@/config/productTypes";
 import { useUser } from "@/contexts/UserContext";
 import { toast } from "@/components/ui/use-toast";
+import { usePaymentPageStatusCheck } from '@/hooks/usePaymentPageStatusCheck';
+import { clog, cerror } from "@/lib/utils";
 
 export default function PaymentResult() {
   const navigate = useNavigate();
@@ -39,6 +41,29 @@ export default function PaymentResult() {
   const [productId, setProductId] = useState(null);
   const [totalPurchases, setTotalPurchases] = useState(1);
   const [isMultiProduct, setIsMultiProduct] = useState(false);
+
+  // Payment page status checking - check for pending payments and handle abandoned pages
+  const paymentStatus = usePaymentPageStatusCheck({
+    enabled: true,
+    showToasts: true, // Show user notifications about payment status changes
+    onStatusUpdate: (update) => {
+      clog('PaymentResult: Payment status update received:', update);
+
+      // Reload payment result when status changes are detected
+      if (update.type === 'continue_polling' && update.count > 0) {
+        clog('PaymentResult: Reloading payment result due to status update');
+        loadPaymentResult();
+      }
+
+      // Handle reverted payments
+      if (update.type === 'reverted_to_cart') {
+        clog('PaymentResult: Payment reverted to cart, redirecting to checkout');
+        setTimeout(() => {
+          navigate('/checkout');
+        }, 2000); // Give time for toast to show
+      }
+    }
+  });
 
   useEffect(() => {
     loadPaymentResult();
@@ -149,15 +174,35 @@ export default function PaymentResult() {
             // Use payment_status field, not status field
             const actualStatus = transactionData.payment_status || transactionData.status;
 
-            // CRITICAL: Trigger polling when PayPlus redirects back with transaction_uid
+            // CRITICAL: PayPlus redirect detected - set purchases to pending and trigger polling
             if (transactionUid && actualStatus === 'pending') {
-              // Payment redirect detected - trigger polling to check PayPlus API
-              console.log('🔍 PayPlus redirect detected, triggering polling for transaction:', transactionData.id);
+              // Payment redirect detected - user came back from PayPlus
+              console.log('🔍 PayPlus redirect detected, setting purchases to pending for transaction:', transactionData.id);
 
               try {
                 const { apiRequest } = await import('@/services/apiClient');
 
-                // Trigger polling by checking transaction status
+                // STEP 1: Set all related purchases to 'pending' status to protect from deletion
+                const relatedPurchases = await Purchase.filter({
+                  transaction_id: transactionData.id
+                });
+
+                console.log(`📝 Found ${relatedPurchases.length} purchases to set as pending`);
+
+                for (const purchase of relatedPurchases) {
+                  await Purchase.update(purchase.id, {
+                    payment_status: 'pending',
+                    metadata: {
+                      ...purchase.metadata,
+                      pending_started_at: new Date().toISOString(),
+                      pending_source: 'payplus_redirect',
+                      payplus_page_request_uid: pageRequestUid
+                    }
+                  });
+                  console.log(`✅ Purchase ${purchase.id} set to pending status`);
+                }
+
+                // STEP 2: Trigger polling to check actual PayPlus payment page status
                 const pollResult = await apiRequest(`/api/payments/transaction-status/${transactionData.id}`, {
                   method: 'GET'
                 });
@@ -174,7 +219,7 @@ export default function PaymentResult() {
                   finalStatus = 'pending';
                 }
               } catch (pollError) {
-                console.error('❌ Failed to trigger polling:', pollError);
+                console.error('❌ Failed to set pending status or trigger polling:', pollError);
                 // Fallback to assuming success if redirect happened
                 finalStatus = 'success';
               }

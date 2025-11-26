@@ -48,6 +48,7 @@ import PdfViewer from "@/components/pdf/PdfViewer";
 import GameDetailsSection from "@/components/game/details/GameDetailsSection";
 import { useLoginModal } from "@/hooks/useLoginModal";
 import { useProductAccess } from "@/hooks/useProductAccess";
+import { usePaymentPageStatusCheck } from '@/hooks/usePaymentPageStatusCheck';
 
 export default function ProductDetails() {
   const navigate = useNavigate();
@@ -65,6 +66,20 @@ export default function ProductDetails() {
 
   // Use centralized product access logic - same as ProductActionBar
   const { hasAccess } = useProductAccess(item, userPurchases);
+
+  // Payment page status checking - check for pending payments and handle abandoned pages
+  const paymentStatus = usePaymentPageStatusCheck({
+    enabled: true,
+    showToasts: true, // Show user notifications about payment status changes
+    onStatusUpdate: (update) => {
+      clog('ProductDetails: Payment status update received:', update);
+
+      // Reload product data when payments are processed (user might have new access)
+      if (update.type === 'continue_polling' && update.count > 0) {
+        loadData();
+      }
+    }
+  });
 
   // Track if component is mounted to avoid calling setState on unmounted component
   const isMountedRef = useRef(true);

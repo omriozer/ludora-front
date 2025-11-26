@@ -28,6 +28,7 @@ import { formatPriceSimple } from '@/lib/utils';
 import FeatureFlagService from '@/services/FeatureFlagService';
 import { getProductTypeIconByType } from '@/lib/layoutUtils';
 import { toast } from '@/components/ui/use-toast';
+import { usePaymentPageStatusCheck } from '@/hooks/usePaymentPageStatusCheck';
 
 export default function Products() {
   const [searchParams] = useSearchParams();
@@ -56,6 +57,20 @@ export default function Products() {
 
   // Use the existing confirmation system
   const { showConfirmation } = useConfirmation();
+
+  // Payment page status checking - check for pending payments and handle abandoned pages
+  const paymentStatus = usePaymentPageStatusCheck({
+    enabled: true,
+    showToasts: true, // Show user notifications about payment status changes
+    onStatusUpdate: (update) => {
+      console.log('Products: Payment status update received:', update);
+
+      // Refresh products list when payments are processed (user might have new access)
+      if (update.type === 'continue_polling' && update.count > 0) {
+        loadData();
+      }
+    }
+  });
 
   const loadData = useCallback(async () => {
     setIsLoading(true);

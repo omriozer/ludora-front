@@ -46,6 +46,7 @@ import { useCart } from "@/contexts/CartContext";
 import CouponInput from "@/components/CouponInput";
 import couponClient from "@/services/couponClient";
 import { clog, cerror } from "@/lib/utils";
+import { usePaymentPageStatusCheck } from '@/hooks/usePaymentPageStatusCheck';
 
 
 export default function Checkout() {
@@ -86,6 +87,20 @@ export default function Checkout() {
     backToCatalog: "חזרה לקטלוג",
     processing: "מעבד תשלום...",
     payplusSecurePayment: "תשלום מאובטח באמצעות PayPlus"
+  });
+
+  // Payment page status checking - check for pending payments and handle abandoned pages
+  const paymentStatus = usePaymentPageStatusCheck({
+    enabled: true,
+    showToasts: true, // Show user notifications about payment status changes
+    onStatusUpdate: (update) => {
+      clog('Checkout: Payment status update received:', update);
+
+      // Reload checkout data when payments are processed or abandoned
+      if (update.type === 'reverted_to_cart' || update.type === 'continue_polling') {
+        loadCheckoutData();
+      }
+    }
   });
 
   // Load Product data for cart items

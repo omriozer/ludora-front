@@ -14,6 +14,7 @@ import ProductActionBar from "@/components/ui/ProductActionBar";
 import { useProductActions } from "@/hooks/useProductActions";
 import PdfViewer from "@/components/pdf/PdfViewer";
 import { clog, cerror } from "@/lib/utils";
+import { usePaymentPageStatusCheck } from '@/hooks/usePaymentPageStatusCheck';
 
 /**
  * MyProductsWidget - Clean product access widget without purchase details
@@ -42,6 +43,20 @@ const MyProductsWidget = ({
     handleWorkshopAccess: defaultHandleWorkshopAccess,
     handleViewDetails: defaultHandleViewDetails
   } = useProductActions();
+
+  // Payment page status checking - check for pending payments and handle abandoned pages
+  const paymentStatus = usePaymentPageStatusCheck({
+    enabled: true,
+    showToasts: true, // Show user notifications about payment status changes
+    onStatusUpdate: (update) => {
+      clog('MyProductsWidget: Payment status update received:', update);
+
+      // Reload products when payments are completed (new products available)
+      if (update.type === 'continue_polling' && update.count > 0) {
+        loadMyProducts();
+      }
+    }
+  });
 
   // Widget configuration based on size
   const getWidgetConfig = () => {

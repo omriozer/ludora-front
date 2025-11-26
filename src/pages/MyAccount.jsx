@@ -45,6 +45,7 @@ import { clog, cerror } from '@/lib/utils';
 import { toast } from '@/components/ui/use-toast';
 import { urls } from '@/config/urls';
 import { NAV_VISIBILITY_OPTIONS, NAVIGATION_KEYS } from "@/constants/settingsKeys";
+import { usePaymentPageStatusCheck } from '@/hooks/usePaymentPageStatusCheck';
 
 // Static fallback arrays for specializations - defined outside component
 const FALLBACK_SPECIALIZATIONS = [
@@ -107,6 +108,20 @@ const MyAccount = () => {
 
   // Use the new subscription state hook
   const subscriptionState = useSubscriptionState(currentUser);
+
+  // Payment page status checking - check for pending payments and handle abandoned pages
+  const paymentStatus = usePaymentPageStatusCheck({
+    enabled: true,
+    showToasts: true, // Show user notifications about payment status changes
+    onStatusUpdate: (update) => {
+      clog('MyAccount: Payment status update received:', update);
+
+      // Refresh subscription data when payments are processed
+      if (update.type === 'continue_polling' || update.count > 0) {
+        subscriptionState.refreshData();
+      }
+    }
+  });
 
   // Use settings-driven data or fallback arrays for specializations
   const availableSpecializations = useMemo(() => {
