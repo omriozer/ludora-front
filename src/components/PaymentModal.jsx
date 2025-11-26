@@ -184,75 +184,87 @@ export default function PaymentModal({ product, user, settings, isTestMode = (co
     setIsCreatingPayment(false);
   };
 
-  // Handle iframe messages from PayPlus
+  // Handle documented PayPlus iframe events for payment status transitions
   useEffect(() => {
-    const handleMessage = async (event) => {
+    const handlePayPlusMessage = async (event) => {
+      // Security: Verify origin if needed
+      // TODO: Add PayPlus iframe origin validation
 
-      if (event.data && typeof event.data === 'string') {
-        try {
-          const data = JSON.parse(event.data);
+      if (!event.data || typeof event.data !== 'object') return;
 
-          if (data.type === 'payplus_payment_complete') {
-            // Update purchases to pending status since payment was submitted
-            if (data.status === 'success') {
-              try {
-                // Import Purchase here to avoid circular dependency
-                const { Purchase } = await import('@/services/entities');
+      const { data } = event;
 
-                // Get the cart purchases that are currently in payment
-                const cartPurchases = await getCartPurchases(user.id);
-                const purchasesToUpdate = cartPurchases.filter(p => p.metadata?.payment_in_progress === true);
+      // TODO remove debug - payment status polling
+      console.log('PayPlus iframe event received:', data);
 
-                // Update them to pending status (waiting for webhook confirmation)
-                for (const purchase of purchasesToUpdate) {
-                  await Purchase.update(purchase.id, {
-                    payment_status: 'pending',
-                    metadata: {
-                      ...purchase.metadata,
-                      payment_submitted_at: new Date().toISOString(),
-                      payment_in_progress: false
-                    }
-                  });
-                }
+      try {
+        // Handle documented PayPlus events
+        switch (data.event || data.type) {
+          case 'pp_submitProcess':
+            if (data.value === true) {
+              // Payment submission started - update status to pending
+              // TODO remove debug - payment status polling
+              console.log('Payment submission detected via pp_submitProcess');
 
-              } catch (error) {
-                cerror('PaymentModal: Error updating purchase status:', error);
-              }
-            } else {
-              // Payment failed/cancelled - reset payment_in_progress flag
               try {
                 const { Purchase } = await import('@/services/entities');
                 const cartPurchases = await getCartPurchases(user.id);
-                const purchasesToReset = cartPurchases.filter(p => p.metadata?.payment_in_progress === true);
 
-                for (const purchase of purchasesToReset) {
-                  await Purchase.update(purchase.id, {
-                    metadata: {
-                      ...purchase.metadata,
-                      payment_in_progress: false,
-                      payment_failed_at: new Date().toISOString()
-                    }
-                  });
+                // Find purchases that should be updated to pending
+                for (const purchase of cartPurchases) {
+                  if (purchase.payment_status === 'cart') {
+                    await Purchase.update(purchase.id, {
+                      payment_status: 'pending',
+                      metadata: {
+                        ...purchase.metadata,
+                        pending_started_at: new Date().toISOString(),
+                        pending_source: 'pp_submitProcess_event'
+                      }
+                    });
+                  }
                 }
-
               } catch (error) {
-                cerror('PaymentModal: Error resetting purchase status:', error);
+                cerror('PaymentModal: Error updating to pending status:', error);
               }
             }
+            break;
 
-            // Redirect to results page
-            window.location.href = `/PaymentResult?status=${data.status}&purchaseId=${data.purchaseId || data.orderNumber}`;
-          }
-        } catch (e) {
-          // Non-JSON message or not PayPlus message, ignore
+          case 'pp_responseFromServer':
+            // Transaction completed (success or failure)
+            // TODO remove debug - payment status polling
+            console.log('PayPlus server response received:', data);
+
+            // Let webhook/polling handle the final status update
+            // Just redirect to result page for user feedback
+            const paymentResult = data.success ? 'success' : 'failed';
+            window.location.href = `/PaymentResult?status=${paymentResult}&source=pp_responseFromServer`;
+            break;
+
+          case 'pp_paymentPageKilled':
+          case 'pp_pageExpired':
+            // Payment page closed or expired - keep purchases in cart status
+            // TODO remove debug - payment status polling
+            console.log('PayPlus page closed/expired:', data.event || data.type);
+
+            // Close iframe and keep purchases in cart for retry
+            setShowIframe(false);
+            break;
+
+          default:
+            // Unknown PayPlus event - log for debugging
+            // TODO remove debug - payment status polling
+            console.log('Unknown PayPlus event:', data.event || data.type, data);
+            break;
         }
+      } catch (error) {
+        cerror('PaymentModal: Error handling PayPlus event:', error);
       }
     };
 
     if (showIframe) {
-      window.addEventListener('message', handleMessage);
+      window.addEventListener('message', handlePayPlusMessage);
       return () => {
-        window.removeEventListener('message', handleMessage);
+        window.removeEventListener('message', handlePayPlusMessage);
       };
     }
   }, [showIframe, user.id]);

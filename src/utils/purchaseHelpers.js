@@ -200,6 +200,39 @@ export async function getPendingPurchases(userId) {
 }
 
 /**
+ * Get both cart and pending purchases for a user (for checkout display with pending status)
+ * @param {string} userId - User ID
+ * @returns {Promise<array>} Array of cart and pending purchase records, sorted by creation date
+ */
+export async function getCartAndPendingPurchases(userId) {
+  try {
+    // Import Purchase here to avoid circular dependency
+    const { Purchase } = await import('@/services/entities');
+
+    const purchases = await Purchase.filter({
+      buyer_user_id: userId,
+      payment_status: ['cart', 'pending'] // Include both cart and pending status
+    });
+
+    // Sort by created_at (newest first)
+    const sortedPurchases = (purchases || []).sort((a, b) => {
+      return new Date(b.created_at) - new Date(a.created_at);
+    });
+
+    clog(`Found ${sortedPurchases.length} cart and pending purchases for user ${userId}`, {
+      cart: sortedPurchases.filter(p => p.payment_status === 'cart').length,
+      pending: sortedPurchases.filter(p => p.payment_status === 'pending').length
+    });
+
+    return sortedPurchases;
+
+  } catch (error) {
+    cerror('Error getting cart and pending purchases:', error);
+    return [];
+  }
+}
+
+/**
  * Get all non-refunded purchases for a user
  * @param {string} userId - User ID
  * @returns {Promise<array>} Array of non-refunded purchase records

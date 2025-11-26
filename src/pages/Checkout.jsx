@@ -25,14 +25,16 @@ import {
   Tag,
   Percent,
   Shield,
-  X
+  X,
+  RotateCcw,
+  Loader2
 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import LudoraLoadingSpinner from "@/components/ui/LudoraLoadingSpinner";
 import { PRODUCT_TYPES, getProductTypeName } from "@/config/productTypes";
 import {
-  getCartPurchases,
+  getCartAndPendingPurchases,
   calculateTotalPrice,
   groupPurchasesByType,
   showPurchaseErrorToast,
@@ -136,15 +138,16 @@ export default function Checkout() {
       // User data and settings are now available from global UserContext
       const userId = currentUser.id;
 
-      // Load cart purchases (cart items)
-      const cartPurchases = await getCartPurchases(userId);
+      // Load cart and pending purchases (cart items + items in payment processing)
+      const cartPurchases = await getCartAndPendingPurchases(userId);
       setCartItems(cartPurchases);
 
       // Load Product data for each cart item
       await loadCartItemProducts(cartPurchases);
 
-      // Calculate pricing
-      calculatePricing(cartPurchases);
+      // Calculate pricing (only count 'cart' status items for checkout)
+      const cartOnlyItems = cartPurchases.filter(item => item.payment_status === 'cart');
+      calculatePricing(cartOnlyItems);
 
     } catch (err) {
       cerror('Error loading checkout data:', err);
@@ -246,7 +249,19 @@ export default function Checkout() {
   // Remove item from cart
   const handleRemoveItem = async (purchaseId) => {
     try {
-      // Delete the pending purchase
+      // Get the purchase to check status
+      const purchase = cartItems.find(item => item.id === purchaseId);
+
+      if (purchase?.payment_status === 'pending') {
+        toast({
+          title: "לא ניתן להסיר",
+          description: "לא ניתן להסיר פריט בעת תשלום. אנא המתן להשלמת התשלום.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Delete the cart purchase (only 'cart' status items can be deleted)
       await Purchase.delete(purchaseId);
 
       // Remove from local state
@@ -262,8 +277,9 @@ export default function Checkout() {
       // Notify cart context about the removal
       removeFromCart(purchaseId);
 
-      // Recalculate pricing
-      calculatePricing(updatedItems);
+      // Recalculate pricing (only count 'cart' status items for payment)
+      const cartOnlyItems = updatedItems.filter(item => item.payment_status === 'cart');
+      calculatePricing(cartOnlyItems);
 
     } catch (error) {
       showPurchaseErrorToast(error, 'בהסרת הפריט');
@@ -285,8 +301,9 @@ export default function Checkout() {
       const updatedCoupons = [...appliedCoupons, newCoupon];
       setAppliedCoupons(updatedCoupons);
 
-      // Recalculate pricing with new coupon
-      calculatePricing(cartItems, updatedCoupons);
+      // Recalculate pricing with new coupon (only cart items)
+      const cartOnlyItems = cartItems.filter(item => item.payment_status === 'cart');
+      calculatePricing(cartOnlyItems, updatedCoupons);
 
     } catch (error) {
       cerror('Error handling coupon application:', error);
@@ -315,8 +332,11 @@ export default function Checkout() {
 
   // Proceed to payment using new PaymentIntent flow
   const handleProceedToPayment = async () => {
-    if (cartItems.length === 0) {
-      showPurchaseErrorToast('עגלת הקניות ריקה', 'בתשלום');
+    // Only consider cart items (not pending items) for new payments
+    const cartOnlyItems = cartItems.filter(item => item.payment_status === 'cart');
+
+    if (cartOnlyItems.length === 0) {
+      showPurchaseErrorToast('אין פריטים בעגלה זמינים לתשלום', 'בתשלום');
       return;
     }
 
@@ -324,7 +344,7 @@ export default function Checkout() {
 
     try {
       const paymentResponse = await createPayplusPaymentPage({
-        cartItems: cartItems,
+        cartItems: cartOnlyItems,
         frontendOrigin: 'cart'
       });
 
@@ -513,12 +533,24 @@ export default function Checkout() {
                 <CardTitle className="flex items-center gap-3 text-xl text-right">
                   <ShoppingCart className="w-6 h-6" />
                   {checkoutTexts.items} ({cartItems.length})
+                  {cartItems.some(item => item.payment_status === 'pending') && (
+                    <div className="text-sm text-yellow-600 font-normal">
+                      • {cartItems.filter(item => item.payment_status === 'pending').length} בתהליך תשלום
+                    </div>
+                  )}
                 </CardTitle>
               </CardHeader>
 
               <CardContent className="space-y-4">
                 {cartItems.map((purchase) => (
-                  <div key={purchase.id} className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl">
+                  <div
+                    key={purchase.id}
+                    className={`flex items-center gap-4 p-4 rounded-2xl transition-colors ${
+                      purchase.payment_status === 'pending'
+                        ? 'bg-yellow-50 border-l-4 border-yellow-400'
+                        : 'bg-gray-50'
+                    }`}
+                  >
                     <div className="flex-shrink-0">
                       {getProductIcon(purchase.purchasable_type)}
                     </div>
@@ -541,6 +573,37 @@ export default function Checkout() {
                           </span>
                         </div>
                       )}
+
+                      {/* Payment Status Badge */}
+                      {purchase.payment_status && purchase.payment_status !== 'cart' && (
+                        <div className="flex items-center gap-2 mt-2">
+                          {purchase.payment_status === 'pending' ? (
+                            <>
+                              <div className="flex items-center gap-2">
+                                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-yellow-100 text-yellow-800 text-xs font-medium">
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                  ממתין לאישור תשלום
+                                </span>
+                              </div>
+                            </>
+                          ) : purchase.payment_status === 'completed' ? (
+                            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-100 text-green-800 text-xs font-medium">
+                              <CheckCircle className="w-3 h-3" />
+                              הושלם
+                            </span>
+                          ) : purchase.payment_status === 'refunded' ? (
+                            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-xs font-medium">
+                              <RotateCcw className="w-3 h-3" />
+                              הוחזר
+                            </span>
+                          ) : purchase.payment_status === 'abandoned' ? (
+                            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-100 text-red-800 text-xs font-medium">
+                              <AlertCircle className="w-3 h-3" />
+                              נטוש
+                            </span>
+                          ) : null}
+                        </div>
+                      )}
                     </div>
 
                     <div className="text-left">
@@ -553,7 +616,17 @@ export default function Checkout() {
                       variant="ghost"
                       size="sm"
                       onClick={() => handleRemoveItem(purchase.id)}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      disabled={purchase.payment_status === 'pending'}
+                      className={`${
+                        purchase.payment_status === 'pending'
+                          ? 'text-gray-400 cursor-not-allowed hover:bg-transparent'
+                          : 'text-red-600 hover:text-red-700 hover:bg-red-50'
+                      }`}
+                      title={
+                        purchase.payment_status === 'pending'
+                          ? 'לא ניתן להסיר פריט בעת תשלום. אנא המתן להשלמת התשלום.'
+                          : 'הסר מהעגלה'
+                      }
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
