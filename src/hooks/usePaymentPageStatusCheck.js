@@ -68,7 +68,7 @@ export const usePaymentPageStatusCheck = (options = {}) => {
 
           // Create new global request
           globalRequestTime = now;
-          globalRequestPromise = apiRequest('/api/payments/check-payment-page-status', {
+          globalRequestPromise = apiRequest('/payments/check-payment-page-status', {
             method: 'POST'
           });
 
