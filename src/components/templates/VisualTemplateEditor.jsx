@@ -111,6 +111,10 @@ const VisualTemplateEditor = ({
 
   const [templateConfig, setTemplateConfig] = useState(getDefaultConfig());
 
+  // Calculate effective format once at component level
+  // Use fileEntity target_format if available, fallback to prop targetFormat
+  const effectiveFormat = fileEntity?.target_format || targetFormat;
+
   // Preload all slides for faster navigation
   const preloadAllSlides = async (slides, entityId) => {
     try {
@@ -456,8 +460,7 @@ const VisualTemplateEditor = ({
       const fetchTemplates = async () => {
         setIsLoadingTemplates(true);
         try {
-          // Use fileEntity target_format if available, fallback to prop targetFormat
-          const effectiveFormat = fileEntity?.target_format || targetFormat;
+          // effectiveFormat is now calculated at component level
           clog(`🎨 Fetching available ${templateType} templates for format: ${effectiveFormat}...`);
           const response = await apiRequest(`/system-templates?type=${templateType}&format=${effectiveFormat}`);
           clog('🎨 Raw template API response:', response);
@@ -521,7 +524,7 @@ const VisualTemplateEditor = ({
 
       fetchTemplates();
     }
-  }, [isOpen, fileEntity?.target_format]);
+  }, [isOpen, effectiveFormat]);
 
   // Cache placeholder PDF/SVG for template mode
   useEffect(() => {
@@ -531,11 +534,11 @@ const VisualTemplateEditor = ({
           let placeholderFile;
           let fileType;
 
-          // Choose the appropriate placeholder based on target format
-          if (targetFormat === 'svg-lessonplan') {
+          // Choose the appropriate placeholder based on effective format
+          if (effectiveFormat === 'svg-lessonplan') {
             placeholderFile = 'template-editor-lessonplan.svg';
             fileType = 'SVG';
-          } else if (targetFormat === 'pdf-a4-landscape') {
+          } else if (effectiveFormat === 'pdf-a4-landscape') {
             placeholderFile = 'preview-not-available-landscape.pdf';
             fileType = 'Landscape PDF';
           } else {
@@ -555,7 +558,7 @@ const VisualTemplateEditor = ({
 
       fetchPlaceholder();
     }
-  }, [isOpen, placeholderPdfUrl, targetFormat]);
+  }, [isOpen, placeholderPdfUrl, effectiveFormat]);
 
   // Unified PDF/SVG fetching logic for both real files and template mode
   useEffect(() => {
@@ -567,7 +570,7 @@ const VisualTemplateEditor = ({
             setIsLoadingPdf(true);
 
             // Check if this is a LessonPlan entity (SVG slides)
-            if (targetFormat === 'svg-lessonplan') {
+            if (effectiveFormat === 'svg-lessonplan') {
               clog('Fetching SVG slides from LessonPlan API for preview:', fileEntityId);
 
               // Fetch SVG slides for LessonPlan
@@ -664,7 +667,7 @@ const VisualTemplateEditor = ({
         clog('🗑️ Cleaned up all preloaded slides');
       }
     };
-  }, [isOpen, fileEntityId, placeholderPdfUrl, targetFormat]);
+  }, [isOpen, fileEntityId, placeholderPdfUrl, effectiveFormat]);
 
   const handleConfigChange = (newConfig, metadata) => {
     setTemplateConfig(newConfig);
@@ -1771,7 +1774,7 @@ const VisualTemplateEditor = ({
         'pdf-a4-portrait': ' (PDF אנכי)',
         'pdf-a4-landscape': ' (PDF אופקי)',
         'svg-lessonplan': ' (SVG מצגת)'
-      }[targetFormat] || '';
+      }[effectiveFormat] || '';
 
       baseTitle = templateBaseTitle + formatSuffix;
 
@@ -1837,11 +1840,11 @@ const VisualTemplateEditor = ({
       }
 
       // Show target format if we know it
-      if (targetFormat) {
-        const formatLabel = targetFormat === 'pdf-a4-portrait' ? 'PDF אנכי' :
-                           targetFormat === 'pdf-a4-landscape' ? 'PDF אופקי' :
-                           targetFormat === 'svg-lessonplan' ? 'SVG מצגת' :
-                           targetFormat;
+      if (effectiveFormat) {
+        const formatLabel = effectiveFormat === 'pdf-a4-portrait' ? 'PDF אנכי' :
+                           effectiveFormat === 'pdf-a4-landscape' ? 'PDF אופקי' :
+                           effectiveFormat === 'svg-lessonplan' ? 'SVG מצגת' :
+                           effectiveFormat;
         contextItems.push(
           <span key="fallbackFormat" className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs font-medium">
             📄 {formatLabel}
@@ -1889,8 +1892,8 @@ const VisualTemplateEditor = ({
         }
 
         // Target format
-        if (fileEntity.target_format || targetFormat) {
-          const format = fileEntity.target_format || targetFormat;
+        if (effectiveFormat) {
+          const format = effectiveFormat;
           const formatLabel = format === 'pdf-a4-portrait' ? 'PDF אנכי' :
                              format === 'pdf-a4-landscape' ? 'PDF אופקי' :
                              format === 'svg-lessonplan' ? 'SVG מצגת' :
@@ -1922,11 +1925,11 @@ const VisualTemplateEditor = ({
         }
 
         // Show target format if we know it
-        if (targetFormat) {
-          const formatLabel = targetFormat === 'pdf-a4-portrait' ? 'PDF אנכי' :
-                             targetFormat === 'pdf-a4-landscape' ? 'PDF אופקי' :
-                             targetFormat === 'svg-lessonplan' ? 'SVG מצגת' :
-                             targetFormat;
+        if (effectiveFormat) {
+          const formatLabel = effectiveFormat === 'pdf-a4-portrait' ? 'PDF אנכי' :
+                             effectiveFormat === 'pdf-a4-landscape' ? 'PDF אופקי' :
+                             effectiveFormat === 'svg-lessonplan' ? 'SVG מצגת' :
+                             effectiveFormat;
           contextItems.push(
             <span key="fallbackFormat" className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs font-medium">
               📄 {formatLabel}
@@ -2174,13 +2177,13 @@ const VisualTemplateEditor = ({
                 <TemplateCanvas
                   pdfUrl={pdfBlobUrl}
                   templateConfig={templateConfig}
-                  onPageChange={targetFormat === 'svg-lessonplan' ? handleSlideChange : setCurrentPage}
+                  onPageChange={effectiveFormat === 'svg-lessonplan' ? handleSlideChange : setCurrentPage}
                   onTemplateConfigChange={handleConfigChange}
                   focusedItem={focusedItem}
-                  currentPage={targetFormat === 'svg-lessonplan' ? currentSlideIndex + 1 : currentPage}
-                  numPages={targetFormat === 'svg-lessonplan' ? totalSlides : undefined}
+                  currentPage={effectiveFormat === 'svg-lessonplan' ? currentSlideIndex + 1 : currentPage}
+                  numPages={effectiveFormat === 'svg-lessonplan' ? totalSlides : undefined}
                   groups={groups}
-                  targetFormat={targetFormat} // Pass format for correct display dimensions
+                  targetFormat={effectiveFormat} // Pass effective format for correct display dimensions
                   templateType={templateType} // Pass template type for correct rendering
                   showFileContent={showFileContent} // Pass file content visibility state
                   showTemplateElements={showTemplateElements} // Pass template elements visibility state
@@ -2190,7 +2193,7 @@ const VisualTemplateEditor = ({
               ) : (isLoadingSettings || isLoadingPdf) ? (
                 <div className="flex items-center justify-center h-full">
                   <LudoraLoadingSpinner
-                    message={targetFormat === 'svg-lessonplan'
+                    message={effectiveFormat === 'svg-lessonplan'
                       ? 'טוען עורך תבניות SVG...'
                       : 'טוען עורך תבניות PDF...'
                     }
@@ -2200,28 +2203,28 @@ const VisualTemplateEditor = ({
                 <div className="flex items-center justify-center h-full">
                   <div className="text-center p-8 bg-white rounded-lg shadow-sm border border-gray-200 max-w-md">
                     <div className="text-6xl mb-4">
-                      {targetFormat === 'svg-lessonplan' ? '📐' : '📄'}
+                      {effectiveFormat === 'svg-lessonplan' ? '📐' : '📄'}
                     </div>
                     <h3 className="text-lg font-semibold text-gray-800 mb-2">
                       {fileEntityId === null
                         ? 'טוען תבנית עיצוב...'
-                        : targetFormat === 'svg-lessonplan'
+                        : effectiveFormat === 'svg-lessonplan'
                           ? 'אין שקפי SVG להצגה'
                           : 'אין קובץ PDF להצגה'
                       }
                     </h3>
                     <p className="text-sm text-gray-600 mb-4">
                       {fileEntityId === null
-                        ? targetFormat === 'svg-lessonplan'
+                        ? effectiveFormat === 'svg-lessonplan'
                           ? 'טוען שקף SVG לדוגמה עבור עיצוב התבנית...'
                           : 'טוען קובץ PDF לדוגמה עבור עיצוב התבנית...'
-                        : targetFormat === 'svg-lessonplan'
+                        : effectiveFormat === 'svg-lessonplan'
                           ? 'תוכל לערוך את הגדרות המיתוג באמצעות הפאנל מצד ימין. לאחר שתעלה שקפי SVG תוכל לראות תצוגה מקדימה מלאה.'
                           : 'תוכל לערוך את הגדרות הכותרת התחתונה באמצעות הפאנל מצד ימין. לאחר שתעלה קובץ PDF תוכל לראות תצוגה מקדימה מלאה.'
                       }
                     </p>
                     <p className="text-xs text-gray-500">
-                      {targetFormat === 'svg-lessonplan'
+                      {effectiveFormat === 'svg-lessonplan'
                         ? 'השינויים יישמרו גם ללא שקפי SVG קיימים'
                         : 'השינויים יישמרו גם ללא קובץ PDF קיים'
                       }

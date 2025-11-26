@@ -210,21 +210,22 @@ export default function Checkout() {
       }
 
       // Handle both string and object messages from PayPlus
-      let data = null;
-      if (typeof event.data === 'string') {
-        try {
-          data = JSON.parse(event.data);
-          console.log('📨 Parsed PayPlus JSON message:', data);
-        } catch (e) {
-          console.log('⚠️ Non-JSON string message:', event.data);
-          return;
+      try {
+        let data = null;
+        if (typeof event.data === 'string') {
+          try {
+            data = JSON.parse(event.data);
+            console.log('📨 Parsed PayPlus JSON message:', data);
+          } catch (e) {
+            console.log('⚠️ Non-JSON string message:', event.data);
+            return;
+          }
+        } else if (typeof event.data === 'object') {
+          data = event.data;
+          console.log('📨 PayPlus object message:', data);
         }
-      } else if (typeof event.data === 'object') {
-        data = event.data;
-        console.log('📨 PayPlus object message:', data);
-      }
 
-      if (data) {
+        if (data) {
         // CATCH-ALL: Log any PayPlus event to understand the format
         console.log('🎯 Processing PayPlus event:', {
           event: data.event,
