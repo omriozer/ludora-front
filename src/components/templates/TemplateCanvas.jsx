@@ -31,7 +31,8 @@ const TemplateCanvas = ({
   showFileContent = true, // Add file content visibility prop
   showTemplateElements = true, // Add template elements visibility prop
   currentUser = null, // Current user object for email template resolution
-  fileId = null // File ID for fetching resolved template content
+  fileId = null, // File ID for fetching resolved template content
+  onDocumentLoad = null // Callback for when PDF document is fully loaded
 }) => {
   const [numPages, setNumPages] = useState(propNumPages || null);
   const [pageWidth, setPageWidth] = useState(() => {
@@ -87,8 +88,17 @@ const TemplateCanvas = ({
 
       setActualPdfDimensions(actualDimensions);
 
+      // Notify parent component that PDF document is fully loaded and ready
+      if (onDocumentLoad) {
+        onDocumentLoad();
+      }
+
     } catch (error) {
       cerror('Failed to extract PDF dimensions:', error);
+      // Even if dimensions extraction fails, notify that document is loaded
+      if (onDocumentLoad) {
+        onDocumentLoad();
+      }
     }
   };
 
@@ -1032,7 +1042,13 @@ const TemplateCanvas = ({
               }
               error={
                 <div className="flex items-center justify-center p-8 text-red-500 bg-white rounded-lg shadow-lg border border-gray-200">
-                  שגיאה בטעינת הקובץ
+                  {(() => {
+                    // Call onDocumentLoad even on error to stop the loading spinner
+                    if (onDocumentLoad) {
+                      setTimeout(() => onDocumentLoad(), 0);
+                    }
+                    return 'שגיאה בטעינת הקובץ';
+                  })()}
                 </div>
               }
             >

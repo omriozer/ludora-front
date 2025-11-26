@@ -70,6 +70,7 @@ const VisualTemplateEditor = ({
   // Placeholder PDF caching for template mode
   const [placeholderPdfUrl, setPlaceholderPdfUrl] = useState(null);
   const [isLoadingPdf, setIsLoadingPdf] = useState(false);
+  const [isPdfDocumentLoaded, setIsPdfDocumentLoaded] = useState(false); // Track actual PDF rendering state
 
   // File content visibility toggle state
   const [showFileContent, setShowFileContent] = useState(true);
@@ -568,6 +569,7 @@ const VisualTemplateEditor = ({
         const fetchFile = async () => {
           try {
             setIsLoadingPdf(true);
+            setIsPdfDocumentLoaded(false); // Reset document loaded state
 
             // Check if this is a LessonPlan entity (SVG slides)
             if (effectiveFormat === 'svg-lessonplan') {
@@ -606,6 +608,9 @@ const VisualTemplateEditor = ({
 
                 // Start preloading other slides in the background
                 preloadSlides();
+
+                // For SVG, set document loaded immediately since we don't use Document component
+                setIsPdfDocumentLoaded(true);
               } else {
                 clog('❌ No SVG slides found, using placeholder');
                 // Reset slide state
@@ -613,6 +618,7 @@ const VisualTemplateEditor = ({
                 setTotalSlides(0);
                 setCurrentSlideIndex(0);
                 // No slides available, will show placeholder
+                setIsPdfDocumentLoaded(true); // Even with no slides, we're "loaded"
               }
             } else {
               // Regular PDF file
@@ -641,6 +647,12 @@ const VisualTemplateEditor = ({
         // Template mode: use cached placeholder PDF/SVG
         clog('📄 Using placeholder file for template mode:', placeholderPdfUrl);
         setPdfBlobUrl(placeholderPdfUrl);
+        // For template mode with placeholder, we don't need to wait for document loading
+        // but we still need to track it for PDFs (SVGs don't use Document component)
+        if (effectiveFormat === 'svg-lessonplan') {
+          setIsPdfDocumentLoaded(true); // SVG doesn't use Document component
+        }
+        // For PDF placeholders, the Document component will handle setting loaded state
       }
     }
 
@@ -666,6 +678,9 @@ const VisualTemplateEditor = ({
         setPreloadedSlides({});
         clog('🗑️ Cleaned up all preloaded slides');
       }
+
+      // Reset document loaded state when component unmounts or fileEntityId changes
+      setIsPdfDocumentLoaded(false);
     };
   }, [isOpen, fileEntityId, placeholderPdfUrl, effectiveFormat]);
 
@@ -2029,6 +2044,10 @@ const VisualTemplateEditor = ({
       setTemplateConfig(getDefaultConfig());
     }
 
+    // Reset loading states
+    setIsPdfDocumentLoaded(false);
+    setPdfBlobUrl(null);
+
     onClose();
   };
 
@@ -2189,8 +2208,9 @@ const VisualTemplateEditor = ({
                   showTemplateElements={showTemplateElements} // Pass template elements visibility state
                   currentUser={currentUser} // Pass current user for email template resolution
                   fileId={fileEntityId} // Pass file ID for template content resolution
+                  onDocumentLoad={() => setIsPdfDocumentLoaded(true)} // Callback for when PDF is rendered
                 />
-              ) : (isLoadingSettings || isLoadingPdf) ? (
+              ) : (isLoadingSettings || isLoadingPdf || (!isPdfDocumentLoaded && pdfBlobUrl)) ? (
                 <div className="flex items-center justify-center h-full">
                   <LudoraLoadingSpinner
                     message={effectiveFormat === 'svg-lessonplan'
