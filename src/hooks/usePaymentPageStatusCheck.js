@@ -77,15 +77,15 @@ export const usePaymentPageStatusCheck = (options = {}) => {
           // Clear global request after completion
           globalRequestPromise = null;
 
-              console.log('✅ Payment page status check completed:', response.summary);
+          console.log('✅ Payment page status check completed:', response.summary);
 
           setStatusSummary(response.summary);
           setPendingCount(response.summary.total_pending);
           setLastCheckTime(new Date());
 
-          // Handle results and provide user feedback
+          // Handle results and provide user feedback - use current refs to avoid stale closures
           if (response.summary.reverted_to_cart > 0) {
-            if (showToasts) {
+            if (showToastsRef.current) {
               toast({
                 title: "עגלת קניות עודכנה",
                 description: `${response.summary.reverted_to_cart} פריטים הוחזרו לעגלה לאחר ביטול תשלום`,
@@ -94,8 +94,8 @@ export const usePaymentPageStatusCheck = (options = {}) => {
             }
 
             // Notify parent component about status update
-            if (onStatusUpdate) {
-              onStatusUpdate({
+            if (onStatusUpdateRef.current) {
+              onStatusUpdateRef.current({
                 type: 'reverted_to_cart',
                 count: response.summary.reverted_to_cart,
                 summary: response.summary
@@ -106,8 +106,8 @@ export const usePaymentPageStatusCheck = (options = {}) => {
           if (response.summary.continue_polling > 0) {
             console.log(`💳 ${response.summary.continue_polling} payments are being processed, continuing monitoring`);
 
-            if (onStatusUpdate) {
-              onStatusUpdate({
+            if (onStatusUpdateRef.current) {
+              onStatusUpdateRef.current({
                 type: 'continue_polling',
                 count: response.summary.continue_polling,
                 summary: response.summary
@@ -133,7 +133,7 @@ export const usePaymentPageStatusCheck = (options = {}) => {
           // Handle rate limiting gracefully
           if (err.response?.status === 429) {
             console.log('⏳ Rate limited, will retry later');
-            if (showToasts) {
+            if (showToastsRef.current) {
               toast({
                 title: "בדיקת תשלום מוגבלת זמנית",
                 description: "יותר מדי בדיקות - ננסה שוב בקרוב",
@@ -141,7 +141,7 @@ export const usePaymentPageStatusCheck = (options = {}) => {
               });
             }
           } else {
-            if (showToasts) {
+            if (showToastsRef.current) {
               toast({
                 title: "שגיאה בבדיקת סטטוס תשלום",
                 description: "לא ניתן לבדוק את סטטוס התשלומים הממתינים",
@@ -154,7 +154,7 @@ export const usePaymentPageStatusCheck = (options = {}) => {
         }
       }, 2000); // 2 second debounce delay
     });
-  }, [enabled, onStatusUpdate, showToasts]); // FIX: Removed isChecking from deps to prevent infinite loop
+  }, [enabled]); // FIX: Removed callback dependencies to prevent infinite loops
 
   /**
    * Get user's current pending purchases count
@@ -184,7 +184,7 @@ export const usePaymentPageStatusCheck = (options = {}) => {
     enabledRef.current = enabled;
     onStatusUpdateRef.current = onStatusUpdate;
     showToastsRef.current = showToasts;
-  });
+  }, [enabled, onStatusUpdate, showToasts]);
 
   // Run initial check on mount (FIXED: No function dependencies)
   useEffect(() => {
