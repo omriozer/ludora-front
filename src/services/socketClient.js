@@ -4,7 +4,7 @@
 import React from 'react';
 import { io } from 'socket.io-client';
 import { getApiBase } from '@/utils/api.js';
-import { clog, cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 import {
   getPortalContext,
   CREDENTIAL_POLICY,
@@ -39,7 +39,7 @@ class SocketClient {
    */
   async connect(options = {}) {
     if (this.socket && this.connected) {
-      clog('🔌 Socket already connected');
+      ludlog.api('🔌 Socket already connected');
       return Promise.resolve();
     }
 
@@ -47,7 +47,7 @@ class SocketClient {
     try {
       this.portalContext = await getPortalContext();
     } catch (error) {
-      cerror('🔌 Error getting portal context:', error);
+      luderror.api('🔌 Error getting portal context:', error);
       throw error;
     }
 
@@ -187,7 +187,7 @@ class SocketClient {
         // Connection error handler
         this.socket.on('connect_error', (error) => {
           this.connected = false;
-          cerror('❌ Socket connection failed:', error);
+          luderror.api('❌ Socket connection failed:', error);
           reject(error);
         });
 
@@ -216,7 +216,7 @@ class SocketClient {
         });
 
         this.socket.on('reconnect_failed', () => {
-          cerror('❌ Socket reconnection failed after', this.maxReconnectAttempts, 'attempts');
+          luderror.api('❌ Socket reconnection failed after', this.maxReconnectAttempts, { context: 'attempts' });
 
           // Notify listeners of reconnection failure
           this.notifyListeners('reconnect_failed', {});
@@ -226,7 +226,7 @@ class SocketClient {
         this.setupLobbyUpdateHandlers();
 
       } catch (error) {
-        cerror('❌ Failed to initialize Socket.IO:', error);
+        luderror.api('❌ Failed to initialize Socket.IO:', error);
         reject(error);
       }
     });
@@ -237,7 +237,7 @@ class SocketClient {
    */
   joinLobbyUpdates() {
     if (!this.socket) {
-      cerror('❌ Cannot join lobby updates: Socket not initialized');
+      luderror.api('❌ Cannot join lobby updates: Socket not initialized');
       return;
     }
 
@@ -249,7 +249,7 @@ class SocketClient {
    */
   leaveLobbyUpdates() {
     if (!this.socket) {
-      cerror('❌ Cannot leave lobby updates: Socket not initialized');
+      luderror.api('❌ Cannot leave lobby updates: Socket not initialized');
       return;
     }
 
@@ -282,7 +282,7 @@ class SocketClient {
    */
   onLobbyUpdate(eventType, callback) {
     if (typeof callback !== 'function') {
-      cerror('❌ Callback must be a function');
+      luderror.api('❌ Callback must be a function');
       return () => {};
     }
 
@@ -340,7 +340,7 @@ class SocketClient {
       try {
         callback(data);
       } catch (error) {
-        cerror(`❌ Error in listener ${listenerId} for event ${eventType}:`, error);
+        luderror.api(`❌ Error in listener ${listenerId} for event ${eventType}:`, error);
       }
     });
   }
@@ -377,7 +377,7 @@ class SocketClient {
    */
   sendTest(message = 'Frontend test message') {
     if (!this.socket || !this.connected) {
-      cerror('❌ Cannot send test: Socket not connected');
+      luderror.api('❌ Cannot send test: Socket not connected');
       return;
     }
 

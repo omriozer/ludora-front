@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "@/contexts/UserContext";
 import { getApiBase } from "@/utils/api";
-import { clog, cerror } from "@/lib/utils";
+import { ludlog, luderror } from '@/lib/ludlog';
 import { toast } from "@/components/ui/use-toast";
 import { apiRequest } from "@/services/apiClient.js";
 import { urls } from '@/config/urls';
@@ -113,7 +113,7 @@ export default function TemplateManager() {
         await loadTemplates();
       }
     } catch (error) {
-      cerror("Error loading template data:", error);
+      luderror.validation("Error loading template data:", error);
       toast({
         title: "שגיאה בטעינת הנתונים",
         description: "לא ניתן לטעון את נתוני התבניות",
@@ -126,10 +126,10 @@ export default function TemplateManager() {
   const loadTemplates = async () => {
     try {
       const result = await apiRequest('/system-templates');
-      clog('Templates loaded:', result);
+      ludlog.api('Templates loaded:', { data: result });
       setTemplates(result.data || []);
     } catch (error) {
-      cerror("Error loading templates:", error);
+      luderror.validation("Error loading templates:", error);
       throw error;
     }
   };
@@ -150,7 +150,7 @@ export default function TemplateManager() {
       setMessage({ type: 'success', text: 'התבנית נמחקה בהצלחה' });
       await loadTemplates();
     } catch (error) {
-      cerror('Error deleting template:', error);
+      luderror.validation('Error deleting template:', error);
       toast({
         title: "שגיאה במחיקת התבנית",
         description: error.message,
@@ -171,7 +171,7 @@ export default function TemplateManager() {
       setMessage({ type: 'success', text: 'התבנית הוגדרה כברירת מחדל' });
       await loadTemplates();
     } catch (error) {
-      cerror('Error setting default template:', error);
+      luderror.validation('Error setting default template:', error);
       toast({
         title: "שגיאה בהגדרת ברירת מחדל",
         description: error.message,
@@ -196,7 +196,7 @@ export default function TemplateManager() {
       setMessage({ type: 'success', text: 'התבנית שוכפלה בהצלחה' });
       await loadTemplates();
     } catch (error) {
-      cerror('Error duplicating template:', error);
+      luderror.validation('Error duplicating template:', error);
       toast({
         title: "שגיאה בשכפול התבנית",
         description: error.message,
@@ -434,7 +434,7 @@ export default function TemplateManager() {
       setShowVisualEditor(false);
       setEditingTemplate(null);
     } catch (error) {
-      cerror('Error saving template from visual editor:', error);
+      luderror.validation('Error saving template from visual editor:', error);
       toast({
         title: "שגיאה בשמירת התבנית",
         description: error.message,

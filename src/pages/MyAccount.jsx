@@ -41,7 +41,7 @@ import SubscriptionModal from "../components/SubscriptionModal";
 import PurchaseHistory from "@/components/PurchaseHistory";
 import { useSubscriptionState } from "@/hooks/useSubscriptionState";
 import SubscriptionBusinessLogic from "@/services/SubscriptionBusinessLogic";
-import { clog, cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 import { toast } from '@/components/ui/use-toast';
 import { urls } from '@/config/urls';
 import { NAV_VISIBILITY_OPTIONS, NAVIGATION_KEYS } from "@/constants/settingsKeys";
@@ -114,7 +114,7 @@ const MyAccount = () => {
     enabled: true,
     showToasts: true, // Show user notifications about payment status changes
     onStatusUpdate: (update) => {
-      clog('MyAccount: Payment status update received:', update);
+      ludlog.payment('MyAccount: Payment status update received:', { data: update });
 
       // Refresh subscription data when payments are processed
       if (update.type === 'continue_polling' || update.count > 0) {
@@ -256,7 +256,7 @@ const MyAccount = () => {
 
       return user;
     } catch (error) {
-      cerror('Error in checkAndUpdateUserSubscription:', error);
+      luderror.payment('Error in checkAndUpdateUserSubscription:', error);
       return user;
     }
   }, []);
@@ -328,7 +328,7 @@ const MyAccount = () => {
             });
             setMessage({ type: 'info', text: 'המנוי שלך לא אושר בזמן ובוטל. אנא נסה שוב או צור קשר עם התמיכה.' });
           } catch (error) {
-            cerror('Error resetting pending subscription:', error);
+            luderror.payment('Error resetting pending subscription:', error);
           }
         }
       }
@@ -349,7 +349,7 @@ const MyAccount = () => {
       setWorkshops([]);
 
     } catch (error) {
-      cerror("Error loading data:", error);
+      luderror.validation("Error loading data:", error);
       setMessage({ type: 'error', text: 'שגיאה בטעינת הנתונים' });
     }
     setIsLoading(false);
@@ -368,7 +368,7 @@ const MyAccount = () => {
       setMessage({ type: 'success', text: 'הפרטים עודכנו בהצלחה' });
       setTimeout(() => setMessage(null), 3000);
     } catch (error) {
-      cerror("Error updating profile:", error);
+      luderror.media("Error updating profile:", error);
       setMessage({ type: 'error', text: 'שגיאה בעדכון הפרטים' });
       setTimeout(() => setMessage(null), 3000);
     }
@@ -409,7 +409,7 @@ const MyAccount = () => {
   // Handle continue payment for pending subscriptions
   const handleContinuePayment = async (plan) => {
     try {
-      clog('Account page: Continue payment for plan', plan.id);
+      ludlog.payment('Account page: Continue payment for plan', { data: plan.id });
 
       // Open subscription modal instead of redirecting to external payment page
       setShowSubscriptionModal(true);
@@ -420,7 +420,7 @@ const MyAccount = () => {
         variant: "default"
       });
     } catch (error) {
-      cerror('Account page: Error opening subscription modal', error);
+      luderror.payment('Account page: Error opening subscription modal', error);
       toast({
         title: "שגיאה",
         description: "אירעה שגיאה בפתיחת חלון התשלום",
@@ -846,7 +846,7 @@ const MyAccount = () => {
                               subscriptionState.subscriptions || []
                             );
                           } catch (error) {
-                            cerror('Error evaluating subscription action in account page:', error);
+                            luderror.payment('Error evaluating subscription action in account page:', error);
                             return null;
                           }
                         })();

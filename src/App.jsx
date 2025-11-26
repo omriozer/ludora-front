@@ -7,6 +7,8 @@ import { Home, Dashboard, Registration, NotFound } from '@/pages/lazy.jsx';
 // Lazy-loaded pages
 import * as LazyPages from '@/pages/lazy.jsx';
 import { EnhancedToaster } from '@/components/ui/enhanced-toast';
+// Enhanced error handling for lazy loading
+import AuthAwareSuspense, { AuthAwareSuspenseConfig } from '@/components/error/AuthAwareSuspense';
 import Layout from '@/pages/Layout';
 import { useUser } from '@/contexts/UserContext';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
@@ -64,7 +66,6 @@ function StudentPortal() {
 						setTeacherInfo(null);
 					}
 				} catch (error) {
-					console.error('Failed to fetch teacher info:', error);
 					setTeacherInfo(null);
 				}
 			} else {
@@ -104,7 +105,6 @@ function StudentPortal() {
 					const canBypass = await canBypassMaintenance(currentUser);
 					setCanAdminBypass(canBypass);
 				} catch (error) {
-					console.warn('Error checking admin bypass:', error);
 					setCanAdminBypass(false);
 				} finally {
 					setIsCheckingAdminBypass(false);
@@ -210,9 +210,8 @@ function StudentPortal() {
 			const canBypass = await canBypassMaintenance(currentUser);
 			setCanAdminBypass(canBypass);
 		} catch (error) {
-			console.warn('Error re-checking admin bypass after anonymous login:', error);
 			setCanAdminBypass(false);
-		} finally {
+		} finally{
 			setIsCheckingAdminBypass(false);
 		}
 	};
@@ -272,9 +271,9 @@ function StudentPortal() {
 				<Route
 					path='/'
 					element={
-						<Suspense fallback={<SuspenseLoader />}>
+						<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
 							<LazyPages.StudentHome />
-						</Suspense>
+						</AuthAwareSuspense>
 					}
 				/>
 
@@ -282,9 +281,9 @@ function StudentPortal() {
 				<Route
 					path='/portal/:userCode'
 					element={
-						<Suspense fallback={<SuspenseLoader />}>
+						<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
 							<LazyPages.TeacherCatalog />
-						</Suspense>
+						</AuthAwareSuspense>
 					}
 				/>
 
@@ -292,9 +291,9 @@ function StudentPortal() {
 				<Route
 					path='/lobby/:code'
 					element={
-						<Suspense fallback={<SuspenseLoader />}>
+						<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
 							<LazyPages.LobbyJoin />
-						</Suspense>
+						</AuthAwareSuspense>
 					}
 				/>
 
@@ -302,9 +301,9 @@ function StudentPortal() {
 				<Route
 					path='/play/:code'
 					element={
-						<Suspense fallback={<SuspenseLoader />}>
+						<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
 							<LazyPages.GamePlay />
-						</Suspense>
+						</AuthAwareSuspense>
 					}
 				/>
 
@@ -312,33 +311,33 @@ function StudentPortal() {
 				<Route
 					path='/privacy'
 					element={
-						<Suspense fallback={<SuspenseLoader />}>
+						<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
 							<LazyPages.PrivacyPolicy />
-						</Suspense>
+						</AuthAwareSuspense>
 					}
 				/>
 				<Route
 					path='/terms'
 					element={
-						<Suspense fallback={<SuspenseLoader />}>
+						<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
 							<LazyPages.TermsOfService />
-						</Suspense>
+						</AuthAwareSuspense>
 					}
 				/>
 				<Route
 					path='/accessibility'
 					element={
-						<Suspense fallback={<SuspenseLoader />}>
+						<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
 							<LazyPages.Accessibility />
-						</Suspense>
+						</AuthAwareSuspense>
 					}
 				/>
 				<Route
 					path='/contact'
 					element={
-						<Suspense fallback={<SuspenseLoader />}>
+						<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
 							<LazyPages.Contact />
-						</Suspense>
+						</AuthAwareSuspense>
 					}
 				/>
 
@@ -346,9 +345,9 @@ function StudentPortal() {
 				<Route
 					path='*'
 					element={
-						<Suspense fallback={<SuspenseLoader />}>
+						<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
 							<LazyPages.StudentNotFound />
-						</Suspense>
+						</AuthAwareSuspense>
 					}
 				/>
 			</Routes>
@@ -439,49 +438,49 @@ function App() {
 					<Route
 						path='/privacy'
 						element={
-							<Suspense fallback={<SuspenseLoader />}>
+							<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
 								<LazyPages.PrivacyPolicy />
-							</Suspense>
+							</AuthAwareSuspense>
 						}
 					/>
 					<Route
 						path='/terms'
 						element={
-							<Suspense fallback={<SuspenseLoader />}>
+							<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
 								<LazyPages.TermsOfService />
-							</Suspense>
+							</AuthAwareSuspense>
 						}
 					/>
 					<Route
 						path='/accessibility'
 						element={
-							<Suspense fallback={<SuspenseLoader />}>
+							<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
 								<LazyPages.Accessibility />
-							</Suspense>
+							</AuthAwareSuspense>
 						}
 					/>
 					<Route
 						path='/contact'
 						element={
-							<Suspense fallback={<SuspenseLoader />}>
+							<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
 								<LazyPages.Contact />
-							</Suspense>
+							</AuthAwareSuspense>
 						}
 					/>
 					<Route
 						path='/api-test'
 						element={
-							<Suspense fallback={<SuspenseLoader />}>
+							<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
 								<LazyPages.ApiTest />
-							</Suspense>
+							</AuthAwareSuspense>
 						}
 					/>
 					<Route
 						path='/parent-consent'
 						element={
-							<Suspense fallback={<SuspenseLoader />}>
+							<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
 								<LazyPages.ParentConsent />
-							</Suspense>
+							</AuthAwareSuspense>
 						}
 					/>
 
@@ -509,9 +508,9 @@ function App() {
 						element={
 							<ConditionalRoute visibilityField='nav_account_visibility'>
 								<OnboardingRedirect>
-									<Suspense fallback={<SuspenseLoader />}>
+									<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.PROTECTED}>
 										<LazyPages.MyAccount />
-									</Suspense>
+									</AuthAwareSuspense>
 								</OnboardingRedirect>
 							</ConditionalRoute>
 						}
@@ -521,9 +520,9 @@ function App() {
 						element={
 							<ProtectedRoute>
 								<OnboardingRedirect>
-									<Suspense fallback={<SuspenseLoader />}>
+									<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.PROTECTED}>
 										<LazyPages.PaymentResult />
-									</Suspense>
+									</AuthAwareSuspense>
 								</OnboardingRedirect>
 							</ProtectedRoute>
 						}
@@ -533,9 +532,9 @@ function App() {
 						element={
 							<ProtectedRoute>
 								<OnboardingRedirect>
-									<Suspense fallback={<SuspenseLoader />}>
+									<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.PROTECTED}>
 										<LazyPages.VideoViewer />
-									</Suspense>
+									</AuthAwareSuspense>
 								</OnboardingRedirect>
 							</ProtectedRoute>
 						}
@@ -545,9 +544,9 @@ function App() {
 						element={
 							<ProtectedRoute>
 								<OnboardingRedirect>
-									<Suspense fallback={<SuspenseLoader />}>
+									<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.PROTECTED}>
 										<LazyPages.LessonPlanPresentation />
-									</Suspense>
+									</AuthAwareSuspense>
 								</OnboardingRedirect>
 							</ProtectedRoute>
 						}
@@ -557,9 +556,9 @@ function App() {
 						element={
 							<ProtectedRoute>
 								<OnboardingRedirect>
-									<Suspense fallback={<SuspenseLoader />}>
+									<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.PROTECTED}>
 										<LazyPages.Checkout />
-									</Suspense>
+									</AuthAwareSuspense>
 								</OnboardingRedirect>
 							</ProtectedRoute>
 						}
@@ -569,9 +568,9 @@ function App() {
 						element={
 							<ProtectedRoute>
 								<OnboardingRedirect>
-									<Suspense fallback={<SuspenseLoader />}>
+									<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.PROTECTED}>
 										<LazyPages.CourseViewer />
-									</Suspense>
+									</AuthAwareSuspense>
 								</OnboardingRedirect>
 							</ProtectedRoute>
 						}
@@ -580,9 +579,9 @@ function App() {
 						path='/product-details'
 						element={
 							<OnboardingRedirect>
-								<Suspense fallback={<SuspenseLoader />}>
+								<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
 									<LazyPages.ProductDetails />
-								</Suspense>
+								</AuthAwareSuspense>
 							</OnboardingRedirect>
 						}
 					/>
@@ -591,9 +590,9 @@ function App() {
 						element={
 							<ProtectedRoute>
 								<OnboardingRedirect>
-									<Suspense fallback={<SuspenseLoader />}>
+									<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.PROTECTED}>
 										<LazyPages.Purchases />
-									</Suspense>
+									</AuthAwareSuspense>
 								</OnboardingRedirect>
 							</ProtectedRoute>
 						}
@@ -603,9 +602,9 @@ function App() {
 						element={
 							<ConditionalRoute visibilityField='nav_curriculum_visibility'>
 								<OnboardingRedirect>
-									<Suspense fallback={<SuspenseLoader />}>
+									<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
 										<LazyPages.Curriculum />
-									</Suspense>
+									</AuthAwareSuspense>
 								</OnboardingRedirect>
 							</ConditionalRoute>
 						}
@@ -615,9 +614,9 @@ function App() {
 						path='/games'
 						element={
 							<ConditionalRoute visibilityField='nav_games_visibility'>
-								<Suspense fallback={<SuspenseLoader />}>
+								<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
 									<LazyPages.ProductCatalog productType='game' />
-								</Suspense>
+								</AuthAwareSuspense>
 							</ConditionalRoute>
 						}
 					/>
@@ -625,9 +624,9 @@ function App() {
 						path='/creator-signup'
 						element={
 							<ConditionalRoute visibilityField='nav_content_creators_visibility'>
-								<Suspense fallback={<SuspenseLoader />}>
+								<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
 									<LazyPages.ContentCreatorSignup />
-								</Suspense>
+								</AuthAwareSuspense>
 							</ConditionalRoute>
 						}
 					/>
@@ -635,9 +634,9 @@ function App() {
 						path='/creator-portal'
 						element={
 							<ConditionalRoute visibilityField='nav_content_creators_visibility'>
-								<Suspense fallback={<SuspenseLoader />}>
+								<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
 									<LazyPages.ContentCreatorPortal />
-								</Suspense>
+								</AuthAwareSuspense>
 							</ConditionalRoute>
 						}
 					/>
@@ -646,9 +645,9 @@ function App() {
 						element={
 							<ConditionalRoute visibilityField='nav_tools_visibility'>
 								<OnboardingRedirect>
-									<Suspense fallback={<SuspenseLoader />}>
+									<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
 										<LazyPages.ProductCatalog productType='tool' />
-									</Suspense>
+									</AuthAwareSuspense>
 								</OnboardingRedirect>
 							</ConditionalRoute>
 						}
@@ -658,9 +657,9 @@ function App() {
 						element={
 							<ConditionalRoute visibilityField='nav_files_visibility'>
 								<OnboardingRedirect>
-									<Suspense fallback={<SuspenseLoader />}>
+									<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
 										<LazyPages.ProductCatalog productType='file' />
-									</Suspense>
+									</AuthAwareSuspense>
 								</OnboardingRedirect>
 							</ConditionalRoute>
 						}
@@ -670,9 +669,9 @@ function App() {
 						element={
 							<ConditionalRoute visibilityField='nav_lesson_plans_visibility'>
 								<OnboardingRedirect>
-									<Suspense fallback={<SuspenseLoader />}>
+									<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
 										<LazyPages.ProductCatalog productType='lesson_plan' />
-									</Suspense>
+									</AuthAwareSuspense>
 								</OnboardingRedirect>
 							</ConditionalRoute>
 						}
@@ -682,9 +681,9 @@ function App() {
 						element={
 							<ConditionalRoute visibilityField='nav_workshops_visibility'>
 								<OnboardingRedirect>
-									<Suspense fallback={<SuspenseLoader />}>
+									<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
 										<LazyPages.ProductCatalog productType='workshop' />
-									</Suspense>
+									</AuthAwareSuspense>
 								</OnboardingRedirect>
 							</ConditionalRoute>
 						}
@@ -694,9 +693,9 @@ function App() {
 						element={
 							<ConditionalRoute visibilityField='nav_courses_visibility'>
 								<OnboardingRedirect>
-									<Suspense fallback={<SuspenseLoader />}>
+									<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
 										<LazyPages.ProductCatalog productType='course' />
-									</Suspense>
+									</AuthAwareSuspense>
 								</OnboardingRedirect>
 							</ConditionalRoute>
 						}
@@ -706,9 +705,9 @@ function App() {
 						element={
 							<ConditionalRoute visibilityField='nav_classrooms_visibility'>
 								<OnboardingRedirect>
-									<Suspense fallback={<SuspenseLoader />}>
+									<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
 										<LazyPages.MyClassrooms />
-									</Suspense>
+									</AuthAwareSuspense>
 								</OnboardingRedirect>
 							</ConditionalRoute>
 						}
@@ -718,9 +717,9 @@ function App() {
 						element={
 							<ConditionalRoute visibilityField='nav_classrooms_visibility'>
 								<OnboardingRedirect>
-									<Suspense fallback={<SuspenseLoader />}>
+									<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
 										<LazyPages.ClassCurriculum />
-									</Suspense>
+									</AuthAwareSuspense>
 								</OnboardingRedirect>
 							</ConditionalRoute>
 						}
@@ -732,9 +731,9 @@ function App() {
 						element={
 							<ProtectedRoute>
 								<OnboardingRedirect>
-									<Suspense fallback={<SuspenseLoader />}>
+									<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.PROTECTED}>
 										<LazyPages.GameLobbies />
-									</Suspense>
+									</AuthAwareSuspense>
 								</OnboardingRedirect>
 							</ProtectedRoute>
 						}
@@ -744,9 +743,9 @@ function App() {
 						element={
 							<ProtectedRoute>
 								<OnboardingRedirect>
-									<Suspense fallback={<SuspenseLoader />}>
+									<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.PROTECTED}>
 										<LazyPages.GameLobbies />
-									</Suspense>
+									</AuthAwareSuspense>
 								</OnboardingRedirect>
 							</ProtectedRoute>
 						}
@@ -756,9 +755,9 @@ function App() {
 						element={
 							<ProtectedRoute>
 								<OnboardingRedirect>
-									<Suspense fallback={<SuspenseLoader />}>
+									<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.PROTECTED}>
 										<LazyPages.GameLobbies />
-									</Suspense>
+									</AuthAwareSuspense>
 								</OnboardingRedirect>
 							</ProtectedRoute>
 						}
@@ -767,9 +766,9 @@ function App() {
 						path='/student-invitations'
 						element={
 							<ProtectedRoute>
-								<Suspense fallback={<SuspenseLoader />}>
+								<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.PROTECTED}>
 									<LazyPages.StudentInvitations />
-								</Suspense>
+								</AuthAwareSuspense>
 							</ProtectedRoute>
 						}
 					/>
@@ -779,9 +778,9 @@ function App() {
 						path='/products'
 						element={
 							<ProtectedRoute>
-								<Suspense fallback={<SuspenseLoader />}>
+								<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ADMIN}>
 									<LazyPages.Products />
-								</Suspense>
+								</AuthAwareSuspense>
 							</ProtectedRoute>
 						}
 					/>
@@ -789,9 +788,9 @@ function App() {
 						path='/products/create'
 						element={
 							<ProtectedRoute>
-								<Suspense fallback={<SuspenseLoader />}>
+								<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ADMIN}>
 									<LazyPages.ProductPage />
-								</Suspense>
+								</AuthAwareSuspense>
 							</ProtectedRoute>
 						}
 					/>
@@ -799,9 +798,9 @@ function App() {
 						path='/products/edit/:productId'
 						element={
 							<ProtectedRoute>
-								<Suspense fallback={<SuspenseLoader />}>
+								<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ADMIN}>
 									<LazyPages.ProductPage />
-								</Suspense>
+								</AuthAwareSuspense>
 							</ProtectedRoute>
 						}
 					/>
@@ -809,9 +808,9 @@ function App() {
 						path='/game-settings/:gameId'
 						element={
 							<ProtectedRoute>
-								<Suspense fallback={<SuspenseLoader />}>
+								<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ADMIN}>
 									<LazyPages.GameSettings />
-								</Suspense>
+								</AuthAwareSuspense>
 							</ProtectedRoute>
 						}
 					/>
@@ -819,9 +818,9 @@ function App() {
 						path='/participants'
 						element={
 							<AdminRoute>
-								<Suspense fallback={<SuspenseLoader />}>
+								<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ADMIN}>
 									<LazyPages.Participants />
-								</Suspense>
+								</AuthAwareSuspense>
 							</AdminRoute>
 						}
 					/>
@@ -829,9 +828,9 @@ function App() {
 						path='/emails'
 						element={
 							<AdminRoute>
-								<Suspense fallback={<SuspenseLoader />}>
+								<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ADMIN}>
 									<LazyPages.Emails />
-								</Suspense>
+								</AuthAwareSuspense>
 							</AdminRoute>
 						}
 					/>
@@ -839,9 +838,9 @@ function App() {
 						path='/support'
 						element={
 							<AdminRoute>
-								<Suspense fallback={<SuspenseLoader />}>
+								<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ADMIN}>
 									<LazyPages.SupportMessages />
-								</Suspense>
+								</AuthAwareSuspense>
 							</AdminRoute>
 						}
 					/>
@@ -849,9 +848,9 @@ function App() {
 						path='/automations'
 						element={
 							<AdminRoute>
-								<Suspense fallback={<SuspenseLoader />}>
+								<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ADMIN}>
 									<LazyPages.EmailAutomations />
-								</Suspense>
+								</AuthAwareSuspense>
 							</AdminRoute>
 						}
 					/>
@@ -859,9 +858,9 @@ function App() {
 						path='/system-users'
 						element={
 							<AdminRoute>
-								<Suspense fallback={<SuspenseLoader />}>
+								<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ADMIN}>
 									<LazyPages.AdminSystemUsers />
-								</Suspense>
+								</AuthAwareSuspense>
 							</AdminRoute>
 						}
 					/>
@@ -869,9 +868,9 @@ function App() {
 						path='/users'
 						element={
 							<AdminRoute>
-								<Suspense fallback={<SuspenseLoader />}>
+								<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ADMIN}>
 									<LazyPages.Users />
-								</Suspense>
+								</AuthAwareSuspense>
 							</AdminRoute>
 						}
 					/>
@@ -879,9 +878,9 @@ function App() {
 						path='/features'
 						element={
 							<AdminRoute>
-								<Suspense fallback={<SuspenseLoader />}>
+								<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ADMIN}>
 									<LazyPages.FeatureControl />
-								</Suspense>
+								</AuthAwareSuspense>
 							</AdminRoute>
 						}
 					/>
@@ -889,9 +888,9 @@ function App() {
 						path='/brand'
 						element={
 							<AdminRoute>
-								<Suspense fallback={<SuspenseLoader />}>
+								<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ADMIN}>
 									<LazyPages.BrandSettings />
-								</Suspense>
+								</AuthAwareSuspense>
 							</AdminRoute>
 						}
 					/>
@@ -899,9 +898,9 @@ function App() {
 						path='/product-settings'
 						element={
 							<AdminRoute>
-								<Suspense fallback={<SuspenseLoader />}>
+								<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ADMIN}>
 									<LazyPages.ProductSettings />
-								</Suspense>
+								</AuthAwareSuspense>
 							</AdminRoute>
 						}
 					/>
@@ -909,9 +908,9 @@ function App() {
 						path='/categories'
 						element={
 							<AdminRoute>
-								<Suspense fallback={<SuspenseLoader />}>
+								<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ADMIN}>
 									<LazyPages.CategoryManagement />
-								</Suspense>
+								</AuthAwareSuspense>
 							</AdminRoute>
 						}
 					/>
@@ -919,9 +918,9 @@ function App() {
 						path='/content-topics'
 						element={
 							<AdminRoute>
-								<Suspense fallback={<SuspenseLoader />}>
+								<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ADMIN}>
 									<LazyPages.ContentTopicsManagement />
-								</Suspense>
+								</AuthAwareSuspense>
 							</AdminRoute>
 						}
 					/>
@@ -929,9 +928,9 @@ function App() {
 						path='/audio'
 						element={
 							<AdminRoute>
-								<Suspense fallback={<SuspenseLoader />}>
+								<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ADMIN}>
 									<LazyPages.AudioManagement />
-								</Suspense>
+								</AuthAwareSuspense>
 							</AdminRoute>
 						}
 					/>
@@ -939,9 +938,9 @@ function App() {
 						path='/subscriptions'
 						element={
 							<AdminRoute>
-								<Suspense fallback={<SuspenseLoader />}>
+								<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ADMIN}>
 									<LazyPages.SubscriptionSettings />
-								</Suspense>
+								</AuthAwareSuspense>
 							</AdminRoute>
 						}
 					/>
@@ -949,9 +948,9 @@ function App() {
 						path='/schools'
 						element={
 							<AdminRoute>
-								<Suspense fallback={<SuspenseLoader />}>
+								<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ADMIN}>
 									<LazyPages.SchoolManagement />
-								</Suspense>
+								</AuthAwareSuspense>
 							</AdminRoute>
 						}
 					/>
@@ -959,9 +958,9 @@ function App() {
 						path='/admin/help'
 						element={
 							<AdminRoute>
-								<Suspense fallback={<SuspenseLoader />}>
+								<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ADMIN}>
 									<LazyPages.AdminHelp />
-								</Suspense>
+								</AuthAwareSuspense>
 							</AdminRoute>
 						}
 					/>
@@ -969,9 +968,9 @@ function App() {
 						path='/documentation'
 						element={
 							<AdminRoute>
-								<Suspense fallback={<SuspenseLoader />}>
+								<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ADMIN}>
 									<LazyPages.Documentation />
-								</Suspense>
+								</AuthAwareSuspense>
 							</AdminRoute>
 						}
 					/>
@@ -979,9 +978,9 @@ function App() {
 						path='/template-manager'
 						element={
 							<AdminRoute>
-								<Suspense fallback={<SuspenseLoader />}>
+								<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ADMIN}>
 									<LazyPages.TemplateManager />
-								</Suspense>
+								</AuthAwareSuspense>
 							</AdminRoute>
 						}
 					/>
@@ -989,9 +988,9 @@ function App() {
 						path='/template-manager/create'
 						element={
 							<AdminRoute>
-								<Suspense fallback={<SuspenseLoader />}>
+								<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ADMIN}>
 									<LazyPages.TemplateEditor />
-								</Suspense>
+								</AuthAwareSuspense>
 							</AdminRoute>
 						}
 					/>
@@ -999,9 +998,9 @@ function App() {
 						path='/template-manager/edit/:templateId'
 						element={
 							<AdminRoute>
-								<Suspense fallback={<SuspenseLoader />}>
+								<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ADMIN}>
 									<LazyPages.TemplateEditor />
-								</Suspense>
+								</AuthAwareSuspense>
 							</AdminRoute>
 						}
 					/>
@@ -1011,9 +1010,9 @@ function App() {
 						path='/coupons'
 						element={
 							<AdminRoute>
-								<Suspense fallback={<SuspenseLoader />}>
+								<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ADMIN}>
 									<LazyPages.CouponDashboard />
-								</Suspense>
+								</AuthAwareSuspense>
 							</AdminRoute>
 						}
 					/>
@@ -1021,9 +1020,9 @@ function App() {
 						path='/coupons/manage'
 						element={
 							<AdminRoute>
-								<Suspense fallback={<SuspenseLoader />}>
+								<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ADMIN}>
 									<LazyPages.CouponManagement />
-								</Suspense>
+								</AuthAwareSuspense>
 							</AdminRoute>
 						}
 					/>
@@ -1031,9 +1030,9 @@ function App() {
 						path='/coupons/create'
 						element={
 							<AdminRoute>
-								<Suspense fallback={<SuspenseLoader />}>
+								<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ADMIN}>
 									<LazyPages.CouponForm />
-								</Suspense>
+								</AuthAwareSuspense>
 							</AdminRoute>
 						}
 					/>
@@ -1041,9 +1040,9 @@ function App() {
 						path='/coupons/edit/:id'
 						element={
 							<AdminRoute>
-								<Suspense fallback={<SuspenseLoader />}>
+								<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ADMIN}>
 									<LazyPages.CouponForm />
-								</Suspense>
+								</AuthAwareSuspense>
 							</AdminRoute>
 						}
 					/>
@@ -1051,9 +1050,9 @@ function App() {
 						path='/coupons/analytics'
 						element={
 							<AdminRoute>
-								<Suspense fallback={<SuspenseLoader />}>
+								<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ADMIN}>
 									<LazyPages.CouponAnalytics />
-								</Suspense>
+								</AuthAwareSuspense>
 							</AdminRoute>
 						}
 					/>
@@ -1061,9 +1060,9 @@ function App() {
 						path='/coupons/bulk-generate'
 						element={
 							<AdminRoute>
-								<Suspense fallback={<SuspenseLoader />}>
+								<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ADMIN}>
 									<LazyPages.BulkCouponGenerator />
-								</Suspense>
+								</AuthAwareSuspense>
 							</AdminRoute>
 						}
 					/>
@@ -1073,9 +1072,9 @@ function App() {
 						path='/demo'
 						element={
 							<AdminRoute>
-								<Suspense fallback={<SuspenseLoader />}>
+								<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ADMIN}>
 									<LazyPages.Demo />
-								</Suspense>
+								</AuthAwareSuspense>
 							</AdminRoute>
 						}
 					/>

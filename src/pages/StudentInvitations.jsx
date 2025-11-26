@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { StudentInvitation, User, Classroom, ClassroomMembership } from "@/services/entities";
 import { useUser } from "@/contexts/UserContext";
-import { cerror } from "@/lib/utils";
+import { ludlog, luderror } from '@/lib/ludlog';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -93,7 +93,7 @@ export default function StudentInvitations() {
             const classroom = await Classroom.get(id);
             return { id, data: classroom };
           } catch (error) {
-            cerror(`Error loading classroom ${id}:`, error);
+            luderror.validation(`Error loading classroom ${id}:`, error);
             return { id, data: null };
           }
         })),
@@ -102,7 +102,7 @@ export default function StudentInvitations() {
             const teacher = await User.get(id);
             return { id, data: teacher };
           } catch (error) {
-            cerror(`Error loading teacher ${id}:`, error);
+            luderror.validation(`Error loading teacher ${id}:`, error);
             return { id, data: null };
           }
         }))
@@ -123,7 +123,7 @@ export default function StudentInvitations() {
       setTeachers(teachersLookup);
 
     } catch (error) {
-      cerror("Error loading invitations:", error);
+      luderror.validation("Error loading invitations:", error);
       setError("שגיאה בטעינת ההזמנות");
     }
   };
@@ -168,7 +168,7 @@ export default function StudentInvitations() {
       setInvitations(prev => prev.filter(inv => inv.id !== invitation.id));
 
     } catch (error) {
-      cerror("Error accepting invitation:", error);
+      luderror.validation("Error accepting invitation:", error);
       setError("שגיאה באישור ההזמנה");
     } finally {
       setProcessingInvitation(null);
@@ -189,7 +189,7 @@ export default function StudentInvitations() {
       setInvitations(prev => prev.filter(inv => inv.id !== invitation.id));
 
     } catch (error) {
-      cerror("Error rejecting invitation:", error);
+      luderror.validation("Error rejecting invitation:", error);
       setError("שגיאה בדחיית ההזמנה");
     } finally {
       setProcessingInvitation(null);

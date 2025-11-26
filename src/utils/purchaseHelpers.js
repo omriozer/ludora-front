@@ -3,7 +3,7 @@
 
 import { apiRequest } from '@/services/apiClient';
 import { showSuccess, showError } from '@/utils/messaging';
-import { log, error, cerror, clog } from '@/lib/logger';
+import { ludlog, luderror } from '@/lib/ludlog';
 import { Product } from '@/services/entities';
 
 /**
@@ -21,7 +21,7 @@ export async function findProductForEntity(entityType, entityId) {
 
     return products && products.length > 0 ? products[0] : null;
   } catch (err) {
-    error.payment(`Error finding Product for ${entityType}:${entityId}`, err);
+    luderror.payment(`Error finding Product for ${entityType}:${entityId}`, err);
     return null;
   }
 }
@@ -44,7 +44,7 @@ export async function createPendingPurchase({
   metadata = {}
 }) {
   try {
-    log.payment('Creating pending purchase', { entityType, entityId, price, userId });
+    ludlog.payment('Creating pending purchase', { entityType, entityId, price, userId });
 
     // Find the Product record for this entity to get the price
     const productRecord = await findProductForEntity(entityType, entityId);
@@ -69,7 +69,7 @@ export async function createPendingPurchase({
     );
 
     if (existingPurchase) {
-      log.payment('Found existing non-refunded purchase for this product', existingPurchase);
+      ludlog.payment('Found existing non-refunded purchase for this product', existingPurchase);
       throw new Error(`כבר יש לך רכישה עבור המוצר הזה. סטטוס: ${existingPurchase.payment_status}. לא ניתן לרכוש מוצר כפול אלא אם הרכישה הקודמת הוחזרה.`);
     }
 
@@ -93,11 +93,11 @@ export async function createPendingPurchase({
       body: JSON.stringify(purchaseData)
     });
 
-    clog('Pending purchase created successfully:', purchase);
+    ludlog.payment('Pending purchase created successfully:', { data: purchase });
     return purchase;
 
   } catch (error) {
-    cerror('Error creating pending purchase:', error);
+    luderror.payment('Error creating pending purchase:', error);
     throw error;
   }
 }
@@ -109,7 +109,7 @@ export async function createPendingPurchase({
  */
 export async function createFreePurchase(params) {
   try {
-    clog('Creating free purchase:', params);
+    ludlog.payment('Creating free purchase:', { data: params });
 
     // Find the Product record for this entity to get the price
     const productRecord = await findProductForEntity(params.entityType, params.entityId);
@@ -142,11 +142,11 @@ export async function createFreePurchase(params) {
       body: JSON.stringify(purchaseData)
     });
 
-    clog('Free purchase created successfully:', purchase);
+    ludlog.payment('Free purchase created successfully:', { data: purchase });
     return purchase;
 
   } catch (error) {
-    cerror('Error creating free purchase:', error);
+    luderror.payment('Error creating free purchase:', error);
     throw error;
   }
 }
@@ -166,11 +166,11 @@ export async function getCartPurchases(userId) {
       payment_status: 'cart' // Only cart items, not pending payment processing
     });
 
-    clog(`Found ${purchases.length} cart purchases for user ${userId}`);
+    ludlog.payment(`Found ${purchases.length} cart purchases for user ${userId}`);
     return purchases || [];
 
   } catch (error) {
-    cerror('Error getting cart purchases:', error);
+    luderror.payment('Error getting cart purchases:', error);
     return [];
   }
 }
@@ -190,11 +190,11 @@ export async function getPendingPurchases(userId) {
       payment_status: 'pending'
     });
 
-    clog(`Found ${purchases.length} pending purchases for user ${userId}`);
+    ludlog.payment(`Found ${purchases.length} pending purchases for user ${userId}`);
     return purchases || [];
 
   } catch (error) {
-    cerror('Error getting pending purchases:', error);
+    luderror.payment('Error getting pending purchases:', error);
     return [];
   }
 }
@@ -219,15 +219,10 @@ export async function getCartAndPendingPurchases(userId) {
       return new Date(b.created_at) - new Date(a.created_at);
     });
 
-    clog(`Found ${sortedPurchases.length} cart and pending purchases for user ${userId}`, {
-      cart: sortedPurchases.filter(p => p.payment_status === 'cart').length,
-      pending: sortedPurchases.filter(p => p.payment_status === 'pending').length
-    });
-
     return sortedPurchases;
 
   } catch (error) {
-    cerror('Error getting cart and pending purchases:', error);
+    luderror.payment('Error getting cart and pending purchases:', error);
     return [];
   }
 }
@@ -249,11 +244,11 @@ export async function getAllNonRefundedPurchases(userId) {
     // Filter out refunded purchases
     const nonRefundedPurchases = (allPurchases || []).filter(p => p.payment_status !== 'refunded');
 
-    clog(`Found ${nonRefundedPurchases.length} non-refunded purchases for user ${userId}`);
+    ludlog.payment(`Found ${nonRefundedPurchases.length} non-refunded purchases for user ${userId}`);
     return nonRefundedPurchases;
 
   } catch (error) {
-    cerror('Error getting non-refunded purchases:', error);
+    luderror.payment('Error getting non-refunded purchases:', error);
     return [];
   }
 }
@@ -273,11 +268,11 @@ export async function clearCartPurchases(userId) {
       });
     }
 
-    clog(`Cleared ${cartPurchases.length} cart purchases for user ${userId}`);
+    ludlog.payment(`Cleared ${cartPurchases.length} cart purchases for user ${userId}`);
     return true;
 
   } catch (error) {
-    cerror('Error clearing cart purchases:', error);
+    luderror.payment('Error clearing cart purchases:', error);
     return false;
   }
 }
@@ -297,11 +292,11 @@ export async function clearPendingPurchases(userId) {
       });
     }
 
-    clog(`Cleared ${pendingPurchases.length} pending purchases for user ${userId}`);
+    ludlog.payment(`Cleared ${pendingPurchases.length} pending purchases for user ${userId}`);
     return true;
 
   } catch (error) {
-    cerror('Error clearing pending purchases:', error);
+    luderror.payment('Error clearing pending purchases:', error);
     return false;
   }
 }
@@ -364,12 +359,12 @@ export async function checkExistingPurchase(userId, entityType, entityId) {
     );
 
     if (existingPurchase) {
-      clog('Found existing purchase for product:', { entityType, entityId, purchase: existingPurchase });
+      ludlog.payment('Found existing purchase for product:', { data: { entityType, entityId, purchase: existingPurchase } });
     }
 
     return existingPurchase || null;
   } catch (error) {
-    cerror('Error checking existing purchase:', error);
+    luderror.payment('Error checking existing purchase:', error);
     return null;
   }
 }
@@ -397,17 +392,17 @@ export async function isPaymentInProgress(userId, entityType, entityId) {
       const minutesElapsed = (now - createdAt) / (1000 * 60);
 
       if (minutesElapsed > 10) {
-        clog('Payment in progress but stale (>10 minutes), allowing retry');
+        ludlog.payment('Payment in progress but stale (>10 minutes);, allowing retry');
         return false;
       }
 
-      clog('Payment in progress for product:', { entityType, entityId, purchase: inProgressPurchase });
+      ludlog.payment('Payment in progress for product:', { data: { entityType, entityId, purchase: inProgressPurchase } });
       return true;
     }
 
     return false;
   } catch (error) {
-    cerror('Error checking payment in progress:', error);
+    luderror.payment('Error checking payment in progress:', error);
     return false;
   }
 }

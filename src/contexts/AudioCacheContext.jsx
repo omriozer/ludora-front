@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 import { getApiBase } from '@/utils/api.js';
-import { clog, cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 
 const AudioCacheContext = createContext();
 
@@ -80,7 +80,7 @@ export const AudioCacheProvider = ({ children }) => {
         // Construct download URL with auth token
         const downloadUrl = `${getApiBase()}/media/download/audiofile/${audioFileId}?authToken=${encodeURIComponent(token)}`;
 
-        clog(`🎵 Downloading audio file: ${audioFileId}`);
+        ludlog.media(`🎵 Downloading audio file: ${audioFileId}`);
 
         // Fetch the audio file
         const response = await fetch(downloadUrl);
@@ -105,11 +105,11 @@ export const AudioCacheProvider = ({ children }) => {
         // Cache the blob URL
         setAudioCache(prev => new Map(prev.set(audioFileId, blobUrl)));
 
-        clog(`✅ Audio file cached: ${audioFileId}`);
+        ludlog.media(`✅ Audio file cached: ${audioFileId}`);
         return blobUrl;
 
       } catch (error) {
-        cerror(`Failed to download audio file ${audioFileId}:`, error);
+        luderror.media(`Failed to download audio file ${audioFileId}:`, error);
         throw error;
       } finally {
         // Clear loading state
@@ -143,7 +143,7 @@ export const AudioCacheProvider = ({ children }) => {
         newMap.delete(audioFileId);
         return newMap;
       });
-      clog(`🗑️ Audio file removed from cache: ${audioFileId}`);
+      ludlog.media(`🗑️ Audio file removed from cache: ${audioFileId}`);
     }
   }, [audioCache]);
 
@@ -157,7 +157,7 @@ export const AudioCacheProvider = ({ children }) => {
     setAudioCache(new Map());
     setLoadingStates(new Map());
     downloadPromises.current.clear();
-    clog('🗑️ All audio cache cleared');
+    ludlog.media('🗑️ All audio cache cleared');
   }, [audioCache]);
 
   /**

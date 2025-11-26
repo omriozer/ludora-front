@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Play, Pause, Volume2, VolumeX, Maximize, SkipBack, SkipForward, AlertCircle } from 'lucide-react';
 import LogoDisplay from '@/components/ui/LogoDisplay';
-import { clog, cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 import { toast } from '@/components/ui/use-toast';
 import { getApiBase } from '@/utils/api.js';
 
@@ -154,13 +154,6 @@ const SecureVideoPlayer = ({
 
         // Debug logging in development
         if (import.meta.env.DEV) {
-          clog('🎬 SecureVideoPlayer URL processing:', {
-            inputVideoUrl: videoUrl,
-            isFullUrl: videoUrl.startsWith('http'),
-            baseUrl: videoUrl.startsWith('http') ? 'N/A (full URL)' : getApiBase(),
-            finalUrl,
-            tokenType: token === 'token_dev' ? 'dev' : 'jwt'
-          });
 
           // Test the URL by making a fetch request to see the response
           fetch(finalUrl, {
@@ -170,15 +163,9 @@ const SecureVideoPlayer = ({
             }
           })
           .then(response => {
-            clog('🌐 Video URL HEAD request result:', {
-              status: response.status,
-              statusText: response.statusText,
-              headers: Object.fromEntries(response.headers.entries()),
-              url: response.url
-            });
           })
           .catch(error => {
-            cerror('🚨 Video URL HEAD request failed:', error);
+            luderror.api('🚨 Video URL HEAD request failed:', error);
           });
         }
 
@@ -310,33 +297,33 @@ const SecureVideoPlayer = ({
       
       return new Promise((resolve) => {
         const timeout = setTimeout(() => {
-          cerror('Video codec test timed out');
+          luderror.media('Video codec test timed out');
           resolve(false);
         }, 5000);
         
         testVideo.addEventListener('loadedmetadata', () => {
           clearTimeout(timeout);
-          cerror('✅ Video metadata loaded successfully - codec appears compatible');
+          luderror.media('✅ Video metadata loaded successfully - codec appears compatible');
           resolve(true);
         });
         
         testVideo.addEventListener('error', (e) => {
           clearTimeout(timeout);
-          cerror('❌ Video codec test failed:', e.target?.error);
+          luderror.media('❌ Video codec test failed:', e.target?.error);
           resolve(false);
         });
         
         testVideo.src = authenticatedVideoUrl;
       });
     } catch (error) {
-      cerror('Video codec test error:', error);
+      luderror.media('Video codec test error:', error);
       return false;
     }
   }, [authenticatedVideoUrl]);
 
   const retryVideo = useCallback(async () => {
     if (retryCount >= 2) {
-      cerror('Maximum retry attempts reached');
+      luderror.ui('Maximum retry attempts reached');
       return;
     }
 
@@ -364,14 +351,14 @@ const SecureVideoPlayer = ({
         if (retryCount >= 0) {
           videoRef.current.muted = true;
           setIsMuted(true);
-          cerror('🔇 Retrying with muted audio to bypass audio codec issues');
+          luderror.media('🔇 Retrying with muted audio to bypass audio codec issues');
         }
 
         // Just reload without clearing src to preserve streaming
         videoRef.current.load();
 
       } catch (error) {
-        cerror('Error during video retry:', error);
+        luderror.media('Error during video retry:', error);
       }
     }
 
@@ -379,10 +366,10 @@ const SecureVideoPlayer = ({
   }, [retryCount, authenticatedVideoUrl, bufferingTimeout, loadingTimeout]);
 
   const handleError = (e) => {
-    cerror('Video error:', e);
-    cerror('Video player error:', e.target?.error);
-    cerror('Video URL attempted:', authenticatedVideoUrl);
-    cerror('Original video URL:', videoUrl);
+    luderror.game('Video error:', e);
+    luderror.auth('Video player error:', e.target?.error);
+    luderror.auth('Video URL attempted:', authenticatedVideoUrl);
+    luderror.auth('Original video URL:', videoUrl);
 
     // In development mode, throw detailed error
     if (import.meta.env.DEV) {
@@ -397,7 +384,7 @@ const SecureVideoPlayer = ({
         currentSrc: e.target?.currentSrc,
         src: e.target?.src
       };
-      cerror('🚨 Detailed video error:', errorDetails);
+      luderror.media('🚨 Detailed video error:', errorDetails);
 
       // Map common video error codes to readable messages
       const errorMessages = {
@@ -408,7 +395,7 @@ const SecureVideoPlayer = ({
       };
 
       if (e.target?.error?.code) {
-        cerror(`🎬 Error Code ${e.target.error.code}: ${errorMessages[e.target.error.code] || 'Unknown error'}`);
+        luderror.ui(`🎬 Error Code ${e.target.error.code}: ${errorMessages[e.target.error.code] || 'Unknown error'}`);
       }
     }
 
@@ -417,14 +404,14 @@ const SecureVideoPlayer = ({
 
     // Auto-retry on network or decode errors if this is the first failure
     if (retryCount === 0 && (errorCode === 2 || errorCode === 3)) {
-      cerror(`🔄 Initial ${errorCode === 2 ? 'network' : 'decode'} error - attempting automatic retry`);
+      luderror.media(`🔄 Initial ${errorCode === 2 ? 'network' : 'decode'} error - attempting automatic retry`);
       retryVideo();
       return;
     }
 
     // Only retry on decode errors for subsequent failures
     if (errorCode === 3 && retryCount < 2) { // MEDIA_ERR_DECODE - up to 2 retries total
-      cerror(`🔄 Decode error - attempting muted retry ${retryCount + 1}/2`);
+      luderror.media(`🔄 Decode error - attempting muted retry ${retryCount + 1}/2`);
       retryVideo();
       return;
     }
@@ -469,13 +456,6 @@ const SecureVideoPlayer = ({
       const progress = Math.max(0, Math.min(1, clickX / rect.width));
       const newTime = progress * duration;
 
-      clog('🎯 Seek debug:', {
-        clickX,
-        rectWidth: rect.width,
-        progress,
-        newTime,
-        duration
-      });
 
       videoRef.current.currentTime = newTime;
       setCurrentTime(newTime);
@@ -638,15 +618,15 @@ const SecureVideoPlayer = ({
             }
           }}
           onLoadedData={() => {
-            cerror('✅ Video data loaded successfully');
+            luderror.media('✅ Video data loaded successfully');
           }}
           onSuspend={() => {
             // Handle network suspension - normal for streaming
-            clog('Video suspended - buffering or network pause (normal for streaming)');
+            ludlog.media('Video suspended - buffering or network pause (normal for streaming);');
           }}
           onStalled={() => {
             // Handle stalled playback - normal for streaming
-            clog('Video stalled - waiting for more data (normal for streaming)');
+            ludlog.game('Video stalled - waiting for more data (normal for streaming);');
           }}
           onWaiting={() => {
             // Video is waiting for more data - show buffering spinner

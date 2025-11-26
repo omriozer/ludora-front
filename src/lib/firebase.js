@@ -1,14 +1,8 @@
 // Firebase configuration and initialization
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
-import { clog, cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 import { config } from '@/config/environment';
-
-// Debug environment variables using centralized config (development only)
-if (import.meta.env.DEV) {
-  clog('🔍 Environment:', config.environment);
-  clog('🔍 Firebase Project ID:', config.firebase.projectId);
-}
 
 // Firebase configuration from centralized environment config
 const firebaseConfig = config.firebase;
@@ -28,11 +22,11 @@ try {
   googleProvider.addScope('profile');
 
   if (import.meta.env.DEV) {
-    clog('✅ Firebase initialized successfully');
+    ludlog.auth('✅ Firebase initialized successfully');
   }
 } catch (error) {
-  cerror('❌ Firebase initialization error:', error);
-  cerror('🔧 Please check your Firebase environment variables in .env.development');
+  luderror.auth('❌ Firebase initialization error:', error);
+  luderror.auth('🔧 Please check your Firebase environment variables in .env.development');
 }
 
 // Firebase Auth functions
@@ -53,7 +47,7 @@ export const firebaseAuth = {
         credential: result.credential
       };
     } catch (error) {
-      cerror('Google sign-in error:', error);
+      luderror.validation('Google sign-in error:', error);
       throw error;
     }
   },
@@ -67,10 +61,10 @@ export const firebaseAuth = {
     try {
       await signOut(auth);
       if (import.meta.env.DEV) {
-        clog('✅ Firebase sign out successful');
+        ludlog.auth('✅ Firebase sign out successful');
       }
     } catch (error) {
-      cerror('Firebase sign out error:', error);
+      luderror.auth('Firebase sign out error:', error);
       throw error;
     }
   },
@@ -84,7 +78,7 @@ export const firebaseAuth = {
     try {
       return await auth.currentUser.getIdToken();
     } catch (error) {
-      cerror('Error getting user token:', error);
+      luderror.auth('Error getting user token:', error);
       return null;
     }
   },
@@ -97,7 +91,7 @@ export const firebaseAuth = {
   // Listen to auth state changes
   onAuthStateChanged: (callback) => {
     if (!auth) {
-      cerror('Firebase auth not initialized');
+      luderror.auth('Firebase auth not initialized');
       return () => {};
     }
 

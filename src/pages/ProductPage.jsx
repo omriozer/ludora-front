@@ -17,7 +17,7 @@ import { AccessSettingsSection } from '@/components/product/sections/AccessSetti
 import { PublishSection } from '@/components/product/sections/PublishSection';
 import { ProductAPI } from '@/services/apiClient';
 import { PRODUCT_TYPES, getProductTypeName } from '@/config/productTypes';
-import { clog, cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 import FeatureFlagService from '@/services/FeatureFlagService';
 import { contentTopicService } from '@/services/contentTopicService';
 
@@ -163,7 +163,7 @@ export default function ProductPage() {
                 product.accessible_slides = lessonPlan.accessible_slides;
               }
             } catch (error) {
-              cerror('❌ Failed to load lesson plan data:', error);
+              luderror.validation('❌ Failed to load lesson plan data:', error);
               // Don't fail the whole loading process, just log the error
               // Some lesson plans may not have been created yet
             }
@@ -184,7 +184,7 @@ export default function ProductPage() {
                 product.footer_settings = file.footer_settings;
               }
             } catch (error) {
-              cerror('❌ Failed to load file data:', error);
+              luderror.media('❌ Failed to load file data:', error);
               // Don't fail the whole loading process, just log the error
               // Some files may not have been created yet
             }
@@ -200,21 +200,21 @@ export default function ProductPage() {
               product.content_topic_id = null;
             }
           } catch (error) {
-            cerror('Failed to load product content topics:', error);
+            luderror.validation('Failed to load product content topics:', error);
             product.content_topic_id = null;
           }
 
           // Set editing product AFTER entity data integration
           setEditingProduct(product);
         } catch (error) {
-          cerror('Failed to load product:', error);
+          luderror.validation('Failed to load product:', error);
           showMessage('error', 'שגיאה בטעינת המוצר');
           navigate('/products');
           return;
         }
       }
     } catch (error) {
-      cerror('Error loading initial data:', error);
+      luderror.validation('Error loading initial data:', error);
       showMessage('error', 'שגיאה בטעינת הנתונים');
     } finally {
       setIsLoadingData(false);
@@ -301,9 +301,9 @@ export default function ProductPage() {
         if (result.id && content_topic_id) {
           try {
             await contentTopicService.updateProductTopics(result.id, [content_topic_id]);
-            clog('✅ Content topic association saved for new product');
+            ludlog.validation('✅ Content topic association saved for new product');
           } catch (error) {
-            cerror('Failed to save content topic association for new product:', error);
+            luderror.validation('Failed to save content topic association for new product:', error);
             // Don't fail the whole operation for topic association errors
           }
         }
@@ -332,11 +332,11 @@ export default function ProductPage() {
         if (content_topic_id !== undefined) {
           try {
             await contentTopicService.updateProductTopics(productId, content_topic_id ? [content_topic_id] : []);
-            clog('✅ Content topic association updated for existing product');
+            ludlog.state('✅ Content topic association updated for existing product');
             // Update result to include topic ID for state management
             result.content_topic_id = content_topic_id || null;
           } catch (error) {
-            cerror('Failed to update content topic association:', error);
+            luderror.validation('Failed to update content topic association:', error);
             // Don't fail the whole operation for topic association errors
           }
         }
@@ -366,7 +366,7 @@ export default function ProductPage() {
 
       return result;
     } catch (error) {
-      cerror('Error saving product:', error);
+      luderror.validation('Error saving product:', error);
       throw error;
     }
   };
@@ -412,7 +412,7 @@ export default function ProductPage() {
         }));
       }
     } catch (error) {
-      cerror('❌ Error saving File entity data:', error);
+      luderror.media('❌ Error saving File entity data:', error);
       // Don't throw error - we don't want to fail the whole save process
       // Just log the error and continue
     }
@@ -468,7 +468,7 @@ export default function ProductPage() {
         }));
       }
     } catch (error) {
-      cerror('❌ Error saving LessonPlan entity data:', error);
+      luderror.validation('❌ Error saving LessonPlan entity data:', error);
       // Don't throw error - we don't want to fail the whole save process
       // Just log the error and continue
     }

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { apiRequest } from '@/services/apiClient';
 import SubscriptionBusinessLogic from '@/services/SubscriptionBusinessLogic';
-import { clog, cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 import { toast } from '@/components/ui/use-toast';
 
 // Global cache for subscription data to prevent duplicate API calls
@@ -55,11 +55,11 @@ export function useSubscriptionState(user) {
       const isCacheValid = plansCache.data && plansCache.timestamp && (now - plansCache.timestamp < CACHE_DURATION);
 
       if (isCacheValid) {
-        clog('✅ Using cached subscription plans');
+        ludlog.payment('✅ Using cached subscription plans');
         return plansCache.data;
       }
 
-      clog('🔄 Loading subscription plans from API...');
+      ludlog.payment('🔄 Loading subscription plans from API...');
       const response = await apiRequest('/subscriptions/plans');
 
       if (response && response.success && response.data) {
@@ -71,14 +71,14 @@ export function useSubscriptionState(user) {
           timestamp: now
         };
 
-        clog('✅ Subscription plans loaded and cached:', activePlans.length);
+        ludlog.payment('✅ Subscription plans loaded and cached:', { data: activePlans.length });
         return activePlans;
       }
 
-      cerror('Invalid plans response:', response);
+      luderror.api('Invalid plans response:', response);
       return [];
     } catch (error) {
-      cerror('Failed to load subscription plans:', error);
+      luderror.payment('Failed to load subscription plans:', error);
       throw new Error('שגיאה בטעינת תוכניות המנוי');
     }
   }, []);
@@ -97,11 +97,11 @@ export function useSubscriptionState(user) {
       const isCacheValid = userCacheEntry && (now - userCacheEntry.timestamp < CACHE_DURATION);
 
       if (isCacheValid) {
-        clog('✅ Using cached user purchases for user', userId);
+        ludlog.payment('✅ Using cached user purchases for user', { data: userId });
         return userCacheEntry.data;
       }
 
-      clog('🔄 Loading user purchases from API for user ID:', userId);
+      ludlog.payment('🔄 Loading user purchases from API for user ID:', { data: userId });
       const response = await apiRequest(`/entities/purchase?buyer_user_id=${user.id}`);
 
       if (response && Array.isArray(response)) {
@@ -111,21 +111,14 @@ export function useSubscriptionState(user) {
           timestamp: now
         });
 
-        clog('✅ User purchases loaded and cached:', response.length);
-        clog('Purchase details:', response.map(p => ({
-          id: p.id,
-          purchasable_id: p.purchasable_id,
-          purchasable_type: p.purchasable_type,
-          payment_status: p.payment_status,
-          status: p.status
-        })));
+        ludlog.payment('✅ User purchases loaded and cached:', { data: response.length });
         return response;
       }
 
-      cerror('Invalid purchases response:', response);
+      luderror.payment('Invalid purchases response:', response);
       return [];
     } catch (error) {
-      cerror('Failed to load user purchases:', error);
+      luderror.payment('Failed to load user purchases:', error);
       // Don't throw here - purchases might not exist for new users
       return [];
     }
@@ -145,11 +138,11 @@ export function useSubscriptionState(user) {
       const isCacheValid = userCacheEntry && (now - userCacheEntry.timestamp < CACHE_DURATION);
 
       if (isCacheValid) {
-        clog('✅ Using cached user subscriptions for user', userId);
+        ludlog.payment('✅ Using cached user subscriptions for user', { data: userId });
         return userCacheEntry.data;
       }
 
-      clog('🔄 Loading user subscriptions from API for user ID:', userId);
+      ludlog.payment('🔄 Loading user subscriptions from API for user ID:', { data: userId });
       const response = await apiRequest('/subscriptions/user');
 
       if (response && response.success && response.data) {
@@ -161,20 +154,14 @@ export function useSubscriptionState(user) {
           timestamp: now
         });
 
-        clog('✅ User subscriptions loaded and cached:', subscriptions.length);
-        clog('Subscription details:', subscriptions.map(s => ({
-          id: s.id,
-          subscription_plan_id: s.subscription_plan_id,
-          status: s.status,
-          created_at: s.created_at
-        })));
+        ludlog.payment('✅ User subscriptions loaded and cached:', { data: subscriptions.length });
         return subscriptions;
       }
 
-      cerror('Invalid subscriptions response:', response);
+      luderror.payment('Invalid subscriptions response:', response);
       return [];
     } catch (error) {
-      cerror('Failed to load user subscriptions:', error);
+      luderror.payment('Failed to load user subscriptions:', error);
       // Don't throw here - subscriptions might not exist for new users
       return [];
     }
@@ -213,9 +200,9 @@ export function useSubscriptionState(user) {
         error: null
       });
 
-      clog('Subscription state initialized:', summary);
+      ludlog.payment('Subscription state initialized:', { data: summary });
     } catch (error) {
-      cerror('Failed to initialize subscription data:', error);
+      luderror.payment('Failed to initialize subscription data:', error);
       setSubscriptionState(prev => ({
         ...prev,
         loading: false,
@@ -243,10 +230,10 @@ export function useSubscriptionState(user) {
         actionDecision
       });
 
-      clog('Plan selection evaluated:', actionDecision);
+      ludlog.general('Plan selection evaluated:', { data: actionDecision });
       return actionDecision;
     } catch (error) {
-      cerror('Failed to evaluate plan selection:', error);
+      luderror.validation('Failed to evaluate plan selection:', error);
       toast({
         title: "שגיאה בהערכת התוכנית",
         description: "אירעה שגיאה בהערכת בחירת התוכנית",
@@ -276,7 +263,7 @@ export function useSubscriptionState(user) {
 
       // For subscription payments, use the new subscription API
       if (decision.needsPaymentPage) {
-        clog('Executing subscription payment via subscription API');
+        ludlog.payment('Executing subscription payment via subscription API');
 
         // Check if this is a retry payment
         const isRetry = decision.actionType === SubscriptionBusinessLogic.ACTION_TYPES.RETRY_PAYMENT;
@@ -327,7 +314,7 @@ export function useSubscriptionState(user) {
 
       return { success: false };
     } catch (error) {
-      cerror('Failed to execute subscription action:', error);
+      luderror.payment('Failed to execute subscription action:', error);
       toast({
         title: "שגיאה בביצוע הפעולה",
         description: error.message || "אירעה שגיאה בעת ביצוע הפעולה",
@@ -369,7 +356,7 @@ export function useSubscriptionState(user) {
 
       return false;
     } catch (error) {
-      cerror('Failed to cancel pending subscription:', error);
+      luderror.payment('Failed to cancel pending subscription:', error);
       toast({
         title: "שגיאה בביטול המנוי",
         description: error.message || "אירעה שגיאה בעת ביטול המנוי הממתין",
@@ -413,7 +400,7 @@ export function useSubscriptionState(user) {
 
       return false;
     } catch (error) {
-      cerror('Failed to cancel pending switch:', error);
+      luderror.validation('Failed to cancel pending switch:', error);
       toast({
         title: "שגיאה בביטול החלפת התוכנית",
         description: error.message || "אירעה שגיאה בעת ביטול החלפת התוכנית",

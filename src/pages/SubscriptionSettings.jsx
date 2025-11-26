@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { cerror } from "@/lib/utils";
+import { ludlog, luderror } from '@/lib/ludlog';
 import {
   CreditCard,
   Plus,
@@ -97,7 +97,7 @@ export default function SubscriptionSettings() {
         setSubscriptionPlans(plans);
       }
     } catch (error) {
-      cerror("Error loading data:", error);
+      luderror.validation("Error loading data:", error);
       setMessage({ type: 'error', text: 'שגיאה בטעינת נתונים' });
     }
     setIsLoading(false);
@@ -122,7 +122,7 @@ export default function SubscriptionSettings() {
       // Settings are updated on the server - no need to update local state
       showMessage('success', enabled ? 'תוכנית המנויים הופעלה' : 'תוכנית המנויים הושבתה');
     } catch (error) {
-      cerror("Error updating subscription system setting:", error);
+      luderror.payment("Error updating subscription system setting:", error);
       showMessage('error', 'שגיאה בעדכון הגדרת תוכנית המנויים');
     }
     setIsSavingSettings(false);
@@ -303,7 +303,7 @@ export default function SubscriptionSettings() {
       resetForm();
       loadData();
     } catch (error) {
-      cerror("Error saving subscription plan:", error);
+      luderror.payment("Error saving subscription plan:", error);
       showMessage('error', `שגיאה בשמירת תוכנית המנוי: ${error.message || 'שגיאה לא ידועה'}`);
     } finally {
       setIsSavingPlan(false);
@@ -325,7 +325,7 @@ export default function SubscriptionSettings() {
       showMessage('success', 'תוכנית המנוי נמחקה בהצלחה');
       loadData();
     } catch (error) {
-      cerror("Error deleting subscription plan:", error);
+      luderror.payment("Error deleting subscription plan:", error);
       showMessage('error', 'שגיאה במחיקת תוכנית המנוי');
     }
   };

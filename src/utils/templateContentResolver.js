@@ -4,7 +4,7 @@
  */
 
 import { getApiBase } from '@/utils/api.js';
-import { clog, cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 
 /**
  * Fetch resolved template content for a file
@@ -15,14 +15,14 @@ import { clog, cerror } from '@/lib/utils';
  */
 export async function fetchResolvedTemplateContent(fileId) {
   if (!fileId) {
-    cerror('fetchResolvedTemplateContent: fileId is required');
+    luderror.api('fetchResolvedTemplateContent: fileId is required');
     return null;
   }
 
   try {
     const token = localStorage.getItem('token');
     if (!token) {
-      cerror('fetchResolvedTemplateContent: No authentication token available');
+      luderror.auth('fetchResolvedTemplateContent: No authentication token available');
       return null;
     }
 
@@ -35,30 +35,20 @@ export async function fetchResolvedTemplateContent(fileId) {
     });
 
     if (!response.ok) {
-      cerror('fetchResolvedTemplateContent: API request failed', {
-        status: response.status,
-        statusText: response.statusText
-      });
       return null;
     }
 
     const result = await response.json();
 
     if (!result.success) {
-      cerror('fetchResolvedTemplateContent: API returned error', result);
+      luderror.api('fetchResolvedTemplateContent: API returned error', result);
       return null;
     }
-
-    clog('fetchResolvedTemplateContent: Successfully retrieved resolved template', {
-      fileId,
-      hasTemplate: !!result.data.resolvedTemplate,
-      hasVariables: !!result.data.variables
-    });
 
     return result.data;
 
   } catch (error) {
-    cerror('fetchResolvedTemplateContent: Request failed', error);
+    luderror.api('fetchResolvedTemplateContent: Request failed', error);
     return null;
   }
 }

@@ -20,7 +20,7 @@ import {
   Zap
 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
-import { clog, cerror } from "@/lib/utils";
+import { ludlog, luderror } from '@/lib/ludlog';
 
 export default function CouponDashboard() {
   const { currentUser, isLoading: userLoading } = useUser();
@@ -61,7 +61,7 @@ export default function CouponDashboard() {
 
       setStats(stats);
     } catch (error) {
-      cerror("Error loading coupon dashboard data:", error);
+      luderror.validation("Error loading coupon dashboard data:", error);
       toast({
         title: "שגיאה בטעינת הנתונים",
         description: "לא ניתן לטעון את נתוני לוח הבקרה",

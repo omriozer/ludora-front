@@ -32,7 +32,7 @@ import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { Link } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
-import { clog, cerror } from "@/lib/utils";
+import { ludlog, luderror } from '@/lib/ludlog';
 
 const ITEMS_PER_PAGE = 20;
 
@@ -72,7 +72,7 @@ export default function CouponManagement() {
       const couponsData = await apiRequest('/entities/coupon');
       setCoupons(couponsData);
     } catch (error) {
-      cerror("Error loading coupon data:", error);
+      luderror.validation("Error loading coupon data:", error);
       setMessage({ type: 'error', text: 'שגיאה בטעינת הנתונים' });
     }
     setIsLoading(false);
@@ -155,7 +155,7 @@ export default function CouponManagement() {
       });
       loadData(); // Reload data
     } catch (error) {
-      cerror('Error deleting coupon:', error);
+      luderror.validation('Error deleting coupon:', error);
       setMessage({ type: 'error', text: 'שגיאה במחיקת הקופון' });
       toast({
         title: "שגיאה במחיקה",
@@ -184,7 +184,7 @@ export default function CouponManagement() {
       });
       loadData(); // Reload data
     } catch (error) {
-      cerror('Error toggling coupon status:', error);
+      luderror.api('Error toggling coupon status:', error);
       setMessage({ type: 'error', text: 'שגיאה בעדכון סטטוס הקופון' });
     }
     setTimeout(() => setMessage(null), 3000);
@@ -214,7 +214,7 @@ export default function CouponManagement() {
       });
       loadData(); // Reload data
     } catch (error) {
-      cerror('Error duplicating coupon:', error);
+      luderror.validation('Error duplicating coupon:', error);
       setMessage({ type: 'error', text: 'שגיאה בשכפול הקופון' });
     }
     setTimeout(() => setMessage(null), 3000);

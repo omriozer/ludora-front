@@ -265,21 +265,6 @@ export const config = {
 
 // Development validation (only runs in dev)
 if (import.meta.env.DEV) {
-  console.log('🔧 Ludora Environment Configuration:');
-  console.log('Vite Mode:', import.meta.env.MODE);
-  console.log('Environment:', config.environment);
-  console.log('API Base URL:', config.api.getBaseUrl());
-
-  if (typeof window !== 'undefined') {
-    console.log('Current Portal:', config.portals.getCurrentType());
-  }
-
-  console.log('Ports:', { frontend: config.ports.frontend, api: config.ports.api });
-  console.log('Domains:', {
-    teacher: config.domains.teacher,
-    student: config.domains.student,
-    api: config.domains.api
-  });
 
   // Validate critical environment variables
   const missingVars = [];
@@ -290,8 +275,6 @@ if (import.meta.env.DEV) {
 
   if (missingVars.length > 0) {
     console.error('❌ Missing required environment variables:', missingVars);
-  } else {
-    console.log('✅ All required environment variables are configured');
   }
 }
 

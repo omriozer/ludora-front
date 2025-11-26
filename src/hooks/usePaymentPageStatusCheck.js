@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { apiRequest } from '@/services/apiClient';
 import { Purchase } from '@/services/entities';
 import { toast } from '@/components/ui/use-toast';
+import ludlog from '@/lib/ludlog';
 
 // GLOBAL REQUEST DEDUPLICATION: Prevent multiple simultaneous calls to same API
 let globalRequestPromise = null;
@@ -55,7 +56,7 @@ export const usePaymentPageStatusCheck = (options = {}) => {
           // GLOBAL DEDUPLICATION: Check if request is already in progress
           const now = Date.now();
           if (globalRequestPromise && (now - globalRequestTime) < 5000) {
-            console.log('🔍 usePaymentPageStatusCheck: Using existing API request (deduplication)');
+            ludlog.payment('🔍 usePaymentPageStatusCheck: Using existing API request (deduplication)');
             const result = await globalRequestPromise;
             resolve(result);
             return;
@@ -64,7 +65,7 @@ export const usePaymentPageStatusCheck = (options = {}) => {
           setIsChecking(true);
           setError(null);
 
-          console.log('🔍 usePaymentPageStatusCheck: Starting new payment page status check...');
+          ludlog.payment('🔍 usePaymentPageStatusCheck: Starting new payment page status check...');
 
           // Create new global request
           globalRequestTime = now;
@@ -76,8 +77,6 @@ export const usePaymentPageStatusCheck = (options = {}) => {
 
           // Clear global request after completion
           globalRequestPromise = null;
-
-          console.log('✅ Payment page status check completed:', response.summary);
 
           setStatusSummary(response.summary);
           setPendingCount(response.summary.total_pending);
@@ -104,8 +103,6 @@ export const usePaymentPageStatusCheck = (options = {}) => {
           }
 
           if (response.summary.continue_polling > 0) {
-            console.log(`💳 ${response.summary.continue_polling} payments are being processed, continuing monitoring`);
-
             if (onStatusUpdateRef.current) {
               onStatusUpdateRef.current({
                 type: 'continue_polling',
@@ -116,7 +113,7 @@ export const usePaymentPageStatusCheck = (options = {}) => {
           }
 
           if (response.summary.errors > 0) {
-            console.warn(`⚠️ ${response.summary.errors} payment status checks had errors`);
+            
           }
 
           setIsChecking(false);
@@ -132,7 +129,6 @@ export const usePaymentPageStatusCheck = (options = {}) => {
 
           // Handle rate limiting gracefully
           if (err.response?.status === 429) {
-            console.log('⏳ Rate limited, will retry later');
             if (showToastsRef.current) {
               toast({
                 title: "בדיקת תשלום מוגבלת זמנית",
@@ -193,10 +189,10 @@ export const usePaymentPageStatusCheck = (options = {}) => {
       getPendingPurchasesCount().then((count) => {
         // Only run page status check if there are pending purchases
         if (count > 0) {
-          console.log(`📝 Found ${count} pending purchases, checking page status...`);
+          ludlog.payment(`📝 Found ${count} pending purchases, checking page status...`);
           checkPaymentPageStatus();
         } else {
-          console.log('📭 No pending purchases found, skipping page status check');
+          ludlog.payment('📭 No pending purchases found, skipping page status check');
           setPendingCount(0);
           setLastCheckTime(new Date());
         }

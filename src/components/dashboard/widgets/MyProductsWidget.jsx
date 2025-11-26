@@ -13,7 +13,7 @@ import {
 import ProductActionBar from "@/components/ui/ProductActionBar";
 import { useProductActions } from "@/hooks/useProductActions";
 import PdfViewer from "@/components/pdf/PdfViewer";
-import { clog, cerror } from "@/lib/utils";
+import { ludlog, luderror } from '@/lib/ludlog';
 import { usePaymentPageStatusCheck } from '@/hooks/usePaymentPageStatusCheck';
 
 /**
@@ -49,7 +49,7 @@ const MyProductsWidget = ({
     enabled: true,
     showToasts: true, // Show user notifications about payment status changes
     onStatusUpdate: (update) => {
-      clog('MyProductsWidget: Payment status update received:', update);
+      ludlog.payment('MyProductsWidget: Payment status update received:', { data: update });
 
       // Reload products when payments are completed (new products available)
       if (update.type === 'continue_polling' && update.count > 0) {
@@ -94,7 +94,7 @@ const MyProductsWidget = ({
   const loadMyProducts = useCallback(async () => {
     setIsLoading(true);
     try {
-      clog('[MyProductsWidget] Loading user products');
+      ludlog.ui('[MyProductsWidget] Loading user products');
 
       // Get completed purchases only
       const purchases = await Purchase.filter(
@@ -161,7 +161,7 @@ const MyProductsWidget = ({
 
           return product;
         } catch (error) {
-          cerror(`Error loading product for purchase ${purchase.id}:`, error);
+          luderror.payment(`Error loading product for purchase ${purchase.id}:`, error);
           return null;
         }
       });
@@ -173,7 +173,7 @@ const MyProductsWidget = ({
       setFilteredProducts(uniqueProducts);
 
     } catch (error) {
-      cerror("Error loading my products:", error);
+      luderror.ui("Error loading my products:", error);
     } finally {
       setIsLoading(false);
     }

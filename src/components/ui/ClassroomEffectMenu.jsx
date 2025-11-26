@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Sparkles, HandMetal, GripHorizontal, MicOff } from 'lucide-react';
-import { clog, cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 
 // Import sound files
 import clappingSound from '@/assets/sounds/effects/clapping.mp3';
@@ -173,20 +173,20 @@ const ClassroomEffectMenu = ({
 			}
 
 			audio.play().catch(error => {
-				cerror('Could not play sound:', error);
+				luderror.game('Could not play sound:', error);
 				// Reset reference if play failed
 				currentAudioRef.current = null;
 			});
 
 			return audio;
 		} catch (error) {
-			cerror('Error creating audio:', error);
+			luderror.media('Error creating audio:', error);
 			return null;
 		}
 	};
 
 	const triggerClappingEffect = () => {
-		clog('Triggering clapping effect');
+		ludlog.ui('Triggering clapping effect');
 		setActiveEffect('clapping');
 
 		// Create improved clapping visual effect with 3 emojis from bottom
@@ -198,7 +198,7 @@ const ClassroomEffectMenu = ({
 			// onLoadedMetadata: Use actual audio duration
 			function() {
 				const duration = this.duration * 1000; // Convert to milliseconds
-				clog(`Clapping audio duration: ${duration}ms`);
+				ludlog.media(`Clapping audio duration: ${duration}ms`);
 
 				// Clear any existing timeout
 				if (effectTimeoutRef.current) {
@@ -212,7 +212,7 @@ const ClassroomEffectMenu = ({
 			},
 			// onEnded: Clean up when audio ends
 			() => {
-				clog('Clapping audio ended');
+				ludlog.media('Clapping audio ended');
 				stopCurrentEffect();
 			}
 		);
@@ -222,7 +222,7 @@ const ClassroomEffectMenu = ({
 	};
 
 	const triggerShhhhEffect = () => {
-		clog('Triggering shhhh effect');
+		ludlog.ui('Triggering shhhh effect');
 		setActiveEffect('shhhh');
 
 		// Create shhhh visual effect
@@ -234,7 +234,7 @@ const ClassroomEffectMenu = ({
 			// onLoadedMetadata: Use actual audio duration
 			function() {
 				const duration = this.duration * 1000; // Convert to milliseconds
-				clog(`Shhh audio duration: ${duration}ms`);
+				ludlog.media(`Shhh audio duration: ${duration}ms`);
 
 				// Clear any existing timeout
 				if (effectTimeoutRef.current) {
@@ -248,7 +248,7 @@ const ClassroomEffectMenu = ({
 			},
 			// onEnded: Clean up when audio ends
 			() => {
-				clog('Shhh audio ended');
+				ludlog.media('Shhh audio ended');
 				stopCurrentEffect();
 			}
 		);
@@ -258,7 +258,7 @@ const ClassroomEffectMenu = ({
 	};
 		
 	const triggerFireworksEffect = () => {
-		clog('Triggering fireworks effect');
+		ludlog.ui('Triggering fireworks effect');
 		setActiveEffect('fireworks');
 
 		// Create enhanced fireworks visual effect
@@ -270,7 +270,7 @@ const ClassroomEffectMenu = ({
 			// onLoadedMetadata: Use actual audio duration
 			function() {
 				const duration = this.duration * 1000; // Convert to milliseconds
-				clog(`Fireworks audio duration: ${duration}ms`);
+				ludlog.media(`Fireworks audio duration: ${duration}ms`);
 
 				// Clear any existing timeout
 				if (effectTimeoutRef.current) {
@@ -284,7 +284,7 @@ const ClassroomEffectMenu = ({
 			},
 			// onEnded: Clean up when audio ends
 			() => {
-				clog('Fireworks audio ended');
+				ludlog.media('Fireworks audio ended');
 				stopCurrentEffect();
 			}
 		);

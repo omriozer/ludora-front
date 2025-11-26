@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Workshop, User, EmailTemplate, Purchase } from "@/services/entities";
 import { SendEmail } from "@/services/integrations";
 import { useUser } from "@/contexts/UserContext";
-import { cerror } from "@/lib/utils";
+import { ludlog, luderror } from '@/lib/ludlog';
 import { getProductTypeName } from "@/config/productTypes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -73,7 +73,7 @@ export default function Emails() {
         setTemplates(templatesData);
       }
     } catch (error) {
-      cerror("Error loading data:", error);
+      luderror.validation("Error loading data:", error);
     }
     setIsLoading(false);
   };

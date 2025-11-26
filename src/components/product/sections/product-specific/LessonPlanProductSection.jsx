@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 import { File, Product, apiUploadWithProgress, apiRequest } from '@/services/apiClient';
 import { getApiBase } from '@/utils/api';
-import { clog, cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 import { toast } from '@/components/ui/use-toast';
 import { showConfirm } from '@/utils/messaging';
 import EntitySelector from '@/components/ui/EntitySelector';
@@ -86,29 +86,22 @@ const LessonPlanProductSection = ({
 
   // Load existing files when editing or when form data changes
   useEffect(() => {
-    clog('🔍 LessonPlanProductSection useEffect triggered:', {
-      editingProduct: editingProduct?.id,
-      hasFormDataFileConfigs: !!formData.file_configs,
-      formDataFileConfigsLength: formData.file_configs?.files?.length || 0,
-      formDataFileConfigs: formData.file_configs,
-      hasLocalChanges
-    });
 
     // If we have local changes, don't reload from props to avoid overriding user actions
     if (hasLocalChanges) {
-      clog('⚠️ Skipping useEffect reload - has local changes');
+      ludlog.ui('⚠️ Skipping useEffect reload - has local changes');
       return;
     }
 
     // Use formData file_configs (lesson plan data is now integrated into formData)
     if (editingProduct && formData.file_configs) {
-      clog('Loading existing files from formData file_configs');
+      ludlog.media('Loading existing files from formData file_configs');
       loadExistingFiles(formData.file_configs);
     } else if (editingProduct) {
-      clog('Editing product but no file_configs, initializing...');
+      ludlog.media('Editing product but no file_configs', { data: { action: 'initializing' } });
       initializeFileConfigs();
     } else {
-      clog('No editing product, initializing file configs');
+      ludlog.media('No editing product', { data: { action: 'initializingFileConfigs' } });
       initializeFileConfigs();
     }
   }, [editingProduct, formData.file_configs, hasLocalChanges]);
@@ -116,12 +109,12 @@ const LessonPlanProductSection = ({
   // Load existing files from file_configs
   const loadExistingFiles = async (fileConfigsSource) => {
     if (!fileConfigsSource?.files) {
-      clog('No file_configs found in source:', fileConfigsSource);
+      ludlog.media('No file_configs found in source:', { data: fileConfigsSource });
       return;
     }
 
     try {
-      clog('Loading existing files from file_configs:', fileConfigsSource.files);
+      ludlog.media('Loading existing files from file_configs:', { data: fileConfigsSource.files });
 
       const filesByRole = {
         presentation: [],
@@ -135,22 +128,22 @@ const LessonPlanProductSection = ({
 
         // Handle legacy roles from PPTX system
         if (role === 'opening' || role === 'body') {
-          clog(`Legacy file role detected: ${role} for file ${fileConfig.filename} - skipping (use SVG presentation files instead)`);
+          ludlog.media(`Legacy file role detected: ${role} for file ${fileConfig.filename} - skipping (use SVG presentation files instead);`);
           return; // Skip legacy files
         }
 
         if (filesByRole[role]) {
           filesByRole[role].push(fileConfig);
-          clog(`Added file ${fileConfig.filename} to role ${role}`);
+          ludlog.media(`Added file ${fileConfig.filename} to role ${role}`);
         } else {
-          cerror(`Unknown file role: ${role} for file ${fileConfig.filename}`);
+          luderror.media(`Unknown file role: ${role} for file ${fileConfig.filename}`);
         }
       });
 
-      clog('Grouped files by role:', filesByRole);
+      ludlog.media('Grouped files by role:', { data: filesByRole });
       setLessonPlanFiles(filesByRole);
     } catch (error) {
-      cerror('Error loading existing files:', error);
+      luderror.media('Error loading existing files:', error);
     }
   };
 
@@ -282,13 +275,13 @@ const LessonPlanProductSection = ({
 
     try {
       setUploadingFiles(prev => ({ ...prev, [uploadKey]: true }));
-      clog(`Starting file upload for role: ${fileRole}, files:`, fileArray.map(f => f.name));
+      ludlog.media(`Starting file upload for role: ${fileRole}`, { data: { files: fileArray.map(f => f.name) } });
 
       const uploadedFiles = [];
       let lastUploadResult = null; // Store the last upload result for total_slides
 
       for (const file of fileArray) {
-        clog(`Uploading file: ${file.name} (${file.type}) for role: ${fileRole}`);
+        ludlog.media(`Uploading file: ${file.name} (${file.type}); for role: ${fileRole}`);
 
         // Use atomic endpoint for file upload
         const formData = new FormData();
@@ -300,7 +293,7 @@ const LessonPlanProductSection = ({
 
         const result = await apiUploadWithProgress(endpoint, formData);
         lastUploadResult = result; // Store for later use
-        clog('Upload API response:', result);
+        ludlog.api('Upload API response:', { data: result });
 
         // Create file config from atomic endpoint response
         const fileConfig = {
@@ -318,7 +311,7 @@ const LessonPlanProductSection = ({
         };
 
         uploadedFiles.push(fileConfig);
-        clog('File config created:', fileConfig);
+        ludlog.media('File config created:', { data: fileConfig });
       }
 
       // Check if this is a replacement scenario (published product + single file section + existing files)
@@ -334,14 +327,14 @@ const LessonPlanProductSection = ({
         // For replacement: remove existing files for this role and add new ones
         const filesForOtherRoles = currentFileConfigs.files.filter(f => f.file_role !== fileRole);
         updatedFiles = [...filesForOtherRoles, ...uploadedFiles];
-        clog(`🔄 FormData replacement for ${fileRole} - removed ${currentFileConfigs.files.length - filesForOtherRoles.length} old files, added ${uploadedFiles.length} new files`);
+        ludlog.media(`🔄 FormData replacement for ${fileRole}`, { data: { removed: currentFileConfigs.files.length - filesForOtherRoles.length, added: uploadedFiles.length } });
       } else {
         // For addition: add new files to existing ones
         updatedFiles = [...currentFileConfigs.files, ...uploadedFiles];
-        clog(`➕ FormData addition for ${fileRole} - added ${uploadedFiles.length} files to existing ${currentFileConfigs.files.length}`);
+        ludlog.media(`➕ FormData addition for ${fileRole} - added ${uploadedFiles.length} files to existing ${currentFileConfigs.files.length}`);
       }
 
-      clog('Updating formData with files:', updatedFiles);
+      ludlog.media('Updating formData with files:', { data: updatedFiles });
 
       // Prepare formData updates
       const formDataUpdates = {
@@ -354,7 +347,7 @@ const LessonPlanProductSection = ({
       // Update total_slides if provided in the last upload API response
       if (lastUploadResult && lastUploadResult.total_slides !== undefined) {
         formDataUpdates.total_slides = lastUploadResult.total_slides;
-        clog('Updating total_slides from API response:', lastUploadResult.total_slides);
+        ludlog.api('Updating total_slides from API response:', { data: lastUploadResult.total_slides });
       }
 
       updateFormData(formDataUpdates);
@@ -366,18 +359,18 @@ const LessonPlanProductSection = ({
         if (isReplacementScenario) {
           // For replacement: replace existing files with new ones
           newFiles = uploadedFiles;
-          clog(`🔄 Replacement scenario detected for ${fileRole} - replacing existing files`);
+          ludlog.media(`🔄 Replacement scenario detected for ${fileRole} - replacing existing files`);
         } else {
           // For addition: add new files to existing ones
           newFiles = [...prev[fileRole], ...uploadedFiles];
-          clog(`➕ Addition scenario for ${fileRole} - adding to existing files`);
+          ludlog.media(`➕ Addition scenario for ${fileRole} - adding to existing files`);
         }
 
         const newState = {
           ...prev,
           [fileRole]: newFiles
         };
-        clog('Updated lessonPlanFiles state:', newState);
+        ludlog.websocket('Updated lessonPlanFiles state:', { data: newState });
         return newState;
       });
 
@@ -391,7 +384,7 @@ const LessonPlanProductSection = ({
       });
 
     } catch (error) {
-      cerror('Error uploading files:', error);
+      luderror.media('Error uploading files:', error);
 
       // Clear the file input on error so user can try again
       const fileInput = document.getElementById(`upload-${fileRole}`);
@@ -440,7 +433,7 @@ const LessonPlanProductSection = ({
         const result = await apiRequest(endpoint, {
           method: 'DELETE'
         });
-        clog('Delete API response:', result);
+        ludlog.api('Delete API response:', { data: result });
       } else {
         // If it's a File product, call the unlink endpoint (don't delete the product)
         // The File product continues to exist independently
@@ -459,17 +452,17 @@ const LessonPlanProductSection = ({
         const result = await apiRequest(endpoint, {
           method: 'DELETE'
         });
-        clog('Unlink API response:', result);
+        ludlog.api('Unlink API response:', { data: result });
       }
 
       // Update local state FIRST to ensure immediate UI update
-      clog('🗑️ Updating local state - removing file:', fileConfig.file_id, 'from role:', fileRole);
+      ludlog.media('🗑️ Updating local state - removing file', { data: { fileId: fileConfig.file_id, fromRole: fileRole } });
       setLessonPlanFiles(prev => {
         const newState = {
           ...prev,
           [fileRole]: prev[fileRole].filter(f => f.file_id !== fileConfig.file_id)
         };
-        clog('🗑️ New lessonPlanFiles state after removal:', newState);
+        ludlog.websocket('🗑️ New lessonPlanFiles state after removal:', { data: newState });
         return newState;
       });
 
@@ -480,7 +473,7 @@ const LessonPlanProductSection = ({
       const currentFileConfigs = formData.file_configs || { files: [] };
       const updatedFiles = currentFileConfigs.files.filter(f => f.file_id !== fileConfig.file_id);
 
-      clog('🗑️ Updating formData - old files count:', currentFileConfigs.files.length, 'new count:', updatedFiles.length);
+      ludlog.media('🗑️ Updating formData', { data: { oldFilesCount: currentFileConfigs.files.length, newCount: updatedFiles.length } });
       updateFormData({
         file_configs: {
           ...currentFileConfigs,
@@ -497,15 +490,15 @@ const LessonPlanProductSection = ({
       });
 
     } catch (error) {
-      cerror('Error removing file:', error);
+      luderror.media('Error removing file:', error);
       // Even if deletion fails, remove from UI - update local state FIRST
-      clog('🗑️ Error occurred, but removing from UI anyway');
+      ludlog.media('🗑️ Error occurred', { data: { action: 'removingFromUIAnyway' } });
       setLessonPlanFiles(prev => {
         const newState = {
           ...prev,
           [fileRole]: prev[fileRole].filter(f => f.file_id !== fileConfig.file_id)
         };
-        clog('🗑️ New lessonPlanFiles state after error removal:', newState);
+        ludlog.websocket('🗑️ New lessonPlanFiles state after error removal:', { data: newState });
         return newState;
       });
 
@@ -567,13 +560,6 @@ const LessonPlanProductSection = ({
         return;
       }
 
-      clog('🔗 Starting File product linking:', {
-        fileProduct: fileProduct.id,
-        entity_id: fileProduct.entity_id,
-        title: fileProduct.title,
-        fileRole,
-        lessonPlanId: editingProduct.entity_id
-      });
 
       // Call the new backend endpoint to link the File product
       const endpoint = `/entities/lesson-plan/${editingProduct.entity_id}/link-file-product`;
@@ -587,7 +573,7 @@ const LessonPlanProductSection = ({
           file_type: fileProduct.file?.file_type || 'other'
         })
       });
-      clog('Link API response:', result);
+      ludlog.api('Link API response:', { data: result });
 
       // Create file config from API response
       const fileConfig = {
@@ -609,25 +595,25 @@ const LessonPlanProductSection = ({
                                           lessonPlanFiles[fileRole]?.length > 0;
 
       // Update local state FIRST to ensure immediate UI update
-      clog('🔗 Updating local state - linking file:', fileConfig.file_id, 'to role:', fileRole);
+      ludlog.media('🔗 Updating local state - linking file', { data: { fileId: fileConfig.file_id, toRole: fileRole } });
       setLessonPlanFiles(prev => {
         let newFiles;
 
         if (isLinkingReplacementScenario) {
           // For replacement: replace existing files with new one
           newFiles = [fileConfig];
-          clog(`🔄 Link replacement scenario detected for ${fileRole} - replacing existing files`);
+          ludlog.media(`🔄 Link replacement scenario detected for ${fileRole} - replacing existing files`);
         } else {
           // For addition: add new file to existing ones
           newFiles = [...prev[fileRole], fileConfig];
-          clog(`➕ Link addition scenario for ${fileRole} - adding to existing files`);
+          ludlog.media(`➕ Link addition scenario for ${fileRole} - adding to existing files`);
         }
 
         const newState = {
           ...prev,
           [fileRole]: newFiles
         };
-        clog('🔗 New lessonPlanFiles state after linking:', newState);
+        ludlog.websocket('🔗 New lessonPlanFiles state after linking:', { data: newState });
         return newState;
       });
 
@@ -642,14 +628,14 @@ const LessonPlanProductSection = ({
         // For replacement: remove existing files for this role and add new one
         const filesForOtherRoles = currentFileConfigs.files.filter(f => f.file_role !== fileRole);
         updatedFiles = [...filesForOtherRoles, fileConfig];
-        clog(`🔄 FormData link replacement for ${fileRole} - removed ${currentFileConfigs.files.length - filesForOtherRoles.length} old files, added 1 new file`);
+        ludlog.media(`🔄 FormData link replacement for ${fileRole}`, { data: { removed: currentFileConfigs.files.length - filesForOtherRoles.length, added: 1 } });
       } else {
         // For addition: add new file to existing ones
         updatedFiles = [...currentFileConfigs.files, fileConfig];
-        clog(`➕ FormData link addition for ${fileRole} - added 1 file to existing ${currentFileConfigs.files.length}`);
+        ludlog.media(`➕ FormData link addition for ${fileRole} - added 1 file to existing ${currentFileConfigs.files.length}`);
       }
 
-      clog('🔗 Updating formData - old files count:', currentFileConfigs.files.length, 'new count:', updatedFiles.length);
+      ludlog.media('🔗 Updating formData', { data: { oldFilesCount: currentFileConfigs.files.length, newCount: updatedFiles.length } });
 
       // Prepare formData updates
       const formDataUpdates = {
@@ -662,7 +648,7 @@ const LessonPlanProductSection = ({
       // Update total_slides if provided in the API response
       if (result.total_slides !== undefined) {
         formDataUpdates.total_slides = result.total_slides;
-        clog('🔗 Updating total_slides from link API response:', result.total_slides);
+        ludlog.api('🔗 Updating total_slides from link API response:', { data: result.total_slides });
       }
 
       updateFormData(formDataUpdates);
@@ -674,7 +660,7 @@ const LessonPlanProductSection = ({
       });
 
     } catch (error) {
-      cerror('Error linking file product:', error);
+      luderror.media('Error linking file product:', error);
       toast({
         title: "שגיאה בקישור קובץ",
         description: error.message || "לא ניתן לקשר את הקובץ. אנא נסה שנית.",
@@ -702,7 +688,7 @@ const LessonPlanProductSection = ({
         const data = await Product.find({ product_type: 'file', limit: 100 });
         return data.results || data || [];
       } catch (error) {
-        cerror('Error fetching file products:', error);
+        luderror.api('Error fetching file products:', error);
         return [];
       }
     }
@@ -728,7 +714,7 @@ const LessonPlanProductSection = ({
       setShowFileProductSelector(false);
       setCurrentSelectionFileRole(null);
     } catch (error) {
-      cerror('Error selecting file product:', error);
+      luderror.media('Error selecting file product:', error);
       toast({
         title: "שגיאה בבחירת מוצר",
         description: "לא ניתן לקשר את המוצר הנבחר. אנא נסה שנית.",

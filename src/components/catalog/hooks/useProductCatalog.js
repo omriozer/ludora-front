@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getProductTypeName } from '@/config/productTypes';
-import { clog, cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 import { useUser } from '@/contexts/UserContext';
 
 // Global cache for user data to prevent repeated API calls during navigation
@@ -72,7 +72,7 @@ export default function useProductCatalog(productType, filters, activeTab) {
 
   // Main data loading function
   const loadData = useCallback(async () => {
-    clog('🚀 useProductCatalog.loadData() called for productType:', productType, {
+    ludlog.ui('🚀 useProductCatalog.loadData(); called for productType:', productType, {
       timestamp: new Date().toISOString(),
       userId: currentUser?.id || 'no user',
       stackTrace: new Error().stack?.split('\n').slice(1, 4).join('\n')
@@ -87,15 +87,6 @@ export default function useProductCatalog(productType, filters, activeTab) {
     let purchasesData = [];
 
     try {
-      // 1. Use currentUser from UserContext - no need to load separately
-      clog('useProductCatalog - Using user from UserContext:', {
-        id: currentUser?.id,
-        email: currentUser?.email,
-        role: currentUser?.role,
-        full_name: currentUser?.full_name,
-        isAuthenticated: !!currentUser
-      });
-
 
       // 2. Load users for display names (with caching to prevent navigation delays)
       try {
@@ -104,20 +95,20 @@ export default function useProductCatalog(productType, filters, activeTab) {
         const isCacheValid = usersCache && usersCacheTimestamp && (now - usersCacheTimestamp < USERS_CACHE_DURATION);
 
         if (isCacheValid) {
-          clog('✅ Using cached users data for creator attribution');
+          ludlog.ui('✅ Using cached users data for creator attribution');
           usersData = usersCache;
         } else {
-          clog('🔄 Loading users data for creator attribution (cache miss/expired)');
+          ludlog.ui('🔄 Loading users data for creator attribution (cache miss/expired)');
           const { User } = await import('@/services/entities');
           usersData = await User.find();
 
           // Update cache
           usersCache = usersData;
           usersCacheTimestamp = now;
-          clog('✅ Users data cached for future navigation');
+          ludlog.navigation('✅ Users data cached for future navigation');
         }
       } catch (error) {
-        cerror("Error loading users for display names:", error);
+        luderror.game("Error loading users for display names:", error);
         usersData = [];
       }
 
@@ -133,21 +124,12 @@ export default function useProductCatalog(productType, filters, activeTab) {
           const userCacheEntry = purchasesCache.get(userId);
           const isCacheValid = userCacheEntry && (now - userCacheEntry.timestamp < PURCHASES_CACHE_DURATION);
 
-          clog('🔍 Purchase cache check:', {
-            userId,
-            hasCacheEntry: !!userCacheEntry,
-            cacheAge: userCacheEntry ? (now - userCacheEntry.timestamp) / 1000 : 'N/A',
-            cacheDurationSeconds: PURCHASES_CACHE_DURATION / 1000,
-            isCacheValid,
-            totalCacheEntries: purchasesCache.size
-          });
-
           if (isCacheValid) {
-            clog('✅ Using cached purchases data for user', userId);
+            ludlog.payment('✅ Using cached purchases data for user', { data: userId });
             purchasesData = userCacheEntry.purchases;
           } else {
             const reason = !userCacheEntry ? 'no cache entry' : 'cache expired';
-            clog('🔄 Loading purchases data for user (cache miss/expired):', userId, `(${reason})`);
+            ludlog.payment('🔄 Loading purchases data for user (cache miss/expired):', { data: { userId, reason } });
             const { Purchase } = await import('@/services/entities');
 
             // Single API call for all user purchases (instead of 3 separate calls)
@@ -168,30 +150,11 @@ export default function useProductCatalog(productType, filters, activeTab) {
               purchases: purchasesData,
               timestamp: now
             });
-            clog('✅ Purchases data cached for user', userId);
+            ludlog.payment('✅ Purchases data cached for user', { data: userId });
           }
-
-          // Debug logging for purchase data
-          clog('Loaded user purchases:', purchasesData);
-          clog('Purchase count:', purchasesData.length);
-          if (purchasesData.length > 0) {
-            clog('Sample purchase:', purchasesData[0]);
-            clog('Purchase structure check:', {
-              hasProductId: !!purchasesData[0].product_id,
-              hasPurchasableId: !!purchasesData[0].purchasable_id,
-              paymentStatus: purchasesData[0].payment_status
-            });
-          }
-
-          clog('useProductCatalog: Setting userPurchases:', {
-            count: purchasesData.length,
-            cartItems: purchasesData.filter(p => p.payment_status === 'cart').length,
-            paidItems: purchasesData.filter(p => p.payment_status === 'paid').length,
-            completedItems: purchasesData.filter(p => p.payment_status === 'completed').length
-          });
           setUserPurchases(purchasesData);
         } catch (error) {
-          cerror("Error loading user purchases:", error);
+          luderror.payment("Error loading user purchases:", error);
           setUserPurchases([]);
         }
       }
@@ -214,7 +177,7 @@ export default function useProductCatalog(productType, filters, activeTab) {
             (currentUser.role === 'admin' || currentUser.role === 'sysadmin')
           );
         } catch (productError) {
-          cerror(`Error loading ${productType} products for logged-in user:`, productError);
+          luderror.ui(`Error loading ${productType} products for logged-in user:`, null, { context: productError });
           // Fallback: show only published products for non-admins, all for admins
           if (currentUser.role === 'admin' || currentUser.role === 'sysadmin') {
             productsData = await ProductService.filter({ product_type: productType });
@@ -267,7 +230,7 @@ export default function useProductCatalog(productType, filters, activeTab) {
               }
             }
           } catch (entityError) {
-            cerror(`Error loading entity data for product ${product.id}:`, entityError);
+            luderror.ui(`Error loading entity data for product ${product.id}:`, entityError);
             // Continue without entity data
           }
 
@@ -289,10 +252,10 @@ export default function useProductCatalog(productType, filters, activeTab) {
       )].map(name => ({ name, id: name }));
       setCategories(uniqueCategories);
 
-      clog(`✅ Loaded ${productsWithEntityData.length} ${getProductTypeName(productType, 'plural')}`);
+      ludlog.ui(`✅ Loaded ${productsWithEntityData.length} ${getProductTypeName(productType, 'plural')} products`);
 
     } catch (globalError) {
-      cerror(`Critical error loading ${productType} catalog:`, globalError);
+      luderror.ui(`Critical error loading ${productType} catalog:`, null, { context: globalError });
       setError(`שגיאה בטעינת ${getProductTypeName(productType, 'plural')}`);
       setProducts([]);
       setCategories([]);
@@ -427,36 +390,22 @@ export default function useProductCatalog(productType, filters, activeTab) {
   // Listen for cart changes to refresh purchase data
   useEffect(() => {
     const handleCartChange = () => {
-      clog('useProductCatalog: Received cart change event');
-      clog('useProductCatalog: isLoadingUser =', isLoadingUser);
-      clog('Cart change detected - clearing purchase cache and refreshing data');
+      ludlog.payment('useProductCatalog: Received cart change event');
+      ludlog.payment('useProductCatalog: isLoadingUser =', { data: isLoadingUser });
+      ludlog.payment('Cart change detected - clearing purchase cache and refreshing data');
 
       // Clear purchases cache for current user when cart changes
       if (currentUser?.id) {
-        clog('Clearing purchases cache for user (cart change event):', currentUser.id, {
-          cacheEntriesBeforeClearing: purchasesCache.size,
-          timestamp: new Date().toISOString()
-        });
         clearPurchasesCache(currentUser.id);
-        clog('Cleared purchases cache for user', currentUser.id, {
-          cacheEntriesAfterClearing: purchasesCache.size
-        });
-      }
-
-      if (!isLoadingUser) {
-        clog('useProductCatalog: Calling loadData()');
-        loadData();
-      } else {
-        clog('useProductCatalog: Skipping loadData - user still loading');
       }
     };
 
-    clog('useProductCatalog: Setting up cart change listener');
+    ludlog.payment('useProductCatalog: Setting up cart change listener');
     // Listen for cart change events
     window.addEventListener('ludora-cart-changed', handleCartChange);
 
     return () => {
-      clog('useProductCatalog: Removing cart change listener');
+      ludlog.payment('useProductCatalog: Removing cart change listener');
       window.removeEventListener('ludora-cart-changed', handleCartChange);
     };
   }, [loadData, isLoadingUser, currentUser?.id]);

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useUser } from "@/contexts/UserContext";
-import { clog, cerror } from "@/lib/utils";
+import { ludlog, luderror } from '@/lib/ludlog';
 import { toast } from "@/components/ui/use-toast";
 import { apiRequest } from "@/services/apiClient.js";
 import { getTextFontFamily } from "@/utils/hebrewUtils";
@@ -198,7 +198,7 @@ export default function TemplateEditor() {
   const loadTemplate = async () => {
     // Validate template ID format before attempting to load
     if (!templateId || typeof templateId !== 'string') {
-      clog('Invalid template ID format, redirecting to template manager:', templateId);
+      ludlog.navigation('Invalid template ID format', { data: { action: 'redirectingToTemplateManager', templateId } });
       navigate('/template-manager');
       return;
     }
@@ -206,7 +206,7 @@ export default function TemplateEditor() {
     // Check if ID looks like a valid template ID (not a short code)
     // Template IDs are 6+ characters (system generates 6-char IDs)
     if (templateId.length < 6) {
-      clog('Template ID too short, likely invalid, redirecting:', templateId);
+      ludlog.navigation('Template ID too short', { data: { status: 'likelyInvalid', action: 'redirecting', templateId } });
       toast({
         title: "מזהה תבנית לא תקין",
         description: "מזהה התבנית שנמצא בכתובת אינו תקין",
@@ -222,11 +222,11 @@ export default function TemplateEditor() {
       setTemplate(result.data);
       setIsCreateMode(false);
     } catch (error) {
-      cerror("Error loading template:", error);
+      luderror.validation("Error loading template:", error);
 
       // Check if it's a 404 error - template not found
       if (error.status === 404) {
-        clog('Template not found, redirecting to template manager:', templateId);
+        ludlog.api('Template not found', { data: { action: 'redirectingToTemplateManager', templateId } });
         toast({
           title: "התבנית לא נמצאה",
           description: "התבנית המבוקשת לא קיימת במערכת",
@@ -276,9 +276,9 @@ export default function TemplateEditor() {
         setMessage({ type: 'success', text: 'התבנית עודכנה בהצלחה' });
       }
 
-      clog('Template saved:', result);
+      ludlog.validation('Template saved:', { data: result });
     } catch (error) {
-      cerror('Error saving template:', error);
+      luderror.validation('Error saving template:', error);
       toast({
         title: isCreateMode ? "שגיאה ביצירת התבנית" : "שגיאה בעדכון התבנית",
         description: error.message,

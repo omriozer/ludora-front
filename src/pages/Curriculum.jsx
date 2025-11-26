@@ -12,7 +12,7 @@ import { Curriculum as CurriculumAPI, CurriculumItem, Product, apiRequest } from
 import ProductCard from "@/components/ProductCard";
 import { PRODUCT_TYPES } from "@/config/productTypes";
 import { toast } from "@/components/ui/use-toast";
-import { clog, cerror } from "@/lib/utils";
+import { ludlog, luderror } from '@/lib/ludlog';
 import LudoraLoadingSpinner from "@/components/ui/LudoraLoadingSpinner";
 import EntityForm from "@/components/ui/EntityForm";
 import ClassSelector from "@/components/ui/ClassSelector";
@@ -132,13 +132,9 @@ export default function Curriculum() {
       });
 
       setAvailableCombinations(combinationsSet);
-      clog('Available combinations for non-admin users (optimized):', Array.from(combinationsSet));
-      clog('API response stats:', {
-        totalSubjects: response.total_subjects,
-        totalCombinations: response.total_combinations
-      });
+      ludlog.api('Available combinations for non-admin users (optimized);:', Array.from(combinationsSet));
     } catch (error) {
-      cerror('Error loading available combinations:', error);
+      luderror.validation('Error loading available combinations:', error);
       // On error, allow access to everything to avoid blocking users
       setAvailableCombinations(new Set());
     }
@@ -166,7 +162,7 @@ export default function Curriculum() {
 
       return totalItems;
     } catch (error) {
-      cerror(`Error loading items count for ${subject} grade ${grade}:`, error);
+      luderror.validation(`Error loading items count for ${subject} grade ${grade}:`, error);
       return 0;
     }
   };
@@ -176,7 +172,7 @@ export default function Curriculum() {
 
     setItemsLoading(true);
     try {
-      clog('Loading curriculum items for:', { selectedSubject, selectedGrade });
+      ludlog.general('Loading curriculum items for:', { data: { selectedSubject, selectedGrade } });
 
       // First, find the system curriculum for this subject/grade
       // Use the new find_by_grade parameter to find curricula that include this grade
@@ -188,11 +184,11 @@ export default function Curriculum() {
         is_active: true
       });
 
-      clog('Found curricula:', curricula);
+      ludlog.general('Found curricula:', { data: curricula });
 
       if (curricula.length === 0) {
         // No curriculum found for this combination
-        clog('No curriculum found for this subject/grade combination');
+        ludlog.general('No curriculum found for this subject/grade combination');
         setCurriculumItems([]);
         setCurrentCurriculum(null);
         setItemsLoading(false);
@@ -201,14 +197,14 @@ export default function Curriculum() {
 
       const curriculum = curricula[0];
       setCurrentCurriculum(curriculum);
-      clog('Selected curriculum:', curriculum);
+      ludlog.general('Selected curriculum:', { data: curriculum });
 
       // Now fetch curriculum items (content topics will be loaded through products)
       const items = await CurriculumItem.find({
         curriculum_id: curriculum.id
       });
 
-      clog('Found curriculum items:', items);
+      ludlog.general('Found curriculum items:', { data: items });
 
       // Sort items by order (mandatory_order first, then custom_order)
       const sortedItems = items.sort((a, b) => {
@@ -218,7 +214,7 @@ export default function Curriculum() {
       });
 
       setCurriculumItems(sortedItems);
-      clog('Final sorted curriculum items:', sortedItems);
+      ludlog.general('Final sorted curriculum items:', { data: sortedItems });
 
       // Load copy status for system curriculum (if this is a system curriculum and user is a teacher)
       if (isTeacher && curriculum.teacher_user_id === null && curriculum.class_id === null) {
@@ -229,7 +225,7 @@ export default function Curriculum() {
       await loadLinkedProducts(sortedItems);
 
     } catch (error) {
-      cerror('Error loading curriculum items:', error);
+      luderror.validation('Error loading curriculum items:', error);
       toast({
         title: "שגיאה",
         description: "שגיאה בטעינת פריטי תכנית הלימודים",
@@ -271,7 +267,7 @@ export default function Curriculum() {
         variant: "default"
       });
     } catch (error) {
-      cerror('Error copying to clipboard:', error);
+      luderror.validation('Error copying to clipboard:', error);
       toast({
         title: "שגיאה",
         description: "לא ניתן להעתיק את הקישור",
@@ -292,7 +288,7 @@ export default function Curriculum() {
         [curriculumId]: status
       }));
     } catch (error) {
-      cerror('Error loading copy status:', error);
+      luderror.api('Error loading copy status:', error);
       // Don't show error toast for this, it's not critical
     }
   };
@@ -326,7 +322,7 @@ export default function Curriculum() {
                   products.push(product);
                 }
               } catch (productError) {
-                cerror(`Error loading product ${productId}:`, productError);
+                luderror.validation(`Error loading product ${productId}:`, null, { context: productError });
               }
             }
 
@@ -335,15 +331,15 @@ export default function Curriculum() {
             linkedProductsMap[item.id] = [];
           }
         } catch (itemError) {
-          cerror(`Error loading linked products for curriculum item ${item.id}:`, itemError);
+          luderror.validation(`Error loading linked products for curriculum item ${item.id}:`, itemError);
           linkedProductsMap[item.id] = [];
         }
       }
 
       setLinkedProducts(linkedProductsMap);
-      clog('Loaded linked products:', linkedProductsMap);
+      ludlog.validation('Loaded linked products:', { data: linkedProductsMap });
     } catch (error) {
-      cerror('Error loading linked products:', error);
+      luderror.validation('Error loading linked products:', error);
       setLinkedProducts({});
     }
     setLinkedProductsLoading(false);
@@ -386,7 +382,7 @@ export default function Curriculum() {
       loadCopyStatus(associatingCurriculum.id);
 
     } catch (error) {
-      cerror('Error associating curriculum with class:', error);
+      luderror.validation('Error associating curriculum with class:', error);
       toast({
         title: "שגיאה",
         description: error.message || "שגיאה בהעתקת תכנית הלימודים לכיתה",
@@ -441,7 +437,7 @@ export default function Curriculum() {
       // Reload curriculum items
       loadCurriculumItems();
     } catch (error) {
-      cerror('Error creating curriculum:', error);
+      luderror.ui('Error creating curriculum:', error);
       setFormErrors({ general: error.message || 'שגיאה ביצירת תכנית הלימודים' });
     }
     setFormLoading(false);
@@ -480,7 +476,7 @@ export default function Curriculum() {
         loadCurriculumItems();
       }
     } catch (error) {
-      cerror('Error creating range curriculum:', error);
+      luderror.ui('Error creating range curriculum:', error);
       setFormErrors({ general: error.message || 'שגיאה ביצירת תכנית טווח הלימודים' });
     }
     setFormLoading(false);
@@ -540,7 +536,7 @@ export default function Curriculum() {
         });
       }
     } catch (error) {
-      cerror('Error updating curriculum:', error);
+      luderror.ui('Error updating curriculum:', error);
       setFormErrors({ general: error.message || 'שגיאה בעדכון תכנית הלימודים' });
     }
     setFormLoading(false);
@@ -575,7 +571,7 @@ export default function Curriculum() {
         variant: "default"
       });
     } catch (error) {
-      cerror('Error deleting curriculum:', error);
+      luderror.validation('Error deleting curriculum:', error);
       toast({
         title: "שגיאה",
         description: error.message || "שגיאה במחיקת תכנית הלימודים",
@@ -622,7 +618,7 @@ export default function Curriculum() {
       setFormErrors({});
       setResetFormKey(prev => prev + 1); // Force form reset
     } catch (error) {
-      cerror('Error creating curriculum item:', error);
+      luderror.ui('Error creating curriculum item:', error);
       setFormErrors({ general: error.message || 'שגיאה ביצירת נושא הלימוד' });
     }
     setFormLoading(false);
@@ -711,7 +707,7 @@ export default function Curriculum() {
       // Reload curriculum items
       loadCurriculumItems();
     } catch (error) {
-      cerror('Error updating curriculum item:', error);
+      luderror.ui('Error updating curriculum item:', error);
       setFormErrors({ general: error.message || 'שגיאה בעדכון נושא הלימוד' });
     }
     setFormLoading(false);
@@ -734,7 +730,7 @@ export default function Curriculum() {
       // Reload curriculum items
       loadCurriculumItems();
     } catch (error) {
-      cerror('Error deleting curriculum item:', error);
+      luderror.validation('Error deleting curriculum item:', error);
       toast({
         title: "שגיאה",
         description: error.message || "שגיאה במחיקת נושא הלימוד",
@@ -771,7 +767,7 @@ export default function Curriculum() {
         variant: "default"
       });
     } catch (error) {
-      cerror('Error associating product:', error);
+      luderror.ui('Error associating product:', error);
       setFormErrors({ general: error.message || 'שגיאה בקישור המוצר לנושא הלימוד' });
 
       toast({
@@ -808,7 +804,7 @@ export default function Curriculum() {
         });
       }
     } catch (error) {
-      cerror('Error removing connected product:', error);
+      luderror.validation('Error removing connected product:', error);
       toast({
         title: "שגיאה",
         description: error.message || "שגיאה בהסרת הקישור למוצר",

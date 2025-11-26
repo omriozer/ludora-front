@@ -16,7 +16,7 @@
 import { User, Player, Settings } from '@/services/apiClient';
 import { isStudentPortal } from '@/utils/domainUtils';
 import { loadSettingsWithRetry } from '@/lib/appUser';
-import { clog, cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 import { ACCESS_CONTROL_KEYS, getSetting, STUDENTS_ACCESS_MODES } from '@/constants/settings';
 
 export class AuthManager {
@@ -57,7 +57,7 @@ export class AuthManager {
       try {
         callback(authState);
       } catch (error) {
-        cerror('[AuthManager] Error in auth listener:', error);
+        luderror.auth('[AuthManager] Error in auth listener:', error);
       }
     });
   }
@@ -133,7 +133,7 @@ export class AuthManager {
 
       return this.getAuthState();
     } catch (error) {
-      cerror('[AuthManager] Authentication initialization failed:', error);
+      luderror.auth('[AuthManager] Authentication initialization failed:', error);
       this.isLoading = false;
       // COOKIE PERSISTENCE FIX: Don't mark as initialized on failure
       // This allows retry on next page load
@@ -178,7 +178,7 @@ export class AuthManager {
     }
 
     // All retries exhausted
-    cerror('[AuthManager] All auth retries exhausted');
+    luderror.auth('[AuthManager] All auth retries exhausted');
     throw lastError || new Error('Auth failed after all retries');
   }
 
@@ -231,7 +231,7 @@ export class AuthManager {
       // Clear any cached auth state
       this.currentAuth = null;
     } catch (error) {
-      cerror('[AuthManager] Error clearing Firebase state:', error);
+      luderror.auth('[AuthManager] Error clearing Firebase state:', error);
       // Continue anyway - this is a best effort cleanup
     }
   }
@@ -244,7 +244,7 @@ export class AuthManager {
       const appSettings = await loadSettingsWithRetry(Settings);
       this.settings = appSettings && appSettings.length > 0 ? appSettings[0] : null;
     } catch (error) {
-      cerror('[AuthManager] Failed to load settings:', error);
+      luderror.auth('[AuthManager] Failed to load settings:', error);
       this.settings = null;
       // Continue without settings - use defaults
     }
@@ -327,7 +327,7 @@ export class AuthManager {
           return;
         }
       } catch (error) {
-        cerror(`[AuthManager] Error during ${method} auth:`, error);
+        luderror.auth(`[AuthManager] Error during ${method} auth:`, error);
         // Continue to next method
       }
     }
@@ -424,20 +424,20 @@ export class AuthManager {
       // Firebase login is handled by Firebase SDK and cookies are set
       // Now we need to fetch the COMPLETE user data from /auth/me
       // This ensures computed fields like onboarding_completed are available
-      clog('[AuthManager] Firebase login - fetching fresh user data from /auth/me');
+      ludlog.auth('[AuthManager] Firebase login - fetching fresh user data from /auth/me');
 
       const freshUser = await User.getCurrentUser(true);
 
       if (!freshUser) {
         // Fallback to provided userData if /auth/me fails
-        cerror('[AuthManager] Failed to fetch fresh user data, using provided userData');
+        luderror.auth('[AuthManager] Failed to fetch fresh user data, using provided userData');
         this.currentAuth = {
           type: 'user',
           entity: userData
         };
       } else {
         // Use fresh user data with computed fields
-        clog('[AuthManager] Fresh user data fetched successfully, onboarding_completed:', freshUser.onboarding_completed);
+        ludlog.auth('[AuthManager] Fresh user data fetched successfully', { data: { onboardingCompleted: freshUser.onboarding_completed } });
         this.currentAuth = {
           type: 'user',
           entity: freshUser
@@ -451,7 +451,7 @@ export class AuthManager {
 
       return { success: true, user: this.currentAuth.entity };
     } catch (error) {
-      cerror('[AuthManager] Firebase login error:', error);
+      luderror.auth('[AuthManager] Firebase login error:', error);
       throw error;
     }
   }
@@ -477,7 +477,7 @@ export class AuthManager {
         throw new Error('Invalid response from server');
       }
     } catch (error) {
-      cerror('[AuthManager] Player login error:', error);
+      luderror.auth('[AuthManager] Player login error:', error);
       throw error;
     }
   }
@@ -498,7 +498,7 @@ export class AuthManager {
       this.currentAuth = null;
       this.notifyAuthListeners();
     } catch (error) {
-      cerror('[AuthManager] Logout error:', error);
+      luderror.auth('[AuthManager] Logout error:', error);
       // Still clear local state
       this.currentAuth = null;
       this.notifyAuthListeners();
@@ -518,24 +518,14 @@ export class AuthManager {
    */
   needsOnboarding(user) {
     if (!user || this.currentAuth?.type !== 'user') {
-      clog('[AuthManager] needsOnboarding: No user or not user type');
       return false;
     }
 
-    clog('[AuthManager] needsOnboarding check:', {
-      onboarding_completed: user.onboarding_completed,
-      birth_date: user.birth_date,
-      user_type: user.user_type,
-      education_level: user.education_level
-    });
-
     if (user.onboarding_completed === true) {
       const hasRequiredFields = user.birth_date && user.user_type;
-      clog('[AuthManager] onboarding_completed=true, hasRequiredFields:', hasRequiredFields);
       return !hasRequiredFields;
     }
 
-    clog('[AuthManager] onboarding_completed not true, user needs onboarding');
     return true;
   }
 

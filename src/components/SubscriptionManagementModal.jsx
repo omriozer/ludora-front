@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
-import { cerror } from "@/lib/utils";
+import { ludlog, luderror } from '@/lib/ludlog';
 
 // Helper component for confirmation dialog
 function ConfirmationDialog({ isOpen, onClose, onConfirm, title, message, confirmText, cancelText, variant, isLoading }) {
@@ -114,7 +114,7 @@ export default function SubscriptionManagementModal({ user, subscriptionPlans, o
         showMessage('info', 'לא בוצעו שינויים');
       }
     } catch (error) {
-      cerror('Error updating subscription:', error);
+      luderror.payment('Error updating subscription:', error);
       showMessage('error', 'שגיאה בעדכון המנוי');
     } finally {
       setIsLoading(false);
@@ -149,7 +149,7 @@ export default function SubscriptionManagementModal({ user, subscriptionPlans, o
       onUpdate();
 
     } catch (error) {
-      cerror('Error resetting subscription:', error);
+      luderror.payment('Error resetting subscription:', error);
       showMessage('error', 'שגיאה באיפוס המנוי.');
     } finally {
       setIsLoading(false);

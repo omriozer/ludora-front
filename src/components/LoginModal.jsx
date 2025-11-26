@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { X, Loader2, AlertCircle, GamepadIcon } from "lucide-react";
-import { cerror } from "@/lib/utils";
+import { ludlog, luderror } from '@/lib/ludlog';
 import { APP_VERSION } from "@/constants/version";
 import { useUser } from "@/contexts/UserContext";
 
@@ -29,7 +29,7 @@ export default function LoginModal({ onClose, onLogin, message }) {
       await onLogin();
       // Don't call onClose() here - let the parent component handle modal closing
     } catch (err) {
-      cerror('Google sign-in error:', err);
+      luderror.ui('Google sign-in error:', err);
 
       let errorMessage = 'שגיאה בכניסה. נסו שוב.';
 
@@ -70,7 +70,7 @@ export default function LoginModal({ onClose, onLogin, message }) {
         onLogin();
       }
     } catch (err) {
-      cerror('Player login error:', err);
+      luderror.auth('Player login error:', err);
 
       let errorMessage;
 

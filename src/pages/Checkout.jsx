@@ -45,7 +45,7 @@ import { toast } from "@/components/ui/use-toast";
 import { useCart } from "@/contexts/CartContext";
 import CouponInput from "@/components/CouponInput";
 import couponClient from "@/services/couponClient";
-import { clog, cerror } from "@/lib/utils";
+import { ludlog, luderror } from '@/lib/ludlog';
 import { usePaymentPageStatusCheck } from '@/hooks/usePaymentPageStatusCheck';
 
 
@@ -94,7 +94,7 @@ export default function Checkout() {
     enabled: true,
     showToasts: true, // Show user notifications about payment status changes
     onStatusUpdate: (update) => {
-      clog('Checkout: Payment status update received:', update);
+      ludlog.payment('Checkout: Payment status update received:', { data: update });
 
       // Reload checkout data when payments are processed or abandoned
       if (update.type === 'reverted_to_cart' || update.type === 'continue_polling') {
@@ -119,14 +119,14 @@ export default function Checkout() {
             productMap[purchase.id] = product;
           }
         } catch (error) {
-          cerror(`Error loading product for purchase ${purchase.id}:`, error);
+          luderror.payment(`Error loading product for purchase ${purchase.id}:`, error);
           // Continue loading other products even if one fails
         }
       }
 
       setCartItemProducts(productMap);
     } catch (error) {
-      cerror('Error loading cart item products:', error);
+      luderror.payment('Error loading cart item products:', error);
     }
   }, []);
 
@@ -158,7 +158,7 @@ export default function Checkout() {
       calculatePricing(cartOnlyItems);
 
     } catch (err) {
-      cerror('Error loading checkout data:', err);
+      luderror.payment('Error loading checkout data:', err);
       setError('שגיאה בטעינת נתוני העגלה');
     }
 
@@ -253,7 +253,7 @@ export default function Checkout() {
       calculatePricing(cartOnlyItems, updatedCoupons);
 
     } catch (error) {
-      cerror('Error handling coupon application:', error);
+      luderror.payment('Error handling coupon application:', error);
       showPurchaseErrorToast(error, 'בהחלת הקופון');
     }
   };
@@ -270,7 +270,7 @@ export default function Checkout() {
       calculatePricing(cartItems, updatedCoupons);
 
     } catch (error) {
-      cerror('Error handling coupon removal:', error);
+      luderror.payment('Error handling coupon removal:', error);
       showPurchaseErrorToast(error, 'בהסרת הקופון');
     }
   };
@@ -297,7 +297,7 @@ export default function Checkout() {
 
       if (paymentResponse.success && paymentResponse.paymentUrl) {
         // Redirect to PayPlus payment page (full page redirect)
-        console.log('🏦 Redirecting to PayPlus payment page:', paymentResponse.paymentUrl);
+        ludlog.payment('🏦 Redirecting to PayPlus payment page:', paymentResponse.paymentUrl);
         window.location.href = paymentResponse.paymentUrl;
       } else {
         setIsProcessingPayment(false);
@@ -309,7 +309,7 @@ export default function Checkout() {
       }
 
     } catch (error) {
-      cerror('PaymentIntent error:', error);
+      luderror.payment('PaymentIntent error:', error);
       setIsProcessingPayment(false);
       toast({
         title: "שגיאה בתשלום",

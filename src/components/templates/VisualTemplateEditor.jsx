@@ -10,7 +10,7 @@ import EnhancedSidebar from './EnhancedSidebar';
 import FloatingSettingsMenu from './FloatingSettingsMenu';
 import { apiDownload, apiRequest } from '@/services/apiClient';
 import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
-import { clog, cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 import { getTextFontFamily, containsHebrew } from '@/utils/hebrewUtils';
 import { useUser } from '@/contexts/UserContext';
 
@@ -90,7 +90,7 @@ const VisualTemplateEditor = ({
         preserveReadability: true
       }
     };
-    // Reduced logging: clog('📝 getDefaultConfig - returning blank canvas for unified editor:', config);
+    // Reduced logging: ludlog.ui('📝 getDefaultConfig - returning blank canvas for unified editor:', { data: config });
     return config;
   };
 
@@ -103,7 +103,7 @@ const VisualTemplateEditor = ({
         preserveReadability: true
       }
     };
-    // Reduced logging: clog('🔮 getDefaultWatermarkConfig - returning blank canvas for unified editor:', config);
+    // Reduced logging: ludlog.ui('🔮 getDefaultWatermarkConfig - returning blank canvas for unified editor:', { data: config });
     return config;
   };
 
@@ -119,7 +119,7 @@ const VisualTemplateEditor = ({
   // Preload all slides for faster navigation
   const preloadAllSlides = async (slides, entityId) => {
     try {
-      // Reduced logging: clog('🚀 Starting to preload all slides...', slides.length, 'slides');
+      // Reduced logging: ludlog.ui('🚀 Starting to preload all slides...', { data: slides.length, 'slides' });
       const slideBlobs = {};
 
       // Download all slides in parallel
@@ -128,21 +128,21 @@ const VisualTemplateEditor = ({
           const slideBlob = await apiDownload(`/assets/download/lesson-plan-slide/${entityId}/${slide.id}`);
           const blobUrl = URL.createObjectURL(slideBlob);
           slideBlobs[index] = blobUrl;
-          // Reduced logging: clog(`✅ Preloaded slide ${index + 1}/${slides.length}:`, slide.id);
+          // Reduced logging: ludlog.ui(`✅ Preloaded slide ${index + 1}/${slides.length}:`, { data: slide.id });
           return { index, blobUrl };
         } catch (error) {
-          cerror(`❌ Failed to preload slide ${index}:`, error);
+          luderror.ui(`❌ Failed to preload slide ${index}:`, error);
           return null;
         }
       });
 
       await Promise.all(downloadPromises);
       setPreloadedSlides(slideBlobs);
-      clog('🎉 All slides preloaded successfully!', Object.keys(slideBlobs).length, 'slides cached');
+      ludlog.ui('🎉 All slides preloaded successfully!', { data: { count: Object.keys(slideBlobs).length, status: 'slidesCached' } });
 
       return slideBlobs;
     } catch (error) {
-      cerror('❌ Error preloading slides:', error);
+      luderror.ui('❌ Error preloading slides:', error);
       return {};
     }
   };
@@ -150,42 +150,42 @@ const VisualTemplateEditor = ({
   // SVG slide loading helper function - now uses cache
   const loadSlideByIndex = async (slideIndex, slides, entityId) => {
     try {
-      // Reduced logging: clog('🎬 loadSlideByIndex called with:', { slideIndex, slidesCount: slides?.length, entityId });
+      // Reduced logging: ludlog.ui('🎬 loadSlideByIndex called with:', { data: { slideIndex, slidesCount: slides?.length, entityId } });
 
       if (!slides || slideIndex < 0 || slideIndex >= slides.length) {
-        clog('❌ Invalid slide index:', slideIndex, 'Available slides:', slides?.length || 0);
+        ludlog.ui('❌ Invalid slide index:', { data: { slideIndex, availableSlides: slides?.length || 0 } });
         return;
       }
 
       const slide = slides[slideIndex];
-      // Reduced logging: clog('✅ Loading slide:', slide.id, 'Index:', slideIndex);
+      // Reduced logging: ludlog.ui('✅ Loading slide:', { data: slide.id, 'Index:', slideIndex });
 
       // Check if slide is already preloaded
       if (preloadedSlides[slideIndex]) {
-        // Reduced logging: clog('⚡ Using preloaded slide from cache:', slideIndex);
+        // Reduced logging: ludlog.ui('⚡ Using preloaded slide from cache:', { data: slideIndex });
         const cachedBlobUrl = preloadedSlides[slideIndex];
 
         // Clean up previous blob URL (but keep the cached ones)
         if (pdfBlobUrl && pdfBlobUrl.startsWith('blob:') && !Object.values(preloadedSlides).includes(pdfBlobUrl)) {
-          // Reduced logging: clog('🗑️ Cleaning up previous blob URL:', pdfBlobUrl);
+          // Reduced logging: ludlog.ui('🗑️ Cleaning up previous blob URL:', { data: pdfBlobUrl });
           URL.revokeObjectURL(pdfBlobUrl);
         }
 
         setPdfBlobUrl(cachedBlobUrl);
         setCurrentSlideIndex(slideIndex);
-        // Reduced logging: clog('📍 Instant slide switch to index:', slideIndex);
+        // Reduced logging: ludlog.ui('📍 Instant slide switch to index:', { data: slideIndex });
         return;
       }
 
       // If not cached, download it (fallback - should rarely happen)
-      // Reduced logging: clog('📥 Slide not in cache, downloading:', `/assets/download/lesson-plan-slide/${entityId}/${slide.id}`);
+      // Reduced logging: ludlog.api('📥 Slide not in cache, { data: downloading:', `/assets/download/lesson-plan-slide/${entityId}/${slide.id}` });
       const slideBlob = await apiDownload(`/assets/download/lesson-plan-slide/${entityId}/${slide.id}`);
       const blobUrl = URL.createObjectURL(slideBlob);
-      // Reduced logging: clog('🎯 SVG slide blob URL created for slide', slideIndex, ':', blobUrl);
+      // Reduced logging: ludlog.ui('🎯 SVG slide blob URL created for slide', { data: slideIndex, ':', blobUrl });
 
       // Clean up previous blob URL
       if (pdfBlobUrl && pdfBlobUrl.startsWith('blob:')) {
-        // Reduced logging: clog('🗑️ Cleaning up previous blob URL:', pdfBlobUrl);
+        // Reduced logging: ludlog.ui('🗑️ Cleaning up previous blob URL:', { data: pdfBlobUrl });
         URL.revokeObjectURL(pdfBlobUrl);
       }
 
@@ -194,22 +194,22 @@ const VisualTemplateEditor = ({
 
       setPdfBlobUrl(blobUrl);
       setCurrentSlideIndex(slideIndex);
-      // Reduced logging: clog('📍 Current slide index updated to:', slideIndex);
+      // Reduced logging: ludlog.ui('📍 Current slide index updated to:', { data: slideIndex });
     } catch (error) {
-      cerror('❌ Error loading slide:', slideIndex, error);
+      luderror.ui('❌ Error loading slide:', slideIndex, { context: error });
     }
   };
 
   // SVG slide navigation handlers
   const handlePrevSlide = () => {
-    // Reduced logging: clog('🔙 Previous slide requested. Current:', currentSlideIndex, 'Available:', availableSlides.length);
+    // Reduced logging: ludlog.api('🔙 Previous slide requested. Current:', { data: currentSlideIndex, 'Available:', availableSlides.length });
     if (currentSlideIndex > 0 && availableSlides.length > 0) {
       loadSlideByIndex(currentSlideIndex - 1, availableSlides, fileEntityId);
     }
   };
 
   const handleNextSlide = () => {
-    // Reduced logging: clog('▶️ Next slide requested. Current:', currentSlideIndex, 'Total:', totalSlides, 'Available:', availableSlides.length);
+    // Reduced logging: ludlog.api('▶️ Next slide requested. Current:', { data: currentSlideIndex, 'Total:', totalSlides, 'Available:', availableSlides.length });
     if (currentSlideIndex < totalSlides - 1 && availableSlides.length > 0) {
       loadSlideByIndex(currentSlideIndex + 1, availableSlides, fileEntityId);
     }
@@ -218,7 +218,7 @@ const VisualTemplateEditor = ({
   const handleSlideChange = (newPageNumber) => {
     // Convert 1-based page number to 0-based slide index
     const newSlideIndex = newPageNumber - 1;
-    // Reduced logging: clog('📄 Slide change requested. Page number:', newPageNumber, 'Slide index:', newSlideIndex, 'Total:', totalSlides);
+    // Reduced logging: ludlog.api('📄 Slide change requested. Page number:', { data: newPageNumber, 'Slide index:', newSlideIndex, 'Total:', totalSlides });
     if (newSlideIndex >= 0 && newSlideIndex < totalSlides && availableSlides.length > 0) {
       loadSlideByIndex(newSlideIndex, availableSlides, fileEntityId);
     }
@@ -248,7 +248,7 @@ const VisualTemplateEditor = ({
         newStack.shift();
       }
 
-      // Reduced logging: clog('📸 Snapshot saved to undo stack. Stack length:', newStack.length);
+      // Reduced logging: ludlog.websocket('📸 Snapshot saved to undo stack. Stack length:', { data: newStack.length });
       return newStack;
     });
 
@@ -261,14 +261,14 @@ const VisualTemplateEditor = ({
 
   const handleUndo = () => {
     if (!canUndo) {
-      clog('↶ Cannot undo - undo stack is empty');
+      ludlog.ui('↶ Cannot undo - undo stack is empty');
       return;
     }
 
     setIsUndoRedoAction(true);
 
     const previousSnapshot = undoStack[undoStack.length - 1];
-    clog('↶ Undo: Restoring snapshot');
+    ludlog.ui('↶ Undo: Restoring snapshot');
 
     // Save current state to redo stack
     setRedoStack(prev => [...prev, JSON.parse(JSON.stringify(templateConfig))]);
@@ -287,14 +287,14 @@ const VisualTemplateEditor = ({
 
   const handleRedo = () => {
     if (!canRedo) {
-      clog('↷ Cannot redo - redo stack is empty');
+      ludlog.ui('↷ Cannot redo - redo stack is empty');
       return;
     }
 
     setIsUndoRedoAction(true);
 
     const nextSnapshot = redoStack[redoStack.length - 1];
-    clog('↷ Redo: Restoring snapshot');
+    ludlog.ui('↷ Redo: Restoring snapshot');
 
     // Save current state to undo stack
     setUndoStack(prev => [...prev, JSON.parse(JSON.stringify(templateConfig))]);
@@ -315,7 +315,7 @@ const VisualTemplateEditor = ({
     setUndoStack([]);
     setRedoStack([]);
     setLastSavedSnapshot(null);
-    clog('🗑️ History cleared');
+    ludlog.navigation('🗑️ History cleared');
   };
 
   // Debounced change detection - wait for changes to settle
@@ -329,7 +329,7 @@ const VisualTemplateEditor = ({
 
     // Schedule a snapshot save after changes settle (1 second delay)
     changeTimeoutRef.current = setTimeout(() => {
-      // Reduced logging: clog('⏱️ Changes settled, saving snapshot');
+      // Reduced logging: ludlog.ui('⏱️ Changes settled, { data: saving snapshot' });
       saveSnapshot(templateConfig);
     }, 1000);
   };
@@ -399,7 +399,7 @@ const VisualTemplateEditor = ({
           // Extract copyright text from global settings
           const systemCopyrightText = settings?.copyright_text || settings?.footer_settings?.text?.content || '';
           setCopyrightText(systemCopyrightText);
-          clog('System copyright text loaded from global settings:', systemCopyrightText);
+          ludlog.ui('System copyright text loaded from global settings:', { data: systemCopyrightText });
 
           let finalConfig;
 
@@ -409,23 +409,23 @@ const VisualTemplateEditor = ({
             if (currentTemplateId && propInitialTemplateConfig && Object.keys(propInitialTemplateConfig).length > 0) {
               // Use provided template config when opening from template manager with specific template
               finalConfig = propInitialTemplateConfig;
-              clog(`🎨 Using provided template config from template manager:`, propInitialTemplateConfig);
+              ludlog.ui(`🎨 Using provided template config from template manager:`, { data: propInitialTemplateConfig });
             } else {
               // Start with blank canvas for creating new custom templates
               finalConfig = getDefaultConfig();
-              clog(`🆕 Using blank canvas for unified ${templateType} template creation`);
+              ludlog.ui(`🆕 Using blank canvas for unified ${templateType} template creation`);
             }
           } else {
             // File editing mode - load existing template configuration
             if (propInitialTemplateConfig && Object.keys(propInitialTemplateConfig).length > 0) {
               // SIMPLIFIED: Only unified structure is supported - no legacy conversion needed
               finalConfig = propInitialTemplateConfig;
-              clog('✅ Using unified template configuration');
+              ludlog.ui('✅ Using unified template configuration');
               setLoadedBrandingSettings(propInitialTemplateConfig);
             } else {
               // No existing config - use blank canvas
               finalConfig = getDefaultConfig();
-              clog('📝 No existing config - using blank canvas');
+              ludlog.ui('📝 No existing config - using blank canvas');
             }
           }
 
@@ -440,7 +440,7 @@ const VisualTemplateEditor = ({
             setLastSavedSnapshot(JSON.parse(JSON.stringify(finalConfig)));
           }, 100);
         } catch (error) {
-          cerror('Error initializing template config:', error);
+          luderror.ui('Error initializing template config:', error);
           // Fall back to defaults on error
           setTemplateConfig(getDefaultConfig());
           setTimeout(() => {
@@ -462,9 +462,9 @@ const VisualTemplateEditor = ({
         setIsLoadingTemplates(true);
         try {
           // effectiveFormat is now calculated at component level
-          clog(`🎨 Fetching available ${templateType} templates for format: ${effectiveFormat}...`);
+          ludlog.api(`🎨 Fetching available ${templateType} templates for format: ${effectiveFormat}...`);
           const response = await apiRequest(`/system-templates?type=${templateType}&format=${effectiveFormat}`);
-          clog('🎨 Raw template API response:', response);
+          ludlog.api('🎨 Raw template API response:', { data: response });
 
           // Handle different response formats - same logic as TemplateSelector
           let templateList = [];
@@ -475,19 +475,13 @@ const VisualTemplateEditor = ({
           } else if (response?.data && Array.isArray(response.data)) {
             templateList = response.data;
           } else {
-            clog('⚠️ Unexpected template response format:', response);
+            ludlog.api('⚠️ Unexpected template response format:', { data: response });
             templateList = [];
           }
 
-          clog(`✅ Loaded ${templateList.length} ${templateType} templates:`, templateList);
+          ludlog.ui(`✅ Loaded ${templateList.length} ${templateType} templates:`, { data: templateList });
           // Log first template data for debugging
           if (templateList.length > 0) {
-            clog('🔍 First template data preview:', {
-              id: templateList[0].id,
-              name: templateList[0].name,
-              template_data_keys: Object.keys(templateList[0].template_data || {}),
-              template_data_preview: templateList[0].template_data
-            });
           }
           setTemplates(templateList);
 
@@ -495,28 +489,28 @@ const VisualTemplateEditor = ({
           if (currentTemplateId && templateList.length > 0) {
             const currentTemplate = templateList.find(t => t.id.toString() === currentTemplateId.toString());
             if (currentTemplate) {
-              clog(`🎯 Setting and applying current template: ${currentTemplate.name} (ID: ${currentTemplate.id})`);
+              ludlog.ui(`🎯 Setting and applying current template: ${currentTemplate.name} (ID: ${currentTemplate.id});`);
               setSelectedTemplateId(currentTemplateId.toString());
               // Auto-apply the template when opened from template manager
               // IMMEDIATE APPLICATION - no timeout delay to prevent empty canvas flash
               handleApplyTemplate(currentTemplateId.toString());
             } else {
-              clog(`⚠️ Current template ID ${currentTemplateId} not found in available templates`);
+              ludlog.ui(`⚠️ Current template ID ${currentTemplateId} not found in available templates`);
             }
           } else if (!currentTemplateId && fileEntityId !== null && templateList.length > 0) {
             // Only auto-select default for existing files, not for custom template creation
             const defaultTemplate = templateList.find(t => t.is_default) || templateList[0];
             if (defaultTemplate) {
-              clog(`🎯 Auto-selecting default template for existing file: ${defaultTemplate.name} (ID: ${defaultTemplate.id})`);
+              ludlog.media(`🎯 Auto-selecting default template for existing file: ${defaultTemplate.name} (ID: ${defaultTemplate.id});`);
               setSelectedTemplateId(defaultTemplate.id.toString());
             }
           } else if (!currentTemplateId && fileEntityId === null) {
             // For custom template creation, don't auto-select any template
-            clog(`🆕 Starting with clean system defaults for custom ${templateType} design`);
+            ludlog.ui(`🆕 Starting with clean system defaults for custom ${templateType} design`);
             setSelectedTemplateId(null);
           }
         } catch (error) {
-          cerror('Error fetching templates:', error);
+          luderror.api('Error fetching templates:', error);
           setTemplates([]);
         } finally {
           setIsLoadingTemplates(false);
@@ -547,13 +541,13 @@ const VisualTemplateEditor = ({
             fileType = 'Portrait PDF';
           }
 
-          clog(`📄 Fetching ${fileType} placeholder for template mode...`);
+          ludlog.api(`📄 Fetching ${fileType} placeholder for template mode...`);
           const blob = await apiDownload(`/assets/placeholders/${placeholderFile}`);
           const blobUrl = URL.createObjectURL(blob);
           setPlaceholderPdfUrl(blobUrl);
-          clog(`📄 ${fileType} placeholder cached successfully:`, blobUrl);
+          ludlog.media(`📄 ${fileType} placeholder cached successfully:`, { data: blobUrl });
         } catch (error) {
-          cerror('Error fetching placeholder:', error);
+          luderror.api('Error fetching placeholder:', error);
         }
       };
 
@@ -573,37 +567,37 @@ const VisualTemplateEditor = ({
 
             // Check if this is a LessonPlan entity (SVG slides)
             if (effectiveFormat === 'svg-lessonplan') {
-              clog('Fetching SVG slides from LessonPlan API for preview:', fileEntityId);
+              ludlog.api('Fetching SVG slides from LessonPlan API for preview:', { data: fileEntityId });
 
               // Fetch SVG slides for LessonPlan
               const slidesResponse = await apiRequest(`/svg-slides/${fileEntityId}`);
 
               if (slidesResponse.success && slidesResponse.data.slides && slidesResponse.data.slides.length > 0) {
                 const slides = slidesResponse.data.slides;
-                clog('🎬 Found SVG slides for navigation:', slides);
-                clog('📊 Setting up slide state - Total slides:', slides.length);
+                ludlog.api('🎬 Found SVG slides for navigation:', { data: slides });
+                ludlog.api('📊 Setting up slide state - Total slides:', { data: slides.length });
 
                 // Store all available slides for navigation
                 setAvailableSlides(slides);
                 setTotalSlides(slides.length);
                 setCurrentSlideIndex(0); // Start with first slide
 
-                clog('📍 Initial slide state set - Available:', slides.length, 'Total:', slides.length, 'Current index: 0');
+                ludlog.state('📍 Initial slide state set', { data: { available: slides.length, total: slides.length, currentIndex: 0 } });
 
                 // Start preloading all slides in the background for fast navigation
                 const preloadSlides = async () => {
-                  clog('🏁 Starting background preload of all slides...');
+                  ludlog.game('🏁 Starting background preload of all slides...');
                   const cachedSlides = await preloadAllSlides(slides, fileEntityId);
 
                   // Set the first slide immediately if it's cached
                   if (cachedSlides[0]) {
-                    clog('⚡ Setting first slide from preloaded cache');
+                    ludlog.ui('⚡ Setting first slide from preloaded cache');
                     setPdfBlobUrl(cachedSlides[0]);
                   }
                 };
 
                 // Load the first slide immediately (don't wait for preloading)
-                clog('🎯 Loading initial slide (index 0)');
+                ludlog.media('🎯 Loading initial slide (index 0);');
                 await loadSlideByIndex(0, slides, fileEntityId);
 
                 // Start preloading other slides in the background
@@ -612,7 +606,7 @@ const VisualTemplateEditor = ({
                 // For SVG, set document loaded immediately since we don't use Document component
                 setIsPdfDocumentLoaded(true);
               } else {
-                clog('❌ No SVG slides found, using placeholder');
+                ludlog.state('❌ No SVG slides found', { data: { status: 'usingPlaceholder' } });
                 // Reset slide state
                 setAvailableSlides([]);
                 setTotalSlides(0);
@@ -622,7 +616,7 @@ const VisualTemplateEditor = ({
               }
             } else {
               // Regular PDF file
-              clog('Fetching PDF from API for preview:', fileEntityId);
+              ludlog.api('Fetching PDF from API for preview:', { data: fileEntityId });
 
               // Skip the correct template type based on what we're editing:
               // - Branding editor: skip branding from API (skipBranding=true)
@@ -631,11 +625,11 @@ const VisualTemplateEditor = ({
               const blob = await apiDownload(`/assets/download/file/${fileEntityId}?${skipParam}`);
 
               const blobUrl = URL.createObjectURL(blob);
-              clog('PDF blob URL created:', blobUrl);
+              ludlog.ui('PDF blob URL created:', { data: blobUrl });
               setPdfBlobUrl(blobUrl);
             }
           } catch (error) {
-            cerror('Error fetching file - will show placeholder:', error);
+            luderror.api('Error fetching file - will show placeholder:', error);
             // Don't set pdfBlobUrl, will show placeholder message instead
           } finally {
             setIsLoadingPdf(false);
@@ -645,7 +639,7 @@ const VisualTemplateEditor = ({
         fetchFile();
       } else if (placeholderPdfUrl) {
         // Template mode: use cached placeholder PDF/SVG
-        clog('📄 Using placeholder file for template mode:', placeholderPdfUrl);
+        ludlog.media('📄 Using placeholder file for template mode:', { data: placeholderPdfUrl });
         setPdfBlobUrl(placeholderPdfUrl);
         // For template mode with placeholder, we don't need to wait for document loading
         // but we still need to track it for PDFs (SVGs don't use Document component)
@@ -676,7 +670,7 @@ const VisualTemplateEditor = ({
         setTotalSlides(0);
         setCurrentSlideIndex(0);
         setPreloadedSlides({});
-        clog('🗑️ Cleaned up all preloaded slides');
+        ludlog.ui('🗑️ Cleaned up all preloaded slides');
       }
 
       // Reset document loaded state when component unmounts or fileEntityId changes
@@ -689,12 +683,6 @@ const VisualTemplateEditor = ({
 
     // DEBUG: Log scaling metadata for coordinate verification
     if (metadata) {
-      clog('📐 Scaling metadata received:', {
-        actualPdfDimensions: metadata.actualPdfDimensions,
-        scaleFactor: metadata.scaleFactor,
-        previewDimensions: metadata.previewDimensions,
-        note: 'This helps ensure frontend and backend use same coordinate system'
-      });
     }
   };
 
@@ -796,7 +784,7 @@ const VisualTemplateEditor = ({
     }
 
     setTemplateConfig(newConfig);
-    // Reduced logging: clog(`✨ Centered ${elementKey} on X axis to 50%`);
+    // Reduced logging: ludlog.ui(`✨ Centered ${elementKey} on X axis to 50%`);
   };
 
   const handleCenterY = (elementKey) => {
@@ -833,7 +821,7 @@ const VisualTemplateEditor = ({
     }
 
     setTemplateConfig(newConfig);
-    // Reduced logging: clog(`✨ Centered ${elementKey} on Y axis to 50%`);
+    // Reduced logging: ludlog.ui(`✨ Centered ${elementKey} on Y axis to 50%`);
   };
 
   const handleAddElement = (elementType) => {
@@ -860,7 +848,7 @@ const VisualTemplateEditor = ({
       setTemplateConfig(newConfig);
       setSelectedItem(elementId);
       setFocusedItem(elementId);
-      clog(`✨ Added new ${elementType} element to unified structure:`, elementId);
+      ludlog.ui(`✨ Added new ${elementType} element to unified structure:`, { data: elementId });
     } else {
       // LEGACY STRUCTURE: Support backward compatibility
       const builtInElements = ['logo', 'text', 'url', 'copyright-text', 'user-info', 'watermark-logo'];
@@ -877,7 +865,7 @@ const VisualTemplateEditor = ({
         setTemplateConfig(newConfig);
         setSelectedItem(elementType);
         setFocusedItem(elementType);
-        clog(`✨ Added new built-in ${elementType} element to legacy structure`);
+        ludlog.ui(`✨ Added new built-in ${elementType} element to legacy structure`);
       } else {
         // Handle custom elements - add to customElements
         const timestamp = Date.now();
@@ -896,7 +884,7 @@ const VisualTemplateEditor = ({
         setTemplateConfig(newConfig);
         setSelectedItem(elementId);
         setFocusedItem(elementId);
-        clog(`✨ Added new custom ${elementType} element to legacy structure:`, elementId);
+        ludlog.ui(`✨ Added new custom ${elementType} element to legacy structure:`, { data: elementId });
       }
     }
   };
@@ -1052,7 +1040,7 @@ const VisualTemplateEditor = ({
       setTemplateConfig(newConfig);
       setSelectedItem(null);
       setFocusedItem(null);
-      // Reduced logging: clog(`🗑️ Deleted custom element:`, elementId);
+      // Reduced logging: ludlog.ui(`🗑️ Deleted custom element:`, { data: elementId });
     }
   };
 
@@ -1082,7 +1070,7 @@ const VisualTemplateEditor = ({
     }
 
     setTemplateConfig(newConfig);
-    // Reduced logging: clog(`👁️ Toggled visibility for ${elementKey}`);
+    // Reduced logging: ludlog.ui(`👁️ Toggled visibility for ${elementKey}`);
   };
 
   const handleLockToggle = (elementKey) => {
@@ -1110,7 +1098,7 @@ const VisualTemplateEditor = ({
     }
 
     setTemplateConfig(newConfig);
-    // Reduced logging: clog(`🔒 Toggled lock for ${elementKey}`);
+    // Reduced logging: ludlog.ui(`🔒 Toggled lock for ${elementKey}`);
   };
 
   const handleDuplicate = (elementKey) => {
@@ -1135,7 +1123,7 @@ const VisualTemplateEditor = ({
         }
       };
       setTemplateConfig(newConfig);
-      // Reduced logging: clog(`📄 Duplicated custom element ${elementKey} as ${newElementId}`);
+      // Reduced logging: ludlog.ui(`📄 Duplicated custom element ${elementKey} as ${newElementId}`);
     } else if (templateConfig[elementKey]) {
       // Duplicate built-in element as custom element
       const newElementId = `${elementKey}_copy_${Date.now()}`;
@@ -1158,9 +1146,9 @@ const VisualTemplateEditor = ({
         }
       };
       setTemplateConfig(newConfig);
-      clog(`📄 Duplicated built-in element ${elementKey} as custom element ${newElementId}`);
+      ludlog.ui(`📄 Duplicated built-in element ${elementKey} as custom element ${newElementId}`);
     } else {
-      clog(`⚠️ Cannot duplicate element: ${elementKey} - element not found`);
+      ludlog.ui(`⚠️ Cannot duplicate element: ${elementKey} - element not found`);
     }
   };
 
@@ -1190,7 +1178,7 @@ const VisualTemplateEditor = ({
     setGroups({ ...groups, [groupId]: newGroup });
     setTemplateConfig(newConfig);
     setSelectedItems([]);
-    // Reduced logging: clog(`👥 Created group ${groupId} with elements:`, elementIds);
+    // Reduced logging: ludlog.ui(`👥 Created group ${groupId} with elements:`, { data: elementIds });
   };
 
   const getNextGroupColor = () => {
@@ -1207,7 +1195,7 @@ const VisualTemplateEditor = ({
         ...updates
       }
     });
-    clog(`📝 Updated group ${groupId}:`, updates);
+    ludlog.ui(`📝 Updated group ${groupId}:`, { data: updates });
   };
 
   const handleGroupDelete = (groupId) => {
@@ -1232,7 +1220,7 @@ const VisualTemplateEditor = ({
     setGroups(newGroups);
     setTemplateConfig(newConfig);
     setSelectedGroupId(null);
-    clog(`🗑️ Deleted group ${groupId}`);
+    ludlog.ui(`🗑️ Deleted group ${groupId}`);
   };
 
   const handleGroupToggleVisibility = (groupId) => {
@@ -1250,7 +1238,7 @@ const VisualTemplateEditor = ({
     });
 
     setTemplateConfig(newConfig);
-    clog(`👁️ Toggled visibility for group ${groupId}: ${!allVisible ? 'show' : 'hide'}`);
+    ludlog.ui(`👁️ Toggled visibility for group ${groupId}: ${!allVisible ? 'show' : 'hide'}`);
   };
 
   const handleGroupToggleLock = (groupId) => {
@@ -1268,7 +1256,7 @@ const VisualTemplateEditor = ({
     });
 
     setTemplateConfig(newConfig);
-    clog(`🔒 Toggled lock for group ${groupId}: ${!allLocked ? 'lock' : 'unlock'}`);
+    ludlog.ui(`🔒 Toggled lock for group ${groupId}: ${!allLocked ? 'lock' : 'unlock'}`);
   };
 
   const handleGroupDuplicate = (groupId) => {
@@ -1300,7 +1288,7 @@ const VisualTemplateEditor = ({
 
     setGroups({ ...groups, [newGroupId]: newGroup });
     setTemplateConfig(newConfig);
-    clog(`📄 Duplicated group ${groupId} as ${newGroupId}`);
+    ludlog.ui(`📄 Duplicated group ${groupId} as ${newGroupId}`);
   };
 
   const handleElementAddToGroup = (elementId, groupId) => {
@@ -1313,7 +1301,7 @@ const VisualTemplateEditor = ({
     }
 
     setTemplateConfig(newConfig);
-    clog(`➕ Added element ${elementId} to group ${groupId}`);
+    ludlog.ui(`➕ Added element ${elementId} to group ${groupId}`);
   };
 
   const handleElementRemoveFromGroup = (elementId, groupId) => {
@@ -1326,13 +1314,13 @@ const VisualTemplateEditor = ({
     }
 
     setTemplateConfig(newConfig);
-    clog(`➖ Removed element ${elementId} from group ${groupId}`);
+    ludlog.ui(`➖ Removed element ${elementId} from group ${groupId}`);
   };
 
   const handleGroupSelect = (groupId) => {
     setSelectedGroupId(groupId);
     setSelectedItem(null);
-    clog(`🎯 Selected group ${groupId}`);
+    ludlog.ui(`🎯 Selected group ${groupId}`);
   };
 
   const getGroupElements = (groupId) => {
@@ -1359,7 +1347,7 @@ const VisualTemplateEditor = ({
   // Multi-selection Handlers
   const handleSelectionChange = (items) => {
     setSelectedItems(items);
-    clog(`🎯 Selection changed:`, items);
+    ludlog.ui(`🎯 Selection changed:`, { data: items });
   };
 
   const handleBulkAction = (operation, data) => {
@@ -1446,7 +1434,7 @@ const VisualTemplateEditor = ({
         data.forEach(elementId => handleCenterX(elementId));
         break;
       default:
-        clog(`⚠️ Unknown bulk operation: ${operation}`);
+        ludlog.ui(`⚠️ Unknown bulk operation: ${operation}`);
     }
   };
 
@@ -1468,7 +1456,7 @@ const VisualTemplateEditor = ({
                 if (!element.type || typeof element.type !== 'string') {
                   element.type = elementType;
                   hasChanges = true;
-                  clog(`🔧 Fixed missing type field for ${elementType}[${index}]: added type="${elementType}"`);
+                  ludlog.ui(`🔧 Fixed missing type field for ${elementType}[${index}]: added type="${elementType}"`);
                 }
               });
             }
@@ -1489,13 +1477,13 @@ const VisualTemplateEditor = ({
                                  'free-text'; // Default fallback
               element.type = inferredType;
               hasChanges = true;
-              clog(`🔧 Fixed missing type field for custom element ${elementId}: inferred type="${inferredType}"`);
+              ludlog.ui(`🔧 Fixed missing type field for custom element ${elementId}: inferred type="${inferredType}"`);
             }
           });
         }
 
         if (hasChanges) {
-          clog('✅ Template validation: Fixed missing type fields');
+          ludlog.ui('✅ Template validation: Fixed missing type fields');
         }
 
         return fixedConfig;
@@ -1504,16 +1492,16 @@ const VisualTemplateEditor = ({
       if (templateType === 'watermark') {
         // Save watermark config using same structure as footer/header
         configToSave = validateAndFixElementTypes(templateConfig);
-        clog('💾 Save: watermark config being saved (same structure):', configToSave);
+        ludlog.ui('💾 Save: watermark config being saved (same structure);:', configToSave);
       } else {
         // Save footer/header config as-is
         configToSave = validateAndFixElementTypes(templateConfig);
-        clog('💾 Save: templateConfig being saved:', configToSave);
-        clog('💾 Save: text content being saved:', templateConfig.text?.content);
+        ludlog.ui('💾 Save: templateConfig being saved:', { data: configToSave });
+        ludlog.ui('💾 Save: text content being saved:', { data: templateConfig.text?.content });
 
         // Check if copyright text has changed and update system settings if needed
         if (templateConfig.text?.content && templateConfig.text.content !== copyrightText) {
-          clog('💾 Save: Copyright text changed, updating system settings...');
+          ludlog.ui('💾 Save: Copyright text changed', { data: { action: 'updatingSystemSettings' } });
           const { Settings: SettingsEntity } = await import('@/services/entities');
 
           // Update system settings with new copyright text
@@ -1521,7 +1509,7 @@ const VisualTemplateEditor = ({
             copyright_footer_text: templateConfig.text.content
           });
 
-          clog('✅ Save: System settings updated with new copyright text');
+          ludlog.ui('✅ Save: System settings updated with new copyright text');
         }
       }
 
@@ -1546,7 +1534,7 @@ const VisualTemplateEditor = ({
 
       onClose();
     } catch (error) {
-      cerror('Error saving template settings:', error);
+      luderror.ui('Error saving template settings:', error);
     }
   };
 
@@ -1657,7 +1645,7 @@ const VisualTemplateEditor = ({
       onTemplateChange(null, null);
     }
 
-    clog('✅ User confirmed custom template creation');
+    ludlog.ui('✅ User confirmed custom template creation');
   };
 
   // Handle custom template creation cancellation (revert to original template)
@@ -1667,7 +1655,7 @@ const VisualTemplateEditor = ({
       setHasCustomChanges(false);
     }
     setShowCustomConfirmation(false);
-    clog('↩️ User cancelled custom changes, reverted to template');
+    ludlog.ui('↩️ User cancelled custom changes', { data: { action: 'revertedToTemplate' } });
   };
 
   const handleApplyTemplate = async (templateId) => {
@@ -1676,12 +1664,12 @@ const VisualTemplateEditor = ({
     try {
       const template = templates.find(t => t.id.toString() === templateId.toString());
       if (!template) {
-        cerror('Template not found:', templateId);
+        luderror.ui('Template not found:', templateId);
         return;
       }
 
-      clog('🎨 Applying template:', template);
-      clog('🎨 Template data structure:', JSON.stringify(template.template_data, null, 2));
+      ludlog.ui('🎨 Applying template:', { data: template });
+      ludlog.ui('🎨 Template data structure:', { data: JSON.stringify(template.template_data, null, 2) });
 
       let newConfig;
 
@@ -1691,7 +1679,7 @@ const VisualTemplateEditor = ({
         // Logo uses static file, no URL needed
       };
 
-      clog('🎨 New config after template application:', JSON.stringify(newConfig, null, 2));
+      ludlog.ui('🎨 New config after template application:', { data: JSON.stringify(newConfig, null, 2) });
 
       // For branding templates, preserve system copyright text
       if (templateType === 'branding') {
@@ -1709,13 +1697,13 @@ const VisualTemplateEditor = ({
             // Remove URL property - logo elements should only use static files
             if (element.url) {
               delete element.url;
-              clog(`🔧 Removed logo URL from custom element ${elementId} - using static file only`);
+              ludlog.media(`🔧 Removed logo URL from custom element ${elementId} - using static file only`);
             }
           }
         });
       }
 
-      clog('🎨 Applied template config:', newConfig);
+      ludlog.ui('🎨 Applied template config:', { data: newConfig });
 
       setTemplateConfig(newConfig);
 
@@ -1744,9 +1732,9 @@ const VisualTemplateEditor = ({
         setLastSavedSnapshot(JSON.parse(JSON.stringify(newConfig)));
       }, 100);
 
-      clog(`✅ Applied template: ${template.name} - now working on independent branding config`);
+      ludlog.ui(`✅ Applied template: ${template.name} - now working on independent branding config`);
     } catch (error) {
-      cerror('Error applying template:', error);
+      luderror.ui('Error applying template:', error);
     }
   };
 
@@ -1986,7 +1974,7 @@ const VisualTemplateEditor = ({
   // Handle toggle template elements visibility (visual only, no config changes)
   const handleToggleTemplateElementsVisibility = () => {
     setShowTemplateElements(!showTemplateElements);
-    clog(`👁️ Template elements visibility toggled to: ${!showTemplateElements}`);
+    ludlog.ui(`👁️ Template elements visibility toggled to: ${!showTemplateElements}`);
   };
 
   // Handle clear all elements from template (with confirmation)
@@ -2015,7 +2003,7 @@ const VisualTemplateEditor = ({
     setShowClearAllConfirmation(false);
     setSelectedItem(null);
     setFocusedItem(null);
-    clog('🗑️ Cleared all template elements');
+    ludlog.ui('🗑️ Cleared all template elements');
   };
 
   // Cancel clearing all elements
@@ -2085,7 +2073,7 @@ const VisualTemplateEditor = ({
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    clog('🔘 Undo button clicked. Can undo:', canUndo, 'Undo stack length:', undoStack.length);
+                    ludlog.ui('🔘 Undo button clicked', { data: { canUndo, undoStackLength: undoStack.length } });
                     handleUndo();
                   }}
                   disabled={!canUndo}
@@ -2098,7 +2086,7 @@ const VisualTemplateEditor = ({
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    clog('🔘 Redo button clicked. Can redo:', canRedo, 'Redo stack length:', redoStack.length);
+                    ludlog.ui('🔘 Redo button clicked', { data: { canRedo, redoStackLength: redoStack.length } });
                     handleRedo();
                   }}
                   disabled={!canRedo}

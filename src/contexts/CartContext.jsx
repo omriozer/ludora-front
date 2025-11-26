@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { getCartPurchases } from '@/utils/purchaseHelpers';
 import { useUser } from '@/contexts/UserContext';
-import { clog, cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 
 // Custom event for cart changes
 const CART_CHANGE_EVENT = 'ludora-cart-changed';
@@ -34,9 +34,9 @@ export function CartProvider({ children }) {
       const cartPurchases = await getCartPurchases(userId);
       setCartItems(cartPurchases);
       setCartCount(cartPurchases.length);
-      clog(`Cart loaded: ${cartPurchases.length} items`);
+      ludlog.payment(`Cart loaded: ${cartPurchases.length} items`);
     } catch (error) {
-      cerror('Error loading cart items:', error);
+      luderror.payment('Error loading cart items:', error);
       setCartItems([]);
       setCartCount(0);
     } finally {
@@ -49,7 +49,7 @@ export function CartProvider({ children }) {
     loadCartItems();
     // Emit custom event to notify other components (like product catalog)
     window.dispatchEvent(new CustomEvent(CART_CHANGE_EVENT));
-    clog('Cart refreshed - notified other components');
+    ludlog.payment('Cart refreshed - notified other components');
   }, [loadCartItems]);
 
   // Add item to cart (increment count without refetching)

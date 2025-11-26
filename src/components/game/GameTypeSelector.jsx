@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useUser } from '@/contexts/UserContext';
-import { clog } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 
 /**
  * GameTypeSelector - Displays all available game types in a nice grid for selection
@@ -15,7 +15,7 @@ const GameTypeSelector = ({ onGameTypeSelect, overrideSettingsDisabled = false, 
   const availableGameTypes = overrideSettingsDisabled ? gameTypes : gameTypes.filter(gameType => !gameType.disabled);
 
   const handleGameTypeClick = (gameType) => {
-    clog('🎮 Game type selected:', gameType);
+    ludlog.game('🎮 Game type selected:', { data: gameType });
     onGameTypeSelect(gameType);
   };
 

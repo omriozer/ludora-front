@@ -8,7 +8,6 @@ import FileAccessButton from '@/components/ui/FileAccessButton';
 import LessonPlanAccessButton from '@/components/ui/LessonPlanAccessButton';
 import CourseAccessButton from '@/components/ui/CourseAccessButton';
 import WorkshopAccessButton from '@/components/ui/WorkshopAccessButton';
-import { clog } from '@/lib/utils';
 
 /**
  * Product Action Bar - Smart container that shows appropriate buttons based on product state

@@ -1,5 +1,5 @@
 import { apiRequest } from '@/services/apiClient';
-import { clog, cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 
 /**
  * Payment API client for PayPlus integration
@@ -18,7 +18,7 @@ class PaymentClient {
    */
   async createPurchase(purchasableType, purchasableId, additionalData = {}) {
     try {
-      clog('Creating purchase:', { purchasableType, purchasableId, additionalData });
+      ludlog.payment('Creating purchase:', { data: { purchasableType, purchasableId, additionalData } });
 
       const data = await apiRequest('/payments/purchases', {
         method: 'POST',
@@ -29,7 +29,7 @@ class PaymentClient {
         })
       });
 
-      clog('Purchase created:', data);
+      ludlog.payment('Purchase created:', { data: data });
       return {
         success: true,
         ...data
@@ -38,7 +38,7 @@ class PaymentClient {
     } catch (error) {
       // Handle special case for subscription update (409 conflict)
       if (error.message.includes('409') || error.message.includes('Subscription already in cart')) {
-        clog('Subscription already in cart, can update');
+        ludlog.payment('Subscription already in cart, can update', { data: true });
         return {
           success: false,
           canUpdate: true,
@@ -46,7 +46,7 @@ class PaymentClient {
         };
       }
 
-      cerror('Error creating purchase:', error);
+      luderror.payment('Error creating purchase:', error);
       throw error;
     }
   }
@@ -58,20 +58,20 @@ class PaymentClient {
    */
   async deleteCartItem(purchaseId) {
     try {
-      clog('Deleting cart item:', { purchaseId });
+      ludlog.payment('Deleting cart item:', { data: { purchaseId } });
 
       const data = await apiRequest(`/payments/purchases/${purchaseId}`, {
         method: 'DELETE'
       });
 
-      clog('Cart item deleted:', data);
+      ludlog.payment('Cart item deleted:', { data: data });
       return {
         success: true,
         ...data
       };
 
     } catch (error) {
-      cerror('Error deleting cart item:', error);
+      luderror.payment('Error deleting cart item:', error);
       throw error;
     }
   }
@@ -84,7 +84,7 @@ class PaymentClient {
    */
   async updateCartSubscription(purchaseId, newSubscriptionPlanId) {
     try {
-      clog('Updating cart subscription:', { purchaseId, newSubscriptionPlanId });
+      ludlog.payment('Updating cart subscription:', { data: { purchaseId, newSubscriptionPlanId } });
 
       const data = await apiRequest(`/payments/purchases/${purchaseId}`, {
         method: 'PUT',
@@ -93,14 +93,14 @@ class PaymentClient {
         })
       });
 
-      clog('Cart subscription updated:', data);
+      ludlog.payment('Cart subscription updated:', { data: data });
       return {
         success: true,
         ...data
       };
 
     } catch (error) {
-      cerror('Error updating cart subscription:', error);
+      luderror.payment('Error updating cart subscription:', error);
       throw error;
     }
   }
@@ -111,17 +111,17 @@ class PaymentClient {
    */
   async testPayPlusConnection() {
     try {
-      clog('Testing PayPlus connection');
+      ludlog.payment('Testing PayPlus connection');
 
       const data = await apiRequest('/functions/testPayplusConnection', {
         method: 'POST'
       });
 
-      clog('PayPlus connection test result:', data);
+      ludlog.payment('PayPlus connection test result:', { data: data });
       return data;
 
     } catch (error) {
-      cerror('Error testing PayPlus connection:', error);
+      luderror.payment('Error testing PayPlus connection:', error);
       throw error;
     }
   }

@@ -29,6 +29,7 @@ import FeatureFlagService from '@/services/FeatureFlagService';
 import { getProductTypeIconByType } from '@/lib/layoutUtils';
 import { toast } from '@/components/ui/use-toast';
 import { usePaymentPageStatusCheck } from '@/hooks/usePaymentPageStatusCheck';
+import { ludlog } from "@/lib/ludlog";
 
 export default function Products() {
   const [searchParams] = useSearchParams();
@@ -63,7 +64,7 @@ export default function Products() {
     enabled: true,
     showToasts: true, // Show user notifications about payment status changes
     onStatusUpdate: (update) => {
-      console.log('Products: Payment status update received:', update);
+      ludlog.payment('Products: Payment status update received:', update);
 
       // Refresh products list when payments are processed (user might have new access)
       if (update.type === 'continue_polling' && update.count > 0) {

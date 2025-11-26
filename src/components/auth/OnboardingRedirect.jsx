@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useUser } from '@/contexts/UserContext';
 import { StudentInvitation } from '@/services/apiClient';
-import { clog } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
 import {
   isProtectedFlow,
@@ -66,58 +66,45 @@ export default function OnboardingRedirect({ children }) {
 
   // Determine the redirect target (if any) - memoized for performance
   const redirectTarget = useMemo(() => {
-    clog('[OnboardingRedirect] REDIRECT CALCULATION:', {
-      isDataReady,
-      currentUser: !!currentUser,
-      isOnOnboardingPage,
-      isOnInvitationPage,
-      hasInvitations,
-      userNeedsOnboarding,
-      inProtectedFlow,
-      onboardingDeferred,
-      pathname,
-      settings: settings ? 'loaded' : 'null'
-    });
-
     // Can't make decision yet
     if (!isDataReady || !currentUser) {
-      clog('[OnboardingRedirect] Data not ready, no redirect');
+      ludlog.navigation('[OnboardingRedirect] Data not ready', { data: { status: 'noRedirect' } });
       return null;
     }
 
     // Already on target pages - no redirect needed
     if (isOnOnboardingPage || isOnInvitationPage) {
-      clog('[OnboardingRedirect] Already on target page, no redirect needed');
+      ludlog.navigation('[OnboardingRedirect] Already on target page', { data: { status: 'noRedirectNeeded' } });
       return null;
     }
 
     // Priority 1: Invitations take precedence
     if (hasInvitations) {
-      clog('[OnboardingRedirect] Has invitations, redirecting to student-invitations');
+      ludlog.navigation('[OnboardingRedirect] Has invitations', { data: { action: 'redirectingToStudentInvitations' } });
       return { path: '/student-invitations', text: 'מפנה לדף הזמנות...' };
     }
 
     // Priority 2: Onboarding (if needed and not in protected flow)
     if (userNeedsOnboarding) {
-      clog('[OnboardingRedirect] User needs onboarding, checking conditions...');
+      ludlog.navigation('[OnboardingRedirect] User needs onboarding', { data: { status: 'checkingConditions' } });
 
       // In protected flow - defer onboarding, don't redirect
       if (inProtectedFlow) {
-        clog('[OnboardingRedirect] In protected flow, deferring onboarding');
+        ludlog.navigation('[OnboardingRedirect] In protected flow', { data: { action: 'deferringOnboarding' } });
         return null; // Will handle deferral in useEffect
       }
 
       // Onboarding was deferred - check if we should show it now
       if (onboardingDeferred && !shouldShowOnboardingNow(pathname, location.search)) {
-        clog('[OnboardingRedirect] Onboarding deferred, not showing now');
+        ludlog.navigation('[OnboardingRedirect] Onboarding deferred', { data: { status: 'notShowingNow' } });
         return null;
       }
 
-      clog('[OnboardingRedirect] Will redirect to onboarding');
+      ludlog.navigation('[OnboardingRedirect] Will redirect to onboarding');
       return { path: '/onboarding', text: 'מפנה לדף הרשמה...' };
     }
 
-    clog('[OnboardingRedirect] No redirect needed');
+    ludlog.navigation('[OnboardingRedirect] No redirect needed');
     return null;
   }, [
     isDataReady, currentUser, isOnOnboardingPage, isOnInvitationPage,
@@ -130,7 +117,7 @@ export default function OnboardingRedirect({ children }) {
     const checkInvitations = async () => {
       // Skip invitation checks if classrooms are disabled
       if (!shouldCheckInvitations) {
-        clog('[OnboardingRedirect] Skipping invitation checks - classrooms disabled');
+        ludlog.navigation('[OnboardingRedirect] Skipping invitation checks - classrooms disabled');
         setHasCheckedInvitations(true);
         setHasInvitations(false);
         return;
@@ -138,10 +125,10 @@ export default function OnboardingRedirect({ children }) {
 
       if (!currentUser || hasCheckedInvitations) return;
 
-      clog('[OnboardingRedirect] Starting invitation check for user:', currentUser.email);
+      ludlog.navigation('[OnboardingRedirect] Starting invitation check for user:', { data: currentUser.email });
 
       const timeoutId = setTimeout(() => {
-        clog('[OnboardingRedirect] Invitation check timeout, proceeding without invitations');
+        ludlog.navigation('[OnboardingRedirect] Invitation check timeout', { data: { action: 'proceedingWithoutInvitations' } });
         setHasCheckedInvitations(true);
         setHasInvitations(false);
       }, 5000);
@@ -162,14 +149,8 @@ export default function OnboardingRedirect({ children }) {
         setHasInvitations(totalInvitations.length > 0);
         setHasCheckedInvitations(true);
         clearTimeout(timeoutId);
-
-        clog('[OnboardingRedirect] Invitation check completed:', {
-          studentInvitations: studentInvitations.length,
-          parentInvitations: parentInvitations.length,
-          total: totalInvitations.length
-        });
       } catch (error) {
-        clog('[OnboardingRedirect] Error checking invitations:', error);
+        ludlog.navigation('[OnboardingRedirect] Error checking invitations:', { data: error });
         setHasCheckedInvitations(true);
         setHasInvitations(false);
         clearTimeout(timeoutId);
@@ -185,12 +166,12 @@ export default function OnboardingRedirect({ children }) {
     if (settings !== null && settings !== undefined) {
       if (!shouldCheckInvitations) {
         // Classrooms disabled - mark as checked and no invitations
-        clog('[OnboardingRedirect] Classrooms disabled in settings - skipping invitation checks');
+        ludlog.navigation('[OnboardingRedirect] Classrooms disabled in settings - skipping invitation checks');
         setHasCheckedInvitations(true);
         setHasInvitations(false);
       } else {
         // Classrooms enabled - reset to check invitations
-        clog('[OnboardingRedirect] Classrooms enabled in settings - will check invitations');
+        ludlog.navigation('[OnboardingRedirect] Classrooms enabled in settings - will check invitations');
         setHasCheckedInvitations(false);
       }
     }
@@ -202,7 +183,7 @@ export default function OnboardingRedirect({ children }) {
 
     // Handle protected flow deferral
     if (userNeedsOnboarding && inProtectedFlow && !isOnOnboardingPage) {
-      clog('[OnboardingRedirect] User in protected flow - deferring onboarding');
+      ludlog.navigation('[OnboardingRedirect] User in protected flow - deferring onboarding');
       deferOnboarding();
       return;
     }
@@ -214,7 +195,7 @@ export default function OnboardingRedirect({ children }) {
 
     // Execute redirect if needed
     if (redirectTarget) {
-      clog('[OnboardingRedirect] Redirecting to:', redirectTarget.path);
+      ludlog.navigation('[OnboardingRedirect] Redirecting to:', { data: redirectTarget.path });
       if (onboardingDeferred && redirectTarget.path === '/onboarding') {
         clearDeferredOnboarding();
       }

@@ -9,7 +9,7 @@ import {
   CheckCircle,
   ArrowLeft
 } from 'lucide-react';
-import { clog } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 
 export default function AgeVerification({ onComplete, onBack, onboardingData, currentUser }) {
   const [birthDate, setBirthDate] = useState('');
@@ -26,9 +26,9 @@ export default function AgeVerification({ onComplete, onBack, onboardingData, cu
         setBirthDate(formattedDate);
         const calculatedAge = calculateAge(formattedDate);
         setAge(calculatedAge);
-        clog('[AgeVerification] Loaded saved date:', formattedDate, 'Age:', calculatedAge);
+        ludlog.ui('[AgeVerification] Loaded saved date:', { data: { formattedDate, age: calculatedAge } });
       } catch (error) {
-        clog('[AgeVerification] Error formatting saved date:', error);
+        ludlog.ui('[AgeVerification] Error formatting saved date:', { data: error });
       }
     }
   }, [onboardingData, currentUser]);
@@ -59,23 +59,23 @@ export default function AgeVerification({ onComplete, onBack, onboardingData, cu
     if (newDate) {
       const calculatedAge = calculateAge(newDate);
       setAge(calculatedAge);
-      clog('[AgeVerification] Date changed:', newDate, 'Age:', calculatedAge);
+      ludlog.ui('[AgeVerification] Date changed:', { data: { newDate, age: calculatedAge } });
     } else {
       setAge(null);
     }
   };
 
   const validateAndContinue = () => {
-    clog('[AgeVerification] Continue button clicked');
-    clog('[AgeVerification] Current birthDate:', birthDate);
-    clog('[AgeVerification] Current age:', age);
+    ludlog.ui('[AgeVerification] Continue button clicked');
+    ludlog.ui('[AgeVerification] Current birthDate:', { data: birthDate });
+    ludlog.ui('[AgeVerification] Current age:', { data: age });
 
     // Clear any previous errors
     setError('');
 
     // Check if date is provided
     if (!birthDate || birthDate.trim() === '') {
-      clog('[AgeVerification] Validation failed: No birth date');
+      ludlog.ui('[AgeVerification] Validation failed: No birth date');
       setError('יש להזין תאריך לידה');
       return;
     }
@@ -83,14 +83,14 @@ export default function AgeVerification({ onComplete, onBack, onboardingData, cu
     // Check if date is valid
     const date = new Date(birthDate);
     if (isNaN(date.getTime())) {
-      clog('[AgeVerification] Validation failed: Invalid date');
+      ludlog.ui('[AgeVerification] Validation failed: Invalid date');
       setError('תאריך לידה לא תקין');
       return;
     }
 
     // Check if date is not in the future
     if (date > new Date()) {
-      clog('[AgeVerification] Validation failed: Future date');
+      ludlog.ui('[AgeVerification] Validation failed: Future date');
       setError('תאריך לידה לא יכול להיות בעתיד');
       return;
     }
@@ -98,27 +98,27 @@ export default function AgeVerification({ onComplete, onBack, onboardingData, cu
     // Calculate age
     const calculatedAge = calculateAge(birthDate);
     if (calculatedAge === null || calculatedAge < 0) {
-      clog('[AgeVerification] Validation failed: Invalid calculated age');
+      ludlog.ui('[AgeVerification] Validation failed: Invalid calculated age');
       setError('תאריך לידה לא תקין');
       return;
     }
 
     // Check if user is under 18 - teachers must be 18+
     if (calculatedAge < 18) {
-      clog('[AgeVerification] Validation failed: Under 18 years old');
+      ludlog.ui('[AgeVerification] Validation failed: Under 18 years old');
       setError('הרשמה כמורה מיועדת למשתמשים בגיל 18 ומעלה בלבד.');
       return;
     }
 
     // All validations passed
-    clog('[AgeVerification] Validation passed, age:', calculatedAge);
+    ludlog.ui('[AgeVerification] Validation passed', { data: { age: calculatedAge } });
 
     const stepData = {
       birthDate,
       age: calculatedAge
     };
 
-    clog('[AgeVerification] Calling onComplete with data:', stepData);
+    ludlog.ui('[AgeVerification] Calling onComplete with data:', { data: stepData });
 
     onComplete(stepData);
   };
@@ -128,13 +128,6 @@ export default function AgeVerification({ onComplete, onBack, onboardingData, cu
   const isAgeValid = age !== null && age >= 18;
   const canContinue = isDateValid && isAgeValid;
 
-  clog('[AgeVerification] Current state:', {
-    birthDate,
-    age,
-    isDateValid,
-    isAgeValid,
-    canContinue
-  });
 
   return (
     <div className="space-y-6">

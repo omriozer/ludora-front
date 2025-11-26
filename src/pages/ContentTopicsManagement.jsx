@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { ContentTopic } from '@/services/entities';
 import { contentTopicService } from '@/services/contentTopicService';
-import { clog, cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 
 /**
  * ContentTopicsManagement - Admin page for managing content topics
@@ -78,7 +78,7 @@ export default function ContentTopicsManagement() {
       const data = await ContentTopic.list();
       setTopics(Array.isArray(data) ? data : []);
     } catch (error) {
-      cerror('Failed to load content topics:', error);
+      luderror.validation('Failed to load content topics:', error);
       showMessage('error', 'שגיאה בטעינת נושאי התוכן');
       setTopics([]);
     } finally {
@@ -94,7 +94,7 @@ export default function ContentTopicsManagement() {
       const usage = await contentTopicService.getTopicUsage(topicId);
       setTopicUsageMap(prev => new Map(prev.set(topicId, usage)));
     } catch (error) {
-      cerror(`Failed to load usage for topic ${topicId}:`, error);
+      luderror.validation(`Failed to load usage for topic ${topicId}:`, error);
     }
   };
 
@@ -106,7 +106,7 @@ export default function ContentTopicsManagement() {
         contentTopicService.getTopicUsage(topic.id)
           .then(usage => ({ topicId: topic.id, usage }))
           .catch(error => {
-            cerror(`Failed to load usage for topic ${topic.id}:`, error);
+            luderror.validation(`Failed to load usage for topic ${topic.id}:`, error);
             return { topicId: topic.id, usage: null };
           })
       );
@@ -119,7 +119,7 @@ export default function ContentTopicsManagement() {
 
       setTopicUsageMap(newUsageMap);
     } catch (error) {
-      cerror('Failed to load usage statistics:', error);
+      luderror.validation('Failed to load usage statistics:', error);
     } finally {
       setLoadingUsage(false);
     }
@@ -254,7 +254,7 @@ export default function ContentTopicsManagement() {
       handleCloseForm();
       loadTopics(); // Refresh the list
     } catch (error) {
-      cerror('Error saving topic:', error);
+      luderror.validation('Error saving topic:', error);
       showMessage('error', editingTopic ? 'שגיאה בעדכון הנושא' : 'שגיאה ביצירת הנושא');
     }
   };
@@ -283,7 +283,7 @@ export default function ContentTopicsManagement() {
 
       loadTopics(); // Refresh the list
     } catch (error) {
-      cerror('Error deleting topic:', error);
+      luderror.validation('Error deleting topic:', error);
       showMessage('error', 'שגיאה במחיקת הנושא');
     }
   };

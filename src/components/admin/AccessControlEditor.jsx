@@ -29,7 +29,7 @@ import {
   Lock
 } from 'lucide-react';
 import { getApiBase } from '@/utils/api.js';
-import { clog, cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 import { apiRequest } from '@/services/apiClient.js';
 import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
 import TemplateSelector from '@/components/product/TemplateSelector';
@@ -61,14 +61,8 @@ const AccessControlEditor = ({
       // Load entity data using apiRequest
       const entityData = await apiRequest(`/entities/${entityType}/${entityId}`);
       setEntity(entityData);
-
-      clog('AccessControlEditor: Data loaded', {
-        entityType,
-        entityId
-      });
-
     } catch (error) {
-      cerror('AccessControlEditor: Load error:', error);
+      luderror.ui('AccessControlEditor: Load error:', error);
       toast({
         title: "שגיאה בטעינת נתונים",
         description: "לא הצלחנו לטעון את נתוני בקרת הגישה",
@@ -245,10 +239,10 @@ const AccessControlEditor = ({
         onUpdate(updatedEntity);
       }
 
-      clog('AccessControlEditor: Settings saved', { entityType, entityId, changes: changesToSave });
+      ludlog.ui('AccessControlEditor: Settings saved', { data: { entityType, entityId, changes: changesToSave } });
 
     } catch (error) {
-      cerror('AccessControlEditor: Save error:', error);
+      luderror.ui('AccessControlEditor: Save error:', error);
       toast({
         title: "שגיאה בשמירה",
         description: "לא הצלחנו לשמור את הגדרות בקרת הגישה",

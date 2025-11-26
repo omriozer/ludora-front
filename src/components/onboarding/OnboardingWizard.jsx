@@ -14,7 +14,7 @@ import {
   SkipForward,
   AlertCircle
 } from 'lucide-react';
-import { clog, cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 import { toast } from '@/components/ui/use-toast';
 import { User, SubscriptionHistory } from '@/services/apiClient';
 
@@ -141,7 +141,7 @@ export default function OnboardingWizard() {
       setCurrentStep(appropriateStep);
 
     } catch (error) {
-      cerror('[OnboardingWizard] Error loading existing user data:', error);
+      luderror.ui('[OnboardingWizard] Error loading existing user data:', error);
     }
   }, [currentUser]);
 
@@ -163,10 +163,10 @@ export default function OnboardingWizard() {
   }, [currentUser, navigate, loadExistingUserData]);
 
   const handleStepComplete = async (stepId, stepData) => {
-    clog(`[OnboardingWizard] ✅ Step ${stepId} completed with data:`, stepData);
-    clog(`[OnboardingWizard] 📍 Current step before processing: ${currentStep}`);
-    clog(`[OnboardingWizard] 📊 Total steps available: ${steps.length}`);
-    clog(`[OnboardingWizard] 🔍 Is this the last step?`, currentStep >= steps.length - 1);
+    ludlog.ui(`[OnboardingWizard] ✅ Step ${stepId} completed with data:`, { data: stepData });
+    ludlog.ui(`[OnboardingWizard] 📍 Current step before processing: ${currentStep}`);
+    ludlog.ui(`[OnboardingWizard] 📊 Total steps available: ${steps.length}`);
+    ludlog.ui(`[OnboardingWizard] 🔍 Is this the last step?`, { data: currentStep >= steps.length - 1 });
 
     // Update local state
     const updatedOnboardingData = {
@@ -176,12 +176,12 @@ export default function OnboardingWizard() {
         word.charAt(0).toUpperCase() + word.slice(1)).join('')}`]: true
     };
     setOnboardingData(updatedOnboardingData);
-    clog(`[OnboardingWizard] 📝 Updated onboarding data:`, updatedOnboardingData);
+    ludlog.ui(`[OnboardingWizard] 📝 Updated onboarding data:`, { data: updatedOnboardingData });
 
     // Immediately save user data for this step
     try {
       setIsLoading(true);
-      clog(`[OnboardingWizard] 💾 Starting to save user data for step ${stepId}`);
+      ludlog.ui(`[OnboardingWizard] 💾 Starting to save user data for step ${stepId}`);
 
       // Prepare user updates based on step data
       const userUpdates = {};
@@ -189,7 +189,7 @@ export default function OnboardingWizard() {
       // Age verification step
       if (stepId === 'age-verification' && stepData.birthDate) {
         userUpdates.birth_date = stepData.birthDate;
-        clog(`[OnboardingWizard] 🎂 Adding birth_date to user updates:`, stepData.birthDate);
+        ludlog.ui(`[OnboardingWizard] 🎂 Adding birth_date to user updates:`, { data: stepData.birthDate });
       }
 
       // Account type step
@@ -206,7 +206,7 @@ export default function OnboardingWizard() {
 
       // Subscription step - handled by SubscriptionModal, no processing needed here
       if (stepId === 'subscription' && stepData.subscriptionSelected) {
-        clog(`[OnboardingWizard] 💳 Subscription completed via SubscriptionModal`);
+        ludlog.payment(`[OnboardingWizard] 💳 Subscription completed via SubscriptionModal`);
 
         toast({
           title: "תוכנית המנוי נשמרה",
@@ -215,37 +215,30 @@ export default function OnboardingWizard() {
         });
       }
 
-      clog(`[OnboardingWizard] 🔄 User updates to be saved:`, userUpdates);
+      ludlog.ui(`[OnboardingWizard] 🔄 User updates to be saved:`, { data: userUpdates });
 
       // Update user if there are changes
       if (Object.keys(userUpdates).length > 0) {
-        clog(`[OnboardingWizard] 🔍 Updating user with ID: ${currentUser.id}`);
-        clog(`[OnboardingWizard] 🔑 Auth token from localStorage:`, localStorage.getItem('authToken') ? 'Present' : 'Missing');
-        clog(`[OnboardingWizard] 🔑 Backup token from localStorage:`, localStorage.getItem('token') ? 'Present' : 'Missing');
+        ludlog.auth(`[OnboardingWizard] 🔍 Updating user with ID: ${currentUser.id}`);
+        ludlog.auth(`[OnboardingWizard] 🔑 Auth token from localStorage:`, { data: { authToken: localStorage.getItem('authToken') ? 'Present' : 'Missing' } });
+        ludlog.auth(`[OnboardingWizard] 🔑 Backup token from localStorage:`, { data: { token: localStorage.getItem('token') ? 'Present' : 'Missing' } });
 
         try {
           const updatedUser = await User.updateMyUserData(userUpdates);
-          clog(`[OnboardingWizard] 📨 API returned updated user:`, updatedUser);
-          clog(`[OnboardingWizard] 🎂 Birth date in API response:`, updatedUser.birth_date);
+          ludlog.api(`[OnboardingWizard] 📨 API returned updated user:`, { data: updatedUser });
+          ludlog.api(`[OnboardingWizard] 🎂 Birth date in API response:`, { data: updatedUser.birth_date });
           updateUser(updatedUser);
-          clog(`[OnboardingWizard] ✅ User data updated successfully after step ${stepId}:`, userUpdates);
+          ludlog.ui(`[OnboardingWizard] ✅ User data updated successfully after step ${stepId}:`, { data: userUpdates });
         } catch (updateError) {
-          cerror(`[OnboardingWizard] 💥 User.update failed:`, updateError);
-          cerror(`[OnboardingWizard] 📋 Update error details:`, {
-            message: updateError.message,
-            stack: updateError.stack,
-            userId: currentUser.id,
-            userUpdates,
-            authToken: localStorage.getItem('authToken') ? 'Present' : 'Missing'
-          });
+          luderror.ui(`[OnboardingWizard] 💥 User.update failed:`, updateError);
           throw updateError; // Re-throw to trigger the outer catch
         }
       } else {
-        clog(`[OnboardingWizard] ℹ️ No user updates needed for step ${stepId}`);
+        ludlog.ui(`[OnboardingWizard] ℹ️ No user updates needed for step ${stepId}`);
       }
 
     } catch (error) {
-      cerror(`[OnboardingWizard] ❌ Error saving step ${stepId} data:`, error);
+      luderror.ui(`[OnboardingWizard] ❌ Error saving step ${stepId} data:`, error);
 
       // Show more specific error messages based on error type
       let errorTitle = 'שגיאה בשמירת הנתונים';
@@ -277,24 +270,24 @@ export default function OnboardingWizard() {
     }
 
     // Move to next step
-    clog(`[OnboardingWizard] 🚀 About to advance step. Current step: ${currentStep}, Total steps: ${steps.length}`);
+    ludlog.ui(`[OnboardingWizard] 🚀 About to advance step. Current step: ${currentStep}`, { data: { totalSteps: steps.length } });
     if (currentStep < steps.length - 1) {
       const nextStep = currentStep + 1;
-      clog(`[OnboardingWizard] ➡️ Advancing to step ${nextStep}`);
+      ludlog.ui(`[OnboardingWizard] ➡️ Advancing to step ${nextStep}`);
       setCurrentStep(prev => {
         const newStep = prev + 1;
-        clog(`[OnboardingWizard] 📍 Step updated from ${prev} to ${newStep}`);
+        ludlog.websocket(`[OnboardingWizard] 📍 Step updated from ${prev} to ${newStep}`);
         return newStep;
       });
     } else {
-      clog(`[OnboardingWizard] 🏁 Completing onboarding (last step reached)`);
-      clog(`[OnboardingWizard] 🎯 Calling handleOnboardingComplete() now...`);
+      ludlog.ui(`[OnboardingWizard] 🏁 Completing onboarding (last step reached)`);
+      ludlog.ui(`[OnboardingWizard] 🎯 Calling handleOnboardingComplete() now...`);
       handleOnboardingComplete();
     }
   };
 
   const handleOnboardingComplete = async () => {
-    clog('[OnboardingWizard] 🎉 STARTING handleOnboardingComplete function');
+    ludlog.ui('[OnboardingWizard] 🎉 STARTING handleOnboardingComplete function');
     setIsLoading(true);
     setError('');
 
@@ -304,24 +297,24 @@ export default function OnboardingWizard() {
         onboarding_completed: true
       };
 
-      clog('[OnboardingWizard] 💾 About to update user with:', userUpdates);
+      ludlog.media('[OnboardingWizard] 💾 About to update user with:', { data: userUpdates });
       // Update user profile
       const updatedUser = await User.updateMyUserData(userUpdates);
-      clog('[OnboardingWizard] ✅ User updated successfully:', updatedUser);
-      clog('[OnboardingWizard] 🔍 Updated user onboarding_completed value:', updatedUser.onboarding_completed);
+      ludlog.ui('[OnboardingWizard] ✅ User updated successfully:', { data: updatedUser });
+      ludlog.ui('[OnboardingWizard] 🔍 Updated user onboarding_completed value:', { data: updatedUser.onboarding_completed });
 
       // Ensure UserContext is updated synchronously
       updateUser(updatedUser);
 
       // Double-check that the user context has been updated
-      clog('[OnboardingWizard] 🔄 UserContext should now have updated user data');
+      ludlog.state('[OnboardingWizard] 🔄 UserContext should now have updated user data');
 
-      clog('[OnboardingWizard] Onboarding completed successfully');
+      ludlog.ui('[OnboardingWizard] Onboarding completed successfully');
 
       // Show success message
       const successMessage = 'החשבון שלך הוגדר בהצלחה. כעת תועבר לדף הבית.';
 
-      clog('[OnboardingWizard] 🎯 Showing success toast and preparing redirect');
+      ludlog.navigation('[OnboardingWizard] 🎯 Showing success toast and preparing redirect');
       toast({
         title: 'ברוך הבא למערכת!',
         description: successMessage,
@@ -329,14 +322,14 @@ export default function OnboardingWizard() {
       });
 
       // Redirect to dashboard
-      clog('[OnboardingWizard] 🚀 Setting redirect timeout to /dashboard in 2 seconds...');
+      ludlog.navigation('[OnboardingWizard] 🚀 Setting redirect timeout to /dashboard in 2 seconds...');
       setTimeout(() => {
-        clog('[OnboardingWizard] 🏠 NOW redirecting to /dashboard');
+        ludlog.navigation('[OnboardingWizard] 🏠 NOW redirecting to /dashboard');
         navigate('/dashboard');
       }, 2000);
 
     } catch (err) {
-      cerror('[OnboardingWizard] Error completing onboarding:', err);
+      luderror.ui('[OnboardingWizard] Error completing onboarding:', err);
       setError('שגיאה בהשלמת ההרשמה. אנא נסה שוב.');
 
       toast({
@@ -362,7 +355,7 @@ export default function OnboardingWizard() {
       const updatedUser = await User.updateMyUserData(userUpdates);
       updateUser(updatedUser);
 
-      clog('[OnboardingWizard] Admin skipped onboarding');
+      ludlog.ui('[OnboardingWizard] Admin skipped onboarding');
 
       toast({
         title: 'דילגת על ההרשמה',
@@ -373,7 +366,7 @@ export default function OnboardingWizard() {
       navigate('/dashboard');
 
     } catch (err) {
-      cerror('[OnboardingWizard] Error skipping onboarding:', err);
+      luderror.ui('[OnboardingWizard] Error skipping onboarding:', err);
       setError('שגיאה בדילוג על ההרשמה. אנא נסה שוב.');
 
       toast({

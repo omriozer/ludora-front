@@ -1,5 +1,5 @@
 import { useUnifiedAssetUploads } from './useUnifiedAssetUploads';
-import { clog, cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 
 /**
  * Backward Compatibility Wrapper for useProductUploads
@@ -19,11 +19,6 @@ export const useProductUploadsCompat = (editingProduct = null) => {
 
   // Legacy-compatible wrapper for handleFileUpload
   const handleFileUpload = async (event, fileType, moduleIndex = null) => {
-    clog('Legacy compatibility: handleFileUpload called with:', {
-      fileType,
-      moduleIndex,
-      usingUnifiedBackend: true
-    });
 
     const options = {};
     if (moduleIndex !== null) {
@@ -40,11 +35,6 @@ export const useProductUploadsCompat = (editingProduct = null) => {
 
   // Legacy-compatible wrapper for handleDeleteFile
   const handleDeleteFile = async (fileType, moduleIndex = null) => {
-    clog('Legacy compatibility: handleDeleteFile called with:', {
-      fileType,
-      moduleIndex,
-      usingUnifiedBackend: true
-    });
 
     const options = {};
     if (moduleIndex !== null) {
@@ -67,7 +57,7 @@ export const useProductUploadsCompat = (editingProduct = null) => {
         };
       }
     } catch (error) {
-      cerror('Error checking file upload:', error);
+      luderror.media('Error checking file upload:', error);
     }
 
     return null;

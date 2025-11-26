@@ -64,7 +64,7 @@ function LayoutContent({ children }) {
           const canBypass = await canBypassMaintenance(currentUser);
           setCanAdminBypass(canBypass);
         } catch (error) {
-          console.warn('Error checking admin bypass:', error);
+          
           setCanAdminBypass(false);
         } finally {
           setIsCheckingAdminBypass(false);
@@ -279,7 +279,7 @@ function LayoutContent({ children }) {
               const canBypass = await canBypassMaintenance(currentUser);
               setCanAdminBypass(canBypass);
             } catch (error) {
-              console.warn('Error re-checking admin bypass after anonymous login:', error);
+              
               setCanAdminBypass(false);
             } finally {
               setIsCheckingAdminBypass(false);

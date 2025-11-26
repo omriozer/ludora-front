@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ShoppingCart } from 'lucide-react';
-import { cerror, clog } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
 import { useLoginModal } from '@/hooks/useLoginModal';
 import { useCart } from '@/contexts/CartContext';
@@ -43,7 +43,7 @@ export default function BuyProductButton({
     e.stopPropagation(); // Prevent event bubbling to parent card
 
     if (!product) {
-      cerror('No product provided to BuyProductButton');
+      luderror.ui('No product provided to BuyProductButton');
       return;
     }
 
@@ -57,7 +57,7 @@ export default function BuyProductButton({
 
     const userId = currentUser.id;
     if (!userId) {
-      cerror('Could not get user ID from currentUser');
+      luderror.ui('Could not get user ID from currentUser');
       return;
     }
 
@@ -121,7 +121,7 @@ export default function BuyProductButton({
       }
 
     } catch (error) {
-      cerror('Error in purchase flow:', error);
+      luderror.payment('Error in purchase flow:', error);
       toast({
         title: "שגיאה ברכישה",
         description: error.message || "אירעה שגיאה בעת הרכישה. אנא נסו שוב.",

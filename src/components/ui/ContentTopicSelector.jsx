@@ -10,7 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { X, Plus, Tag, Search, ChevronDown, ChevronUp } from 'lucide-react';
 import { contentTopicService } from '@/services/contentTopicService';
-import { clog, cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 
 /**
  * ContentTopicSelector - A reusable multi/single-select component for content topics
@@ -72,7 +72,7 @@ export function ContentTopicSelector({
 
       setTopics(Array.isArray(result) ? result : []);
     } catch (error) {
-      cerror('Failed to load content topics:', error);
+      luderror.ui('Failed to load content topics:', error);
       setTopics([]);
     } finally {
       setLoading(false);
@@ -113,7 +113,7 @@ export function ContentTopicSelector({
 
       setSelectedTopics(selected);
     } catch (error) {
-      cerror('Failed to load selected topics:', error);
+      luderror.ui('Failed to load selected topics:', error);
     }
   }, [selectedIds, topics]);
 
@@ -183,9 +183,9 @@ export function ContentTopicSelector({
 
       setNewTopicName('');
 
-      clog('Created new topic:', newTopic);
+      ludlog.ui('Created new topic:', { data: newTopic });
     } catch (error) {
-      cerror('Failed to create topic:', error);
+      luderror.ui('Failed to create topic:', error);
     } finally {
       setCreating(false);
     }

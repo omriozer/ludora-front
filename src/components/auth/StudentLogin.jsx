@@ -6,7 +6,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, AlertCircle, GamepadIcon, GraduationCap, UserIcon, HelpCircle, X } from 'lucide-react';
-import { cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 import { useUser } from '@/contexts/UserContext';
 import { useLoginModal } from '@/hooks/useLoginModal';
 import { loginWithFirebase } from '@/services/apiClient';
@@ -90,7 +90,7 @@ const StudentLogin = ({ onLoginSuccess, returnPath, onClose }) => {
         throw new Error('Authentication failed');
       }
     } catch (err) {
-      cerror('Google sign-in error:', err);
+      luderror.ui('Google sign-in error:', err);
 
       let errorMessage = 'שגיאה בכניסה. נסו שוב.';
 
@@ -144,7 +144,7 @@ const StudentLogin = ({ onLoginSuccess, returnPath, onClose }) => {
         // Don't call handleLoginComplete here - it will be called after welcome modal closes
       }
     } catch (err) {
-      cerror('Player login error:', err);
+      luderror.auth('Player login error:', err);
 
       let errorMessage;
 
@@ -201,7 +201,7 @@ const StudentLogin = ({ onLoginSuccess, returnPath, onClose }) => {
         throw new Error('Failed to create player');
       }
     } catch (error) {
-      cerror('Create player error:', error);
+      luderror.game('Create player error:', error);
       throw error;
     }
   };

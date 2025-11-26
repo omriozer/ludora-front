@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import { triggerEmailAutomation } from "@/services/functions";
 import { useUser } from "@/contexts/UserContext";
-import { cerror, clog } from "@/lib/utils";
+import { ludlog, luderror } from '@/lib/ludlog';
 
 export default function ParentConsent() {
   const navigate = useNavigate();
@@ -270,7 +270,7 @@ export default function ParentConsent() {
         const users = await User.filter({ email: formData.studentEmail });
         studentUser = users.length > 0 ? users[0] : null;
       } catch (error) {
-        clog("No existing user found for student email", error);
+        ludlog.validation("No existing user found for student email", { data: error });
       }
 
       // Create consent record
@@ -313,11 +313,11 @@ export default function ParentConsent() {
           // Get teacher and classroom details for emails
           const [teacher, classroom] = await Promise.all([
             User.get(invitation.teacher_id).catch((err) => {
-              cerror("Error fetching teacher:", err);
+              luderror.api("Error fetching teacher:", err);
               return null;
             }),
             invitation.classroom_id ? Classroom.get(invitation.classroom_id).catch((err) => {
-              cerror("Error fetching classroom:", err);
+              luderror.api("Error fetching classroom:", err);
               return null;
             }) : null
           ]);
@@ -357,7 +357,7 @@ export default function ParentConsent() {
           });
 
         } catch (emailError) {
-          cerror("Error sending emails:", emailError);
+          luderror.validation("Error sending emails:", emailError);
           // Don't fail the whole process if emails fail
         }
       }

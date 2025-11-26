@@ -1,5 +1,5 @@
 import { apiRequest } from './apiClient';
-import { clog, cerror } from '../lib/logger';
+import { ludlog, luderror } from '@/lib/ludlog';
 
 /**
  * CheckoutService - Handles payment method-aware checkout flow
@@ -14,12 +14,6 @@ class CheckoutService {
    */
   static async initiateCheckout(cartItems, userId) {
     try {
-      // TODO remove debug - checkout service payment method integration
-      clog('🛒 Initiating checkout with payment method detection:', {
-        itemCount: cartItems.length,
-        userId: userId
-      });
-
       if (!cartItems || cartItems.length === 0) {
         throw new Error('Cart is empty');
       }
@@ -29,26 +23,14 @@ class CheckoutService {
         return sum + (parseFloat(item.price) * parseInt(item.quantity || 1));
       }, 0);
 
-      // TODO remove debug - checkout service payment method integration
-      clog('💰 Calculated total amount:', totalAmount);
-
       // Check if user has saved payment methods
       const paymentMethodsResponse = await apiRequest('/api/payment-methods/default');
 
       if (paymentMethodsResponse.has_default && paymentMethodsResponse.payment_method) {
         const defaultMethod = paymentMethodsResponse.payment_method;
 
-        // TODO remove debug - checkout service payment method integration
-        clog('💳 Found saved payment method:', {
-          displayName: defaultMethod.display_name,
-          isExpired: defaultMethod.is_expired
-        });
-
         // Check if payment method is expired
         if (defaultMethod.is_expired) {
-          // TODO remove debug - checkout service payment method integration
-          clog('⚠️ Default payment method is expired, falling back to PayPlus page');
-
           return await this.createPayPlusCheckout(cartItems, totalAmount);
         }
 
@@ -64,15 +46,12 @@ class CheckoutService {
         };
 
       } else {
-        // TODO remove debug - checkout service payment method integration
-        clog('📄 No saved payment method found, proceeding to PayPlus page');
-
         // User has NO saved payment method - proceed to PayPlus page
         return await this.createPayPlusCheckout(cartItems, totalAmount);
       }
 
     } catch (error) {
-      cerror('❌ Checkout initiation error:', error);
+      luderror.payment('❌ Checkout initiation error:', error);
       throw error;
     }
   }
@@ -85,9 +64,6 @@ class CheckoutService {
    */
   static async createPayPlusCheckout(cartItems, totalAmount) {
     try {
-      // TODO remove debug - checkout service payment method integration
-      clog('🏦 Creating PayPlus payment page for traditional checkout');
-
       // Create PayPlus payment page
       const paymentPageResponse = await apiRequest('/api/payments/createPayplusPaymentPage', {
         method: 'POST',
@@ -95,9 +71,6 @@ class CheckoutService {
           items: cartItems
         })
       });
-
-      // TODO remove debug - checkout service payment method integration
-      clog('✅ PayPlus payment page created successfully');
 
       return {
         flowType: 'payplus_page',
@@ -112,7 +85,7 @@ class CheckoutService {
       };
 
     } catch (error) {
-      cerror('❌ PayPlus checkout creation error:', error);
+      luderror.payment('❌ PayPlus checkout creation error:', error);
       throw error;
     }
   }
@@ -125,12 +98,6 @@ class CheckoutService {
    */
   static async chargeWithSavedMethod(paymentMethodId, cartItems) {
     try {
-      // TODO remove debug - checkout service payment method integration
-      clog('⚡ Charging with saved payment method:', {
-        paymentMethodId,
-        itemCount: cartItems.length
-      });
-
       const response = await apiRequest('/api/payments/charge-token', {
         method: 'POST',
         body: JSON.stringify({
@@ -140,13 +107,6 @@ class CheckoutService {
       });
 
       if (response.success) {
-        // TODO remove debug - checkout service payment method integration
-        clog('🎉 Payment completed successfully with saved method:', {
-          transactionId: response.transaction_id,
-          amount: response.amount,
-          purchaseCount: response.purchase_count
-        });
-
         return {
           success: true,
           paymentCompleted: true,
@@ -161,7 +121,7 @@ class CheckoutService {
       }
 
     } catch (error) {
-      cerror('❌ Saved method charge error:', error);
+      luderror.api('❌ Saved method charge error:', error);
 
       // Return structured error for better handling
       return {
@@ -181,7 +141,7 @@ class CheckoutService {
       const response = await apiRequest('/api/payment-methods');
       return response.payment_methods || [];
     } catch (error) {
-      cerror('❌ Error fetching payment methods:', error);
+      luderror.payment('❌ Error fetching payment methods:', error);
       return [];
     }
   }
@@ -193,9 +153,6 @@ class CheckoutService {
    */
   static async setDefaultPaymentMethod(paymentMethodId) {
     try {
-      // TODO remove debug - checkout service payment method integration
-      clog('🎯 Setting default payment method:', paymentMethodId);
-
       const response = await apiRequest(`/api/payment-methods/${paymentMethodId}/set-default`, {
         method: 'PUT'
       });
@@ -203,7 +160,7 @@ class CheckoutService {
       return response.success;
 
     } catch (error) {
-      cerror('❌ Error setting default payment method:', error);
+      luderror.payment('❌ Error setting default payment method:', error);
       return false;
     }
   }
@@ -215,9 +172,6 @@ class CheckoutService {
    */
   static async deletePaymentMethod(paymentMethodId) {
     try {
-      // TODO remove debug - checkout service payment method integration
-      clog('🗑️ Deleting payment method:', paymentMethodId);
-
       const response = await apiRequest(`/api/payment-methods/${paymentMethodId}`, {
         method: 'DELETE'
       });
@@ -225,7 +179,7 @@ class CheckoutService {
       return response.success;
 
     } catch (error) {
-      cerror('❌ Error deleting payment method:', error);
+      luderror.payment('❌ Error deleting payment method:', error);
       return false;
     }
   }
@@ -237,9 +191,6 @@ class CheckoutService {
    */
   static async validatePaymentMethod(paymentMethodId) {
     try {
-      // TODO remove debug - checkout service payment method integration
-      clog('🔍 Validating payment method:', paymentMethodId);
-
       const response = await apiRequest(`/api/payment-methods/${paymentMethodId}/validate`, {
         method: 'POST'
       });
@@ -247,7 +198,7 @@ class CheckoutService {
       return response.validation;
 
     } catch (error) {
-      cerror('❌ Error validating payment method:', error);
+      luderror.payment('❌ Error validating payment method:', error);
       return {
         valid: false,
         error: error.message

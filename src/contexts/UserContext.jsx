@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { User, SubscriptionPlan, SubscriptionHistory } from '@/services/apiClient';
-import { clog, cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 import { toast } from '@/components/ui/use-toast';
 import { SETTINGS_RETRY_INTERVALS, SYSTEM_KEYS, getSetting, validateSettings } from '@/constants/settings';
 import { useAuthErrorHandler } from '@/hooks/useAuthErrorHandler';
@@ -46,25 +46,19 @@ export function UserProvider({ children }) {
 
       if (!validation.isValid) {
         if (validation.error) {
-          cerror('[UserContext] Settings validation error:', validation.error);
+          luderror.state('[UserContext] Settings validation error:', validation.error);
         } else {
-          clog('[UserContext] Settings validation:', {
-            totalExpected: validation.totalExpected,
-            totalFound: validation.totalFound,
-            missingKeys: validation.missingKeys,
-            extraKeys: validation.extraKeys.length > 0 ? validation.extraKeys : 'none'
-          });
 
           if (validation.missingKeys.length > 0) {
-            cerror('[UserContext] Missing settings keys:', validation.missingKeys);
+            luderror.state('[UserContext] Missing settings keys:', validation.missingKeys);
           }
 
           if (validation.extraKeys.length > 0) {
-            clog('[UserContext] Extra settings keys (not in constants):', validation.extraKeys);
+            ludlog.state('[UserContext] Extra settings keys (not in constants);:', validation.extraKeys);
           }
         }
       } else {
-        clog('[UserContext] Settings validation passed - all', validation.totalExpected, 'keys found');
+        ludlog.state('[UserContext] Settings validation passed - all', { data: validation.totalExpected, keysFound: 'matched' });
       }
     }
   }, []);
@@ -145,7 +139,7 @@ export function UserProvider({ children }) {
         // /players/me is called on every page load to recover auth from cookies
         await authManager.initialize(true);
       } catch (error) {
-        cerror('[UserContext] AuthManager initialization failed:', error);
+        luderror.auth('[UserContext] AuthManager initialization failed:', error);
       }
     };
 
@@ -210,7 +204,7 @@ export function UserProvider({ children }) {
               metadata: JSON.stringify({ auto_assigned: true, plan_name: freePlan.name })
             });
           } catch (historyError) {
-            cerror('[UserContext] Error recording subscription history:', historyError);
+            luderror.payment('[UserContext] Error recording subscription history:', null, { context: historyError });
           }
 
           return updatedUser;
@@ -218,7 +212,7 @@ export function UserProvider({ children }) {
       }
       return user;
     } catch (error) {
-      cerror('[UserContext] Error checking subscription:', error);
+      luderror.payment('[UserContext] Error checking subscription:', error);
       return user;
     }
   }, [needsOnboarding]);
@@ -236,7 +230,7 @@ export function UserProvider({ children }) {
 
       return result.user;
     } catch (error) {
-      cerror('[UserContext] Login error:', error);
+      luderror.auth('[UserContext] Login error:', error);
 
       // Show user-friendly error message
       toast({
@@ -262,7 +256,7 @@ export function UserProvider({ children }) {
 
       return result.player;
     } catch (error) {
-      cerror('[UserContext] Player login error:', error);
+      luderror.auth('[UserContext] Player login error:', error);
 
       // Determine error message to display
       let errorDescription;
@@ -305,7 +299,7 @@ export function UserProvider({ children }) {
         variant: "default",
       });
     } catch (error) {
-      cerror('[UserContext] Logout error:', error);
+      luderror.auth('[UserContext] Logout error:', error);
 
       // Show error message
       toast({
@@ -327,7 +321,7 @@ export function UserProvider({ children }) {
         variant: "default",
       });
     } catch (error) {
-      cerror('[UserContext] Player logout error:', error);
+      luderror.auth('[UserContext] Player logout error:', error);
 
       // Show error message
       toast({
@@ -352,7 +346,7 @@ export function UserProvider({ children }) {
         firebaseKeys.forEach(key => localStorage.removeItem(key));
       }
     } catch (error) {
-      cerror('[UserContext] Error clearing Firebase session:', error);
+      luderror.auth('[UserContext] Error clearing Firebase session:', error);
     }
   }, []);
 

@@ -30,7 +30,7 @@ import TableDisplayWidget from "@/components/dashboard/widgets/TableDisplayWidge
 import MyProductsWidget from "@/components/dashboard/widgets/MyProductsWidget";
 import GameSharingWidget from "@/components/dashboard/widgets/GameSharingWidget";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
-import { clog, cerror } from "@/lib/utils";
+import { ludlog, luderror } from '@/lib/ludlog';
 import { toast } from "@/components/ui/use-toast";
 import "@/styles/dashboard.css";
 
@@ -369,9 +369,9 @@ export default function Dashboard() {
   // Load available widgets from API
   const loadAvailableWidgets = useCallback(async () => {
     try {
-      clog('[Dashboard] Loading available widgets...');
+      ludlog.api('[Dashboard] Loading available widgets...');
       const data = await apiRequest('/dashboard/widgets');
-      clog('[Dashboard] Available widgets loaded:', data);
+      ludlog.api('[Dashboard] Available widgets loaded:', { data: data });
 
       if (data.success) {
         const widgets = data.data || {};
@@ -396,7 +396,7 @@ export default function Dashboard() {
         setAvailableWidgets(filteredWidgets);
       }
     } catch (error) {
-      cerror('[Dashboard] Error loading available widgets:', error);
+      luderror.validation('[Dashboard] Error loading available widgets:', error);
 
       // Fallback: provide basic widgets if API fails
       setAvailableWidgets({
@@ -502,9 +502,9 @@ export default function Dashboard() {
   // Load user's dashboard configuration
   const loadDashboardConfig = useCallback(async () => {
     try {
-      clog('[Dashboard] Loading user dashboard config...');
+      ludlog.api('[Dashboard] Loading user dashboard config...');
       const data = await apiRequest('/dashboard/config');
-      clog('[Dashboard] Dashboard config loaded:', data);
+      ludlog.api('[Dashboard] Dashboard config loaded:', { data: data });
 
       if (data.success) {
         const config = data.data || { widgets: [] };
@@ -526,7 +526,7 @@ export default function Dashboard() {
         setUserWidgets(visibleWidgets);
       }
     } catch (error) {
-      cerror('[Dashboard] Error loading dashboard config:', error);
+      luderror.validation('[Dashboard] Error loading dashboard config:', error);
       toast({
         title: "שגיאה",
         description: "לא הצלחנו לטעון את תצורת הדאשבורד",
@@ -538,12 +538,12 @@ export default function Dashboard() {
   // Save dashboard configuration
   const saveDashboardConfig = useCallback(async (widgets) => {
     try {
-      clog('[Dashboard] Saving dashboard config:', widgets);
+      ludlog.api('[Dashboard] Saving dashboard config:', { data: widgets });
       const data = await apiRequest('/dashboard/config', {
         method: 'PUT',
         body: JSON.stringify({ widgets })
       });
-      clog('[Dashboard] Dashboard config saved:', data);
+      ludlog.general('[Dashboard] Dashboard config saved:', { data: data });
 
       if (!data.success) {
         throw new Error(data.message || 'Failed to save dashboard config');
@@ -555,7 +555,7 @@ export default function Dashboard() {
         variant: "default"
       });
     } catch (error) {
-      cerror('[Dashboard] Error saving dashboard config:', error);
+      luderror.validation('[Dashboard] Error saving dashboard config:', error);
       toast({
         title: "שגיאה",
         description: "לא הצלחנו לשמור את תצורת הדאשבורד",
@@ -574,7 +574,7 @@ export default function Dashboard() {
         loadDashboardConfig()
       ]);
     } catch (error) {
-      cerror("Error loading dashboard data:", error);
+      luderror.validation("Error loading dashboard data:", error);
       toast({
         title: "שגיאה",
         description: "לא הצלחנו לטעון את נתוני הדאשבורד",
@@ -594,12 +594,12 @@ export default function Dashboard() {
   // Add widget handler
   const handleAddWidget = async (widgetType) => {
     try {
-      clog('[Dashboard] Adding widget:', widgetType);
+      ludlog.api('[Dashboard] Adding widget:', { data: widgetType });
       const data = await apiRequest('/dashboard/widgets', {
         method: 'POST',
         body: JSON.stringify({ type: widgetType })
       });
-      clog('[Dashboard] Widget added:', data);
+      ludlog.general('[Dashboard] Widget added:', { data: data });
 
       if (data.success) {
         // Reload dashboard config to get updated widgets
@@ -613,7 +613,7 @@ export default function Dashboard() {
         });
       }
     } catch (error) {
-      cerror('[Dashboard] Error adding widget:', error);
+      luderror.validation('[Dashboard] Error adding widget:', error);
       toast({
         title: "שגיאה",
         description: "לא הצלחנו להוסיף את הווידג'ט",
@@ -625,11 +625,11 @@ export default function Dashboard() {
   // Remove widget handler
   const handleRemoveWidget = async (widgetId) => {
     try {
-      clog('[Dashboard] Removing widget:', widgetId);
+      ludlog.api('[Dashboard] Removing widget:', { data: widgetId });
       const data = await apiRequest(`/dashboard/widgets/${widgetId}`, {
         method: 'DELETE'
       });
-      clog('[Dashboard] Widget removed:', data);
+      ludlog.general('[Dashboard] Widget removed:', { data: data });
 
       if (data.success) {
         // Reload dashboard config to get updated widgets
@@ -642,7 +642,7 @@ export default function Dashboard() {
         });
       }
     } catch (error) {
-      cerror('[Dashboard] Error removing widget:', error);
+      luderror.validation('[Dashboard] Error removing widget:', error);
       toast({
         title: "שגיאה",
         description: "לא הצלחנו להסיר את הווידג'ט",

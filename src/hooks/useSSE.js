@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useSocket } from '@/services/socketClient.js';
-import { clog } from '@/services/apiClient.js';
+import { ludlog, luderror } from '@/lib/ludlog';
 
 /**
  * Connection States (backward compatible with SSE)
@@ -91,7 +91,7 @@ export function useSSE(channels = [], options = {}) {
   // Debug logging
   const debugLog = useCallback((message, data = null) => {
     if (config.debugMode) {
-      clog(`[useSSE-SocketIO] ${message}`, data || '');
+      ludlog.websocket(`[useSSE-SocketIO] ${message}`, { data: data || '' });
     }
   }, [config.debugMode]);
 

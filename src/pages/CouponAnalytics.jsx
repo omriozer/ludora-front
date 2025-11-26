@@ -25,7 +25,7 @@ import { format, subDays, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { he } from "date-fns/locale";
 import { Link } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
-import { clog, cerror } from "@/lib/utils";
+import { ludlog, luderror } from '@/lib/ludlog';
 
 export default function CouponAnalytics() {
   const [isLoading, setIsLoading] = useState(true);
@@ -110,7 +110,7 @@ export default function CouponAnalytics() {
       setPurchases(Array.isArray(purchasesData) ? purchasesData : []);
 
     } catch (error) {
-      cerror("Error loading analytics data:", error);
+      luderror.validation("Error loading analytics data:", error);
       setMessage({ type: 'error', text: 'שגיאה בטעינת נתוני הדוחות' });
     }
     setIsLoading(false);

@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { PRODUCT_TYPES, getCatalogConfig } from '@/config/productTypes';
 import { Product } from '@/services/apiClient';
 import { toast } from '@/components/ui/use-toast';
-import { clog, cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
 import ProductItemDisplay from '@/components/ui/ProductItemDisplay';
 import ProductTypeSelector from '@/components/ui/ProductTypeSelector';
@@ -261,9 +261,9 @@ export default function AssociateProductDialog({
       )].map(name => ({ name, id: name }));
       setCategories(uniqueCategories);
 
-      clog('Loaded products for type:', selectedProductType, productsData);
+      ludlog.ui('Loaded products for type:', { data: selectedProductType, productsData });
     } catch (error) {
-      cerror('Error loading products:', error);
+      luderror.ui('Error loading products:', error);
       toast({
         title: "שגיאה",
         description: "שגיאה בטעינת רשימת המוצרים",

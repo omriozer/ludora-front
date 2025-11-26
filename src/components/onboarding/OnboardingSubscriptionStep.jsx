@@ -12,7 +12,7 @@ import {
   Trophy,
   Heart
 } from 'lucide-react';
-import { clog } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 import { toast } from '@/components/ui/use-toast';
 import SubscriptionModal from '@/components/SubscriptionModal';
 
@@ -34,19 +34,19 @@ export default function OnboardingSubscriptionStep({ onComplete, onBack, onboard
   }
 
   const handleOpenModal = () => {
-    clog('[OnboardingSubscriptionStep] Opening SubscriptionModal');
+    ludlog.payment('[OnboardingSubscriptionStep] Opening SubscriptionModal');
     setIsModalOpen(true);
   };
 
   const handleCloseModal = () => {
-    clog('[OnboardingSubscriptionStep] Closing SubscriptionModal');
+    ludlog.payment('[OnboardingSubscriptionStep] Closing SubscriptionModal');
     setIsModalOpen(false);
   };
 
   const handleSubscriptionChange = (updatedUser) => {
-    clog('[OnboardingSubscriptionStep] Subscription changed:', updatedUser);
-    clog('[OnboardingSubscriptionStep] 🔍 updatedUser.onboarding_completed:', updatedUser?.onboarding_completed);
-    clog('[OnboardingSubscriptionStep] 🔍 About to call onComplete with data');
+    ludlog.payment('[OnboardingSubscriptionStep] Subscription changed:', { data: updatedUser });
+    ludlog.payment('[OnboardingSubscriptionStep] 🔍 updatedUser.onboarding_completed:', { data: updatedUser?.onboarding_completed });
+    ludlog.payment('[OnboardingSubscriptionStep] 🔍 About to call onComplete with data');
     setHasSelectedPlan(true);
 
     toast({
@@ -59,9 +59,9 @@ export default function OnboardingSubscriptionStep({ onComplete, onBack, onboard
     setIsModalOpen(false);
 
     // Complete the onboarding step
-    clog('[OnboardingSubscriptionStep] 🚀 Calling onComplete in 1 second...');
+    ludlog.payment('[OnboardingSubscriptionStep] 🚀 Calling onComplete in 1 second...');
     setTimeout(() => {
-      clog('[OnboardingSubscriptionStep] 🏁 NOW calling onComplete!');
+      ludlog.payment('[OnboardingSubscriptionStep] 🏁 NOW calling onComplete!');
       onComplete({
         subscriptionSelected: true,
         subscriptionPlan: updatedUser

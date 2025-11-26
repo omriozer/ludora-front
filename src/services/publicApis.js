@@ -1,7 +1,7 @@
 // src/services/publicApis.js
 // Public APIs client for external data sources
 
-import { clog, cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 import { getApiBase } from '@/utils/api';
 
 /**
@@ -9,7 +9,7 @@ import { getApiBase } from '@/utils/api';
  * @returns {Promise<Array>} List of Israeli cities
  */
 export async function getIsraeliCities() {
-  clog('🏛️ PublicAPI: Fetching Israeli cities from data.gov.il');
+  ludlog.api('🏛️ PublicAPI: Fetching Israeli cities from data.gov.il');
 
   try {
     // First try direct API call to data.gov.il
@@ -48,15 +48,15 @@ export async function getIsraeliCities() {
       }, [])
       .sort((a, b) => a.localeCompare(b, 'he'));
 
-    clog(`✅ PublicAPI: Loaded ${cities.length} Israeli cities from data.gov.il`);
+    ludlog.api(`✅ PublicAPI: Loaded ${cities.length} Israeli cities from data.gov.il`);
     return cities;
 
   } catch (error) {
-    cerror('❌ PublicAPI: Direct API call failed:', error);
+    luderror.api('❌ PublicAPI: Direct API call failed:', error);
 
     // Fallback to backend proxy if direct call fails (CORS issues)
     try {
-      clog('🔄 PublicAPI: Trying backend proxy for Israeli cities');
+      ludlog.api('🔄 PublicAPI: Trying backend proxy for Israeli cities');
 
       const proxyResponse = await fetch(`${getApiBase()}/public/israeli-cities`);
 
@@ -67,14 +67,14 @@ export async function getIsraeliCities() {
       const proxyData = await proxyResponse.json();
 
       if (proxyData.success && proxyData.cities && Array.isArray(proxyData.cities)) {
-        clog(`✅ PublicAPI: Loaded ${proxyData.cities.length} Israeli cities via backend proxy`);
+        ludlog.api(`✅ PublicAPI: Loaded ${proxyData.cities.length} Israeli cities via backend proxy`);
         return proxyData.cities;
       } else {
         throw new Error('Invalid response format from backend proxy');
       }
 
     } catch (proxyError) {
-      cerror('❌ PublicAPI: Backend proxy also failed:', proxyError);
+      luderror.api('❌ PublicAPI: Backend proxy also failed:', null, { context: proxyError });
 
       // Return fallback list of major Israeli cities
       const fallbackCities = [
@@ -90,7 +90,7 @@ export async function getIsraeliCities() {
         'קלנסווה', 'שפרעם', 'הוד השרון', 'ביתר עילית', 'אפרתה'
       ].sort((a, b) => a.localeCompare(b, 'he'));
 
-      clog(`🔄 PublicAPI: Using fallback cities list (${fallbackCities.length} cities)`);
+      ludlog.api(`🔄 PublicAPI: Using fallback cities list (${fallbackCities.length} cities);`);
       return fallbackCities;
     }
   }
@@ -103,7 +103,7 @@ export async function getIsraeliCities() {
  * @returns {Promise<Array>} The fetched records
  */
 export async function fetchDataGovIl(resourceId, options = {}) {
-  clog(`🏛️ PublicAPI: Fetching data from data.gov.il resource: ${resourceId}`);
+  ludlog.api(`🏛️ PublicAPI: Fetching data from data.gov.il resource: ${resourceId}`);
 
   try {
     // First try direct API call to data.gov.il
@@ -128,15 +128,15 @@ export async function fetchDataGovIl(resourceId, options = {}) {
       throw new Error('Invalid response format from data.gov.il');
     }
 
-    clog(`✅ PublicAPI: Fetched ${data.result.records.length} records from data.gov.il`);
+    ludlog.api(`✅ PublicAPI: Fetched ${data.result.records.length} records from data.gov.il`);
     return data.result.records;
 
   } catch (error) {
-    cerror(`❌ PublicAPI: Direct API call failed for resource ${resourceId}:`, error);
+    luderror.api(`❌ PublicAPI: Direct API call failed for resource ${resourceId}:`, error);
 
     // Fallback to backend proxy if direct call fails (CORS issues)
     try {
-      clog(`🔄 PublicAPI: Trying backend proxy for resource: ${resourceId}`);
+      ludlog.api(`🔄 PublicAPI: Trying backend proxy for resource: ${resourceId}`);
 
       const queryParams = new URLSearchParams({
         limit: (options.limit || 1000).toString(),
@@ -152,14 +152,14 @@ export async function fetchDataGovIl(resourceId, options = {}) {
       const proxyData = await proxyResponse.json();
 
       if (proxyData.success && proxyData.data && proxyData.data.records) {
-        clog(`✅ PublicAPI: Fetched ${proxyData.data.records.length} records via backend proxy`);
+        ludlog.api(`✅ PublicAPI: Fetched ${proxyData.data.records.length} records via backend proxy`);
         return proxyData.data.records;
       } else {
         throw new Error('Invalid response format from backend proxy');
       }
 
     } catch (proxyError) {
-      cerror(`❌ PublicAPI: Backend proxy also failed for resource ${resourceId}:`, proxyError);
+      luderror.api(`❌ PublicAPI: Backend proxy also failed for resource ${resourceId}:`, null, { context: proxyError });
       throw proxyError;
     }
   }
@@ -178,7 +178,7 @@ export async function getCachedIsraeliCities() {
   const cacheKey = 'israeli_cities';
 
   if (apiCache.has(cacheKey)) {
-    clog('📋 PublicAPI: Using cached Israeli cities');
+    ludlog.api('📋 PublicAPI: Using cached Israeli cities');
     return apiCache.get(cacheKey);
   }
 

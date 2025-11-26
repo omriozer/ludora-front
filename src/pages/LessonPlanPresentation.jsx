@@ -26,7 +26,7 @@ import TimerComponent from '@/components/ui/Timer';
 import ClassroomEffectMenu from '@/components/ui/ClassroomEffectMenu';
 import { getApiBase } from '@/utils/api.js';
 import { apiRequest } from '@/services/apiClient';
-import { clog, cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 import { useUser } from '@/contexts/UserContext';
 import '@/styles/presentation.css';
 
@@ -246,7 +246,7 @@ export default function LessonPlanPresentation() {
 				preloadAllSlides(svgSlides);
 			}, 500); // Small delay to let initial rendering finish
 		} catch (err) {
-			cerror('Error loading SVG presentation data:', err);
+			luderror.validation('Error loading SVG presentation data:', err);
 			setError(err.message || 'שגיאה בטעינת הפרזנטציה');
 		} finally {
 			setIsLoading(false);
@@ -306,7 +306,7 @@ export default function LessonPlanPresentation() {
 				} catch (error) {
 					completedCount++;
 					setPreloadProgress(completedCount / slidesToPreload.length);
-					cerror(`⚠️ Failed to cache slide: ${slide.filename}`, error);
+					luderror.media(`⚠️ Failed to cache slide: ${slide.filename}`, error);
 					return { slide, blobUrl: null };
 				}
 			});
@@ -316,7 +316,7 @@ export default function LessonPlanPresentation() {
 			// Update blob URLs state
 			setSlideBlobUrls(newBlobUrls);
 		} catch (error) {
-			cerror('Error during full slide preloading:', error);
+			luderror.validation('Error during full slide preloading:', error);
 		} finally {
 			setIsPreloadingWindow(false);
 			setPreloadProgress(1);
@@ -390,7 +390,7 @@ export default function LessonPlanPresentation() {
 				}
 				setIsFullscreen(true);
 			} catch (error) {
-				cerror('Error entering fullscreen:', error);
+				luderror.validation('Error entering fullscreen:', error);
 			}
 		}
 	};
@@ -406,7 +406,7 @@ export default function LessonPlanPresentation() {
 			}
 			setIsFullscreen(false);
 		} catch (error) {
-			cerror('Error exiting fullscreen:', error);
+			luderror.validation('Error exiting fullscreen:', error);
 		}
 	};
 
@@ -641,7 +641,7 @@ export default function LessonPlanPresentation() {
 									maxHeight: '100%',
 								}}
 								onError={(e) => {
-									cerror(`Error loading SVG slide: ${currentSlide.filename}`, e);
+									luderror.media(`Error loading SVG slide: ${currentSlide.filename}`, e);
 								}}
 								onLoad={() => {
 									// Slide loaded successfully

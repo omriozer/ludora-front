@@ -1,5 +1,5 @@
 import { apiRequest } from '@/services/apiClient';
-import { clog, cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 
 /**
  * PaymentStatusService - Frontend service for payment status management and polling
@@ -17,7 +17,7 @@ class PaymentStatusService {
    */
   async updateTransactionStatus(transactionId, newStatus) {
     try {
-      clog('Updating transaction status:', { transactionId, newStatus });
+      ludlog.api('Updating transaction status:', { data: { transactionId, newStatus } });
 
       const data = await apiRequest('/payments/update-status', {
         method: 'POST',
@@ -27,14 +27,14 @@ class PaymentStatusService {
         })
       });
 
-      clog('Transaction status updated:', data);
+      ludlog.api('Transaction status updated:', { data: data });
       return {
         success: true,
         ...data
       };
 
     } catch (error) {
-      cerror('Error updating transaction status:', error);
+      luderror.api('Error updating transaction status:', error);
       throw error;
     }
   }
@@ -46,17 +46,17 @@ class PaymentStatusService {
    */
   async pollTransactionStatus(transactionId) {
     try {
-      clog('Polling transaction status:', { transactionId });
+      ludlog.api('Polling transaction status:', { data: { transactionId } });
 
       const data = await apiRequest(`/payments/transaction-status/${transactionId}`, {
         method: 'GET'
       });
 
-      clog('Transaction status polled:', data);
+      ludlog.api('Transaction status polled:', { data: data });
       return data;
 
     } catch (error) {
-      cerror('Error polling transaction status:', error);
+      luderror.api('Error polling transaction status:', error);
       throw error;
     }
   }
@@ -67,20 +67,20 @@ class PaymentStatusService {
    */
   async checkPendingPayments() {
     try {
-      clog('Checking pending payments');
+      ludlog.payment('Checking pending payments');
 
       const data = await apiRequest('/payments/check-pending-payments', {
         method: 'POST'
       });
 
-      clog('Pending payments checked:', data);
+      ludlog.payment('Pending payments checked:', { data: data });
       return {
         success: true,
         ...data
       };
 
     } catch (error) {
-      cerror('Error checking pending payments:', error);
+      luderror.payment('Error checking pending payments:', error);
       throw error;
     }
   }
@@ -92,17 +92,17 @@ class PaymentStatusService {
    */
   async getTransactionDetails(transactionId) {
     try {
-      clog('Getting transaction details:', { transactionId });
+      ludlog.api('Getting transaction details:', { data: { transactionId } });
 
       const data = await apiRequest(`/payments/transaction-details/${transactionId}`, {
         method: 'GET'
       });
 
-      clog('Transaction details retrieved:', data);
+      ludlog.api('Transaction details retrieved:', { data: data });
       return data;
 
     } catch (error) {
-      cerror('Error getting transaction details:', error);
+      luderror.api('Error getting transaction details:', error);
       throw error;
     }
   }

@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Play, Pause, Square, Volume2, Loader2 } from 'lucide-react';
 import { useAudioCache } from '@/contexts/AudioCacheContext';
-import { clog, cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 
 export default function AudioPlayer({ src, audioFileId, volume = 1, className = "" }) {
   const [isPlaying, setIsPlaying] = useState(false);
@@ -81,7 +81,7 @@ export default function AudioPlayer({ src, audioFileId, volume = 1, className = 
       // Need to download the audio file first
       try {
         setDownloadError(null);
-        clog('Downloading audio file for playback:', audioFileId);
+        ludlog.game('Downloading audio file for playback:', { data: audioFileId });
 
         const cachedUrl = await downloadAndCache(audioFileId);
         setAudioSrc(cachedUrl);
@@ -93,14 +93,14 @@ export default function AudioPlayer({ src, audioFileId, volume = 1, className = 
             audioEl.play().then(() => {
               setIsPlaying(true);
             }).catch(error => {
-              cerror('Audio playback failed:', error);
+              luderror.game('Audio playback failed:', error);
               setDownloadError('Playback failed');
             });
           }
         }, 100);
 
       } catch (error) {
-        cerror('Audio download failed:', error);
+        luderror.media('Audio download failed:', error);
         setDownloadError(error.message || 'Download failed');
       }
     } else if (audioSrc) {
@@ -109,7 +109,7 @@ export default function AudioPlayer({ src, audioFileId, volume = 1, className = 
         await audio.play();
         setIsPlaying(true);
       } catch (error) {
-        cerror('Audio playback failed:', error);
+        luderror.game('Audio playback failed:', error);
         setDownloadError('Playback failed');
       }
     }

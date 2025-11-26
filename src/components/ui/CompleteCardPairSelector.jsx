@@ -8,7 +8,7 @@ import { X, Image, Upload, Plus } from 'lucide-react';
 import { GameContent } from '@/services/entities';
 import { apiUploadWithProgress } from '@/services/apiClient';
 import { getApiBase } from '@/utils/api';
-import { clog, cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 import { toast } from '@/components/ui/use-toast';
 import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
 
@@ -37,17 +37,17 @@ const CompleteCardPairSelector = ({
   // Helper function to construct image URL from complete card
   const getCardImageUrl = useCallback((card) => {
     if (!card?.value) {
-      clog('⚠️ Card missing value:', card);
-      clog('🔍 Full card object:', card);
+      ludlog.ui('⚠️ Card missing value:', { data: card });
+      ludlog.ui('🔍 Full card object:', { data: card });
       return null;
     }
 
     const imageValue = card.value;
-    clog('🔗 Processing card image URL:', { cardId: card.id, imageValue, cardName: card.metadata?.name });
+    ludlog.media('🔗 Processing card image URL:', { data: { cardId: card.id, imageValue, cardName: card.metadata?.name } });
 
     // If it's already an absolute URL, return as-is
     if (imageValue.startsWith('http://') || imageValue.startsWith('https://')) {
-      clog('✅ Using absolute URL:', imageValue);
+      ludlog.api('✅ Using absolute URL:', { data: imageValue });
       return imageValue;
     }
 
@@ -56,13 +56,13 @@ const CompleteCardPairSelector = ({
       const apiBase = getApiBase();
       const baseWithoutApi = apiBase.replace(/\/api$/, '');
       const fullUrl = `${baseWithoutApi}${imageValue}`;
-      clog('✅ Constructed URL from /api/ path:', fullUrl);
+      ludlog.api('✅ Constructed URL from /api/ path:', { data: fullUrl });
       return fullUrl;
     }
 
     // Otherwise, treat as a relative path and prepend full API base
     const fullUrl = `${getApiBase()}${imageValue.startsWith('/') ? '' : '/'}${imageValue}`;
-    clog('✅ Constructed URL from relative path:', fullUrl);
+    ludlog.api('✅ Constructed URL from relative path:', { data: fullUrl });
     return fullUrl;
   }, []);
 
@@ -76,9 +76,9 @@ const CompleteCardPairSelector = ({
       });
       const validCards = (cards || []).filter(card => card && card.id);
       setAvailableCards(validCards);
-      clog('🃏 Loaded available complete cards:', validCards);
+      ludlog.ui('🃏 Loaded available complete cards:', { data: validCards });
     } catch (error) {
-      cerror('❌ Error loading complete cards:', error);
+      luderror.ui('❌ Error loading complete cards:', error);
       toast({
         title: "שגיאה בטעינת קלפים",
         description: "לא ניתן לטעון את הקלפים השלמים הקיימים",
@@ -145,32 +145,20 @@ const CompleteCardPairSelector = ({
         formData,
         (progress) => {
           setUploadProgress(progress);
-          clog(`📊 Complete card upload progress: ${progress}%`);
+          ludlog.media(`📊 Complete card upload progress: ${progress}%`);
         }
       );
 
-      clog('🃏 Uploaded new complete card:', response);
-      clog('🔍 Upload response structure:', {
-        hasGamecontent: !!response?.gamecontent,
-        gamecontent: response?.gamecontent,
-        responseKeys: Object.keys(response || {}),
-        gamecontentKeys: response?.gamecontent ? Object.keys(response.gamecontent) : null
-      });
+      ludlog.api('🃏 Uploaded new complete card:', { data: response });
 
       // Add to available cards and select it
       if (response && response.gamecontent && response.gamecontent.id) {
         const newCard = response.gamecontent;
-        clog('🃏 New card for selection:', {
-          id: newCard.id,
-          value: newCard.value,
-          metadata: newCard.metadata,
-          hasValue: !!newCard.value
-        });
         setAvailableCards(prev => [newCard, ...prev]);
 
         // Auto-select the uploaded card
         if (onCardSelected) {
-          clog('🎯 Auto-selecting uploaded card:', newCard);
+          ludlog.media('🎯 Auto-selecting uploaded card:', { data: newCard });
           onCardSelected(newCard);
         }
 
@@ -187,7 +175,7 @@ const CompleteCardPairSelector = ({
       event.target.value = '';
 
     } catch (error) {
-      cerror('❌ Error uploading complete card:', error);
+      luderror.media('❌ Error uploading complete card:', error);
       toast({
         title: "שגיאה בהעלאת קלף",
         description: "לא ניתן להעלות את הקלף כרגע. נסה שוב.",
@@ -203,7 +191,7 @@ const CompleteCardPairSelector = ({
   const handleCardSelect = (cardId) => {
     const card = availableCards.find(c => c.id.toString() === cardId);
     if (card && onCardSelected) {
-      clog('🃏 Complete card selected for pair:', card);
+      ludlog.ui('🃏 Complete card selected for pair:', { data: card });
       onCardSelected(card);
     }
     setIsDropdownOpen(false);
@@ -212,7 +200,7 @@ const CompleteCardPairSelector = ({
   // Handle clearing selection
   const handleClear = () => {
     if (onCardCleared) {
-      clog('🃏 Complete card cleared from pair');
+      ludlog.ui('🃏 Complete card cleared from pair');
       onCardCleared();
     }
   };
@@ -263,26 +251,19 @@ const CompleteCardPairSelector = ({
           <div className="flex items-center gap-2 flex-1 min-w-0">
             {(() => {
               const imageUrl = getCardImageUrl(selectedCard);
-              clog('🖼️ Selected card image rendering:', {
-                selectedCard,
-                imageUrl,
-                hasImageUrl: !!imageUrl,
-                cardValue: selectedCard?.value,
-                cardMetadata: selectedCard?.metadata
-              });
               return imageUrl ? (
                 <img
                   src={imageUrl}
                   alt={getCardDisplayText(selectedCard)}
                   className="w-8 h-8 object-cover rounded border flex-shrink-0"
                   onError={(e) => {
-                    cerror('❌ Failed to load selected card image:', imageUrl);
-                    cerror('❌ Selected card details for failed image:', selectedCard);
+                    luderror.media('❌ Failed to load selected card image:', imageUrl);
+                    luderror.game('❌ Selected card details for failed image:', selectedCard);
                     e.target.style.display = 'none';
                     e.target.nextElementSibling.style.display = 'block';
                   }}
                   onLoad={() => {
-                    clog('✅ Selected card image loaded successfully:', imageUrl);
+                    ludlog.media('✅ Selected card image loaded successfully:', { data: imageUrl });
                   }}
                 />
               ) : null;
@@ -332,7 +313,7 @@ const CompleteCardPairSelector = ({
                             alt={getCardDisplayText(card)}
                             className="w-8 h-8 object-cover rounded border flex-shrink-0"
                             onError={(e) => {
-                              cerror('❌ Failed to load card image:', imageUrl);
+                              luderror.game('❌ Failed to load card image:', imageUrl);
                               e.target.style.display = 'none';
                               e.target.nextElementSibling.style.display = 'block';
                             }}

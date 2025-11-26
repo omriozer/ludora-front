@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Upload, Search, Edit, Trash2, Plus, Music, Loader2 } from 'lucide-react';
 import AudioPlayer from './AudioPlayer';
-import { clog, cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 
 export default function AudioLibrary({ showMessage }) {
   const [audioFiles, setAudioFiles] = useState([]);
@@ -32,7 +32,7 @@ export default function AudioLibrary({ showMessage }) {
       const files = await AudioFile.list('-created_date');
       setAudioFiles(files);
     } catch (error) {
-      cerror('Error loading audio files:', error);
+      luderror.media('Error loading audio files:', error);
       showMessage('error', 'שגיאה בטעינת קבצי האודיו');
     }
     setIsLoading(false);
@@ -62,7 +62,7 @@ export default function AudioLibrary({ showMessage }) {
         audioDuration = audio.duration;
         URL.revokeObjectURL(audioUrl);
       } catch (durationError) {
-        clog('Could not get audio duration:', durationError);
+        ludlog.media('Could not get audio duration:', { data: durationError });
         // Continue anyway - duration is optional
       }
 
@@ -83,7 +83,7 @@ export default function AudioLibrary({ showMessage }) {
         `/integrations/uploadFile`,
         formData,
         (progress) => {
-          clog(`Upload progress: ${progress}%`);
+          ludlog.media(`Upload progress: ${progress}%`);
         }
       );
 
@@ -96,7 +96,7 @@ export default function AudioLibrary({ showMessage }) {
         throw new Error(uploadResult.error || 'Upload failed - no data returned');
       }
     } catch (error) {
-      cerror('Error uploading audio file:', error);
+      luderror.media('Error uploading audio file:', error);
 
       // Clear the file input on error so user can try again
       const fileInput = document.getElementById('file-input');
@@ -122,7 +122,7 @@ export default function AudioLibrary({ showMessage }) {
       setEditingFile(null);
       loadAudioFiles();
     } catch (error) {
-      cerror('Error updating audio file:', error);
+      luderror.media('Error updating audio file:', error);
       showMessage('error', 'שגיאה בעדכון קובץ האודיו');
     }
   };
@@ -135,7 +135,7 @@ export default function AudioLibrary({ showMessage }) {
       showMessage('success', 'קובץ האודיו נמחק בהצלחה');
       loadAudioFiles();
     } catch (error) {
-      cerror('Error deleting audio file:', error);
+      luderror.media('Error deleting audio file:', error);
       showMessage('error', 'שגיאה במחיקת קובץ האודיו');
     }
   };

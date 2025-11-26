@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
-import { clog, cerror } from "@/lib/utils";
+import { ludlog, luderror } from '@/lib/ludlog';
 
 export default function BulkCouponGenerator() {
   const [isLoading, setIsLoading] = useState(true);
@@ -116,7 +116,7 @@ export default function BulkCouponGenerator() {
         setPatternValidation(data.validation);
       }
     } catch (error) {
-      cerror('Error validating pattern:', error);
+      luderror.validation('Error validating pattern:', error);
     }
   };
 
@@ -140,7 +140,7 @@ export default function BulkCouponGenerator() {
       }
       setPreviewCodes(sampleCodes);
     } catch (error) {
-      cerror('Error generating preview:', error);
+      luderror.validation('Error generating preview:', error);
     }
   };
 
@@ -210,7 +210,7 @@ export default function BulkCouponGenerator() {
         throw new Error(data.message || 'שגיאה ביצירת הקופונים');
       }
     } catch (error) {
-      cerror('Error generating coupons:', error);
+      luderror.validation('Error generating coupons:', error);
       setMessage({ type: 'error', text: error.message || 'שגיאה ביצירת הקופונים' });
     }
 

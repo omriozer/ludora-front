@@ -6,7 +6,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Classroom, Settings, SubscriptionPlan, apiRequest } from "@/services/apiClient";
 import { toast } from "@/components/ui/use-toast";
-import { clog, cerror } from "@/lib/utils";
+import { ludlog, luderror } from '@/lib/ludlog';
 import LudoraLoadingSpinner from "@/components/ui/LudoraLoadingSpinner";
 import ClassroomForm from "@/components/classrooms/ClassroomForm";
 import SubscriptionLimitModal from "@/components/SubscriptionLimitModal";
@@ -55,7 +55,7 @@ export default function ClassSelector({
       });
       setClassrooms(userClassrooms);
     } catch (error) {
-      cerror('Error loading classrooms:', error);
+      luderror.ui('Error loading classrooms:', error);
       toast({
         title: "שגיאה",
         description: "שגיאה בטעינת רשימת הכיתות",
@@ -80,7 +80,7 @@ export default function ClassSelector({
         }
       }
     } catch (error) {
-      cerror('Error loading subscription data:', error);
+      luderror.payment('Error loading subscription data:', error);
       // Don't show error toast for this, it's not critical for basic functionality
     }
   };
@@ -168,7 +168,7 @@ export default function ClassSelector({
       }
 
     } catch (error) {
-      cerror('Error creating classroom:', error);
+      luderror.ui('Error creating classroom:', error);
       toast({
         title: "שגיאה",
         description: error.message || "שגיאה ביצירת הכיתה",

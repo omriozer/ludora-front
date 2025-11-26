@@ -9,7 +9,7 @@ import LudoraLoadingSpinner from "@/components/ui/LudoraLoadingSpinner";
 import useSubscriptionState from "@/hooks/useSubscriptionState";
 import SubscriptionBusinessLogic from "@/services/SubscriptionBusinessLogic";
 import { User, SubscriptionHistory } from "@/services/entities";
-import { clog, cerror } from "@/lib/utils";
+import { ludlog, luderror } from '@/lib/ludlog';
 import {
   X,
   Crown,
@@ -184,7 +184,7 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
               }
             }
           } catch (error) {
-            cerror('Error processing subscription in interval:', error);
+            luderror.payment('Error processing subscription in interval:', error);
             toast({
               variant: "destructive",
               title: "שגיאה בבדיקת סטטוס תשלום",
@@ -205,7 +205,7 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
         }
       }
     } catch (error) {
-      cerror('Error checking payment status:', error);
+      luderror.payment('Error checking payment status:', error);
       toast({
         variant: "destructive",
         title: "שגיאה בבדיקת סטטוס תשלום",
@@ -319,7 +319,7 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
    */
   const handleSelectPlan = async (plan) => {
     try {
-      clog('Plan selected:', plan.name);
+      ludlog.ui('Plan selected:', { data: plan.name });
 
       // Evaluate the plan selection using business logic
       const decision = evaluatePlanSelection(plan);
@@ -388,7 +388,7 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
       }
 
     } catch (error) {
-      cerror('Error in plan selection:', error);
+      luderror.ui('Error in plan selection:', error);
       toast({
         variant: "destructive",
         title: "שגיאה בבחירת תוכנית",
@@ -410,7 +410,7 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
         }
       }
     } catch (error) {
-      cerror('Error canceling pending switch:', error);
+      luderror.ui('Error canceling pending switch:', error);
     }
   };
 
@@ -445,7 +445,7 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
         }
       }
     } catch (error) {
-      cerror('Error in replace pending subscription:', error);
+      luderror.payment('Error in replace pending subscription:', error);
       toast({
         variant: "destructive",
         title: "שגיאה בהחלפת תוכנית ממתינה",
@@ -484,7 +484,7 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
         }
       }
     } catch (error) {
-      cerror('Error in cancel pending downgrade:', error);
+      luderror.ui('Error in cancel pending downgrade:', error);
       toast({
         variant: "destructive",
         title: "שגיאה בביטול המנוי הממתין",
@@ -526,7 +526,7 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
           onClose();
         }, 3000); // Give more time to read the message
     } catch (error) {
-      cerror('Error cancelling subscription:', error);
+      luderror.payment('Error cancelling subscription:', error);
       const errorMessage = error.message || 'שגיאה לא ידועה';
       toast({
         variant: "destructive",
@@ -589,7 +589,7 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
             onSubscriptionChange();
           }
         } catch (error) {
-          cerror('Error in background subscription processing:', error);
+          luderror.payment('Error in background subscription processing:', error);
           // Show another toast for backend issues, but don't block user
           toast({
             variant: "destructive",
@@ -600,7 +600,7 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
       }, 500); // Brief delay to let the success message show
 
     } catch (error) {
-      cerror('Error handling immediate subscription payment success:', error);
+      luderror.payment('Error handling immediate subscription payment success:', error);
       toast({
         variant: "destructive",
         title: "שגיאה בעדכון המנוי",
@@ -629,7 +629,7 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
         notes: `${actionType} via subscription modal`
       });
     } catch (error) {
-      cerror('Error recording subscription history:', error);
+      luderror.payment('Error recording subscription history:', error);
       toast({
         variant: "destructive",
         title: "שגיאה בתיעוד היסטוריית מנוי",
@@ -821,7 +821,7 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
 
                               return isPendingPayment;
                             } catch (error) {
-                              cerror('Error checking pending payment:', error);
+                              luderror.payment('Error checking pending payment:', error);
                               return false;
                             }
                           })();
@@ -1219,7 +1219,6 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
           onClick={(e) => {
             // Close modal if clicking on backdrop
             if (e.target === e.currentTarget) {
-              clog('SubscriptionModal: Backdrop click detected, closing payment modal');
               handlePaymentModalClose();
             }
           }}
@@ -1261,7 +1260,7 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
                   setIsIframeLoading(false);
                 }}
                 onError={(e) => {
-                  cerror('PayPlus iframe error:', e);
+                  luderror.payment('PayPlus iframe error:', e);
                   setIsIframeLoading(false);
                 }}
               />

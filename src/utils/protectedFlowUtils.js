@@ -9,7 +9,7 @@
  * 2. THEN onboarding appears (on next navigation)
  */
 
-import { clog } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 
 // Storage key for deferred onboarding
 const DEFERRED_ONBOARDING_KEY = 'ludora_deferred_onboarding';
@@ -105,10 +105,10 @@ export function deferOnboarding() {
   try {
     sessionStorage.setItem(DEFERRED_ONBOARDING_KEY, 'true');
     sessionStorage.setItem(DEFERRED_ONBOARDING_TIMESTAMP_KEY, Date.now().toString());
-    clog('[ProtectedFlow] Onboarding deferred');
+    ludlog.auth('[ProtectedFlow] Onboarding deferred');
   } catch (error) {
     // Session storage may not be available in some contexts
-    console.warn('[ProtectedFlow] Could not defer onboarding:', error);
+    
   }
 }
 
@@ -120,10 +120,10 @@ export function clearDeferredOnboarding() {
   try {
     sessionStorage.removeItem(DEFERRED_ONBOARDING_KEY);
     sessionStorage.removeItem(DEFERRED_ONBOARDING_TIMESTAMP_KEY);
-    clog('[ProtectedFlow] Deferred onboarding cleared');
+    ludlog.auth('[ProtectedFlow] Deferred onboarding cleared');
   } catch (error) {
     // Session storage may not be available in some contexts
-    console.warn('[ProtectedFlow] Could not clear deferred onboarding:', error);
+    
   }
 }
 
@@ -144,7 +144,7 @@ export function isOnboardingDeferred() {
       const age = Date.now() - timestamp;
 
       if (age > MAX_DEFERRED_AGE_MS) {
-        clog('[ProtectedFlow] Deferred onboarding expired');
+        ludlog.general('[ProtectedFlow] Deferred onboarding expired');
         clearDeferredOnboarding();
         return false;
       }
@@ -168,13 +168,13 @@ export function isOnboardingDeferred() {
 export function shouldShowOnboardingNow(pathname, search = '') {
   // Check if in protected flow
   if (isProtectedFlow(pathname)) {
-    clog('[ProtectedFlow] In protected flow - deferring onboarding');
+    ludlog.navigation('[ProtectedFlow] In protected flow - deferring onboarding');
     return false;
   }
 
   // Check if has purchase intent
   if (hasPurchaseIntent(search)) {
-    clog('[ProtectedFlow] Purchase intent detected - deferring onboarding');
+    ludlog.payment('[ProtectedFlow] Purchase intent detected - deferring onboarding');
     return false;
   }
 
@@ -183,7 +183,7 @@ export function shouldShowOnboardingNow(pathname, search = '') {
     // Clear the deferral now since we're checking outside protected flow
     // This means onboarding WILL show on this check
     clearDeferredOnboarding();
-    clog('[ProtectedFlow] Deferred onboarding - will show now');
+    ludlog.general('[ProtectedFlow] Deferred onboarding - will show now');
     return true;
   }
 
@@ -197,5 +197,5 @@ export function shouldShowOnboardingNow(pathname, search = '') {
 export function markProtectedFlowComplete() {
   // If onboarding was deferred, it will show on next non-protected route
   // The deferral flag stays set until shouldShowOnboardingNow is called
-  clog('[ProtectedFlow] Protected flow completed');
+  ludlog.general('[ProtectedFlow] Protected flow completed');
 }

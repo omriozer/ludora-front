@@ -19,7 +19,7 @@ import {
 import { GameContent } from '@/services/entities';
 import { apiUploadWithProgress } from '@/services/apiClient';
 import { getApiBase } from '@/utils/api';
-import { clog, cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 import { toast } from '@/components/ui/use-toast';
 import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
 
@@ -49,32 +49,32 @@ const CompleteCardSelector = ({
   // Helper function to construct absolute image URLs
   const getImageUrl = (imageValue) => {
     if (!imageValue) {
-      clog('🚨 getImageUrl: Empty imageValue');
+      ludlog.media('🚨 getImageUrl: Empty imageValue');
       return '';
     }
 
-    clog('🔍 getImageUrl input:', imageValue);
+    ludlog.media('🔍 getImageUrl input:', { data: imageValue });
 
     // If it's already an absolute URL, return as-is
     if (imageValue.startsWith('http://') || imageValue.startsWith('https://')) {
-      clog('✅ getImageUrl: Already absolute URL:', imageValue);
+      ludlog.api('✅ getImageUrl: Already absolute URL:', { data: imageValue });
       return imageValue;
     }
 
     // If it starts with /api/, prepend the API base URL (removing /api from base)
     if (imageValue.startsWith('/api/')) {
       const apiBase = getApiBase();
-      clog('🔍 getImageUrl: API base from getApiBase():', apiBase);
+      ludlog.api('🔍 getImageUrl: API base from getApiBase();:', apiBase);
       // Remove /api from the end of apiBase since imageValue already includes /api/
       const baseWithoutApi = apiBase.replace(/\/api$/, '');
       const finalUrl = `${baseWithoutApi}${imageValue}`;
-      clog('✅ getImageUrl: Constructed absolute URL:', finalUrl);
+      ludlog.api('✅ getImageUrl: Constructed absolute URL:', { data: finalUrl });
       return finalUrl;
     }
 
     // Otherwise, treat as a relative path and prepend full API base
     const finalUrl = `${getApiBase()}${imageValue.startsWith('/') ? '' : '/'}${imageValue}`;
-    clog('✅ getImageUrl: Constructed full API URL:', finalUrl);
+    ludlog.api('✅ getImageUrl: Constructed full API URL:', { data: finalUrl });
     return finalUrl;
   };
 
@@ -95,14 +95,14 @@ const CompleteCardSelector = ({
       // Filter out any cards without valid IDs
       const validCards = (cards || []).filter(card => card && card.id);
       setAvailableCards(validCards);
-      clog('🃏 Loaded complete cards:', validCards);
+      ludlog.ui('🃏 Loaded complete cards:', { data: validCards });
 
       // Debug: Log each card's value field
       validCards.forEach((card, index) => {
-        clog(`🖼️ Card ${index}: id=${card.id}, value="${card.value}"`);
+        ludlog.ui(`🖼️ Card ${index}: id=${card.id}, { data: value="${card.value}"` });
       });
     } catch (error) {
-      cerror('Error loading complete cards:', error);
+      luderror.ui('Error loading complete cards:', error);
       toast({
         title: "שגיאה בטעינת קלפים שלמים",
         description: "לא ניתן לטעון את הקלפים השלמים הקיימים",
@@ -175,17 +175,17 @@ const CompleteCardSelector = ({
         atomicFormData,
         (progress) => {
           setUploadProgress(progress);
-          clog(`📊 Complete card upload progress: ${progress}%`);
+          ludlog.media(`📊 Complete card upload progress: ${progress}%`);
         }
       );
 
-      clog('🃏 Uploaded complete card:', response);
+      ludlog.api('🃏 Uploaded complete card:', { data: response });
 
       // Add to available cards (ensure it has a valid ID)
       if (response && response.gamecontent && response.gamecontent.id) {
         setAvailableCards(prev => [response.gamecontent, ...prev]);
       } else {
-        cerror('Invalid upload response - missing ID:', response);
+        luderror.api('Invalid upload response - missing ID:', response);
       }
 
       toast({
@@ -198,7 +198,7 @@ const CompleteCardSelector = ({
       event.target.value = '';
 
     } catch (error) {
-      cerror('Error uploading complete card:', error);
+      luderror.media('Error uploading complete card:', error);
       toast({
         title: "שגיאה בהעלאת קלף",
         description: "לא ניתן להעלות את הקלף כרגע. נסה שוב.",
@@ -414,10 +414,10 @@ const CompleteCardSelector = ({
                           alt="קלף שלם"
                           className="w-full h-full object-cover"
                           onLoad={(e) => {
-                            clog(`✅ Card image loaded successfully: ${e.target.src}`);
+                            ludlog.media(`✅ Card image loaded successfully: ${e.target.src}`);
                           }}
                           onError={(e) => {
-                            cerror(`❌ Card image failed to load: ${e.target.src}`);
+                            luderror.media(`❌ Card image failed to load: ${e.target.src}`);
                             e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEzMyIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEzMyIgZmlsbD0iI2Y3ZjdmNyIgc3Ryb2tlPSIjY2NjIiBzdHJva2Utd2lkdGg9IjEiLz48dGV4dCB4PSI1MCIgeT0iNzAiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IiM5OTk5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiPktMRjwvdGV4dD48L3N2Zz4=';
                           }}
                         />

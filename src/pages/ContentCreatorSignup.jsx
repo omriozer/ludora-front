@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Users, GraduationCap, Phone, User as UserIcon, CheckCircle, AlertTriangle } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
-import { cerror } from "@/lib/utils";
+import { ludlog, luderror } from '@/lib/ludlog';
 
 export default function ContentCreatorSignup() {
   const navigate = useNavigate();
@@ -71,7 +71,7 @@ export default function ContentCreatorSignup() {
       }, 2000);
 
     } catch (error) {
-      cerror("Error signing up:", error);
+      luderror.validation("Error signing up:", error);
       setMessage({ type: 'error', text: 'שגיאה בהרשמה. אנא נסו שוב.' });
     }
     

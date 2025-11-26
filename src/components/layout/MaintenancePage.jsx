@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import Footer from "./Footer";
 import { riddles } from "@/assets/riddles";
 import { useUser } from "@/contexts/UserContext";
-import { cerror } from "@/lib/utils";
+import { ludlog, luderror } from '@/lib/ludlog';
 import { validateAdminPassword } from "@/utils/adminCheck";
 
 export default function MaintenancePage({
@@ -82,7 +82,7 @@ export default function MaintenancePage({
         throw new Error(result.error || 'סיסמה שגויה');
       }
     } catch (error) {
-      cerror('Admin password validation error:', error);
+      luderror.ui('Admin password validation error:', error);
 
       let errorMessage = 'שגיאה בבדיקת הסיסמה. נסו שוב.';
 

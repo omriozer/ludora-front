@@ -90,8 +90,8 @@ export default function NotificationBell({ currentUser }) {
       }
     } catch (error) {
       // This is expected when notification entity is not available - use clog for debugging
-      import('@/lib/utils').then(({ clog }) => {
-        clog('Notification entity not available:', error);
+import { ludlog, luderror } from '@/lib/ludlog';
+        ludlog.ui('Notification entity not available:', { data: error });
       });
       setNotificationEntityAvailable(false);
       setHasError(true);

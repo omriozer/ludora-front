@@ -25,7 +25,7 @@ import {
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { useUser } from "@/contexts/UserContext";
-import { cerror } from "@/lib/utils";
+import { ludlog, luderror } from '@/lib/ludlog';
 
 const ITEMS_PER_PAGE = 20;
 
@@ -87,7 +87,7 @@ export default function Purchases() {
         setProducts(allEntities);
       }
     } catch (error) {
-      cerror("Error loading data:", error);
+      luderror.validation("Error loading data:", error);
       setMessage({ type: 'error', text: 'שגיאה בטעינת הנתונים' });
     }
     setIsLoading(false);

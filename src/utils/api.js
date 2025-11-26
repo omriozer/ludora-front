@@ -1,7 +1,7 @@
 // Enhanced API utility with comprehensive error handling
 // Re-exports apiRequest from centralized apiClient to avoid duplication
 
-import { cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 // Import and re-export apiRequest from centralized apiClient
 import { apiRequest as apiClientRequest } from '@/services/apiClient';
 // Import centralized configuration
@@ -143,7 +143,7 @@ export const auth = {
 export function handleApiError(error, customHandlers = {}) {
   // Log error in development
   if (import.meta.env.DEV) {
-    cerror('Handling API error:', error);
+    luderror.api('Handling API error:', error);
   }
 
   // Check for custom handlers

@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { clog, cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 import {
   Calendar,
   Clock,
@@ -72,7 +72,7 @@ export default function ProductDetails() {
     enabled: true,
     showToasts: true, // Show user notifications about payment status changes
     onStatusUpdate: (update) => {
-      clog('ProductDetails: Payment status update received:', update);
+      ludlog.payment('ProductDetails: Payment status update received:', { data: update });
 
       // Reload product data when payments are processed (user might have new access)
       if (update.type === 'continue_polling' && update.count > 0) {
@@ -166,7 +166,7 @@ export default function ProductDetails() {
         // Clean up blob URL after a delay
         setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
       } catch (error) {
-        cerror('Error downloading file:', error);
+        luderror.media('Error downloading file:', error);
       }
     }
   };
@@ -334,7 +334,7 @@ export default function ProductDetails() {
       // Ensure the item includes the purchase data immediately
       setItem({...productDetails, purchase: userPurchase});
     } catch (e) {
-      cerror("Error loading product:", e);
+      luderror.validation("Error loading product:", e);
       setError("שגיאה בטעינת הנתונים");
     }
     setIsLoading(false);

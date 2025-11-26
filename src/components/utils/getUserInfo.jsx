@@ -1,6 +1,6 @@
 // Utility to handle user authentication with impersonation support
 import { User } from "@/services/entities";
-import { clog, cerror } from "@/lib/utils";
+import { ludlog, luderror } from '@/lib/ludlog';
 
 export const getCurrentUser = async () => {
   // Check if we're in impersonation mode
@@ -9,16 +9,16 @@ export const getCurrentUser = async () => {
   
   if (impersonatingUserId && impersonatingAdminId) {
     // We're impersonating - return the impersonated user
-    clog('Loading impersonated user:', impersonatingUserId);
+    ludlog.ui('Loading impersonated user:', { data: impersonatingUserId });
     try {
       const impersonatedUser = await User.get(impersonatingUserId);
       // Add a flag to indicate this is an impersonated session
       impersonatedUser._isImpersonated = true;
       impersonatedUser._originalAdminId = impersonatingAdminId;
-      clog('Loaded impersonated user:', impersonatedUser.email);
+      ludlog.ui('Loaded impersonated user:', { data: impersonatedUser.email });
       return impersonatedUser;
     } catch (error) {
-      cerror('Error loading impersonated user, clearing impersonation:', error);
+      luderror.ui('Error loading impersonated user, clearing impersonation:', { context: error });
       // If we can't load the impersonated user, clear impersonation
       localStorage.removeItem('impersonating_user_id');
       localStorage.removeItem('impersonating_admin_id');

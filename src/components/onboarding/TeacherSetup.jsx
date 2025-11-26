@@ -14,7 +14,7 @@ import {
   AlertCircle,
   Phone
 } from 'lucide-react';
-import { clog } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 import { apiRequest } from '@/services/apiClient';
 
 // Static fallback arrays - defined outside component to prevent re-creation
@@ -67,10 +67,10 @@ export default function TeacherSetup({ onComplete, onBack, onboardingData, curre
       try {
         const data = await apiRequest('/entities/settings');
         const settingsRecord = data[0]; // Get the first settings record
-        clog('[TeacherSetup] Settings loaded:', settingsRecord);
+        ludlog.ui('[TeacherSetup] Settings loaded:', { data: settingsRecord });
         setSettingsData(settingsRecord);
       } catch (error) {
-        clog('[TeacherSetup] Error fetching settings:', error);
+        ludlog.api('[TeacherSetup] Error fetching settings:', { data: error });
       } finally {
         setIsLoadingSettings(false);
       }
@@ -132,7 +132,7 @@ export default function TeacherSetup({ onComplete, onBack, onboardingData, curre
       specializations: formData.specializations
     };
 
-    clog('[TeacherSetup] Teacher info completed:', teacherInfo);
+    ludlog.ui('[TeacherSetup] Teacher info completed:', { data: teacherInfo });
 
     onComplete({
       teacherInfo

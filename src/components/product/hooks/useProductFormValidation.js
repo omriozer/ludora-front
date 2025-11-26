@@ -1,6 +1,6 @@
 import { useMemo, useCallback } from 'react';
 import { getProductTypeName, getAttributeSchema, validateTypeAttributes } from '@/config/productTypes';
-import { clog } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 
 /**
  * Custom hook for managing product form validation and section access
@@ -177,32 +177,21 @@ export const useProductFormValidation = (editingProduct, formData, uploadedFileI
     const { isValid } = validateForm();
 
     // Debug logging to understand why publishing might be disabled
-    clog('canPublish Debug:', {
-      isValid,
-      isNewProduct,
-      isFileProduct,
-      hasUploadedFile,
-      editingProduct: !!editingProduct,
-      uploadedFileInfo,
-      'editingProduct.file_name': editingProduct?.file_name,
-      'editingProduct.file_extension': editingProduct?.file_extension,
-      'uploadedFileInfo?.exists': uploadedFileInfo?.exists
-    });
 
     if (!isValid) {
-      clog('canPublish: Form validation failed');
+      ludlog.ui('canPublish: Form validation failed');
       return false;
     }
     if (isNewProduct) {
-      clog('canPublish: Product is new (not saved yet)');
+      ludlog.ui('canPublish: Product is new (not saved yet);');
       return false;
     }
     if (isFileProduct && !hasUploadedFile) {
-      clog('canPublish: File product missing uploaded file');
+      ludlog.media('canPublish: File product missing uploaded file');
       return false;
     }
 
-    clog('canPublish: All conditions passed');
+    ludlog.ui('canPublish: All conditions passed');
     return true;
   }, [validateForm, isNewProduct, isFileProduct, hasUploadedFile, editingProduct, uploadedFileInfo]);
 

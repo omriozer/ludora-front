@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ShoppingCart, Plus } from 'lucide-react';
-import { cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 import { getProductTypeName } from '@/config/productTypes';
 import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
 import {
@@ -55,7 +55,7 @@ export default function GetAccessButton({
 
   const handleGetAccess = async () => {
     if (!product) {
-      cerror('No product provided to GetAccessButton');
+      luderror.ui('No product provided to GetAccessButton');
       return;
     }
 
@@ -68,7 +68,7 @@ export default function GetAccessButton({
 
     const userId = currentUser.id;
     if (!userId) {
-      cerror('Could not get user ID from currentUser');
+      luderror.ui('Could not get user ID from currentUser');
       return;
     }
 
@@ -96,7 +96,7 @@ export default function GetAccessButton({
 
       return !productRecord?.price || productRecord.price == 0;
     } catch (error) {
-      cerror('Error checking if product is free:', error);
+      luderror.payment('Error checking if product is free:', error);
       // Default to paid if we can't determine price
       return false;
     }
@@ -220,7 +220,7 @@ export default function GetAccessButton({
 
   const handleAddToCart = async () => {
     if (!product) {
-      cerror('No product provided to GetAccessButton');
+      luderror.ui('No product provided to GetAccessButton');
       return;
     }
 
@@ -233,7 +233,7 @@ export default function GetAccessButton({
 
     const userId = currentUser.id;
     if (!userId) {
-      cerror('Could not get user ID from currentUser');
+      luderror.ui('Could not get user ID from currentUser');
       return;
     }
 

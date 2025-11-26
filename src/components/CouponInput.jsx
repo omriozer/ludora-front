@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import couponClient from '@/services/couponClient';
-import { clog, cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 
 /**
  * CouponInput Component
@@ -72,7 +72,7 @@ export default function CouponInput({
         }
       }
     } catch (error) {
-      cerror('Error loading suggested coupons:', error);
+      luderror.ui('Error loading suggested coupons:', error);
       // Don't show error toast for suggestions - it's not critical
     } finally {
       setIsLoadingSuggestions(false);
@@ -132,7 +132,7 @@ export default function CouponInput({
       }
 
     } catch (error) {
-      cerror('Error applying coupon:', error);
+      luderror.ui('Error applying coupon:', error);
       setValidationError(error.message || 'שגיאה ביישום הקופון');
 
       toast({
@@ -164,7 +164,7 @@ export default function CouponInput({
       }
 
     } catch (error) {
-      cerror('Error removing coupon:', error);
+      luderror.ui('Error removing coupon:', error);
       toast({
         title: "שגיאה בהסרת קופון",
         description: 'נסו שוב מאוחר יותר',

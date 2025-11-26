@@ -7,7 +7,7 @@ import { Trash2, Inbox, AlertCircle, Mail, Phone, Calendar, CheckCircle } from '
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { useUser } from '@/contexts/UserContext';
-import { cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 
 export default function SupportMessages() {
   const { currentUser, isLoading: userLoading } = useUser();
@@ -31,7 +31,7 @@ export default function SupportMessages() {
       const data = await SupportMessage.list('-created_date');
       setMessages(data);
     } catch (error) {
-      cerror("Failed to load messages:", error);
+      luderror.validation("Failed to load messages:", error);
     }
     setIsLoading(false);
   };

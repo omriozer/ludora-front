@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useUser } from "@/contexts/UserContext";
 import { Curriculum as CurriculumAPI, CurriculumItem, Classroom, apiRequest } from "@/services/apiClient";
 import { toast } from "@/components/ui/use-toast";
-import { clog, cerror } from "@/lib/utils";
+import { ludlog, luderror } from '@/lib/ludlog';
 import LudoraLoadingSpinner from "@/components/ui/LudoraLoadingSpinner";
 import EntityForm from "@/components/ui/EntityForm";
 import {
@@ -93,7 +93,7 @@ export default function ClassCurriculum() {
       }
 
     } catch (error) {
-      cerror('Error loading initial data:', error);
+      luderror.validation('Error loading initial data:', error);
       toast({
         title: "שגיאה",
         description: "שגיאה בטעינת נתוני הכיתה",
@@ -112,7 +112,7 @@ export default function ClassCurriculum() {
       });
       setSystemCurricula(systemData);
     } catch (error) {
-      cerror('Error loading system curricula:', error);
+      luderror.validation('Error loading system curricula:', error);
       toast({
         title: "שגיאה",
         description: "שגיאה בטעינת תכניות הלימודים הקיימות",
@@ -139,7 +139,7 @@ export default function ClassCurriculum() {
 
       setCurriculumItems(sortedItems);
     } catch (error) {
-      cerror('Error loading curriculum items:', error);
+      luderror.validation('Error loading curriculum items:', error);
       toast({
         title: "שגיאה",
         description: "שגיאה בטעינת פריטי תכנית הלימודים",
@@ -170,7 +170,7 @@ export default function ClassCurriculum() {
       });
 
     } catch (error) {
-      cerror('Error copying curriculum:', error);
+      luderror.validation('Error copying curriculum:', error);
       toast({
         title: "שגיאה",
         description: error.message || "שגיאה בהעתקת תכנית הלימודים",
@@ -199,7 +199,7 @@ export default function ClassCurriculum() {
       });
 
     } catch (error) {
-      cerror('Error updating item completion:', error);
+      luderror.validation('Error updating item completion:', error);
       toast({
         title: "שגיאה",
         description: "שגיאה בעדכון מצב השלמת הנושא",
@@ -235,7 +235,7 @@ export default function ClassCurriculum() {
 
       await loadCurriculumItems();
     } catch (error) {
-      cerror('Error updating curriculum item:', error);
+      luderror.ui('Error updating curriculum item:', error);
       setFormErrors({ general: error.message || 'שגיאה בעדכון נושא הלימוד' });
     }
     setFormLoading(false);

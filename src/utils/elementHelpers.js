@@ -263,26 +263,3 @@ export function getElementShadowStyle(element, elementType, isTextElement = fals
   // For other elements, box-shadow can optionally include spread (we'll omit it for simplicity)
   return `${offsetX}px ${offsetY}px ${blur}px ${shadowColor}`;
 }
-
-/**
- * Debug helper to log element rotation source (for development)
- * @param {Object} element - Element object
- * @param {string} elementType - Element type/key
- * @param {string} context - Context string for logging
- */
-export function debugElementRotation(element, elementType, context = '') {
-  if (process.env.NODE_ENV !== 'development') return;
-
-  const isBuiltin = isBuiltinElement(elementType);
-  const rotation = getElementRotation(element, elementType);
-
-  console.log(`🔄 Element Rotation Debug ${context}:`, {
-    elementType,
-    isBuiltin,
-    rotation,
-    elementRotationField: element?.rotation,
-    styleRotationField: element?.style?.rotation,
-    actualRotationUsed: rotation,
-    rotationSource: isBuiltin ? 'element.rotation' : 'element.style.rotation'
-  });
-}

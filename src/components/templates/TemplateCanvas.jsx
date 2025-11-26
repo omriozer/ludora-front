@@ -11,7 +11,7 @@ import {
   getElementDisplayHref
 } from '@/utils/templateContentResolver.js';
 import LogoDisplay from '@/components/ui/LogoDisplay';
-import { clog, cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 import { urls } from '@/config/urls';
 
 // Configure PDF.js worker - use CDN for compatibility
@@ -94,7 +94,7 @@ const TemplateCanvas = ({
       }
 
     } catch (error) {
-      cerror('Failed to extract PDF dimensions:', error);
+      luderror.ui('Failed to extract PDF dimensions:', error);
       // Even if dimensions extraction fails, notify that document is loaded
       if (onDocumentLoad) {
         onDocumentLoad();
@@ -219,19 +219,13 @@ const TemplateCanvas = ({
         .then((resolvedData) => {
           if (resolvedData) {
             setResolvedTemplateContent(resolvedData.resolvedTemplate);
-            clog('Template content resolved successfully', {
-              fileId,
-              hasText: !!resolvedData.resolvedTemplate?.text,
-              hasUrl: !!resolvedData.resolvedTemplate?.url,
-              variables: resolvedData.variables
-            });
           } else {
             setResolvedTemplateContent(null);
-            clog('Failed to resolve template content - using fallback display');
+            ludlog.game('Failed to resolve template content - using fallback display');
           }
         })
         .catch((error) => {
-          cerror('Error fetching resolved template content:', error);
+          luderror.api('Error fetching resolved template content:', error);
           setResolvedTemplateContent(null);
         })
         .finally(() => {
@@ -323,7 +317,7 @@ const TemplateCanvas = ({
     // Find the element in the appropriate structure
     const elementInfo = findElement(elementKey);
     if (!elementInfo) {
-      cerror('Element not found:', elementKey);
+      luderror.ui('Element not found:', elementKey);
       return;
     }
 
@@ -434,7 +428,7 @@ const TemplateCanvas = ({
       newX = (mouseX / rect.width) * 100;
       newY = (mouseY / rect.height) * 100;
 
-      clog('PDF dimensions not available, using fallback coordinate calculation');
+      ludlog.ui('PDF dimensions not available', { data: { action: 'usingFallbackCoordinateCalculation' } });
     }
 
     // Add boundary constraints with minimal padding to allow full page coverage

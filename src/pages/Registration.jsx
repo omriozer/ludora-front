@@ -31,7 +31,7 @@ import {
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { createPayplusPaymentPage } from '@/services/functions';
-import { cerror, clog } from "@/lib/utils";
+import { ludlog, luderror } from '@/lib/ludlog';
 
 export default function Registration() {
   const navigate = useNavigate();
@@ -121,7 +121,7 @@ export default function Registration() {
       }
 
     } catch (error) {
-      cerror("Error loading data:", error);
+      luderror.validation("Error loading data:", error);
       setMessage({ type: 'error', text: `שגיאה בטעינת נתוני ה${getProductTypeName('workshop', 'singular')}` });
     }
     setIsLoading(false);
@@ -175,7 +175,7 @@ export default function Registration() {
       });
 
       if (paymentError || !paymentData?.payment_url) {
-        cerror('PayPlus error:', paymentError, paymentData);
+        luderror.payment('PayPlus error:', paymentError, { context: paymentData });
         setMessage({ type: 'error', text: paymentData?.error || 'שגיאה ביצירת דף התשלום' });
         setIsProcessing(false);
         return;
@@ -188,7 +188,7 @@ export default function Registration() {
       setIsProcessing(false);
 
     } catch (error) {
-      cerror("Error creating registration:", error);
+      luderror.validation("Error creating registration:", error);
       setMessage({ type: 'error', text: 'שגיאה ביצירת ההרשמה' });
       setIsProcessing(false);
     }
@@ -221,7 +221,7 @@ export default function Registration() {
       setIsProcessing(false);
 
     } catch (error) {
-      cerror("Error creating payment page:", error);
+      luderror.payment("Error creating payment page:", error);
       setMessage({ type: 'error', text: 'שגיאה ביצירת דף התשלום' });
       setIsProcessing(false);
     }
@@ -251,7 +251,7 @@ export default function Registration() {
       }
 
     } catch (error) {
-      cerror('Error handling payment success:', error);
+      luderror.payment('Error handling payment success:', error);
     }
     
     setMessage({ type: 'success', text: 'התשלום בוצע בהצלחה! ההרשמה אושרה.' });

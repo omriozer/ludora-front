@@ -1,7 +1,8 @@
 /**
- * Ludora Unified Logging System
+ * Strategic Logging System for Ludora Frontend
  *
- * Provides semantic logging with .prod chaining for production-critical events
+ * This module provides minimal, strategic logging for critical system events.
+ * Only use where truly necessary - most debug logging should be removed.
  *
  * @module ludlog
  */
@@ -11,7 +12,17 @@ import { isDebugUser } from './debugUsers.js';
 
 // Determine if we should actually log
 const isDevelopment = import.meta.env.MODE === 'development';
+const isProduction = import.meta.env.MODE === 'production';
+
+/**
+ * Should we log? (Development or debug user)
+ */
 const shouldLog = () => isDevelopment || isDebugUser();
+
+/**
+ * Should we force log? (Production critical events)
+ */
+const shouldForceLog = () => true; // Always log .prod events
 
 /**
  * Colors for different log categories in development
@@ -22,15 +33,12 @@ const styles = {
   api: 'color: #9c27b0; font-weight: bold',        // Purple
   ui: 'color: #4caf50; font-weight: bold',         // Green
   state: 'color: #2196f3; font-weight: bold',      // Blue
-  navigation: 'color: #795548; font-weight: bold',  // Brown
-  websocket: 'color: #ff5722; font-weight: bold',  // Deep Orange
+  navigation: 'color: #795548; font-weight: bold', // Brown
+  db: 'color: #607d8b; font-weight: bold',         // Blue Grey (for IndexedDB)
   media: 'color: #ffeb3b; font-weight: bold',      // Yellow
   game: 'color: #e91e63; font-weight: bold',       // Pink
   general: 'color: #607d8b; font-weight: bold',    // Blue Grey
   error: 'color: #f44336; font-weight: bold',      // Red
-  validation: 'color: #9e5c9c; font-weight: bold', // Purple variant
-  perf: 'color: #03dac6; font-weight: bold',       // Teal
-  component: 'color: #673ab7; font-weight: bold',  // Deep Purple
   timestamp: 'color: #9e9e9e',                     // Grey
   reset: 'color: inherit; font-weight: normal',
   prod: 'color: #ff1744; font-weight: bold'        // Red accent for production logs
@@ -40,40 +48,39 @@ const styles = {
  * Format log output with timestamp and category
  * @private
  */
-function formatLog(category, message, data, force = false) {
-  // Production-critical logs always go through
-  if (!force && !shouldLog()) return;
+function formatLog(category, message, data, forceProduction = false) {
+  // Check if we should log at all
+  if (!forceProduction && !shouldLog()) return;
+  if (forceProduction && !shouldForceLog()) return;
 
   const timestamp = new Date().toISOString();
-  const isProduction = force ? ' [PROD]' : '';
+  const prodMarker = forceProduction ? ' [PROD]' : '';
 
-  if (isDevelopment || force) {
-    // Colorful output for development and production-critical
+  if (isDevelopment && !forceProduction) {
+    // Colorful output for development
     const style = styles[category] || styles.general;
-    const prodStyle = force ? styles.prod : '';
 
     console.log(
-      `%c[${timestamp}]%c %c[${category.toUpperCase()}${isProduction}]%c ${message}`,
+      `%c[${timestamp}]${prodMarker}%c %c[${category.toUpperCase()}]%c ${message}`,
       styles.timestamp,
       styles.reset,
-      force ? prodStyle : style,
+      style,
       styles.reset
     );
 
     if (data && Object.keys(data).length > 0) {
       console.log('  └─', data);
     }
-  } else if (isDebugUser()) {
-    // Structured output for debug users in production
+  } else {
+    // Structured output for production (JSON format for log aggregators)
     const logEntry = {
       timestamp,
-      level: 'info',
+      level: forceProduction ? 'critical' : 'info',
       category,
       message,
-      force,
-      ...(data && { data })
+      ...(data && { data }),
+      ...(forceProduction && { production: true })
     };
-
     console.log(JSON.stringify(logEntry));
   }
 }
@@ -82,23 +89,23 @@ function formatLog(category, message, data, force = false) {
  * Format error output with stack traces
  * @private
  */
-function formatError(category, message, error, context, force = false) {
-  // Production-critical errors always go through
-  if (!force && !shouldLog()) return;
+function formatError(category, message, error, context, forceProduction = false) {
+  // Check if we should log at all
+  if (!forceProduction && !shouldLog()) return;
+  if (forceProduction && !shouldForceLog()) return;
 
   const timestamp = new Date().toISOString();
-  const isProduction = force ? ' [PROD]' : '';
+  const prodMarker = forceProduction ? ' [PROD]' : '';
 
-  if (isDevelopment || force) {
-    // Detailed error output for development and production-critical
+  if (isDevelopment && !forceProduction) {
+    // Detailed error output for development
     const style = styles[category] || styles.general;
-    const prodStyle = force ? styles.prod : '';
 
     console.error(
-      `%c[${timestamp}] [ERROR]%c %c[${category.toUpperCase()}${isProduction}]%c ${message}`,
+      `%c[${timestamp}]${prodMarker} [ERROR]%c %c[${category.toUpperCase()}]%c ${message}`,
       styles.error,
       styles.reset,
-      force ? prodStyle : style,
+      style,
       styles.reset
     );
 
@@ -115,14 +122,13 @@ function formatError(category, message, error, context, force = false) {
     }
 
     console.error('  └─ ────────────────────────');
-  } else if (isDebugUser()) {
-    // Structured error output for debug users in production
+  } else {
+    // Structured error output for production
     const errorEntry = {
       timestamp,
       level: 'error',
       category,
       message,
-      force,
       ...(context && { context }),
       ...(error && {
         error: {
@@ -131,261 +137,116 @@ function formatError(category, message, error, context, force = false) {
           name: error.name,
           code: error.code
         }
-      })
+      }),
+      ...(forceProduction && { production: true })
     };
-
     console.error(JSON.stringify(errorEntry));
   }
 }
 
 /**
- * Create logging methods with .prod chaining
+ * Create a logging function with .prod chaining
  * @private
  */
-function createLogMethod(category) {
-  const method = (message, data) => formatLog(category, message, data);
-  method.prod = (message, data) => formatLog(category, message, data, true);
-  return method;
+function createLogMethod(category, isError = false) {
+  const logFn = isError
+    ? (message, error, context) => formatError(category, message, error, context, false)
+    : (message, data) => formatLog(category, message, data, false);
+
+  // Add .prod property for forced production logging
+  logFn.prod = isError
+    ? (message, error, context) => formatError(category, message, error, context, true)
+    : (message, data) => formatLog(category, message, data, true);
+
+  return logFn;
 }
 
 /**
- * Create error methods with .prod chaining
- * @private
+ * Strategic logging interface with semantic categories
+ *
+ * Usage:
+ *   ludlog.auth('Login attempt', { userId });           // Dev only
+ *   ludlog.auth.prod('Critical auth failure', { ip });  // Always logs
  */
-function createErrorMethod(category) {
-  const method = (message, err, context) => formatError(category, message, err, context);
-  method.prod = (message, err, context) => formatError(category, message, err, context, true);
-  return method;
-}
-
-/**
- * Main logging interface with semantic categories and .prod chaining
- */
-export const ludlog = {
-  // Authentication & Authorization
+const ludlog = {
+  // Authentication & Authorization (critical security events)
   auth: createLogMethod('auth'),
 
-  // Payment Processing
+  // Payment Processing (always critical in production)
   payment: createLogMethod('payment'),
 
-  // API Requests & Responses
+  // API Critical Events (major failures, not routine requests)
   api: createLogMethod('api'),
 
-  // UI Events & Interactions
+  // UI Critical Events (crashes, not routine interactions)
   ui: createLogMethod('ui'),
 
-  // State Management (Redux, Context)
+  // State Management (critical state corruption, not routine updates)
   state: createLogMethod('state'),
 
-  // Navigation & Routing
+  // Navigation Critical Events (access control failures, not routine navigation)
   navigation: createLogMethod('navigation'),
 
-  // WebSocket & Real-time Events
-  websocket: createLogMethod('websocket'),
+  // Database Critical Events (IndexedDB failures, not routine operations)
+  db: createLogMethod('db'),
 
-  // Media (Images, Videos, Audio)
+  // Media Operations (loading failures, not routine playback)
   media: createLogMethod('media'),
 
-  // Game-specific Events
+  // Game Events (critical game state issues)
   game: createLogMethod('game'),
 
-  // General Purpose
-  general: createLogMethod('general'),
-
-  // Performance Metrics
-  perf: createLogMethod('perf'),
-
-  // Component Lifecycle (React specific)
-  component: createLogMethod('component'),
-
-  // Validation Events
-  validation: createLogMethod('validation'),
-
-  // Custom category
-  custom: (category, message, data, force = false) => formatLog(category, message, data, force),
+  // General Purpose (use sparingly)
+  general: createLogMethod('general')
 };
 
-// Add .prod variant for custom
-ludlog.custom.prod = (category, message, data) => formatLog(category, message, data, true);
-
 /**
- * Error logging interface with semantic categories and .prod chaining
+ * Strategic error logging interface with semantic categories
+ *
+ * Usage:
+ *   luderror.api('Request failed', err, { endpoint });           // Dev only
+ *   luderror.api.prod('Critical API failure', err, { endpoint }); // Always logs
  */
-export const luderror = {
-  // Authentication & Authorization Errors
-  auth: createErrorMethod('auth'),
+const luderror = {
+  // Authentication & Authorization Errors (security breaches)
+  auth: createLogMethod('auth', true),
 
-  // Payment Processing Errors
-  payment: createErrorMethod('payment'),
+  // Payment Processing Errors (always critical)
+  payment: createLogMethod('payment', true),
 
-  // API Errors
-  api: createErrorMethod('api'),
+  // API Critical Errors (not routine 4xx responses)
+  api: createLogMethod('api', true),
 
-  // UI/Component Errors
-  ui: createErrorMethod('ui'),
+  // UI Component Errors (crashes, not minor issues)
+  ui: createLogMethod('ui', true),
 
-  // State Management Errors
-  state: createErrorMethod('state'),
+  // State Management Errors (corruption, not validation)
+  state: createLogMethod('state', true),
 
-  // Navigation Errors
-  navigation: createErrorMethod('navigation'),
+  // Navigation Errors (route failures, not 404s)
+  navigation: createLogMethod('navigation', true),
 
-  // WebSocket Errors
-  websocket: createErrorMethod('websocket'),
+  // Database Errors (IndexedDB failures)
+  db: createLogMethod('db', true),
 
-  // Media Errors
-  media: createErrorMethod('media'),
+  // Media Errors (loading failures, not user skips)
+  media: createLogMethod('media', true),
 
-  // Game Errors
-  game: createErrorMethod('game'),
+  // Game Errors (critical failures, not game over)
+  game: createLogMethod('game', true),
 
-  // General Errors
-  general: createErrorMethod('general'),
-
-  // Validation Errors
-  validation: createErrorMethod('validation'),
-
-  // Custom category
-  custom: (category, message, err, context, force = false) => formatError(category, message, err, context, force),
+  // General Errors (critical failures, inconsistencies)
+  general: createLogMethod('general', true)
 };
 
-// Add .prod variant for custom
-luderror.custom.prod = (category, message, err, context) => formatError(category, message, err, context, true);
-
-/**
- * React Component Logger Wrapper
- * Provides component-specific logging with automatic component name tracking
- */
-export class ComponentLogger {
-  constructor(componentName) {
-    this.componentName = componentName;
-  }
-
-  log(message, data, force = false) {
-    ludlog.component(`[${this.componentName}] ${message}`, data);
-    if (force) {
-      ludlog.component.prod(`[${this.componentName}] ${message}`, data);
-    }
-  }
-
-  error(message, err, context, force = false) {
-    luderror.component(`[${this.componentName}] ${message}`, err, context);
-    if (force) {
-      luderror.component.prod(`[${this.componentName}] ${message}`, err, context);
-    }
-  }
-
-  mount(props) {
-    ludlog.component(`[${this.componentName}] mounted`, { props });
-  }
-
-  unmount() {
-    ludlog.component(`[${this.componentName}] unmounted`, {});
-  }
-
-  render(reason) {
-    ludlog.component(`[${this.componentName}] rendering`, { reason });
-  }
-
-  stateChange(prevState, newState) {
-    ludlog.component(`[${this.componentName}] state changed`, {
-      prev: prevState,
-      new: newState
-    });
-  }
-}
-
-/**
- * API Request Logger
- * Automatically logs API requests with timing
- */
-export class ApiLogger {
-  constructor(endpoint) {
-    this.endpoint = endpoint;
-    this.startTime = performance.now();
-  }
-
-  request(method, data) {
-    ludlog.api(`${method} ${this.endpoint}`, {
-      method,
-      endpoint: this.endpoint,
-      ...(data && { data })
-    });
-  }
-
-  response(status, data) {
-    const duration = performance.now() - this.startTime;
-    ludlog.api(`Response from ${this.endpoint}`, {
-      endpoint: this.endpoint,
-      status,
-      duration_ms: duration.toFixed(2),
-      ...(data && { data })
-    });
-  }
-
-  error(err, context) {
-    const duration = performance.now() - this.startTime;
-    luderror.api(`API error: ${this.endpoint}`, err, {
-      endpoint: this.endpoint,
-      duration_ms: duration.toFixed(2),
-      ...context
-    });
-  }
-}
-
-/**
- * Performance Logger
- * Measures and logs performance metrics
- */
-export class PerfLogger {
-  constructor(operation) {
-    this.operation = operation;
-    this.marks = new Map();
-  }
-
-  start(label = 'default') {
-    this.marks.set(label, performance.now());
-  }
-
-  end(label = 'default', metadata = {}) {
-    const startTime = this.marks.get(label);
-    if (!startTime) {
-      luderror.general('Performance mark not found', new Error(`Mark "${label}" not found`));
-      return;
-    }
-
-    const duration = performance.now() - startTime;
-    ludlog.perf(`${this.operation}${label !== 'default' ? ` (${label})` : ''}`, {
-      duration_ms: duration.toFixed(2),
-      ...metadata
-    });
-    this.marks.delete(label);
-  }
-
-  measure(fn, label = 'default', metadata = {}) {
-    this.start(label);
-    const result = fn();
-    this.end(label, metadata);
-    return result;
-  }
-
-  async measureAsync(fn, label = 'default', metadata = {}) {
-    this.start(label);
-    const result = await fn();
-    this.end(label, metadata);
-    return result;
-  }
-}
-
-// Export utility function for backward compatibility
-export { shouldLog };
+// ES Module exports
+export {
+  ludlog,
+  luderror
+};
 
 // Default export for convenience
 export default {
   ludlog,
-  luderror,
-  ComponentLogger,
-  ApiLogger,
-  PerfLogger,
-  shouldLog
+  luderror
 };

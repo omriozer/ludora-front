@@ -2,12 +2,10 @@
 // REST API client for Ludora API server
 
 import { getApiBase } from '@/utils/api.js';
-import { clog, cerror } from '@/lib/utils';
+import { luderror } from '@/lib/ludlog';
 import { showError } from '@/utils/messaging';
 import { ApiError } from '@/utils/ApiError.js';
 
-// Re-export clog and cerror for use by other modules
-export { clog, cerror };
 
 // Use centralized API base configuration - dynamically evaluated
 // Don't cache as constant to allow runtime changes
@@ -98,11 +96,11 @@ async function apiRequestWithRetry(endpoint, options = {}, isRetryAttempt = fals
       }
 
       const error = await response.json().catch(() => ({ error: response.statusText }));
-      cerror('API Error:', error);
+      luderror.api('API Error:', error);
 
       // Log validation details if available
       if (error.details && Array.isArray(error.details)) {
-        cerror('Validation Details:', error.details);
+        luderror.api('Validation Details:', error.details);
       }
 
       const errorMessage = typeof error.error === 'string' ? error.error :
@@ -116,7 +114,7 @@ async function apiRequestWithRetry(endpoint, options = {}, isRetryAttempt = fals
     return data;
   } catch (error) {
     clearTimeout(timeoutId); // Clear timeout on error
-    cerror('API Request Failed:', error);
+    luderror.api('API Request Failed:', error);
 
     // Handle timeout specifically
     if (error.name === 'AbortError') {
@@ -182,11 +180,11 @@ export async function apiRequestAnonymous(endpoint, options = {}) {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: response.statusText }));
-      cerror('Anonymous API Error:', error);
+      luderror.api('Anonymous API Error:', error);
 
       // Log validation details if available
       if (error.details && Array.isArray(error.details)) {
-        cerror('Anonymous Validation Details:', error.details);
+        luderror.api('Anonymous Validation Details:', error.details);
       }
 
       const errorMessage = typeof error.error === 'string' ? error.error :
@@ -200,7 +198,7 @@ export async function apiRequestAnonymous(endpoint, options = {}) {
     return data;
   } catch (error) {
     clearTimeout(timeoutId); // Clear timeout on error
-    cerror('Anonymous API Request Failed:', error);
+    luderror.api('Anonymous API Request Failed:', error);
 
     // Handle timeout specifically
     if (error.name === 'AbortError') {
@@ -253,7 +251,7 @@ export async function apiDownload(endpoint, options = {}) {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: response.statusText }));
-      cerror('Download Error:', error);
+      luderror.api('Download Error:', error);
 
       const errorMessage = typeof error.error === 'string' ? error.error :
                         error.message ||
@@ -265,7 +263,7 @@ export async function apiDownload(endpoint, options = {}) {
     const blob = await response.blob();
     return blob;
   } catch (error) {
-    cerror('Download Failed:', error);
+    luderror.api('Download Failed:', error);
 
     // Show user-friendly error for network failures
     if (error.message.includes('fetch') || error.message.includes('network') || error.message.includes('Failed to fetch')) {
@@ -305,11 +303,11 @@ export async function apiUploadWithProgress(endpoint, formData, onProgress = nul
           const response = JSON.parse(xhr.responseText);
           resolve(response);
         } catch (e) {
-          cerror('Invalid response format:', e);
+          luderror.api('Invalid response format:', e);
           reject(new Error('Invalid response format'));
         }
       } else {
-        cerror(`Upload failed: ${xhr.status}`, xhr.responseText);
+        luderror.api(`Upload failed: ${xhr.status}`, xhr.responseText);
         try {
           const errorData = JSON.parse(xhr.responseText);
           const errorMessage = errorData.error || errorData.message || `Upload failed with status: ${xhr.status}`;
@@ -321,7 +319,7 @@ export async function apiUploadWithProgress(endpoint, formData, onProgress = nul
     });
 
     xhr.addEventListener('error', () => {
-      cerror('Network error during upload');
+      luderror.api('Network error during upload');
       showError(
         "בעיית העלאה",
         "שגיאת רשת במהלך העלאת הקובץ. אנא נסה שוב.",
@@ -331,7 +329,7 @@ export async function apiUploadWithProgress(endpoint, formData, onProgress = nul
     });
 
     xhr.addEventListener('timeout', () => {
-      cerror('Upload timeout');
+      luderror.api('Upload timeout');
       showError(
         "העלאה נכשלה",
         "העלאת הקובץ ארכה זמן רב מדי. אנא נסה שוב.",
@@ -743,7 +741,7 @@ async function loginWithFirebaseAuth() {
     await signInWithRedirect(auth, provider);
     
   } catch (error) {
-    cerror('Firebase login error:', error);
+    luderror.auth('Firebase login error:', error);
 
     // Show user-friendly error message
     showError(

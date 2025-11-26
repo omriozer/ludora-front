@@ -6,7 +6,7 @@ import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Eye, Settings, Palette, Plus, Info, Sparkles } from 'lucide-react';
 import { apiRequest } from '@/services/apiClient';
-import { clog, cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 import { toast } from '@/components/ui/use-toast';
 import { showConfirm } from '@/utils/messaging';
 import VisualTemplateEditor from '@/components/templates/VisualTemplateEditor';
@@ -83,14 +83,14 @@ const TemplateSelector = ({
   const config = getTemplateConfig();
 
   // Debug logging
-  clog(`🐛 TemplateSelector render - templateType: ${templateType}, enabled: ${enabled}, fileExists: ${fileExists}, selectedTemplateId: ${selectedTemplateId}, availableTemplates.length: ${availableTemplates.length}, currentTemplateId: ${currentTemplateId}, isCustomMode: ${isCustomMode}, customTemplateData:`, customTemplateData);
+  ludlog.media(`🐛 TemplateSelector render - templateType: ${templateType}`, { data: { enabled, fileExists, selectedTemplateId, availableTemplatesLength: availableTemplates.length, currentTemplateId, isCustomMode, customTemplateData } });
 
   // Sync isCustomMode with customTemplateData prop changes
   useEffect(() => {
     const hasCustomData = !!customTemplateData;
     if (hasCustomData !== isCustomMode) {
       setIsCustomMode(hasCustomData);
-      clog(`🔄 Updated isCustomMode to ${hasCustomData} based on customTemplateData`);
+      ludlog.ui(`🔄 Updated isCustomMode to ${hasCustomData} based on customTemplateData`);
     }
   }, [customTemplateData]);
 
@@ -104,7 +104,7 @@ const TemplateSelector = ({
   // Immediate save function to persist template changes to database
   const saveTemplateSettingsImmediately = async (templateId, customData) => {
     if (!entityId) {
-      clog('⚠️ No entityId provided, cannot save template settings immediately');
+      ludlog.media('⚠️ No entityId provided', { data: { action: 'cannotSaveTemplateSettings' } });
       return;
     }
 
@@ -131,14 +131,14 @@ const TemplateSelector = ({
         body: JSON.stringify(updateData)
       });
 
-      clog(`✅ Template settings saved immediately for ${entityType} ${entityId}:`, updateData);
+      ludlog.media(`✅ Template settings saved immediately for ${entityType} ${entityId}:`, { data: updateData });
       toast({
         title: "הגדרות נשמרו",
         description: `הגדרות ${config.name} נשמרו בהצלחה`,
         variant: "default"
       });
     } catch (error) {
-      cerror('Error saving template settings immediately:', error);
+      luderror.media('Error saving template settings immediately:', error);
       toast({
         title: "שגיאה בשמירה",
         description: `לא הצלחנו לשמור את הגדרות ה${config.name}. נסה שוב.`,
@@ -155,9 +155,9 @@ const TemplateSelector = ({
     try {
       // Use fileEntity target_format if available, fallback to targetFormat prop
       const effectiveFormat = fileEntity?.target_format || targetFormat;
-      clog(`🎨 Fetching ${templateType} templates for ${effectiveFormat}... (enabled: ${enabled}, fileExists: ${fileExists}, fileEntity format: ${fileEntity?.target_format})`);
+      ludlog.api(`🎨 Fetching ${templateType} templates for ${effectiveFormat}...`, { data: { enabled, fileExists, fileEntityFormat: fileEntity?.target_format } });
       const response = await apiRequest(`/system-templates?type=${templateType}&format=${effectiveFormat}`);
-      clog('🎨 Raw API response:', response);
+      ludlog.api('🎨 Raw API response:', { data: response });
 
       // Handle different response formats
       let templates = [];
@@ -168,17 +168,17 @@ const TemplateSelector = ({
       } else if (response?.data && Array.isArray(response.data)) {
         templates = response.data;
       } else {
-        clog('⚠️ Unexpected response format:', response);
+        ludlog.api('⚠️ Unexpected response format:', { data: response });
         templates = [];
       }
 
       setAvailableTemplates(templates);
-      clog(`✅ Loaded ${templates.length} ${templateType} templates:`, templates);
+      ludlog.ui(`✅ Loaded ${templates.length} ${templateType} templates:`, { data: templates });
 
       // Handle template selection logic based on availability
       if (templates.length === 0) {
         // No templates available for this format - force custom mode
-        clog(`⚠️ No ${templateType} templates available for ${effectiveFormat} - switching to custom mode`);
+        ludlog.ui(`⚠️ No ${templateType} templates available for ${effectiveFormat} - switching to custom mode`);
         setIsCustomMode(true);
         setSelectedTemplateId('');
         onTemplateChange?.(null, null);
@@ -191,7 +191,7 @@ const TemplateSelector = ({
 
         if (hasCustomData) {
           // Custom template data exists - stay in custom mode regardless of selectedTemplateId
-          clog(`🎨 Custom template data detected - staying in custom mode`);
+          ludlog.ui(`🎨 Custom template data detected - staying in custom mode`);
           setIsCustomMode(true);
           setSelectedTemplateId(''); // Clear any system template selection
           onTemplateChange?.(null, null); // Clear system template
@@ -200,7 +200,7 @@ const TemplateSelector = ({
           // No custom data and no selected template - auto-select default
           const defaultTemplate = templates.find(t => t.is_default) || templates[0];
           if (defaultTemplate) {
-            clog(`🎯 Auto-selecting default template: ${defaultTemplate.name} (ID: ${defaultTemplate.id})`);
+            ludlog.ui(`🎯 Auto-selecting default template: ${defaultTemplate.name} (ID: ${defaultTemplate.id});`);
             setSelectedTemplateId(defaultTemplate.id.toString());
             setIsCustomMode(false);
             onTemplateChange?.(defaultTemplate.id, defaultTemplate);
@@ -209,7 +209,7 @@ const TemplateSelector = ({
           // Check if currently selected template is still available for this format
           const currentTemplate = templates.find(t => t.id.toString() === selectedTemplateId);
           if (!currentTemplate) {
-            clog(`⚠️ Current template ${selectedTemplateId} not available for ${effectiveFormat} - auto-selecting new default`);
+            ludlog.ui(`⚠️ Current template ${selectedTemplateId} not available for ${effectiveFormat} - auto-selecting new default`);
             const defaultTemplate = templates.find(t => t.is_default) || templates[0];
             if (defaultTemplate) {
               setSelectedTemplateId(defaultTemplate.id.toString());
@@ -220,7 +220,7 @@ const TemplateSelector = ({
         }
       }
     } catch (error) {
-      cerror('Error fetching templates:', error);
+      luderror.api('Error fetching templates:', error);
       toast({
         title: "שגיאה בטעינת תבניות",
         description: "לא הצלחנו לטעון את רשימת התבניות. נסה שוב מאוחר יותר.",
@@ -278,11 +278,11 @@ const TemplateSelector = ({
         // Save immediately to database
         await saveTemplateSettingsImmediately(selectedTemplate.id, null);
 
-        clog(`📋 Selected system template: ${selectedTemplate.name}`);
+        ludlog.ui(`📋 Selected system template: ${selectedTemplate.name}`);
       }
     } catch (error) {
       // If save failed, revert the UI state
-      cerror('Failed to save template selection, reverting UI state');
+      luderror.state('Failed to save template selection, reverting UI state');
       setIsCustomMode(true);
       if (customTemplateData) {
         onCustomTemplateChange?.(customTemplateData);
@@ -320,7 +320,7 @@ const TemplateSelector = ({
         if (baseTemplate) {
           // Use the selected template's data as base for custom template
           initialCustomData = JSON.parse(JSON.stringify(baseTemplate.template_data));
-          clog(`🎨 Initializing custom template with data from: ${baseTemplate.name}`);
+          ludlog.ui(`🎨 Initializing custom template with data from: ${baseTemplate.name}`);
         }
 
         // If no base template, try to use default template
@@ -328,7 +328,7 @@ const TemplateSelector = ({
           const defaultTemplate = availableTemplates.find(t => t.is_default) || availableTemplates[0];
           if (defaultTemplate) {
             initialCustomData = JSON.parse(JSON.stringify(defaultTemplate.template_data));
-            clog(`🎨 Initializing custom template with default template data: ${defaultTemplate.name}`);
+            ludlog.ui(`🎨 Initializing custom template with default template data: ${defaultTemplate.name}`);
           }
         }
 
@@ -343,10 +343,10 @@ const TemplateSelector = ({
         await saveTemplateSettingsImmediately(null, initialCustomData);
         setSelectedTemplateId(''); // Clear selected template ID
 
-        clog(`📋 Initialized custom mode via button with template data`);
+        ludlog.ui(`📋 Initialized custom mode via button with template data`);
       } catch (error) {
         // If save failed, revert UI state
-        cerror('Failed to initialize custom template, reverting UI state');
+        luderror.state('Failed to initialize custom template, reverting UI state');
         setIsCustomMode(false);
         if (selectedTemplateId) {
           const template = availableTemplates.find(t => t.id.toString() === selectedTemplateId);
@@ -366,7 +366,7 @@ const TemplateSelector = ({
       availableTemplates.find(t => t.is_default) || availableTemplates[0];
 
     if (baseTemplate) {
-      clog(`🎨 Starting custom edit based on template: ${baseTemplate.name}`);
+      ludlog.ui(`🎨 Starting custom edit based on template: ${baseTemplate.name}`);
     }
   };
 
@@ -386,7 +386,7 @@ const TemplateSelector = ({
       await saveTemplateSettingsImmediately(null, customData);
 
       setShowTemplateEditor(false);
-      clog('💾 Custom template data saved for specific entity');
+      ludlog.ui('💾 Custom template data saved for specific entity');
 
       toast({
         title: "תבנית מותאמת נשמרה",
@@ -395,7 +395,7 @@ const TemplateSelector = ({
       });
     } catch (error) {
       // If save failed, revert UI state
-      cerror('Failed to save custom template, reverting UI state');
+      luderror.state('Failed to save custom template, reverting UI state');
       setIsCustomMode(false);
       setPendingCustomData(null); // Clear pending data on error
       if (selectedTemplateId) {
@@ -535,12 +535,12 @@ const TemplateSelector = ({
                               // Save immediately to database
                               await saveTemplateSettingsImmediately(template.id, null);
 
-                              clog(`📋 Switched to system template via radio button: ${template.name}`);
+                              ludlog.ui(`📋 Switched to system template via radio button: ${template.name}`);
                             }
                           }
                         } catch (error) {
                           // If save failed, revert UI state
-                          cerror('Failed to save template selection via radio button, reverting UI state');
+                          luderror.state('Failed to save template selection via radio button, reverting UI state');
                           setIsCustomMode(true);
                           if (customTemplateData) {
                             onCustomTemplateChange?.(customTemplateData);
@@ -594,7 +594,7 @@ const TemplateSelector = ({
                           if (baseTemplate) {
                             // Use the selected template's data as base for custom template
                             initialCustomData = JSON.parse(JSON.stringify(baseTemplate.template_data));
-                            clog(`🎨 Initializing custom template with data from: ${baseTemplate.name}`);
+                            ludlog.ui(`🎨 Initializing custom template with data from: ${baseTemplate.name}`);
                           }
                         }
 
@@ -603,7 +603,7 @@ const TemplateSelector = ({
                           const defaultTemplate = availableTemplates.find(t => t.is_default) || availableTemplates[0];
                           if (defaultTemplate) {
                             initialCustomData = JSON.parse(JSON.stringify(defaultTemplate.template_data));
-                            clog(`🎨 Initializing custom template with default template data: ${defaultTemplate.name}`);
+                            ludlog.ui(`🎨 Initializing custom template with default template data: ${defaultTemplate.name}`);
                           }
                         }
 
@@ -618,10 +618,10 @@ const TemplateSelector = ({
                         await saveTemplateSettingsImmediately(null, initialCustomData);
                         setSelectedTemplateId(''); // Clear selected template ID
 
-                        clog(`📋 Switched to custom mode via radio button with initialized data`);
+                        ludlog.ui(`📋 Switched to custom mode via radio button with initialized data`);
                       } catch (error) {
                         // If save failed, revert UI state
-                        cerror('Failed to save custom mode selection via radio button, reverting UI state');
+                        luderror.state('Failed to save custom mode selection via radio button, reverting UI state');
                         setIsCustomMode(false);
                         if (selectedTemplateId) {
                           const template = availableTemplates.find(t => t.id.toString() === selectedTemplateId);

@@ -7,7 +7,7 @@ import {
   ArrowRight,
   ArrowLeft
 } from 'lucide-react';
-import { clog } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 
 export default function AccountTypeSelector({ onComplete, onBack, onboardingData }) {
   // Teacher account type configuration
@@ -26,11 +26,11 @@ export default function AccountTypeSelector({ onComplete, onBack, onboardingData
 
   // Auto-continue after a brief moment to show the confirmation
   useEffect(() => {
-    clog('[AccountTypeSelector] Teacher onboarding - auto-selecting teacher account type');
+    ludlog.ui('[AccountTypeSelector] Teacher onboarding - auto-selecting teacher account type');
   }, []);
 
   const handleContinue = () => {
-    clog('[AccountTypeSelector] Continuing with teacher account type');
+    ludlog.ui('[AccountTypeSelector] Continuing with teacher account type');
 
     onComplete({
       accountType: 'teacher'

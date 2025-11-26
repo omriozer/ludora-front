@@ -3,7 +3,7 @@ import { apiUploadWithProgress, apiRequest } from '@/services/apiClient';
 import { getApiBase } from '@/utils/api.js';
 import { toast } from '@/components/ui/use-toast';
 import { useGlobalAuthErrorHandler } from '@/components/providers/AuthErrorProvider';
-import { clog, cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 
 /**
  * Maps product types to backend-supported entity types for content assets
@@ -57,13 +57,13 @@ export const useProductUploads = (editingProduct = null) => {
 
     try {
       const result = await apiRequest(`/assets/check/file/${product.entity_id}?assetType=document`);
-      clog('File check API result:', result);
+      ludlog.api('File check API result:', { data: result });
 
       if (result.exists === true && result.filename) {
         return { exists: true, filename: result.filename };
       }
     } catch (error) {
-      cerror('Error checking file upload:', error);
+      luderror.media('Error checking file upload:', error);
     }
 
     return null;
@@ -72,10 +72,10 @@ export const useProductUploads = (editingProduct = null) => {
   // Check for uploaded file info on mount (for file products)
   useEffect(() => {
     if (editingProduct && editingProduct.product_type === 'file' && editingProduct.entity_id) {
-      clog('Checking file existence for entity_id:', editingProduct.entity_id);
+      ludlog.media('Checking file existence for entity_id:', { data: editingProduct.entity_id });
 
       checkFileUploadExists(editingProduct).then(fileInfo => {
-        clog('File check result:', fileInfo);
+        ludlog.media('File check result:', { data: fileInfo });
         setUploadedFileInfo(fileInfo);
       });
     }
@@ -224,31 +224,13 @@ export const useProductUploads = (editingProduct = null) => {
 
         // Immediately update the product in database to prevent orphaned files
         if (editingProduct?.id && Object.keys(updateData).length > 0) {
-          clog('Attempting database update:', {
-            productId: editingProduct.id,
-            updateData,
-            fileType,
-            uploadResult: result
-          });
 
           try {
             const dbUpdateResult = await apiRequest(`/entities/product/${editingProduct.id}`, {
               method: 'PUT',
               body: JSON.stringify(updateData)
             });
-            clog('Database update successful:', {
-              productId: editingProduct.id,
-              updateData,
-              dbResult: dbUpdateResult
-            });
           } catch (dbError) {
-            cerror('Database update error after file upload:', {
-              productId: editingProduct.id,
-              updateData,
-              error: dbError,
-              fileType,
-              uploadSuccessful: result.success
-            });
 
             // Check if this is an auth error and handle it
             const wasHandled = handleAuthError(dbError, async () => {
@@ -264,7 +246,7 @@ export const useProductUploads = (editingProduct = null) => {
                   variant: "default"
                 });
               } catch (retryError) {
-                cerror('Retry failed:', retryError);
+                luderror.ui('Retry failed:', retryError);
                 toast({
                   title: "שגיאה בעדכון",
                   description: "לא ניתן לעדכן את המוצר. הקובץ הועלה אך המוצר לא עודכן",
@@ -296,7 +278,7 @@ export const useProductUploads = (editingProduct = null) => {
       }
 
     } catch (error) {
-      cerror(`Upload error for ${fileType}:`, error);
+      luderror.media(`Upload error for ${fileType}:`, error);
       toast({
         title: "שגיאה בהעלאה",
         description: error.message || 'אירעה שגיאה בהעלאת הקובץ',
@@ -373,7 +355,7 @@ export const useProductUploads = (editingProduct = null) => {
       return { success: true, updateData };
 
     } catch (error) {
-      cerror(`Delete error for ${fileType}:`, error);
+      luderror.media(`Delete error for ${fileType}:`, error);
 
       // Check if this is an auth error and handle it
       const wasHandled = handleAuthError(error, async () => {
@@ -388,7 +370,7 @@ export const useProductUploads = (editingProduct = null) => {
             variant: "default"
           });
         } catch (retryError) {
-          cerror('Delete retry failed:', retryError);
+          luderror.ui('Delete retry failed:', retryError);
           toast({
             title: "שגיאה במחיקה",
             description: "לא ניתן למחוק את הקובץ גם לאחר התחברות מחדש",

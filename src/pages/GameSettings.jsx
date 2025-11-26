@@ -9,7 +9,7 @@ import { ProductAPI } from '@/services/apiClient';
 import { Game } from '@/services/entities';
 import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
 import { useUser } from '@/contexts/UserContext';
-import { clog, cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 import { toast } from '@/components/ui/use-toast';
 import GameTypeSelector from '@/components/game/GameTypeSelector';
 import GameTypeDisplay from '@/components/game/GameTypeDisplay';
@@ -37,11 +37,11 @@ export default function GameSettings() {
 		setError(null);
 
 		try {
-			clog('🎮 Loading game data for product ID:', gameId);
+			ludlog.game('🎮 Loading game data for product ID:', { data: gameId });
 
 			// Load the product first
 			const product = await ProductAPI.findById(gameId);
-			clog('🎮 Loaded product:', product);
+			ludlog.api('🎮 Loaded product:', { data: product });
 
 			// Verify this is actually a game product
 			if (product.product_type !== 'game') {
@@ -53,20 +53,20 @@ export default function GameSettings() {
 			// If the product has an entity_id, load the game entity as well
 			if (product.entity_id) {
 				try {
-					clog('🎮 Loading game entity for entity_id:', product.entity_id);
+					ludlog.game('🎮 Loading game entity for entity_id:', { data: product.entity_id });
 					const gameEntity = await Game.findById(product.entity_id);
 					setGameEntity(gameEntity);
-					clog('🎮 Loaded game entity:', gameEntity);
+					ludlog.game('🎮 Loaded game entity:', { data: gameEntity });
 				} catch (gameError) {
-					cerror('⚠️ Could not load game entity:', gameError);
+					luderror.game('⚠️ Could not load game entity:', gameError);
 					// Don't fail the whole page if game entity doesn't exist
 					// This is normal for products that don't have a game entity yet
 				}
 			} else {
-				clog('🎮 Product has no entity_id, skipping game entity load');
+				ludlog.game('🎮 Product has no entity_id', { data: { action: 'skippingGameEntityLoad' } });
 			}
 		} catch (error) {
-			cerror('❌ Error loading game data:', error);
+			luderror.game('❌ Error loading game data:', error);
 			setError(error.message || 'שגיאה בטעינת נתוני המשחק');
 
 			toast({
@@ -91,7 +91,7 @@ export default function GameSettings() {
 		setIsUpdating(true);
 
 		try {
-			clog('🎮 Updating game type to:', selectedGameType);
+			ludlog.game('🎮 Updating game type to:', { data: selectedGameType });
 
 			// Determine digital status based on game type options
 			let digitalValue;
@@ -100,21 +100,21 @@ export default function GameSettings() {
 			if (selectedGameType.digital && !selectedGameType.offline) {
 				// Only digital available
 				digitalValue = true;
-				clog('🎮 Auto-selecting digital=true (only option available)');
+				ludlog.game('🎮 Auto-selecting digital=true (only option available)');
 			} else if (!selectedGameType.digital && selectedGameType.offline) {
 				// Only offline/print available
 				digitalValue = false;
-				clog('🎮 Auto-selecting digital=false (only option available)');
+				ludlog.game('🎮 Auto-selecting digital=false (only option available)');
 			} else if (selectedGameType.digital && selectedGameType.offline) {
 				// Both options available - keep existing value or default to digital
 				digitalValue = gameProduct?.type_attributes?.digital !== undefined
 					? gameProduct.type_attributes.digital
 					: true;
-				clog('🎮 Both options available, keeping existing/default digital value:', digitalValue);
+				ludlog.general('🎮 Both options available', { data: { action: 'keepingExistingOrDefaultDigitalValue', digitalValue } });
 			} else {
 				// Fallback to digital if neither is explicitly set
 				digitalValue = true;
-				clog('🎮 Fallback to digital=true');
+				ludlog.general('🎮 Fallback to digital=true');
 			}
 
 			// Update the product with the new game type and digital status
@@ -145,9 +145,9 @@ export default function GameSettings() {
 				variant: 'default',
 			});
 
-			clog('🎮 Game type updated successfully:', updatedProduct);
+			ludlog.game('🎮 Game type updated successfully:', { data: updatedProduct });
 		} catch (error) {
-			cerror('❌ Error updating game type:', error);
+			luderror.game('❌ Error updating game type:', error);
 
 			toast({
 				title: 'שגיאה',
@@ -168,7 +168,7 @@ export default function GameSettings() {
 		setIsUpdating(true);
 
 		try {
-			clog('🎮 Updating digital status to:', newDigitalValue);
+			ludlog.api('🎮 Updating digital status to:', { data: newDigitalValue });
 
 			// Update the product with the new digital value
 			const updatedProduct = await ProductAPI.update(gameId, {
@@ -187,9 +187,9 @@ export default function GameSettings() {
 				variant: 'default',
 			});
 
-			clog('🎮 Digital status updated successfully:', updatedProduct);
+			ludlog.api('🎮 Digital status updated successfully:', { data: updatedProduct });
 		} catch (error) {
-			cerror('❌ Error updating digital status:', error);
+			luderror.api('❌ Error updating digital status:', error);
 
 			toast({
 				title: 'שגיאה',
@@ -226,7 +226,7 @@ export default function GameSettings() {
 		setIsUpdating(true);
 
 		try {
-			clog('🎮 Saving game settings:', newSettings);
+			ludlog.websocket('🎮 Saving game settings:', { data: newSettings });
 
 			// If we have a game entity, update it
 			if (gameEntity?.id) {
@@ -244,7 +244,7 @@ export default function GameSettings() {
 					variant: 'default',
 				});
 
-				clog('🎮 Game settings saved successfully:', updatedEntity);
+				ludlog.game('🎮 Game settings saved successfully:', { data: updatedEntity });
 			} else {
 				// Create new game entity if it doesn't exist
 				const newGameEntity = await Game.create({
@@ -269,10 +269,10 @@ export default function GameSettings() {
 					variant: 'default',
 				});
 
-				clog('🎮 Game entity created and settings saved:', { newGameEntity, updatedProduct });
+				ludlog.game('🎮 Game entity created and settings saved:', { data: { newGameEntity, updatedProduct } });
 			}
 		} catch (error) {
-			cerror('❌ Error saving game settings:', error);
+			luderror.game('❌ Error saving game settings:', error);
 
 			toast({
 				title: 'שגיאה',

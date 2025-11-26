@@ -6,7 +6,7 @@ import { STUDENTS_ACCESS_MODES } from '@/utils/portalContext';
 import { isStaff } from '@/lib/userUtils';
 import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
 import StudentLogin from './StudentLogin';
-import { clog } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 
 /**
  * ProtectedStudentRoute Component
@@ -44,14 +44,6 @@ export default function ProtectedStudentRoute({
   } = useUser();
 
   // Debug logging for development
-  clog('[ProtectedStudentRoute] Auth state:', {
-    isAuthenticated,
-    isPlayerAuthenticated,
-    hasAuth: hasAnyAuthentication(),
-    isLoading,
-    settingsLoading,
-    studentsAccess: settings?.students_access
-  });
 
   // Show loading while auth/settings are being resolved
   if (isLoading || settingsLoading) {
@@ -68,7 +60,7 @@ export default function ProtectedStudentRoute({
   // Admin bypass check - admins can always access
   const isAdmin = currentUser && isStaff(currentUser);
   if (isAdmin) {
-    clog('[ProtectedStudentRoute] Admin bypass - allowing access');
+    ludlog.navigation('[ProtectedStudentRoute] Admin bypass - allowing access');
     return children;
   }
 
@@ -98,12 +90,6 @@ export default function ProtectedStudentRoute({
 
   const isAuthorized = checkAuthByMode();
 
-  clog('[ProtectedStudentRoute] Authorization check:', {
-    mode: studentsAccessMode,
-    isAuthorized,
-    isPlayerAuth: isPlayerAuthenticated,
-    isUserAuth: isAuthenticated
-  });
 
   // If not authorized, show StudentLogin component
   if (!isAuthorized) {

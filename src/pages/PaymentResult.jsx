@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Game, Purchase, User, Workshop, Course, File, Tool, Product, Transaction } from "@/services/entities";
 import { purchaseUtils } from "@/utils/api.js";
-import { error } from '@/lib/logger';
+import { ludlog, luderror } from '@/lib/ludlog';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -24,7 +24,6 @@ import { PRODUCT_TYPES, getProductTypeName } from "@/config/productTypes";
 import { useUser } from "@/contexts/UserContext";
 import { toast } from "@/components/ui/use-toast";
 import { usePaymentPageStatusCheck } from '@/hooks/usePaymentPageStatusCheck';
-import { clog, cerror } from "@/lib/utils";
 
 export default function PaymentResult() {
   const navigate = useNavigate();
@@ -47,17 +46,17 @@ export default function PaymentResult() {
     enabled: true,
     showToasts: true, // Show user notifications about payment status changes
     onStatusUpdate: (update) => {
-      clog('PaymentResult: Payment status update received:', update);
+      ludlog.payment('PaymentResult: Payment status update received:', { data: update });
 
       // Reload payment result when status changes are detected
       if (update.type === 'continue_polling' && update.count > 0) {
-        clog('PaymentResult: Reloading payment result due to status update');
+        ludlog.payment('PaymentResult: Reloading payment result due to status update');
         loadPaymentResult();
       }
 
       // Handle reverted payments
       if (update.type === 'reverted_to_cart') {
-        clog('PaymentResult: Payment reverted to cart, redirecting to checkout');
+        ludlog.payment('PaymentResult: Payment reverted to cart', { data: { action: 'redirectingToCheckout' } });
         setTimeout(() => {
           navigate('/checkout');
         }, 2000); // Give time for toast to show
@@ -114,7 +113,7 @@ export default function PaymentResult() {
         navigate('/account');
       }
     } catch (err) {
-      error.navigation('Error determining redirect destination', err);
+      luderror.navigation('Error determining redirect destination', err);
       // Fallback to account page on error
       navigate('/account');
     }
@@ -133,7 +132,7 @@ export default function PaymentResult() {
         setProductId(foundProductId);
       }
     } catch (err) {
-      error.api('Error finding Product ID', err, { entityType, entityId });
+      luderror.api('Error finding Product ID', err, { entityType, entityId });
     }
   };
 
@@ -177,7 +176,7 @@ export default function PaymentResult() {
             // CRITICAL: PayPlus redirect detected - set purchases to pending and trigger polling
             if (transactionUid && actualStatus === 'pending') {
               // Payment redirect detected - user came back from PayPlus
-              console.log('🔍 PayPlus redirect detected, setting purchases to pending for transaction:', transactionData.id);
+              ludlog.payment('🔍 PayPlus redirect detected, setting purchases to pending for transaction:', transactionData.id);
 
               try {
                 const { apiRequest } = await import('@/services/apiClient');
@@ -187,7 +186,7 @@ export default function PaymentResult() {
                   transaction_id: transactionData.id
                 });
 
-                console.log(`📝 Found ${relatedPurchases.length} purchases to set as pending`);
+                ludlog.payment(`📝 Found ${relatedPurchases.length} purchases to set as pending`);
 
                 for (const purchase of relatedPurchases) {
                   await Purchase.update(purchase.id, {
@@ -199,7 +198,7 @@ export default function PaymentResult() {
                       payplus_page_request_uid: pageRequestUid
                     }
                   });
-                  console.log(`✅ Purchase ${purchase.id} set to pending status`);
+                  ludlog.payment(`✅ Purchase ${purchase.id} set to pending status`);
                 }
 
                 // STEP 2: Trigger polling to check actual PayPlus payment page status
@@ -207,7 +206,7 @@ export default function PaymentResult() {
                   method: 'GET'
                 });
 
-                console.log('✅ Polling triggered successfully:', pollResult);
+                ludlog.payment('✅ Polling triggered successfully:', pollResult);
 
                 // Set status based on polling result
                 if (pollResult.poll_result?.success && pollResult.poll_result?.status === 'completed') {
@@ -219,7 +218,7 @@ export default function PaymentResult() {
                   finalStatus = 'pending';
                 }
               } catch (pollError) {
-                console.error('❌ Failed to set pending status or trigger polling:', pollError);
+                luderror.payment('Failed to set pending status or trigger polling', pollError);
                 // Fallback to assuming success if redirect happened
                 finalStatus = 'success';
               }
@@ -256,7 +255,7 @@ export default function PaymentResult() {
         try {
           let purchases = [];
 
-          clog('PaymentResult: Searching for purchases with order number:', finalOrderNumber);
+          ludlog.payment('PaymentResult: Searching for purchases with order number:', { data: finalOrderNumber });
 
           // First try to find by transaction_id (for new Transaction-based lookups)
           if (finalOrderNumber.startsWith('txn_')) {
@@ -264,9 +263,9 @@ export default function PaymentResult() {
               purchases = await Purchase.filter({
                 transaction_id: finalOrderNumber
               });
-              clog('PaymentResult: Found purchases by transaction_id:', purchases.length);
+              ludlog.payment('PaymentResult: Found purchases by transaction_id:', { data: purchases.length });
             } catch (txnError) {
-              cerror('PaymentResult: Error searching by transaction_id:', txnError);
+              luderror.payment('PaymentResult: Error searching by transaction_id:', null, { context: txnError });
             }
           }
 
@@ -276,9 +275,9 @@ export default function PaymentResult() {
               purchases = await Purchase.filter({
                 metadata: { transaction_uid: finalOrderNumber }
               });
-              clog('PaymentResult: Found purchases by transaction_uid:', purchases.length);
+              ludlog.payment('PaymentResult: Found purchases by transaction_uid:', { data: purchases.length });
             } catch (metadataError) {
-              cerror('PaymentResult: Error searching by metadata transaction_uid:', metadataError);
+              luderror.payment('PaymentResult: Error searching by metadata transaction_uid:', metadataError);
             }
           }
 
@@ -286,9 +285,9 @@ export default function PaymentResult() {
           if (purchases.length === 0 && finalOrderNumber.startsWith('pur_')) {
             try {
               purchases = await Purchase.filter({ id: finalOrderNumber });
-              clog('PaymentResult: Found purchases by direct ID:', purchases.length);
+              ludlog.payment('PaymentResult: Found purchases by direct ID:', { data: purchases.length });
             } catch (directError) {
-              cerror('PaymentResult: Error searching by direct ID:', directError);
+              luderror.payment('PaymentResult: Error searching by direct ID:', directError);
             }
           }
           
@@ -309,7 +308,7 @@ export default function PaymentResult() {
                 const entityType = purchaseData.purchasable_type;
                 const entityId = purchaseData.purchasable_id;
 
-                clog('PaymentResult: Loading item data for:', { entityType, entityId });
+                ludlog.payment('PaymentResult: Loading item data for:', { data: { entityType, entityId } });
 
                 switch (entityType) {
                   case 'workshop':
@@ -328,7 +327,7 @@ export default function PaymentResult() {
                     itemData = await Game.findById(entityId);
                     break;
                   default:
-                    cerror('PaymentResult: Unknown entity type:', entityType);
+                    luderror.payment('PaymentResult: Unknown entity type:', entityType);
                     // Don't throw error - just set a placeholder
                     itemData = {
                       id: entityId,
@@ -340,20 +339,20 @@ export default function PaymentResult() {
                 if (itemData) {
                   setItem(itemData);
                   setItemType(entityType);
-                  clog('PaymentResult: Item loaded successfully:', itemData.title);
+                  ludlog.payment('PaymentResult: Item loaded successfully:', { data: itemData.title });
 
                   // Find the corresponding Product ID (non-blocking)
                   try {
                     await findProductId(entityType, entityId);
                   } catch (productIdError) {
-                    cerror('PaymentResult: Error finding product ID (non-critical):', productIdError);
+                    luderror.payment('PaymentResult: Error finding product ID (non-critical):', productIdError);
                   }
                 } else {
-                  cerror('PaymentResult: No item data returned for:', { entityType, entityId });
+                  luderror.payment('PaymentResult: No item data returned for:', null, { context: { entityType, entityId } });
                   // Don't set error - payment was successful, just item details missing
                 }
               } catch (itemError) {
-                cerror('PaymentResult: Error loading item:', itemError, { entityType, entityId });
+                luderror.payment('PaymentResult: Error loading item:', itemError, { context: { entityType, entityId } });
                 // Don't break the flow - payment was successful
                 setItem({
                   title: 'מוצר שנרכש',
@@ -373,23 +372,23 @@ export default function PaymentResult() {
                 }
                 setItem(itemData);
               } catch (itemError) {
-                error.payment('Error loading legacy item', itemError, { productId: purchaseData.product_id, type });
+                luderror.payment('Error loading legacy item', itemError, { productId: purchaseData.product_id, type });
                 // Try Game as fallback for legacy data
                 try {
                   const fallbackItem = await Game.findById(purchaseData.product_id);
                   setItem(fallbackItem);
                   setItemType('game');
                 } catch (fallbackError) {
-                  error.payment('Fallback Game lookup also failed', fallbackError, { productId: purchaseData.product_id });
+                  luderror.payment('Fallback Game lookup also failed', fallbackError, { productId: purchaseData.product_id });
                   setError('לא ניתן לטעון את פרטי המוצר');
                 }
               }
             }
           } else {
-            cerror('PaymentResult: Purchase not found for order:', { finalOrderNumber });
+            luderror.payment('PaymentResult: Purchase not found for order:', { finalOrderNumber });
             // For PayPlus redirects, don't show error if we have transaction_uid (payment likely successful)
             if (transactionUid && finalStatus === 'success') {
-              clog('PaymentResult: Payment successful but purchase not found yet - may be processing');
+              ludlog.payment('PaymentResult: Payment successful but purchase not found yet - may be processing');
               setItem({
                 title: 'תשלום הושלם בהצלחה',
                 short_description: 'המוצר יופיע בחשבון שלך בקרוב'
@@ -399,10 +398,10 @@ export default function PaymentResult() {
             }
           }
         } catch (purchaseError) {
-          cerror('PaymentResult: Error finding purchase:', purchaseError, { finalOrderNumber });
+          luderror.payment('PaymentResult: Error finding purchase:', purchaseError, { context: { finalOrderNumber } });
           // For PayPlus redirects, be more forgiving with errors if payment seemed successful
           if (transactionUid && finalStatus === 'success') {
-            clog('PaymentResult: Payment successful but purchase lookup failed - may be processing');
+            ludlog.payment('PaymentResult: Payment successful but purchase lookup failed - may be processing');
             setItem({
               title: 'תשלום הושלם בהצלחה',
               short_description: 'המוצר יופיע בחשבון שלך בקרוב'
@@ -413,9 +412,9 @@ export default function PaymentResult() {
         }
       } else {
         // No order number at all
-        cerror('PaymentResult: No order number found in URL parameters');
+        luderror.payment('PaymentResult: No order number found in URL parameters');
         if (finalStatus === 'success') {
-          clog('PaymentResult: Success status without order number - showing generic success');
+          ludlog.payment('PaymentResult: Success status without order number - showing generic success');
           setItem({
             title: 'תשלום הושלם בהצלחה',
             short_description: 'המוצר יופיע בחשבון שלך בקרוב'
@@ -426,7 +425,7 @@ export default function PaymentResult() {
       }
 
     } catch (err) {
-      cerror('PaymentResult: Error loading payment result:', err);
+      luderror.payment('PaymentResult: Error loading payment result:', err);
 
       // Check if we have any indicators that payment was successful
       const urlParams = new URLSearchParams(window.location.search);
@@ -435,7 +434,7 @@ export default function PaymentResult() {
 
       if (transactionUid || paymentStatus === 'success') {
         // Payment seems successful - show optimistic message instead of error
-        clog('PaymentResult: Error occurred but payment indicators suggest success');
+        ludlog.payment('PaymentResult: Error occurred but payment indicators suggest success');
         setStatus('success');
         setItem({
           title: 'תשלום הושלם בהצלחה',

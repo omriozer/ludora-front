@@ -27,7 +27,7 @@ import {
   Shield
 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
-import { clog, cerror } from "@/lib/utils";
+import { ludlog, luderror } from '@/lib/ludlog';
 
 export default function CouponForm() {
   const { id } = useParams();
@@ -121,7 +121,7 @@ export default function CouponForm() {
         }
       }
     } catch (error) {
-      cerror("Error loading data:", error);
+      luderror.validation("Error loading data:", error);
       setMessage({ type: 'error', text: 'שגיאה בטעינת הנתונים' });
     }
     setIsLoading(false);
@@ -240,7 +240,7 @@ export default function CouponForm() {
 
       navigate('/coupons');
     } catch (error) {
-      cerror('Error saving coupon:', error);
+      luderror.validation('Error saving coupon:', error);
       setMessage({
         type: 'error',
         text: error.message?.includes('Validation')

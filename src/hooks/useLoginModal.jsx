@@ -1,5 +1,5 @@
 import { useState, createContext, useContext, useRef } from 'react';
-import { cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 
 const LoginModalContext = createContext();
 
@@ -27,7 +27,7 @@ export function LoginModalProvider({ children }) {
       try {
         callback();
       } catch (error) {
-        cerror('Error executing login callback:', error);
+        luderror.auth('Error executing login callback:', error);
       }
     }
   };

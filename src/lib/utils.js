@@ -5,18 +5,17 @@ export function cn(...inputs) {
   return twMerge(clsx(inputs))
 }
 
-// Export new professional logging API (recommended)
-export {
-  log,
-  error,
-  ComponentLogger,
-  ApiLogger,
-  PerfLogger,
-  shouldLog
-} from './logger.js';
+// TEMPORARILY REMOVED: logger.js imports causing crash
+// TODO: These exports were causing module loading errors
+// export {
+//   log,
+//   error,
+//   ComponentLogger,
+//   ApiLogger,
+//   PerfLogger,
+//   shouldLog
+// } from './logger.js';
 
-// Export deprecated legacy functions (for backward compatibility)
-export { clog, cerror } from './logger.js';
 
 /**
  * Formats price with consistent display rules

@@ -115,7 +115,7 @@ export class ContentTopicService {
    * NOTE: This is deprecated as topics should be managed at the product level
    */
   async updateCurriculumItemTopics(curriculumItemId, topicIds) {
-    console.warn('updateCurriculumItemTopics is deprecated. Content topics should be managed at the product level.');
+    
     throw new Error('Content topics should be managed at the product level, not curriculum item level.');
   }
 
@@ -234,7 +234,7 @@ export class ContentTopicService {
    * NOTE: This is deprecated as topics should be managed at the product level
    */
   async bulkUpdateCurriculumItemTopics(updates) {
-    console.warn('bulkUpdateCurriculumItemTopics is deprecated. Content topics should be managed at the product level.');
+    
     throw new Error('Content topics should be managed at the product level, not curriculum item level.');
   }
 }

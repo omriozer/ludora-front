@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { apiDownload } from '@/services/apiClient';
-import { clog, cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 import { fixHebrewFilename } from '@/utils/fileEncodingUtils';
 
 // Configure PDF.js worker
@@ -67,7 +67,7 @@ const PdfViewer = ({
       // All valid cases use the same endpoint - backend handles access control and watermarks
       const endpoint = `/assets/download/file/${fileId}`;
 
-      clog('📄 Loading PDF from endpoint:', endpoint);
+      ludlog.api('📄 Loading PDF from endpoint:', { data: endpoint });
       const blob = await apiDownload(endpoint);
 
       if (pdfBlobUrl) {
@@ -76,9 +76,9 @@ const PdfViewer = ({
 
       const blobUrl = URL.createObjectURL(blob);
       setPdfBlobUrl(blobUrl);
-      clog('📄 PDF loaded successfully');
+      ludlog.ui('📄 PDF loaded successfully');
     } catch (error) {
-      cerror('Error loading PDF:', error);
+      luderror.ui('Error loading PDF:', error);
       setError('שגיאה בטעינת הקובץ');
     } finally {
       setIsLoading(false);
@@ -87,11 +87,11 @@ const PdfViewer = ({
 
   const onDocumentLoadSuccess = ({ numPages }) => {
     setNumPages(numPages);
-    clog('📄 PDF document loaded, pages:', numPages);
+    ludlog.ui('📄 PDF document loaded', { data: { pages: numPages } });
   };
 
   const onDocumentLoadError = (error) => {
-    cerror('PDF load error:', error);
+    luderror.ui('PDF load error:', error);
     setError('שגיאה בטעינת קובץ PDF');
   };
 
@@ -130,7 +130,7 @@ const PdfViewer = ({
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     } catch (error) {
-      cerror('Error downloading PDF:', error);
+      luderror.media('Error downloading PDF:', error);
     }
   };
 

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus, CheckCircle, ShoppingCart } from 'lucide-react';
-import { cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
 import { useLoginModal } from '@/hooks/useLoginModal';
 import { useCart } from '@/contexts/CartContext';
@@ -34,7 +34,7 @@ export default function AddToCartButton({
     e.stopPropagation(); // Prevent event bubbling to parent card
 
     if (!product) {
-      cerror('No product provided to AddToCartButton');
+      luderror.payment('No product provided to AddToCartButton');
       return;
     }
 
@@ -46,7 +46,7 @@ export default function AddToCartButton({
 
     const userId = currentUser.id;
     if (!userId) {
-      cerror('Could not get user ID from currentUser');
+      luderror.ui('Could not get user ID from currentUser');
       return;
     }
 
@@ -98,7 +98,7 @@ export default function AddToCartButton({
       }
 
     } catch (error) {
-      cerror('Error adding to cart:', error);
+      luderror.payment('Error adding to cart:', error);
       toast({
         title: "שגיאה בהוספה לעגלה",
         description: error.message || "אירעה שגיאה בעת הוספת הפריט לעגלה. אנא נסו שוב.",

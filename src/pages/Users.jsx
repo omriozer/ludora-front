@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { apiRequest } from '@/services/apiClient';
-import { cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 import {
 	Users,
 	Search,
@@ -123,7 +123,7 @@ function SubscriptionManagementModal({
 			const pending = await PendingSubscription.filter({ user_id: user.id });
 			setPendingSubscriptions(pending);
 		} catch (error) {
-			cerror('Error fetching pending subscriptions:', error);
+			luderror.payment('Error fetching pending subscriptions:', error);
 			showMessage('error', 'שגיאה בטעינת מנויים ממתינים.');
 		} finally {
 			setIsFetchingPending(false);
@@ -159,7 +159,7 @@ function SubscriptionManagementModal({
 			showMessage('success', 'פרטי המנוי עודכנו בהצלחה.');
 			onUpdate(); // Trigger refresh in parent and close modal
 		} catch (error) {
-			cerror('Error updating subscription:', error);
+			luderror.payment('Error updating subscription:', error);
 			showMessage('error', 'שגיאה בעדכון פרטי המנוי.');
 		} finally {
 			setIsSaving(false);
@@ -173,7 +173,7 @@ function SubscriptionManagementModal({
 			showMessage('success', 'מנוי ממתין נמחק בהצלחה.');
 			fetchPendingSubscriptions();
 		} catch (error) {
-			cerror('Error deleting pending subscription:', error);
+			luderror.payment('Error deleting pending subscription:', error);
 			showMessage('error', 'שגיאה במחיקת מנוי ממתין.');
 		}
 	};
@@ -195,7 +195,7 @@ function SubscriptionManagementModal({
 			setNewPendingPlanId('');
 			fetchPendingSubscriptions();
 		} catch (error) {
-			cerror('Error adding pending subscription:', error);
+			luderror.payment('Error adding pending subscription:', error);
 			showMessage('error', 'שגיאה בהוספת מנוי ממתין.');
 		}
 	};
@@ -474,7 +474,7 @@ export default function UsersPage() {
 				setFilteredUsers(allUsersData);
 			}
 		} catch (error) {
-			cerror('Error loading data:', error);
+			luderror.validation('Error loading data:', error);
 			setMessage({ type: 'error', text: 'שגיאה בטעינת נתונים' });
 		}
 		setLoading(false);
@@ -570,7 +570,7 @@ export default function UsersPage() {
 
 			fetchAdminDashboardData(); // Refresh the data
 		} catch (error) {
-			cerror('Error resetting subscription:', error);
+			luderror.payment('Error resetting subscription:', error);
 			showMessage('error', 'שגיאה באיפוס המנוי.');
 		} finally {
 			setShowResetConfirm(false);
@@ -590,7 +590,7 @@ export default function UsersPage() {
 			showMessage('success', 'תפקיד המשתמש עודכן בהצלחה');
 			fetchAdminDashboardData();
 		} catch (error) {
-			cerror('Error updating user role:', error);
+			luderror.validation('Error updating user role:', error);
 			showMessage('error', 'שגיאה בעדכון תפקיד המשתמש');
 		}
 	};
@@ -602,7 +602,7 @@ export default function UsersPage() {
 			showMessage('success', 'סוג המשתמש עודכן בהצלחה');
 			fetchAdminDashboardData();
 		} catch (error) {
-			cerror('Error updating user type:', error);
+			luderror.validation('Error updating user type:', error);
 			showMessage('error', 'שגיאה בעדכון סוג המשתמש');
 		}
 	};
@@ -628,7 +628,7 @@ export default function UsersPage() {
 				navigate('/');
 			}, 1000);
 		} catch (error) {
-			cerror('Error impersonating user:', error);
+			luderror.validation('Error impersonating user:', error);
 			setMessage({ type: 'error', text: 'שגיאה בהתחזות למשתמש' });
 		} finally {
 			setImpersonationLoading(null);
@@ -729,7 +729,7 @@ export default function UsersPage() {
 			showMessage('success', `סטטוס ההכנה עבור ${user.full_name} אופס בהצלחה`);
 
 		} catch (error) {
-			cerror('Error resetting onboarding:', error);
+			luderror.validation('Error resetting onboarding:', error);
 			showMessage('error', `שגיאה באיפוס ההכנה: ${error.message}`);
 		} finally {
 			setLoading(false);
@@ -788,7 +788,7 @@ export default function UsersPage() {
 			showMessage('success', `איפוס קשה עבור ${user.full_name} בוצע בהצלחה`);
 
 		} catch (error) {
-			cerror('Error hard resetting onboarding:', error);
+			luderror.validation('Error hard resetting onboarding:', error);
 			showMessage('error', `שגיאה באיפוס קשה: ${error.message}`);
 		} finally {
 			setLoading(false);

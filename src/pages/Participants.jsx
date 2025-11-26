@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { Purchase, Workshop, Course, File, Tool } from "@/services/entities";
 import { useUser } from "@/contexts/UserContext";
-import { cerror } from "@/lib/utils";
+import { ludlog, luderror } from '@/lib/ludlog';
 import { getProductTypeName } from "@/config/productTypes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -75,7 +75,7 @@ export default function Participants() {
         setRegistrations(participants);
       }
     } catch (error) {
-      cerror("Error loading data:", error);
+      luderror.validation("Error loading data:", error);
     }
     setIsLoading(false);
   };

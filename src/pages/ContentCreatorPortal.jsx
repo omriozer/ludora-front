@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { luderror } from "@/lib/ludlog";
 import {
   Users,
   Plus,
@@ -132,7 +133,7 @@ export default function ContentCreatorPortal() {
       await loadStats(userData, features);
 
     } catch (error) {
-      console.error("Error loading data:", error);
+      luderror.ui("Error loading data", error);
       showMessage('error', 'שגיאה בטעינת הנתונים');
     }
     setIsLoading(false);
@@ -156,7 +157,7 @@ export default function ContentCreatorPortal() {
           newStats.games.total = userGames.length;
           newStats.games.published = userGames.filter(game => game.is_published).length;
         } catch (error) {
-          console.error("Error loading games stats:", error);
+          // Skip silently - not critical
         }
       }
 
@@ -169,7 +170,6 @@ export default function ContentCreatorPortal() {
             key: NAV_ITEMS.files.key,
             data: files
           })).catch(error => {
-            console.error("Error loading files stats:", error);
             return { key: NAV_ITEMS.files.key, data: [] };
           })
         );
@@ -181,7 +181,6 @@ export default function ContentCreatorPortal() {
             key: NAV_ITEMS.tools.key,
             data: tools
           })).catch(error => {
-            console.error("Error loading tools stats:", error);
             return { key: NAV_ITEMS.tools.key, data: [] };
           })
         );
@@ -193,7 +192,6 @@ export default function ContentCreatorPortal() {
             key: NAV_ITEMS.workshops.key,
             data: workshops
           })).catch(error => {
-            console.error("Error loading workshops stats:", error);
             return { key: NAV_ITEMS.workshops.key, data: [] };
           })
         );
@@ -205,7 +203,6 @@ export default function ContentCreatorPortal() {
             key: NAV_ITEMS.courses.key,
             data: courses
           })).catch(error => {
-            console.error("Error loading courses stats:", error);
             return { key: NAV_ITEMS.courses.key, data: [] };
           })
         );
@@ -217,7 +214,6 @@ export default function ContentCreatorPortal() {
             key: NAV_ITEMS.lesson_plans.key,
             data: lessonPlans
           })).catch(error => {
-            console.error("Error loading lesson plans stats:", error);
             return { key: NAV_ITEMS.lesson_plans.key, data: [] };
           })
         );
@@ -235,13 +231,13 @@ export default function ContentCreatorPortal() {
             };
           });
         } catch (error) {
-          console.error("Error loading entity stats:", error);
+          // Skip silently - not critical
         }
       }
 
       setStats(newStats);
     } catch (error) {
-      console.error("Error loading stats:", error);
+      // Skip silently - not critical
     }
   };
 

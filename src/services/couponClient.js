@@ -1,5 +1,5 @@
 import { getApiBase } from '@/utils/api';
-import { clog, cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 
 /**
  * Coupon API client for frontend coupon operations
@@ -20,7 +20,7 @@ class CouponClient {
    */
   async applyCoupon({ couponCode, userId, cartItems, cartTotal }) {
     try {
-      clog('Applying coupon:', { couponCode, userId, cartTotal });
+      ludlog.payment('Applying coupon:', { data: { couponCode, userId, cartTotal } });
 
       const token = localStorage.getItem('authToken');
       if (!token) {
@@ -47,11 +47,11 @@ class CouponClient {
         throw new Error(data.error || 'Failed to apply coupon');
       }
 
-      clog('Coupon applied successfully:', data);
+      ludlog.api('Coupon applied successfully:', { data: data });
       return data;
 
     } catch (error) {
-      cerror('Error applying coupon:', error);
+      luderror.api('Error applying coupon:', error);
       throw error;
     }
   }
@@ -66,7 +66,7 @@ class CouponClient {
    */
   async getApplicableCoupons({ userId, cartItems, cartTotal }) {
     try {
-      clog('Getting applicable coupons for cart:', { userId, cartTotal });
+      ludlog.payment('Getting applicable coupons for cart:', { data: { userId, cartTotal } });
 
       const token = localStorage.getItem('authToken');
       if (!token) {
@@ -92,11 +92,11 @@ class CouponClient {
         throw new Error(data.error || 'Failed to get applicable coupons');
       }
 
-      clog('Applicable coupons retrieved:', data);
+      ludlog.api('Applicable coupons retrieved:', { data: data });
       return data;
 
     } catch (error) {
-      cerror('Error getting applicable coupons:', error);
+      luderror.api('Error getting applicable coupons:', error);
       throw error;
     }
   }
@@ -111,7 +111,7 @@ class CouponClient {
    */
   async getBestCoupon({ userId, cartItems, cartTotal }) {
     try {
-      clog('Getting best coupon for cart:', { userId, cartTotal });
+      ludlog.payment('Getting best coupon for cart:', { data: { userId, cartTotal } });
 
       const token = localStorage.getItem('authToken');
       if (!token) {
@@ -137,11 +137,11 @@ class CouponClient {
         throw new Error(data.error || 'Failed to get best coupon');
       }
 
-      clog('Best coupon retrieved:', data);
+      ludlog.api('Best coupon retrieved:', { data: data });
       return data;
 
     } catch (error) {
-      cerror('Error getting best coupon:', error);
+      luderror.api('Error getting best coupon:', error);
       throw error;
     }
   }
@@ -157,7 +157,7 @@ class CouponClient {
    */
   async validateCouponStacking({ couponCodes, userId, cartItems, cartTotal }) {
     try {
-      clog('Validating coupon stacking:', { couponCodes, userId, cartTotal });
+      ludlog.payment('Validating coupon stacking:', { data: { couponCodes, userId, cartTotal } });
 
       const token = localStorage.getItem('authToken');
       if (!token) {
@@ -184,11 +184,11 @@ class CouponClient {
         throw new Error(data.error || 'Failed to validate coupon stacking');
       }
 
-      clog('Coupon stacking validated:', data);
+      ludlog.api('Coupon stacking validated:', { data: data });
       return data;
 
     } catch (error) {
-      cerror('Error validating coupon stacking:', error);
+      luderror.api('Error validating coupon stacking:', error);
       throw error;
     }
   }

@@ -5,7 +5,7 @@
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { resolveActivityCode, normalizeActivityCode, isValidActivityCode } from '@/utils/codeResolver';
-import { clog } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 
 /**
  * Hook for handling activity code input and validation
@@ -52,7 +52,7 @@ export function useActivityCodeHandler(options = {}) {
     const finalCode = code || codeInput;
     const { type = null } = entryOptions;
 
-    clog(`🎯 useActivityCodeHandler: Processing code entry: ${finalCode}`);
+    ludlog.general(`🎯 useActivityCodeHandler: Processing code entry: ${finalCode}`);
 
     if (!finalCode || !finalCode.trim()) {
       if (showConfirmationDialog) {
@@ -101,11 +101,11 @@ export function useActivityCodeHandler(options = {}) {
       // Clear input on success
       setCodeInput('');
 
-      clog(`✅ useActivityCodeHandler: Code resolved successfully`, result);
+      ludlog.general(`✅ useActivityCodeHandler: Code resolved successfully`, { data: result });
       return result;
 
     } catch (error) {
-      clog(`❌ useActivityCodeHandler: Code resolution failed`, error);
+      ludlog.validation(`❌ useActivityCodeHandler: Code resolution failed`, { data: error });
       // Error handling is done inside resolveActivityCode
       return null;
     } finally {
@@ -134,7 +134,7 @@ export function useActivityCodeHandler(options = {}) {
    * @returns {Promise<Object>} Resolution result
    */
   const handleQRScanResult = useCallback(async (qrData) => {
-    clog(`📱 useActivityCodeHandler: Processing QR scan: ${qrData}`);
+    ludlog.general(`📱 useActivityCodeHandler: Processing QR scan: ${qrData}`);
 
     try {
       setIsLoading(true);
@@ -144,11 +144,11 @@ export function useActivityCodeHandler(options = {}) {
 
       const result = await handleQRScanResult(qrData, navigate, showConfirmationDialog);
 
-      clog(`✅ useActivityCodeHandler: QR scan resolved successfully`, result);
+      ludlog.general(`✅ useActivityCodeHandler: QR scan resolved successfully`, { data: result });
       return result;
 
     } catch (error) {
-      clog(`❌ useActivityCodeHandler: QR scan resolution failed`, error);
+      ludlog.validation(`❌ useActivityCodeHandler: QR scan resolution failed`, { data: error });
       // Error handling is done inside handleQRScanResult
       return null;
     } finally {
@@ -161,7 +161,7 @@ export function useActivityCodeHandler(options = {}) {
    * @returns {Promise<Object>} Scan result
    */
   const handleQRScan = useCallback(async () => {
-    clog(`📷 useActivityCodeHandler: Starting QR scan workflow`);
+    ludlog.general(`📷 useActivityCodeHandler: Starting QR scan workflow`);
 
     try {
       setIsLoading(true);
@@ -173,12 +173,12 @@ export function useActivityCodeHandler(options = {}) {
       return new Promise((resolve) => {
         scanQRCode({
           onSuccess: async (scannedData) => {
-            clog(`📱 useActivityCodeHandler: QR scan successful: ${scannedData}`);
+            ludlog.general(`📱 useActivityCodeHandler: QR scan successful: ${scannedData}`);
             const result = await handleQRScanResult(scannedData);
             resolve(result);
           },
           onError: (error) => {
-            clog(`❌ useActivityCodeHandler: QR scan failed: ${error}`);
+            ludlog.validation(`❌ useActivityCodeHandler: QR scan failed: ${error}`);
 
             if (showConfirmationDialog) {
               showConfirmationDialog({
@@ -200,7 +200,7 @@ export function useActivityCodeHandler(options = {}) {
       });
 
     } catch (error) {
-      clog(`❌ useActivityCodeHandler: QR scan workflow failed`, error);
+      ludlog.validation(`❌ useActivityCodeHandler: QR scan workflow failed`, { data: error });
 
       if (showConfirmationDialog) {
         showConfirmationDialog({

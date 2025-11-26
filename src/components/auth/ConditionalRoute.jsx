@@ -2,7 +2,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useUser } from '@/contexts/UserContext';
 import { isStaff } from '@/lib/userUtils';
 import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
-import { cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 
 /**
  * ConditionalRoute component that protects routes based on system settings visibility
@@ -90,7 +90,7 @@ export default function ConditionalRoute({
 
     default:
       // Unknown visibility setting - default to public access
-      cerror(`Unknown visibility setting: ${visibility} for field: ${visibilityField}`);
+      luderror.ui(`Unknown visibility setting: ${visibility} for field: ${visibilityField}`);
       return children;
   }
 }

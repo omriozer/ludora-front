@@ -38,7 +38,7 @@ import { toast } from '@/components/ui/use-toast';
 import { getProductTypeName } from '@/config/productTypes';
 import EnhancedLobbyCreationDialog from '@/components/game-lobbies/EnhancedLobbyActivationDialog';
 import { urls } from '@/config/urls';
-import { cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 
 
 // Main component
@@ -60,7 +60,7 @@ export default function GameLobbies() {
         setUserGames(games || []);
         setLoading(false);
       } catch (error) {
-        cerror('[GameLobbies] Error fetching user games:', error);
+        luderror.api('[GameLobbies] Error fetching user games:', error);
         // Handle error gracefully by showing empty state
         setUserGames([]);
         setLoading(false);
@@ -580,7 +580,7 @@ function GameCard({
       });
 
     } catch (error) {
-      cerror('[GameLobbies] Error processing lobby data for game:', game.id, error);
+      luderror.game('[GameLobbies] Error processing lobby data for game:', game.id, { context: error });
       // Set default values on error
       setLobbyData({
         status: 'no_lobby',
@@ -709,7 +709,7 @@ function GameCard({
       processLobbyData();
 
     } catch (error) {
-      cerror('[GameLobbies] Error handling lobby:', error);
+      luderror.game('[GameLobbies] Error handling lobby:', error);
       const action = isEditMode ? 'עריכת' : 'יצירת';
       toast({
         title: `שגיאה ב${action} לובי`,
@@ -787,7 +787,7 @@ function GameCard({
       }
 
     } catch (error) {
-      cerror('[GameLobbies] Error activating lobby:', error);
+      luderror.game('[GameLobbies] Error activating lobby:', error);
       toast({
         title: "שגיאה בהפעלת לובי",
         description: error.message || "אירעה שגיאה בלתי צפויה",
@@ -842,7 +842,7 @@ function GameCard({
       }
 
     } catch (error) {
-      cerror('[GameLobbies] Error closing lobby:', error);
+      luderror.game('[GameLobbies] Error closing lobby:', error);
       toast({
         title: "שגיאה בסגירת לובי",
         description: error.message || "אירעה שגיאה בלתי צפויה",
@@ -899,7 +899,7 @@ function GameCard({
           margin: 0  // Remove all padding/margin
         });
       } catch (error) {
-        cerror('[GameLobbies] Error generating QR code:', error);
+        luderror.game('[GameLobbies] Error generating QR code:', error);
       }
     }
   }, [showQRModal, qrContainer, lobbyCode]);

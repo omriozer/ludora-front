@@ -10,7 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Settings } from "@/services/entities";
 import { UploadFile } from "@/services/integrations";
 import { showConfirm } from '@/utils/messaging';
-import { cerror } from "@/lib/utils";
+import { ludlog, luderror } from '@/lib/ludlog';
 import { config } from '@/config/environment';
 import {
   Palette,
@@ -68,7 +68,7 @@ export default function BrandSettings() {
       });
 
     } catch (error) {
-      cerror('Error loading data:', error);
+      luderror.validation('Error loading data:', error);
       showMessage('error', 'שגיאה בטעינת הנתונים');
     }
     setIsLoading(false);
@@ -98,7 +98,7 @@ export default function BrandSettings() {
         showMessage('success', 'הלוגו הועלה בהצלחה');
       }
     } catch (error) {
-      cerror('Error uploading logo:', error);
+      luderror.media('Error uploading logo:', error);
 
       // Clear the file input on error so user can try again
       const fileInput = document.getElementById('logo-upload');
@@ -131,7 +131,7 @@ export default function BrandSettings() {
       showMessage('success', 'הגדרות המותג נשמרו בהצלחה');
       await loadData(); // Reload to get updated data
     } catch (error) {
-      cerror('Error saving settings:', error);
+      luderror.validation('Error saving settings:', error);
       showMessage('error', 'שגיאה בשמירת ההגדרות');
     }
     setIsSaving(false);

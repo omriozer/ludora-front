@@ -9,7 +9,7 @@ import { applyCoupon } from "@/services/functions";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getCartPurchases } from "@/utils/purchaseHelpers";
-import { cerror } from "@/lib/utils";
+import { ludlog, luderror } from '@/lib/ludlog';
 import { config } from "@/config/environment";
 
 export default function PaymentModal({ product, user, settings, isTestMode = (config.isDevelopment() || config.api.isLocalhost()), onClose }) {
@@ -52,7 +52,7 @@ export default function PaymentModal({ product, user, settings, isTestMode = (co
         setCouponError('');
       }
     } catch (error) {
-      cerror('Error applying coupon:', error);
+      luderror.ui('Error applying coupon:', error);
       setCouponError('שגיאה בהפעלת הקופון');
     }
     
@@ -177,7 +177,7 @@ export default function PaymentModal({ product, user, settings, isTestMode = (co
       }
 
     } catch (error) {
-      cerror('Payment error:', error);
+      luderror.payment('Payment error:', error);
       setError(error.message || 'שגיאה בעיבוד התשלום');
     }
     
@@ -194,18 +194,12 @@ export default function PaymentModal({ product, user, settings, isTestMode = (co
 
       const { data } = event;
 
-      // TODO remove debug - payment status polling
-      console.log('PayPlus iframe event received:', data);
-
       try {
         // Handle documented PayPlus events
         switch (data.event || data.type) {
           case 'pp_submitProcess':
             if (data.value === true) {
               // Payment submission started - update status to pending
-              // TODO remove debug - payment status polling
-              console.log('Payment submission detected via pp_submitProcess');
-
               try {
                 const { Purchase } = await import('@/services/entities');
                 const cartPurchases = await getCartPurchases(user.id);
@@ -224,15 +218,13 @@ export default function PaymentModal({ product, user, settings, isTestMode = (co
                   }
                 }
               } catch (error) {
-                cerror('PaymentModal: Error updating to pending status:', error);
+                luderror.payment('PaymentModal: Error updating to pending status:', error);
               }
             }
             break;
 
           case 'pp_responseFromServer':
             // Transaction completed (success or failure)
-            // TODO remove debug - payment status polling
-            console.log('PayPlus server response received:', data);
 
             // Let webhook/polling handle the final status update
             // Just redirect to result page for user feedback
@@ -243,21 +235,17 @@ export default function PaymentModal({ product, user, settings, isTestMode = (co
           case 'pp_paymentPageKilled':
           case 'pp_pageExpired':
             // Payment page closed or expired - keep purchases in cart status
-            // TODO remove debug - payment status polling
-            console.log('PayPlus page closed/expired:', data.event || data.type);
 
             // Close iframe and keep purchases in cart for retry
             setShowIframe(false);
             break;
 
           default:
-            // Unknown PayPlus event - log for debugging
-            // TODO remove debug - payment status polling
-            console.log('Unknown PayPlus event:', data.event || data.type, data);
+            // Unknown PayPlus event
             break;
         }
       } catch (error) {
-        cerror('PaymentModal: Error handling PayPlus event:', error);
+        luderror.payment('PaymentModal: Error handling PayPlus event:', error);
       }
     };
 
@@ -296,7 +284,7 @@ export default function PaymentModal({ product, user, settings, isTestMode = (co
                       });
                     }
                   } catch (error) {
-                    cerror('PaymentModal: Error resetting purchases on close:', error);
+                    luderror.payment('PaymentModal: Error resetting purchases on close:', error);
                   }
                 };
                 resetPaymentFlags();

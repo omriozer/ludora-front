@@ -1,5 +1,5 @@
 import { apiRequest } from './apiClient';
-import { clog, cerror } from '@/lib/utils';
+import { ludlog, luderror } from '@/lib/ludlog';
 
 /**
  * SubscriptionBusinessLogic - Service for handling subscription plan decisions and business logic
@@ -84,12 +84,12 @@ export class SubscriptionBusinessLogic {
    * @returns {Object} Action decision with type and metadata
    */
   static determineSubscriptionAction(user, targetPlan, userPurchases = [], availablePlans = [], userSubscriptions = []) {
-    clog('=== DETERMINING SUBSCRIPTION ACTION ===');
-    clog('User:', user?.email);
-    clog('Target plan:', targetPlan?.name, 'ID:', targetPlan?.id);
-    clog('User purchases count:', userPurchases?.length);
-    clog('Available plans count:', availablePlans?.length);
-    clog('User subscriptions count:', userSubscriptions?.length);
+    ludlog.payment('=== DETERMINING SUBSCRIPTION ACTION ===');
+    ludlog.payment('User:', { data: user?.email });
+    ludlog.payment('Target plan:', { data: { name: targetPlan?.name, id: targetPlan?.id } });
+    ludlog.payment('User purchases count:', { data: userPurchases?.length });
+    ludlog.payment('Available plans count:', { data: availablePlans?.length });
+    ludlog.payment('User subscriptions count:', { data: userSubscriptions?.length });
 
     const currentSubscription = this.getCurrentActiveSubscription(userPurchases);
     const pendingSwitchToDifferentPlan = this.hasPendingPlanSwitchToDifferentPlan(userPurchases, targetPlan.id);
@@ -108,16 +108,6 @@ export class SubscriptionBusinessLogic {
         plan.id === currentSubscription.purchasable_id
       ) || null;
     }
-
-    clog('Determining subscription action:', {
-      currentSubscription,
-      currentPlan: currentPlan?.name,
-      targetPlan: targetPlan.name,
-      pendingSwitchToDifferentPlan,
-      pendingSubscriptionForSamePlan: !!pendingSubscriptionForSamePlan,
-      pendingSubscriptionFromSubscriptions: !!pendingSubscriptionFromSubscriptions,
-      actualPendingSubscription: !!actualPendingSubscription
-    });
 
     // Check if user has a pending subscription for the SAME plan (retry payment scenario)
     if (actualPendingSubscription) {
@@ -270,8 +260,8 @@ export class SubscriptionBusinessLogic {
    * @returns {Object|null} Pending subscription for the same plan or null
    */
   static getPendingSubscriptionForSamePlan(purchases = [], targetPlanId) {
-    clog('Checking for pending subscription for same plan:', targetPlanId);
-    clog('All purchases:', purchases);
+    ludlog.payment('Checking for pending subscription for same plan:', { data: targetPlanId });
+    ludlog.payment('All purchases:', { data: purchases });
 
     const pendingSubscription = purchases.find(purchase =>
       (purchase.payment_status === 'pending' || purchase.status === 'pending_switch') &&
@@ -279,7 +269,7 @@ export class SubscriptionBusinessLogic {
       purchase.purchasable_id === targetPlanId
     );
 
-    clog('Found pending subscription for same plan:', pendingSubscription);
+    ludlog.payment('Found pending subscription for same plan:', { data: pendingSubscription });
     return pendingSubscription;
   }
 
@@ -290,15 +280,15 @@ export class SubscriptionBusinessLogic {
    * @returns {Object|null} Pending subscription for the same plan or null
    */
   static getPendingSubscriptionForSamePlanFromSubscriptions(subscriptions = [], targetPlanId) {
-    clog('Checking for pending subscription for same plan (from subscriptions table):', targetPlanId);
-    clog('All subscriptions:', subscriptions);
+    ludlog.payment('Checking for pending subscription for same plan (from subscriptions table):', { data: targetPlanId });
+    ludlog.payment('All subscriptions:', { data: subscriptions });
 
     const pendingSubscription = subscriptions.find(subscription =>
       subscription.status === 'pending' &&
       subscription.subscription_plan_id === targetPlanId
     );
 
-    clog('Found pending subscription for same plan (from subscriptions):', pendingSubscription);
+    ludlog.payment('Found pending subscription for same plan (from subscriptions):', { data: pendingSubscription });
     return pendingSubscription;
   }
 
@@ -309,8 +299,8 @@ export class SubscriptionBusinessLogic {
    * @returns {Object|null} Pending subscription for a different plan or null
    */
   static getPendingSubscriptionForDifferentPlan(purchases = [], targetPlanId) {
-    clog('Checking for pending subscription for different plan. Target:', targetPlanId);
-    clog('All purchases:', purchases);
+    ludlog.payment('Checking for pending subscription for different plan. Target:', { data: targetPlanId });
+    ludlog.payment('All purchases:', { data: purchases });
 
     const pendingSubscription = purchases.find(purchase =>
       (purchase.payment_status === 'pending' || purchase.status === 'pending_switch') &&
@@ -318,7 +308,7 @@ export class SubscriptionBusinessLogic {
       purchase.purchasable_id !== targetPlanId
     );
 
-    clog('Found pending subscription for different plan:', pendingSubscription);
+    ludlog.payment('Found pending subscription for different plan:', { data: pendingSubscription });
     return pendingSubscription;
   }
 
@@ -341,7 +331,7 @@ export class SubscriptionBusinessLogic {
    */
   static async executeSubscriptionAction(actionDecision) {
     try {
-      clog('Executing subscription action:', actionDecision);
+      ludlog.payment('Executing subscription action:', { data: actionDecision });
 
       if (!actionDecision.canProceed) {
         throw new Error(actionDecision.message || 'לא ניתן לבצע פעולה זו');
@@ -349,14 +339,14 @@ export class SubscriptionBusinessLogic {
 
       // Handle replace pending scenario - cancel existing pending subscription first
       if (actionDecision.actionType === this.ACTION_TYPES.REPLACE_PENDING && actionDecision.pendingSwitchToCancel) {
-        clog('Cancelling existing pending switch before proceeding...');
+        ludlog.api('Cancelling existing pending switch before proceeding...');
         const cancelResult = await this.cancelPendingPlanSwitch(actionDecision.pendingSwitchToCancel);
 
         if (!cancelResult.success) {
           throw new Error('לא ניתן לבטל את החלפת התוכנית הקיימת');
         }
 
-        clog('Existing pending switch cancelled, proceeding with new selection...');
+        ludlog.api('Existing pending switch cancelled', { data: { action: 'proceedingWithNewSelection' } });
       }
 
       if (actionDecision.needsPaymentPage) {
@@ -365,7 +355,7 @@ export class SubscriptionBusinessLogic {
         return await this.executeDirectPlanChange(actionDecision);
       }
     } catch (error) {
-      cerror('Failed to execute subscription action:', error);
+      luderror.payment('Failed to execute subscription action:', error);
       throw error;
     }
   }
@@ -394,7 +384,7 @@ export class SubscriptionBusinessLogic {
         body: JSON.stringify(paymentData)
       });
 
-      clog('Payment process created:', response);
+      ludlog.payment('Payment process created:', { data: response });
 
       if (response.success) {
         if (response.data?.isFree && response.data?.completed) {
@@ -421,7 +411,7 @@ export class SubscriptionBusinessLogic {
         throw new Error(response.error || 'שגיאה ביצירת המנוי');
       }
     } catch (error) {
-      cerror('Failed to create payment process:', error);
+      luderror.payment('Failed to create payment process:', error);
       throw new Error('שגיאה ביצירת תהליך התשלום');
     }
   }
@@ -435,14 +425,14 @@ export class SubscriptionBusinessLogic {
     try {
       // Handle cancel pending downgrade scenario - cancel existing pending subscription first
       if (actionDecision.actionType === this.ACTION_TYPES.CANCEL_PENDING_DOWNGRADE && actionDecision.pendingSwitchToCancel) {
-        clog('Cancelling existing pending switch for downgrade to free plan...');
+        ludlog.api('Cancelling existing pending switch for downgrade to free plan...');
         const cancelResult = await this.cancelPendingPlanSwitch(actionDecision.pendingSwitchToCancel);
 
         if (!cancelResult.success) {
           throw new Error('לא ניתן לבטל את המנוי הממתין');
         }
 
-        clog('Existing pending switch cancelled, proceeding with free plan activation...');
+        ludlog.api('Existing pending switch cancelled', { data: { action: 'proceedingWithFreePlanActivation' } });
       }
 
       const changeData = {
@@ -456,7 +446,7 @@ export class SubscriptionBusinessLogic {
         body: JSON.stringify(changeData)
       });
 
-      clog('Direct plan change executed:', response);
+      ludlog.api('Direct plan change executed:', { data: response });
       return {
         success: true,
         type: 'direct_change',
@@ -465,7 +455,7 @@ export class SubscriptionBusinessLogic {
           'התוכנית שונתה בהצלחה!'
       };
     } catch (error) {
-      cerror('Failed to execute direct plan change:', error);
+      luderror.api('Failed to execute direct plan change:', error);
       throw new Error('שגיאה בשינוי התוכנית');
     }
   }
@@ -481,13 +471,13 @@ export class SubscriptionBusinessLogic {
         method: 'POST'
       });
 
-      clog('Pending plan switch cancelled:', response);
+      ludlog.api('Pending plan switch cancelled:', { data: response });
       return {
         success: true,
         message: 'החלפת התוכנית הממתינה בוטלה'
       };
     } catch (error) {
-      cerror('Failed to cancel pending plan switch:', error);
+      luderror.api('Failed to cancel pending plan switch:', error);
       throw new Error('שגיאה בביטול החלפת התוכנית');
     }
   }
@@ -520,19 +510,19 @@ export class SubscriptionBusinessLogic {
    */
   static async cancelPendingSubscription(subscriptionId) {
     try {
-      clog('Cancelling pending subscription:', subscriptionId);
+      ludlog.payment('Cancelling pending subscription:', { data: subscriptionId });
 
       const response = await apiRequest(`/subscriptions/cancel-pending/${subscriptionId}`, {
         method: 'POST'
       });
 
-      clog('Pending subscription cancelled:', response);
+      ludlog.payment('Pending subscription cancelled:', { data: response });
       return {
         success: true,
         message: 'המנוי הממתין בוטל בהצלחה'
       };
     } catch (error) {
-      cerror('Failed to cancel pending subscription:', error);
+      luderror.payment('Failed to cancel pending subscription:', error);
       throw new Error('שגיאה בביטול המנוי הממתין');
     }
   }

@@ -41,7 +41,7 @@ import { he } from "date-fns/locale";
 import ProductActionBar from "@/components/ui/ProductActionBar";
 import { useProductActions } from "@/hooks/useProductActions";
 import PdfViewer from "@/components/pdf/PdfViewer";
-import { clog, cerror } from "@/lib/utils";
+import { ludlog, luderror } from '@/lib/ludlog';
 
 const PurchaseHistory = ({
   user,
@@ -93,11 +93,11 @@ const PurchaseHistory = ({
       const isCacheValid = cachedEntry && (now - cachedEntry.timestamp < ENTITIES_CACHE_DURATION);
 
       if (isCacheValid) {
-        clog('✅ Using cached entity data:', cacheKey);
+        ludlog.ui('✅ Using cached entity data:', { data: cacheKey });
         return cachedEntry.entity;
       }
 
-      clog('🔄 Loading entity from API (cache miss/expired):', cacheKey);
+      ludlog.api('🔄 Loading entity from API (cache miss/expired);:', cacheKey);
 
       let entity;
       switch (type) {
@@ -130,12 +130,12 @@ const PurchaseHistory = ({
           entity,
           timestamp: now
         });
-        clog('✅ Entity data cached:', cacheKey);
+        ludlog.ui('✅ Entity data cached:', { data: cacheKey });
       }
 
       return entity;
     } catch (error) {
-      cerror(`Error loading ${type} ${id}:`, error);
+      luderror.ui(`Error loading ${type} ${id}:`, error);
       return null;
     }
   };
@@ -145,7 +145,7 @@ const PurchaseHistory = ({
 
     setIsLoading(true);
     try {
-      clog('[PurchaseHistory] Loading purchases for user:', user.id);
+      ludlog.payment('[PurchaseHistory] Loading purchases for user:', { data: user.id });
 
       // Check if we have cached purchases data for this user
       const userId = user.id;
@@ -155,21 +155,13 @@ const PurchaseHistory = ({
 
       let userPurchases;
 
-      clog('🔍 PurchaseHistory cache check:', {
-        userId,
-        hasCacheEntry: !!userCacheEntry,
-        cacheAge: userCacheEntry ? (now - userCacheEntry.timestamp) / 1000 : 'N/A',
-        cacheDurationSeconds: PURCHASES_CACHE_DURATION / 1000,
-        isCacheValid,
-        totalCacheEntries: purchasesCache.size
-      });
 
       if (isCacheValid) {
-        clog('✅ Using cached purchases data for PurchaseHistory user', userId);
+        ludlog.payment('✅ Using cached purchases data for PurchaseHistory user', { data: userId });
         userPurchases = userCacheEntry.purchases;
       } else {
         const reason = !userCacheEntry ? 'no cache entry' : 'cache expired';
-        clog('🔄 Loading purchases data for PurchaseHistory user (cache miss/expired):', userId, `(${reason})`);
+        ludlog.payment('🔄 Loading purchases data for PurchaseHistory user (cache miss/expired);:', userId, `(${reason})`);
 
         // Load purchases using buyer_user_id with ordered results
         userPurchases = await Purchase.filter({ buyer_user_id: user.id }, { order: [['created_at', 'DESC']] });
@@ -179,7 +171,7 @@ const PurchaseHistory = ({
           purchases: userPurchases,
           timestamp: now
         });
-        clog('✅ PurchaseHistory purchases data cached for user', userId);
+        ludlog.payment('✅ PurchaseHistory purchases data cached for user', { data: userId });
       }
       setPurchases(userPurchases);
 
@@ -197,14 +189,14 @@ const PurchaseHistory = ({
             }
             return null;
           } catch (error) {
-            cerror(`Error loading entity for purchase ${purchase.id}:`, error);
+            luderror.payment(`Error loading entity for purchase ${purchase.id}:`, error);
             return null;
           }
         })
       );
       setProducts(entitiesData.filter(Boolean));
     } catch (error) {
-      cerror("Error loading purchases:", error);
+      luderror.payment("Error loading purchases:", error);
     } finally {
       setIsLoading(false);
     }
