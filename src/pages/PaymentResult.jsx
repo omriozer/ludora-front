@@ -149,10 +149,35 @@ export default function PaymentResult() {
             // Use payment_status field, not status field
             const actualStatus = transactionData.payment_status || transactionData.status;
 
-            // Determine status from transaction presence and status
+            // CRITICAL: Trigger polling when PayPlus redirects back with transaction_uid
             if (transactionUid && actualStatus === 'pending') {
-              // Payment completed (we have transaction_uid), but webhook may not have fired yet
-              finalStatus = 'success';
+              // Payment redirect detected - trigger polling to check PayPlus API
+              console.log('🔍 PayPlus redirect detected, triggering polling for transaction:', transactionData.id);
+
+              try {
+                const { apiRequest } = await import('@/services/apiClient');
+
+                // Trigger polling by checking transaction status
+                const pollResult = await apiRequest(`/api/payments/transaction-status/${transactionData.id}`, {
+                  method: 'GET'
+                });
+
+                console.log('✅ Polling triggered successfully:', pollResult);
+
+                // Set status based on polling result
+                if (pollResult.poll_result?.success && pollResult.poll_result?.status === 'completed') {
+                  finalStatus = 'success';
+                } else if (pollResult.poll_result?.status === 'failed') {
+                  finalStatus = 'failure';
+                } else {
+                  // Still pending, might need more time
+                  finalStatus = 'pending';
+                }
+              } catch (pollError) {
+                console.error('❌ Failed to trigger polling:', pollError);
+                // Fallback to assuming success if redirect happened
+                finalStatus = 'success';
+              }
             } else {
               // Use existing transaction status
               const statusMap = {

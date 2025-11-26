@@ -25,7 +25,6 @@ import {
   Tag,
   Percent,
   Shield,
-  X,
   RotateCcw,
   Loader2
 } from "lucide-react";
@@ -59,12 +58,6 @@ export default function Checkout() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [paymentUrl, setPaymentUrl] = useState('');
-  const [isIframeLoading, setIsIframeLoading] = useState(true);
-
-  // PaymentIntent state
-  const [currentTransactionId, setCurrentTransactionId] = useState(null);
 
   // Coupon management
   const [appliedCoupons, setAppliedCoupons] = useState([]);
@@ -184,141 +177,6 @@ export default function Checkout() {
     }
   }, [loadCheckoutData, userLoading, currentUser]);
 
-  // REMOVED: Polling cleanup - no longer needed with immediate confirmation
-
-  // Handle iframe messages from PayPlus
-  useEffect(() => {
-    const handleMessage = async (event) => {
-      // DEBUG: Log ALL iframe messages to see what PayPlus is sending
-      if (event.data &&
-          event.data.source !== 'react-devtools-bridge' &&
-          event.data.source !== 'react-devtools-content-script' &&
-          event.data.source !== 'react-devtools-inject-script') {
-        console.log('🔍 PayPlus iframe message received:', {
-          origin: event.origin,
-          data: event.data,
-          type: typeof event.data
-        });
-      }
-
-      // Filter out non-PayPlus messages (React DevTools, etc.)
-      if (!event.data ||
-          event.data.source === 'react-devtools-bridge' ||
-          event.data.source === 'react-devtools-content-script' ||
-          event.data.source === 'react-devtools-inject-script') {
-        return;
-      }
-
-      // Handle both string and object messages from PayPlus
-      try {
-        let data = null;
-        if (typeof event.data === 'string') {
-          try {
-            data = JSON.parse(event.data);
-            console.log('📨 Parsed PayPlus JSON message:', data);
-          } catch (e) {
-            console.log('⚠️ Non-JSON string message:', event.data);
-            return;
-          }
-        } else if (typeof event.data === 'object') {
-          data = event.data;
-          console.log('📨 PayPlus object message:', data);
-        }
-
-        if (data) {
-        // CATCH-ALL: Log any PayPlus event to understand the format
-        console.log('🎯 Processing PayPlus event:', {
-          event: data.event,
-          type: data.type,
-          value: data.value,
-          status: data.status,
-          fullData: data
-        });
-
-        // CRITICAL: Handle PayPlus payment submission event
-        if (data.event === 'pp_submitProcess' && data.value === true) {
-          // Payment submission started - trigger status change to "pending"
-          // This will start automatic polling since webhooks are disabled
-          console.log('🚀 PayPlus payment submission detected - triggering pending status and polling');
-
-          if (currentTransactionId) {
-            try {
-              // Call update-status API to trigger status change and polling
-              await apiRequest('/payments/update-status', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                  transaction_id: currentTransactionId,
-                  status: 'pending'
-                })
-              });
-
-              // Update local cart state to show pending status
-              const updatedCartItems = cartItems.map(item => {
-                if (item.id === currentTransactionId) {
-                  return {
-                    ...item,
-                    payment_status: 'pending'
-                  };
-                }
-                return item;
-              });
-              setCartItems(updatedCartItems);
-
-              console.log('✅ Payment status updated to pending, polling started');
-            } catch (error) {
-              cerror('Error updating payment status to pending:', error);
-            }
-          }
-          return; // Don't process other events if this was handled
-        }
-
-        if (data.type === 'payplus_payment_complete') {
-
-          // Payment detected via immediate notification (no polling needed)
-
-          // NEW: Notify API that payment was submitted (regardless of success/failure)
-          if (currentTransactionId) {
-            try {
-              await apiRequest(`/payments/confirm/${currentTransactionId}`, {
-                method: 'POST'
-              });
-            } catch (confirmError) {
-              cerror('Error sending payment confirmation to API:', confirmError);
-              // Continue with normal flow even if confirmation fails
-            }
-          }
-
-          if (data.status === 'success') {
-            // Payment was successful - trigger success handler
-            await handlePaymentSuccess();
-          } else {
-            // Payment failed/cancelled - just close modal
-            handlePaymentModalClose();
-
-            toast({
-              title: "תשלום לא הושלם",
-              description: "התשלום בוטל או נכשל. הפריטים נשמרו בעגלה.",
-              variant: "destructive",
-            });
-          }
-        }
-      }
-    } catch (e) {
-      // Silently ignore non-JSON messages
-      return;
-    }
-    };
-
-    if (showPaymentModal && paymentUrl) {
-      window.addEventListener('message', handleMessage);
-      return () => {
-        window.removeEventListener('message', handleMessage);
-      };
-    }
-  }, [showPaymentModal, paymentUrl]);
 
   // Remove item from cart
   const handleRemoveItem = async (purchaseId) => {
@@ -404,7 +262,7 @@ export default function Checkout() {
 
   // REMOVED: Polling functions - replaced by immediate PayPlus message handler
 
-  // Proceed to payment using new PaymentIntent flow
+  // Proceed to payment using PayPlus page redirect
   const handleProceedToPayment = async () => {
     // Only consider cart items (not pending items) for new payments
     const cartOnlyItems = cartItems.filter(item => item.payment_status === 'cart');
@@ -423,11 +281,9 @@ export default function Checkout() {
       });
 
       if (paymentResponse.success && paymentResponse.paymentUrl) {
-        // Set payment URL and transaction ID, then show modal
-        setPaymentUrl(paymentResponse.paymentUrl);
-        setCurrentTransactionId(paymentResponse.transactionId);
-        setIsIframeLoading(true); // Reset loading state for new iframe
-        setShowPaymentModal(true);
+        // Redirect to PayPlus payment page (full page redirect)
+        console.log('🏦 Redirecting to PayPlus payment page:', paymentResponse.paymentUrl);
+        window.location.href = paymentResponse.paymentUrl;
       } else {
         setIsProcessingPayment(false);
         toast({
@@ -448,51 +304,6 @@ export default function Checkout() {
     }
   };
 
-  // Handle modal close
-  const handlePaymentModalClose = () => {
-    setShowPaymentModal(false);
-    setIsProcessingPayment(false);
-    setPaymentUrl('');
-    setIsIframeLoading(true);
-
-    // Clear transaction ID
-    setCurrentTransactionId(null);
-  };
-
-  // Handle successful payment (clear cart and reload data)
-  const handlePaymentSuccess = async () => {
-    try {
-      // Clear local cart state
-      setCartItems([]);
-      setCartItemProducts({});
-
-      // Notify cart context to update
-      cartItems.forEach(item => removeFromCart(item.id));
-
-      // Recalculate pricing for empty cart
-      calculatePricing([]);
-
-      // Show success message
-      toast({
-        title: "תשלום הושלם בהצלחה!",
-        description: "הפריטים נרכשו והוסרו מהעגלה",
-        variant: "default",
-      });
-
-      // Close modal and clear state
-      setShowPaymentModal(false);
-      setIsProcessingPayment(false);
-      setCurrentTransactionId(null);
-
-      // Optionally reload checkout data to ensure sync
-      setTimeout(() => {
-        loadCheckoutData();
-      }, 1000);
-
-    } catch (error) {
-      cerror('Error handling payment success:', error);
-    }
-  };
 
   // Get product type icon
   const getProductIcon = (type) => {
@@ -811,58 +622,6 @@ export default function Checkout() {
         </div>
       </div>
 
-      {/* PayPlus Payment Modal - Iframe Only */}
-      {showPaymentModal && paymentUrl && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg w-full max-w-4xl h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between p-4 border-b">
-              <div className="flex items-center gap-3">
-                <h2 className="text-xl font-semibold">תשלום מאובטח</h2>
-                {currentTransactionId && (
-                  <div className="text-xs text-gray-500 font-mono">
-                    ID: {currentTransactionId.slice(-8)}
-                  </div>
-                )}
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handlePaymentModalClose}
-              >
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
-            <div className="flex-1 relative">
-              {/* Loading Spinner Overlay */}
-              {isIframeLoading && (
-                <div className="absolute inset-0 bg-white flex items-center justify-center z-10">
-                  <LudoraLoadingSpinner
-                    message="טוען דף תשלום..."
-                    status="loading"
-                    size="lg"
-                    theme="neon"
-                    showParticles={true}
-                  />
-                </div>
-              )}
-
-              {/* PayPlus Iframe */}
-              <iframe
-                src={paymentUrl}
-                className="w-full h-full border-0"
-                title="PayPlus Payment"
-                onLoad={() => {
-                  setIsIframeLoading(false);
-                }}
-                onError={(e) => {
-                  cerror('PayPlus iframe error:', e);
-                  setIsIframeLoading(false);
-                }}
-              />
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
