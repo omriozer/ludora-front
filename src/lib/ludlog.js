@@ -49,39 +49,52 @@ const styles = {
  * @private
  */
 function formatLog(category, message, data, forceProduction = false) {
-  // Check if we should log at all
-  if (!forceProduction && !shouldLog()) return;
-  if (forceProduction && !shouldForceLog()) return;
+  try {
+    // Check if we should log at all
+    if (!forceProduction && !shouldLog()) return;
+    if (forceProduction && !shouldForceLog()) return;
 
-  const timestamp = new Date().toISOString();
-  const prodMarker = forceProduction ? ' [PROD]' : '';
+    // Defensive parameter sanitization
+    const safeCategory = (typeof category === 'string' ? category : 'general').toLowerCase();
+    const safeMessage = typeof message === 'string' ? message : String(message || 'Unknown log message');
+    const timestamp = new Date().toISOString();
+    const prodMarker = forceProduction ? ' [PROD]' : '';
 
-  if (isDevelopment && !forceProduction) {
-    // Colorful output for development
-    const style = styles[category] || styles.general;
+    if (isDevelopment && !forceProduction) {
+      // Colorful output for development
+      const style = styles[safeCategory] || styles.general || styles.reset;
 
-    console.log(
-      `%c[${timestamp}]${prodMarker}%c %c[${category.toUpperCase()}]%c ${message}`,
-      styles.timestamp,
-      styles.reset,
-      style,
-      styles.reset
-    );
+      console.log(
+        `%c[${timestamp}]${prodMarker}%c %c[${safeCategory.toUpperCase()}]%c ${safeMessage}`,
+        styles.timestamp || styles.reset,
+        styles.reset,
+        style,
+        styles.reset
+      );
 
-    if (data && Object.keys(data).length > 0) {
-      console.log('  └─', data);
+      if (data && typeof data === 'object' && Object.keys(data).length > 0) {
+        console.log('  └─', data);
+      }
+    } else {
+      // Structured output for production (JSON format for log aggregators)
+      const logEntry = {
+        timestamp,
+        level: forceProduction ? 'critical' : 'info',
+        category: safeCategory,
+        message: safeMessage,
+        ...(data && typeof data === 'object' && { data }),
+        ...(forceProduction && { production: true })
+      };
+      console.log(JSON.stringify(logEntry));
     }
-  } else {
-    // Structured output for production (JSON format for log aggregators)
-    const logEntry = {
-      timestamp,
-      level: forceProduction ? 'critical' : 'info',
-      category,
-      message,
-      ...(data && { data }),
-      ...(forceProduction && { production: true })
-    };
-    console.log(JSON.stringify(logEntry));
+  } catch (error) {
+    // Logging system should never crash the app - fail silently with fallback
+    try {
+      console.error('[LUDLOG ERROR] Logging system failed:', error.message);
+    } catch (fallbackError) {
+      // Even the fallback error logging failed - this should never happen
+      // but we handle it to ensure absolute safety
+    }
   }
 }
 
@@ -90,57 +103,70 @@ function formatLog(category, message, data, forceProduction = false) {
  * @private
  */
 function formatError(category, message, error, context, forceProduction = false) {
-  // Check if we should log at all
-  if (!forceProduction && !shouldLog()) return;
-  if (forceProduction && !shouldForceLog()) return;
+  try {
+    // Check if we should log at all
+    if (!forceProduction && !shouldLog()) return;
+    if (forceProduction && !shouldForceLog()) return;
 
-  const timestamp = new Date().toISOString();
-  const prodMarker = forceProduction ? ' [PROD]' : '';
+    // Defensive parameter sanitization
+    const safeCategory = (typeof category === 'string' ? category : 'general').toLowerCase();
+    const safeMessage = typeof message === 'string' ? message : String(message || 'Unknown error message');
+    const timestamp = new Date().toISOString();
+    const prodMarker = forceProduction ? ' [PROD]' : '';
 
-  if (isDevelopment && !forceProduction) {
-    // Detailed error output for development
-    const style = styles[category] || styles.general;
+    if (isDevelopment && !forceProduction) {
+      // Detailed error output for development
+      const style = styles[safeCategory] || styles.general || styles.reset;
 
-    console.error(
-      `%c[${timestamp}]${prodMarker} [ERROR]%c %c[${category.toUpperCase()}]%c ${message}`,
-      styles.error,
-      styles.reset,
-      style,
-      styles.reset
-    );
+      console.error(
+        `%c[${timestamp}]${prodMarker} [ERROR]%c %c[${safeCategory.toUpperCase()}]%c ${safeMessage}`,
+        styles.error || styles.reset,
+        styles.reset,
+        style,
+        styles.reset
+      );
 
-    if (context && Object.keys(context).length > 0) {
-      console.error('  ├─ Context:', context);
-    }
-
-    if (error) {
-      if (error.stack) {
-        console.error('  ├─ Stack:', error.stack);
-      } else {
-        console.error('  ├─ Error:', error);
+      if (context && typeof context === 'object' && Object.keys(context).length > 0) {
+        console.error('  ├─ Context:', context);
       }
-    }
 
-    console.error('  └─ ────────────────────────');
-  } else {
-    // Structured error output for production
-    const errorEntry = {
-      timestamp,
-      level: 'error',
-      category,
-      message,
-      ...(context && { context }),
-      ...(error && {
-        error: {
-          message: error.message || String(error),
-          stack: error.stack,
-          name: error.name,
-          code: error.code
+      if (error) {
+        if (error && typeof error === 'object' && error.stack) {
+          console.error('  ├─ Stack:', error.stack);
+        } else {
+          console.error('  ├─ Error:', String(error || 'Unknown error'));
         }
-      }),
-      ...(forceProduction && { production: true })
-    };
-    console.error(JSON.stringify(errorEntry));
+      }
+
+      console.error('  └─ ────────────────────────');
+    } else {
+      // Structured error output for production
+      const errorEntry = {
+        timestamp,
+        level: 'error',
+        category: safeCategory,
+        message: safeMessage,
+        ...(context && typeof context === 'object' && { context }),
+        ...(error && {
+          error: {
+            message: (error && error.message) ? String(error.message) : String(error || 'Unknown error'),
+            stack: (error && error.stack) ? error.stack : null,
+            name: (error && error.name) ? error.name : null,
+            code: (error && error.code) ? error.code : null
+          }
+        }),
+        ...(forceProduction && { production: true })
+      };
+      console.error(JSON.stringify(errorEntry));
+    }
+  } catch (loggingError) {
+    // Logging system should never crash the app - fail silently with fallback
+    try {
+      console.error('[LUDERROR ERROR] Error logging system failed:', loggingError.message);
+    } catch (fallbackError) {
+      // Even the fallback error logging failed - this should never happen
+      // but we handle it to ensure absolute safety
+    }
   }
 }
 
@@ -168,7 +194,7 @@ function createLogMethod(category, isError = false) {
  *   ludlog.auth('Login attempt', { userId });           // Dev only
  *   ludlog.auth.prod('Critical auth failure', { ip });  // Always logs
  */
-const ludlog = {
+const ludlogBase = {
   // Authentication & Authorization (critical security events)
   auth: createLogMethod('auth'),
 
@@ -200,6 +226,24 @@ const ludlog = {
   general: createLogMethod('general')
 };
 
+// Create a Proxy to handle unknown categories gracefully
+const ludlog = new Proxy(ludlogBase, {
+  get(target, property) {
+    // Return known categories directly
+    if (target[property]) {
+      return target[property];
+    }
+
+    // For unknown categories, return a generic logger with the requested category name
+    if (typeof property === 'string') {
+      return createLogMethod(property);
+    }
+
+    // For symbols and other property types, return undefined
+    return undefined;
+  }
+});
+
 /**
  * Strategic error logging interface with semantic categories
  *
@@ -207,7 +251,7 @@ const ludlog = {
  *   luderror.api('Request failed', err, { endpoint });           // Dev only
  *   luderror.api.prod('Critical API failure', err, { endpoint }); // Always logs
  */
-const luderror = {
+const luderrorBase = {
   // Authentication & Authorization Errors (security breaches)
   auth: createLogMethod('auth', true),
 
@@ -238,6 +282,24 @@ const luderror = {
   // General Errors (critical failures, inconsistencies)
   general: createLogMethod('general', true)
 };
+
+// Create a Proxy to handle unknown categories gracefully
+const luderror = new Proxy(luderrorBase, {
+  get(target, property) {
+    // Return known categories directly
+    if (target[property]) {
+      return target[property];
+    }
+
+    // For unknown categories, return a generic error logger with the requested category name
+    if (typeof property === 'string') {
+      return createLogMethod(property, true);
+    }
+
+    // For symbols and other property types, return undefined
+    return undefined;
+  }
+});
 
 // ES Module exports
 export {
