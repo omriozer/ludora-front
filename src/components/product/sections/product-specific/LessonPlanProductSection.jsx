@@ -31,6 +31,8 @@ import { File, Product, apiUploadWithProgress, apiRequest } from '@/services/api
 import { getApiBase } from '@/utils/api';
 import { ludlog, luderror } from '@/lib/ludlog';
 import { toast } from '@/components/ui/use-toast';
+import { ApiError } from '@/utils/ApiError';
+import { useGlobalAuthErrorHandler } from '@/components/providers/AuthErrorProvider';
 import { showConfirm } from '@/utils/messaging';
 import EntitySelector from '@/components/ui/EntitySelector';
 import SVGSlideManager from '../SVGSlideManager';
@@ -57,6 +59,7 @@ const LessonPlanProductSection = ({
   currentUser
 }) => {
   const navigate = useNavigate();
+  const { handleAuthError } = useGlobalAuthErrorHandler();
   const [uploadingFiles, setUploadingFiles] = useState({});
   const [lessonPlanFiles, setLessonPlanFiles] = useState({
     presentation: [],
@@ -392,11 +395,21 @@ const LessonPlanProductSection = ({
         fileInput.value = '';
       }
 
-      toast({
-        title: "שגיאה בהעלאת קבצים",
-        description: error.message || "לא ניתן להעלות את הקבצים. אנא נסה שנית.",
-        variant: "destructive"
-      });
+      // Check if this is an authentication error (session expiry)
+      if (error instanceof ApiError && error.isAuthError()) {
+        // Handle auth error with login modal and Hebrew message
+        handleAuthError(error, () => {
+          // Retry upload after successful re-login
+          handleFileUpload(files, fileRole);
+        });
+      } else {
+        // Handle other errors with generic message
+        toast({
+          title: "שגיאה בהעלאת קבצים",
+          description: error.message || "לא ניתן להעלות את הקבצים. אנא נסה שנית.",
+          variant: "destructive"
+        });
+      }
     } finally {
       setUploadingFiles(prev => ({ ...prev, [uploadKey]: false }));
     }
@@ -491,37 +504,47 @@ const LessonPlanProductSection = ({
 
     } catch (error) {
       luderror.media('Error removing file:', error);
-      // Even if deletion fails, remove from UI - update local state FIRST
-      ludlog.media('🗑️ Error occurred', { data: { action: 'removingFromUIAnyway' } });
-      setLessonPlanFiles(prev => {
-        const newState = {
-          ...prev,
-          [fileRole]: prev[fileRole].filter(f => f.file_id !== fileConfig.file_id)
-        };
-        ludlog.websocket('🗑️ New lessonPlanFiles state after error removal:', { data: newState });
-        return newState;
-      });
 
-      // Mark that we have local changes to prevent useEffect override
-      setHasLocalChanges(true);
+      // Check if this is an authentication error (session expiry)
+      if (error instanceof ApiError && error.isAuthError()) {
+        // Handle auth error with login modal and Hebrew message
+        handleAuthError(error, () => {
+          // Retry removal after successful re-login
+          removeFile(fileConfig, fileRole);
+        });
+      } else {
+        // For non-auth errors: Even if deletion fails, remove from UI
+        ludlog.media('🗑️ Non-auth error occurred', { data: { action: 'removingFromUIAnyway' } });
+        setLessonPlanFiles(prev => {
+          const newState = {
+            ...prev,
+            [fileRole]: prev[fileRole].filter(f => f.file_id !== fileConfig.file_id)
+          };
+          ludlog.websocket('🗑️ New lessonPlanFiles state after error removal:', { data: newState });
+          return newState;
+        });
 
-      // Then update formData
-      const currentFileConfigs = formData.file_configs || { files: [] };
-      const updatedFiles = currentFileConfigs.files.filter(f => f.file_id !== fileConfig.file_id);
+        // Mark that we have local changes to prevent useEffect override
+        setHasLocalChanges(true);
 
-      updateFormData({
-        file_configs: {
-          ...currentFileConfigs,
-          files: updatedFiles
-        }
-      });
+        // Then update formData
+        const currentFileConfigs = formData.file_configs || { files: [] };
+        const updatedFiles = currentFileConfigs.files.filter(f => f.file_id !== fileConfig.file_id);
 
-      const errorAction = fileConfig.is_asset_only ? "נמחק" : "נותק";
-      toast({
-        title: `קובץ ${errorAction} מהרשימה`,
-        description: `הקובץ ${errorAction} מהרשימה`,
-        variant: "default"
-      });
+        updateFormData({
+          file_configs: {
+            ...currentFileConfigs,
+            files: updatedFiles
+          }
+        });
+
+        const errorAction = fileConfig.is_asset_only ? "נמחק" : "נותק";
+        toast({
+          title: `קובץ ${errorAction} מהרשימה`,
+          description: `הקובץ ${errorAction} מהרשימה`,
+          variant: "default"
+        });
+      }
     }
   };
 
@@ -661,11 +684,22 @@ const LessonPlanProductSection = ({
 
     } catch (error) {
       luderror.media('Error linking file product:', error);
-      toast({
-        title: "שגיאה בקישור קובץ",
-        description: error.message || "לא ניתן לקשר את הקובץ. אנא נסה שנית.",
-        variant: "destructive"
-      });
+
+      // Check if this is an authentication error (session expiry)
+      if (error instanceof ApiError && error.isAuthError()) {
+        // Handle auth error with login modal and Hebrew message
+        handleAuthError(error, () => {
+          // Retry linking after successful re-login
+          linkFileProduct(fileProduct, fileRole);
+        });
+      } else {
+        // Handle other errors with generic message
+        toast({
+          title: "שגיאה בקישור קובץ",
+          description: error.message || "לא ניתן לקשר את הקובץ. אנא נסה שנית.",
+          variant: "destructive"
+        });
+      }
     }
   };
 
