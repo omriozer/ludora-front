@@ -327,11 +327,17 @@ export default function FloatingAdminMenu({ currentUser }) {
           icon: <Shield className="w-4 h-4" />,
           description: "הגדרות נווט ותצוגה"
         },
-        { 
-          title: "הגדרות מוצרים", 
-          url: "/product-settings", 
+        {
+          title: "הגדרות מוצרים",
+          url: "/product-settings",
           icon: <SettingsIcon className="w-4 h-4" />, // Changed to SettingsIcon
           description: "ברירות מחדל למוצרים"
+        },
+        {
+          title: "הגדרות פורטלים",
+          url: "/portals-settings",
+          icon: <Globe className="w-4 h-4" />,
+          description: "הגדרות פורטל תלמידים ומורים"
         },
         {
           title: "ניהול צלילים",

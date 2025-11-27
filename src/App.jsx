@@ -928,6 +928,16 @@ function App() {
 						}
 					/>
 					<Route
+						path='/portals-settings'
+						element={
+							<AdminRoute>
+								<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ADMIN}>
+									<LazyPages.PortalsSettings />
+								</AuthAwareSuspense>
+							</AdminRoute>
+						}
+					/>
+					<Route
 						path='/categories'
 						element={
 							<AdminRoute>

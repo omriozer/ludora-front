@@ -64,6 +64,7 @@ export const Users = lazy(() => import('./Users'));
 export const FeatureControl = lazy(() => import('./FeatureControl'));
 export const BrandSettings = lazy(() => import('./BrandSettings'));
 export const ProductSettings = lazy(() => import('./ProductSettings'));
+export const PortalsSettings = lazy(() => import('./PortalsSettings'));
 export const CategoryManagement = lazy(() => import('./CategoryManagement'));
 export const ContentTopicsManagement = lazy(() => import('./ContentTopicsManagement'));
 export const AudioManagement = lazy(() => import('./AudioManagement'));
