@@ -220,11 +220,9 @@ export class SubscriptionBusinessLogic {
    * @returns {Object|null} Current active subscription or null
    */
   static getCurrentActiveSubscription(purchases = []) {
-    return purchases.find(purchase =>
-      purchase.purchasable_type === 'subscription' &&
-      purchase.payment_status === 'completed' &&
-      (!purchase.access_expires_at || new Date(purchase.access_expires_at) > new Date())
-    );
+    // Legacy Purchase-based subscriptions no longer supported
+    // Only new Subscription table should be used for subscriptions
+    return null;
   }
 
   /**
@@ -263,14 +261,10 @@ export class SubscriptionBusinessLogic {
     ludlog.payment('Checking for pending subscription for same plan:', { data: targetPlanId });
     ludlog.payment('All purchases:', { data: purchases });
 
-    const pendingSubscription = purchases.find(purchase =>
-      (purchase.payment_status === 'pending' || purchase.status === 'pending_switch') &&
-      purchase.purchasable_type === 'subscription' &&
-      purchase.purchasable_id === targetPlanId
-    );
-
-    ludlog.payment('Found pending subscription for same plan:', { data: pendingSubscription });
-    return pendingSubscription;
+    // Legacy Purchase-based subscriptions no longer supported
+    // Only check new Subscription table via getPendingSubscriptionForSamePlanFromSubscriptions()
+    ludlog.payment('Legacy purchase-based subscriptions disabled - returning null');
+    return null;
   }
 
   /**
@@ -302,14 +296,10 @@ export class SubscriptionBusinessLogic {
     ludlog.payment('Checking for pending subscription for different plan. Target:', { data: targetPlanId });
     ludlog.payment('All purchases:', { data: purchases });
 
-    const pendingSubscription = purchases.find(purchase =>
-      (purchase.payment_status === 'pending' || purchase.status === 'pending_switch') &&
-      purchase.purchasable_type === 'subscription' &&
-      purchase.purchasable_id !== targetPlanId
-    );
-
-    ludlog.payment('Found pending subscription for different plan:', { data: pendingSubscription });
-    return pendingSubscription;
+    // Legacy Purchase-based subscriptions no longer supported
+    // Only check new Subscription table for pending subscriptions
+    ludlog.payment('Legacy purchase-based subscriptions disabled - returning null');
+    return null;
   }
 
   /**
