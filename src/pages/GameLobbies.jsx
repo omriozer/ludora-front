@@ -137,6 +137,7 @@ function MainLobbyView({ userGames, loading }) {
   // ✅ Socket.IO connection for real-time lobby updates
   const [socketConnectionState, setSocketConnectionState] = useState('disconnected');
   const [gameUpdateTrigger, setGameUpdateTrigger] = useState(0);
+  const [debugPanel, setDebugPanel] = useState(false);
 
   // Socket.IO connection for real-time lobby updates
   useEffect(() => {
@@ -145,9 +146,40 @@ function MainLobbyView({ userGames, loading }) {
     // Connect to Socket.IO
     socketClient.connect().then(() => {
       setSocketConnectionState('connected');
-    }).catch(() => {
+    }).catch((error) => {
       setSocketConnectionState('error');
+      luderror.api('Socket.IO connection failed in GameLobbies:', error);
     });
+
+    // Expose debugging functions to global scope for easy console access
+    if (typeof window !== 'undefined') {
+      window.ludoraSocketDebug = {
+        testConnectivity: () => socketClient.testConnectivity(),
+        sendTest: (message) => socketClient.sendTest(message),
+        getDebugInfo: () => socketClient.getDebugInfo(),
+        showDebugPanel: () => setDebugPanel(true),
+        hideDebugPanel: () => setDebugPanel(false),
+        reconnect: () => {
+          setSocketConnectionState('connecting');
+          socketClient.disconnect();
+          setTimeout(() => {
+            socketClient.connect().then(() => {
+              setSocketConnectionState('connected');
+            }).catch(() => {
+              setSocketConnectionState('error');
+            });
+          }, 1000);
+        }
+      };
+
+      ludlog.api('🔧 Socket.IO debugging functions exposed to window.ludoraSocketDebug');
+      ludlog.api('Available commands:');
+      ludlog.api('  window.ludoraSocketDebug.testConnectivity() - Test connection');
+      ludlog.api('  window.ludoraSocketDebug.sendTest("message") - Send test message');
+      ludlog.api('  window.ludoraSocketDebug.getDebugInfo() - Get debug info');
+      ludlog.api('  window.ludoraSocketDebug.reconnect() - Force reconnection');
+      ludlog.api('  window.ludoraSocketDebug.showDebugPanel() - Show debug panel');
+    }
 
     // Listen for lobby updates
     const unsubscribeLobbyUpdate = socketClient.onLobbyUpdate('lobby:update', (eventData) => {
@@ -191,8 +223,26 @@ function MainLobbyView({ userGames, loading }) {
       unsubscribeConnect();
       unsubscribeDisconnect();
       unsubscribeReconnect();
+
+      // Clean up global debug functions
+      if (typeof window !== 'undefined') {
+        delete window.ludoraSocketDebug;
+      }
     };
   }, []); // Only connect once when component mounts
+
+  // Add keyboard shortcut for debug panel (Ctrl+D or Cmd+D)
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === 'd') {
+        event.preventDefault();
+        setDebugPanel(prev => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   if (loading) {
     return (
@@ -310,6 +360,62 @@ function MainLobbyView({ userGames, loading }) {
           />
         )}
       </div>
+
+      {/* Debug Panel */}
+      {debugPanel && (
+        <motion.div
+          initial={{ opacity: 0, y: 50 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 50 }}
+          className="fixed bottom-4 right-4 bg-gray-900 text-white rounded-lg shadow-2xl p-4 max-w-md z-50"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold">Socket.IO Debug</h3>
+            <Button
+              onClick={() => setDebugPanel(false)}
+              variant="ghost"
+              size="sm"
+              className="text-white hover:bg-gray-700"
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+
+          <div className="space-y-3 text-sm">
+            <div>
+              <span className="font-medium">Status: </span>
+              <span className={
+                socketConnectionState === 'connected' ? 'text-green-400' :
+                socketConnectionState === 'connecting' ? 'text-yellow-400' :
+                'text-red-400'
+              }>
+                {socketConnectionState}
+              </span>
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                onClick={() => socketClient.testConnectivity()}
+                size="sm"
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                Test Connection
+              </Button>
+              <Button
+                onClick={() => socketClient.sendTest('Debug test from panel')}
+                size="sm"
+                className="bg-green-600 hover:bg-green-700"
+              >
+                Send Test
+              </Button>
+            </div>
+
+            <div className="text-xs text-gray-400 border-t border-gray-700 pt-2">
+              Open console for detailed debugging info
+            </div>
+          </div>
+        </motion.div>
+      )}
     </div>
   );
 }

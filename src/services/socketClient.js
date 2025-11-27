@@ -148,6 +148,17 @@ class SocketClient {
         // Get base API URL and construct proper Socket.IO URL
         const apiBase = getApiBase();
         let socketUrl;
+        let socketOptions = {
+          transports: ['websocket', 'polling'], // Support both transports
+          timeout: 10000, // Increased timeout for better connection reliability
+          reconnection: true,
+          reconnectionDelay: this.reconnectDelay,
+          reconnectionAttempts: this.maxReconnectAttempts,
+          forceNew: false,
+          upgrade: true,
+          rememberUpgrade: true,
+          ...connectionConfig
+        };
 
         if (apiBase === '/api') {
           // Development: Connect through same origin to preserve cookies
@@ -155,25 +166,44 @@ class SocketClient {
           // and Vite will proxy WebSocket connections to the API server
           // This ensures cookies set on localhost:5173 are sent with the connection
           socketUrl = window.location.origin;
+
+          // Development-specific Socket.IO options
+          socketOptions.path = '/socket.io/'; // Explicit Socket.IO path
+
         } else {
-          // Staging/Production: Use API domain but convert HTTP to WebSocket
-          socketUrl = apiBase.replace('/api', '').replace('http://', 'ws://').replace('https://', 'wss://');
+          // Staging/Production: Construct proper Socket.IO URL
+          // For Socket.IO, we need to connect to the same domain as the API
+          // but use the Socket.IO protocol and path
+
+          // Extract domain from API base URL
+          const url = new URL(apiBase.replace('/api', '') || apiBase);
+          socketUrl = `${url.protocol}//${url.hostname}${url.port ? ':' + url.port : ''}`;
+
+          // Production-specific Socket.IO options
+          socketOptions.path = '/socket.io/'; // Explicit Socket.IO path
+          socketOptions.secure = true; // Use secure connection in production
+          socketOptions.rejectUnauthorized = false; // Allow self-signed certs in staging
         }
 
+        ludlog.api(`🔌 Socket.IO connecting to: ${socketUrl} with path: ${socketOptions.path}`);
+        ludlog.api(`🔌 Portal context:`, this.portalContext);
+        ludlog.api(`🔌 Connection config:`, connectionConfig);
+
         // Create Socket.IO client with portal-aware authentication
-        this.socket = io(socketUrl, {
-          transports: ['websocket', 'polling'], // Support both transports
-          timeout: 5000,
-          reconnection: true,
-          reconnectionDelay: this.reconnectDelay,
-          reconnectionAttempts: this.maxReconnectAttempts,
-          ...connectionConfig
-        });
+        this.socket = io(socketUrl, socketOptions);
 
         // Connection success handler
         this.socket.on('connect', () => {
           this.connected = true;
           this.reconnectAttempts = 0;
+
+          ludlog.api('✅ Socket.IO connected successfully!', {
+            socketId: this.socket.id,
+            transport: this.socket.io.engine?.transport?.name,
+            url: socketUrl,
+            portalType: this.portalContext?.portalType,
+            authMethod: this.portalContext?.authMethod
+          });
 
           // Auto-join lobby updates channel
           this.joinLobbyUpdates();
@@ -187,7 +217,27 @@ class SocketClient {
         // Connection error handler
         this.socket.on('connect_error', (error) => {
           this.connected = false;
-          luderror.api('❌ Socket connection failed:', error);
+          luderror.api('❌ Socket.IO connection failed:', {
+            error: error.message,
+            description: error.description,
+            context: error.context,
+            type: error.type,
+            socketUrl,
+            portalType: this.portalContext?.portalType,
+            authMethod: this.portalContext?.authMethod,
+            withCredentials: connectionConfig.withCredentials
+          });
+
+          // For teachers portal, try to provide more specific error information
+          if (this.portalContext?.portalType === 'teacher') {
+            luderror.api('🔍 Teacher portal connection debugging:', {
+              expectedAuth: 'firebase',
+              credentialPolicy: this.portalContext?.credentialPolicy,
+              cookies: document.cookie ? 'present' : 'missing',
+              userAgent: navigator.userAgent.substring(0, 100)
+            });
+          }
+
           reject(error);
         });
 
@@ -241,7 +291,23 @@ class SocketClient {
       return;
     }
 
+    ludlog.api(`🏨 Joining lobby updates channel: ${this.lobbyUpdateChannel}`, {
+      socketId: this.socket.id,
+      portalType: this.portalContext?.portalType,
+      authMethod: this.portalContext?.authMethod
+    });
+
     this.socket.emit('join', this.lobbyUpdateChannel);
+
+    // Add confirmation listener for successful channel join
+    this.socket.once('joined', (data) => {
+      ludlog.api('✅ Successfully joined lobby updates channel:', data);
+    });
+
+    // Add error listener for failed channel join
+    this.socket.once('join_error', (error) => {
+      luderror.api('❌ Failed to join lobby updates channel:', error);
+    });
   }
 
   /**
@@ -264,13 +330,32 @@ class SocketClient {
 
     // Listen for lobby updates
     this.socket.on('lobby:update', (eventData) => {
+      ludlog.api('📢 Received lobby update:', {
+        type: eventData.type,
+        timestamp: eventData.timestamp,
+        dataKeys: eventData.data ? Object.keys(eventData.data) : 'no data',
+        portalType: this.portalContext?.portalType,
+        listenersCount: this.listeners.get('lobby:update')?.size || 0
+      });
+
       // Notify registered listeners for general 'lobby:update' event
       this.notifyListeners('lobby:update', eventData);
 
       // Emit specific event types for easier component integration
       if (eventData.type) {
+        ludlog.api(`📢 Broadcasting specific event: lobby:${eventData.type}`);
         this.notifyListeners(`lobby:${eventData.type}`, eventData.data);
       }
+    });
+
+    // Add handler for testing connectivity
+    this.socket.on('pong', () => {
+      ludlog.api('🏓 Received pong from server');
+    });
+
+    // Add handler for server messages
+    this.socket.on('message', (data) => {
+      ludlog.api('💬 Received server message:', data);
     });
   }
 
@@ -381,7 +466,59 @@ class SocketClient {
       return;
     }
 
-    this.socket.emit('test', { message, timestamp: new Date().toISOString() });
+    ludlog.api('🧪 Sending test message to server:', message);
+    this.socket.emit('test', {
+      message,
+      timestamp: new Date().toISOString(),
+      portalType: this.portalContext?.portalType,
+      authMethod: this.portalContext?.authMethod
+    });
+  }
+
+  /**
+   * Test Socket.IO connectivity and get detailed debug information
+   * @returns {Promise<Object>} Connection test results
+   */
+  async testConnectivity() {
+    const results = {
+      timestamp: new Date().toISOString(),
+      connected: this.connected,
+      socketId: this.socket?.id || null,
+      portalContext: this.portalContext,
+      transport: this.socket?.io?.engine?.transport?.name || null,
+      url: this.socket?.io?.uri || null,
+      tests: {}
+    };
+
+    // Test 1: Basic connection
+    results.tests.basicConnection = this.connected;
+
+    // Test 2: Send ping
+    if (this.socket && this.connected) {
+      try {
+        this.socket.emit('ping');
+        results.tests.ping = 'sent';
+      } catch (error) {
+        results.tests.ping = `failed: ${error.message}`;
+      }
+    } else {
+      results.tests.ping = 'not connected';
+    }
+
+    // Test 3: Check lobby channel
+    if (this.socket && this.connected) {
+      try {
+        this.socket.emit('test_channel', this.lobbyUpdateChannel);
+        results.tests.lobbyChannel = 'test sent';
+      } catch (error) {
+        results.tests.lobbyChannel = `failed: ${error.message}`;
+      }
+    } else {
+      results.tests.lobbyChannel = 'not connected';
+    }
+
+    ludlog.api('🔍 Socket.IO connectivity test results:', results);
+    return results;
   }
 
   /**
@@ -449,6 +586,7 @@ export function useSocket() {
     disconnect: socketClient.disconnect.bind(socketClient),
     onLobbyUpdate: socketClient.onLobbyUpdate.bind(socketClient),
     sendTest: socketClient.sendTest.bind(socketClient),
+    testConnectivity: socketClient.testConnectivity.bind(socketClient),
     getDebugInfo: socketClient.getDebugInfo.bind(socketClient)
   };
 }
