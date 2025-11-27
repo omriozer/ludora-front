@@ -13,7 +13,7 @@ import {
   Eye,
   Download
 } from 'lucide-react';
-import { apiRequest } from '@/services/apiClient';
+import { apiRequest, apiUploadWithProgress } from '@/services/apiClient';
 import { getApiBase } from '@/utils/api';
 import { ludlog, luderror } from '@/lib/ludlog';
 import { toast } from '@/components/ui/use-toast';
@@ -167,12 +167,11 @@ const SVGSlideManager = ({
 
           ludlog.media(`Uploading file ${i + 1}/${fileArray.length}: ${file.name}`);
 
-          // Upload individual file with abort signal
-          const result = await fetch(`${getApiBase()}/svg-slides/${lessonPlanId}/upload`, {
-            method: 'POST',
-            body: formData,
+          // Upload individual file with abort signal using apiClient
+          const result = await apiUploadWithProgress(`/svg-slides/${lessonPlanId}/upload`, formData, {
+            onProgress: null, // No individual file progress callback needed
             signal: abortController.signal
-          }).then(response => response.json());
+          });
 
           if (result.success && result.data.uploadedSlides?.length > 0) {
             const slideData = result.data.uploadedSlides[0];
