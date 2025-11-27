@@ -5,16 +5,16 @@ import { ludlog, luderror } from '@/lib/ludlog';
 import { toast } from '@/components/ui/use-toast';
 
 // Global cache for subscription data to prevent duplicate API calls
-let subscriptionCache = {
-  plans: { data: null, timestamp: null },
-  purchases: new Map(), // userId -> { data, timestamp }
-  subscriptions: new Map() // userId -> { data, timestamp }
+// Uses data-driven invalidation (no time-based expiration)
+const subscriptionCache = {
+  plans: { data: null, dataVersion: null },
+  purchases: new Map(), // userId -> { data, dataVersion }
+  subscriptions: new Map() // userId -> { data, dataVersion }
 };
-const CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
 
-// Helper function to clear subscription caches
+// Helper function to clear subscription caches (data-driven invalidation)
 export const clearSubscriptionCache = (userId = null) => {
-  subscriptionCache.plans = { data: null, timestamp: null };
+  subscriptionCache.plans = { data: null, dataVersion: null };
   if (userId) {
     subscriptionCache.purchases.delete(userId);
     subscriptionCache.subscriptions.delete(userId);
@@ -49,12 +49,10 @@ export function useSubscriptionState(user) {
    */
   const loadPlans = useCallback(async () => {
     try {
-      // Check cache first
-      const now = Date.now();
+      // Check cache first - only invalidate on explicit cache clearing
       const plansCache = subscriptionCache.plans;
-      const isCacheValid = plansCache.data && plansCache.timestamp && (now - plansCache.timestamp < CACHE_DURATION);
 
-      if (isCacheValid) {
+      if (plansCache.data) {
         ludlog.payment('✅ Using cached subscription plans');
         return plansCache.data;
       }
@@ -65,10 +63,10 @@ export function useSubscriptionState(user) {
       if (response && response.success && response.data) {
         const activePlans = response.data;
 
-        // Update cache
+        // Update cache with current data (no expiration)
         subscriptionCache.plans = {
           data: activePlans,
-          timestamp: now
+          dataVersion: Date.now() // Simple version for cache debugging
         };
 
         ludlog.payment('✅ Subscription plans loaded and cached:', { data: activePlans.length });
@@ -90,13 +88,11 @@ export function useSubscriptionState(user) {
     if (!user?.id) return [];
 
     try {
-      // Check cache first
-      const now = Date.now();
+      // Check cache first - only invalidate on explicit cache clearing
       const userId = user.id;
       const userCacheEntry = subscriptionCache.purchases.get(userId);
-      const isCacheValid = userCacheEntry && (now - userCacheEntry.timestamp < CACHE_DURATION);
 
-      if (isCacheValid) {
+      if (userCacheEntry?.data) {
         ludlog.payment('✅ Using cached user purchases for user', { data: userId });
         return userCacheEntry.data;
       }
@@ -105,10 +101,10 @@ export function useSubscriptionState(user) {
       const response = await apiRequest(`/entities/purchase?buyer_user_id=${user.id}`);
 
       if (response && Array.isArray(response)) {
-        // Update cache
+        // Update cache with current data (no expiration)
         subscriptionCache.purchases.set(userId, {
           data: response,
-          timestamp: now
+          dataVersion: Date.now() // Simple version for cache debugging
         });
 
         ludlog.payment('✅ User purchases loaded and cached:', { data: response.length });
@@ -131,13 +127,11 @@ export function useSubscriptionState(user) {
     if (!user?.id) return [];
 
     try {
-      // Check cache first
-      const now = Date.now();
+      // Check cache first - only invalidate on explicit cache clearing
       const userId = user.id;
       const userCacheEntry = subscriptionCache.subscriptions.get(userId);
-      const isCacheValid = userCacheEntry && (now - userCacheEntry.timestamp < CACHE_DURATION);
 
-      if (isCacheValid) {
+      if (userCacheEntry?.data) {
         ludlog.payment('✅ Using cached user subscriptions for user', { data: userId });
         return userCacheEntry.data;
       }
@@ -148,10 +142,10 @@ export function useSubscriptionState(user) {
       if (response && response.success && response.data) {
         const subscriptions = response.data.subscriptions || [];
 
-        // Update cache
+        // Update cache with current data (no expiration)
         subscriptionCache.subscriptions.set(userId, {
           data: subscriptions,
-          timestamp: now
+          dataVersion: Date.now() // Simple version for cache debugging
         });
 
         ludlog.payment('✅ User subscriptions loaded and cached:', { data: subscriptions.length });
