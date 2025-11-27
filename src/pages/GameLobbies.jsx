@@ -28,7 +28,8 @@ import {
   ClipboardList,
   BookOpenCheck,
   QrCode,
-  X
+  X,
+  Clock
 } from 'lucide-react';
 import { renderQRCode, LUDORA_OFFICIAL_PRESET } from '@/utils/qrCodeUtils';
 import { computeLobbyStatus, isLobbyActive, isLobbyJoinable, filterActiveLobbies, filterJoinableLobbies, getLobbyStatusConfig, findBestJoinableLobby, findMostRecentLobby } from '@/utils/lobbyUtils';
@@ -614,6 +615,8 @@ function GameCard({
   const [lobbyError, setLobbyError] = useState(null);
   const [showQRModal, setShowQRModal] = useState(false);
   const [qrContainer, setQrContainer] = useState(null);
+  const [playerCountChanged, setPlayerCountChanged] = useState(false);
+  const [lastPlayerCount, setLastPlayerCount] = useState(0);
 
   // Enhanced lobby creation/editing dialog state
   const [showCreationDialog, setShowCreationDialog] = useState(false);
@@ -630,14 +633,72 @@ function GameCard({
   // Make gameId completely stable - only create once per component
   const [stableGameId] = useState(() => game.id);
 
-  // Simple: React to gameUpdateTrigger changes from Socket.IO events
+  // Listen for real-time Socket.IO events specific to this game
+  useEffect(() => {
+    const handleLobbyUpdate = (eventData) => {
+      try {
+        // Check if this event affects this specific game
+        const gameId = stableGameId;
+        const eventGameId = eventData.data?.game_id || eventData.data?.gameId || eventData.data?.lobby?.game_id;
+
+        if (eventGameId && eventGameId === gameId) {
+          ludlog.game(`🔄 Real-time update for game ${gameId}:`, eventData.type);
+
+          // For participant events, fetch fresh data to get accurate counts
+          if (['participant_joined', 'participant_left', 'session_created', 'session_finished'].includes(eventData.type)) {
+            refreshLobbyFromAPI();
+          } else {
+            // For other lobby events, re-process existing data
+            processLobbyData(false);
+          }
+        }
+      } catch (error) {
+        luderror.game('Error handling lobby update in GameCard:', error);
+      }
+    };
+
+    // Subscribe to lobby events
+    const unsubscribeLobbyUpdate = socketClient.onLobbyUpdate('lobby:update', handleLobbyUpdate);
+
+    return () => {
+      unsubscribeLobbyUpdate();
+    };
+  }, [stableGameId]);
+
+  // Also react to parent gameUpdateTrigger for broader updates
   useEffect(() => {
     // When the parent component detects a relevant Socket.IO event, it increments gameUpdateTrigger
     // This causes all game cards to refresh their lobby data
     if (gameUpdateTrigger > 0) {
-      processLobbyData(false); // Don't show loading during Socket.IO updates
+      refreshLobbyFromAPI(); // Now fetch fresh data instead of reprocessing stale data
     }
   }, [gameUpdateTrigger, stableGameId]);
+
+  // Function to fetch fresh lobby data from API
+  const refreshLobbyFromAPI = async () => {
+    try {
+      setLobbyError(null);
+
+      // Fetch fresh game data with updated lobby information
+      const freshGameData = await apiRequest(`/games/${stableGameId}`);
+
+      if (freshGameData) {
+        // Update the game.lobbies array with fresh data
+        game.lobbies = freshGameData.lobbies || [];
+
+        // Process the fresh lobby data
+        processLobbyData(false);
+
+        ludlog.game(`🔄 Refreshed lobby data for game ${stableGameId}:`, {
+          lobbyCount: game.lobbies.length,
+          hasActiveLobby: game.lobbies.some(l => computeLobbyStatus(l) === 'open' || computeLobbyStatus(l) === 'open_indefinitely')
+        });
+      }
+    } catch (error) {
+      luderror.game(`Error refreshing lobby data for game ${stableGameId}:`, error);
+      setLobbyError('Failed to refresh lobby data');
+    }
+  };
 
 
   // Process lobby data that comes with the game (expect only one lobby per game)
@@ -677,6 +738,9 @@ function GameCard({
         }
       }
 
+      // Check if player count changed for animation
+      const playerCountChanged = lastPlayerCount !== totalOnlinePlayers && lastPlayerCount > 0;
+
       setLobbyData({
         status: currentLobbyStatus,
         totalActiveSessions,
@@ -684,6 +748,14 @@ function GameCard({
         lobby: lobby,
         lobbyCode: lobbyCode
       });
+
+      // Trigger change animation if count changed
+      if (playerCountChanged) {
+        setPlayerCountChanged(true);
+        ludlog.game(`🔄 Player count changed from ${lastPlayerCount} to ${totalOnlinePlayers} for game ${stableGameId}`);
+      }
+
+      setLastPlayerCount(totalOnlinePlayers);
 
     } catch (error) {
       luderror.game('[GameLobbies] Error processing lobby data for game:', game.id, { context: error });
@@ -706,6 +778,16 @@ function GameCard({
   useEffect(() => {
     processLobbyData();
   }, [stableGameId]);
+
+  // Clear player count change animation after 2 seconds
+  useEffect(() => {
+    if (playerCountChanged) {
+      const timer = setTimeout(() => {
+        setPlayerCountChanged(false);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [playerCountChanged]);
 
   // Get game settings for max players
   const maxPlayersPerSession = game.game_settings?.max_players || game.settings?.max_players || 12;
@@ -1053,7 +1135,7 @@ function GameCard({
 
           {/* Status and Session Info */}
           <div className="space-y-3">
-            {/* Lobby Status */}
+            {/* Lobby Status and Live Player Count */}
             <div className="flex items-center justify-between">
               <div className="flex flex-col gap-1">
                 {/* Status Badge */}
@@ -1065,14 +1147,75 @@ function GameCard({
                   <span className="text-xs text-gray-500 mr-1">{statusConfig.timeInfo}</span>
                 )}
               </div>
-              <div className="flex flex-col items-end gap-1">
-                <span className="text-gray-500 text-sm font-medium">
-                  {totalActiveSessions} חדרים פעילים
-                </span>
-                {totalOnlinePlayers > 0 && (
-                  <span className="text-blue-600 text-xs font-medium">
-                    {totalOnlinePlayers} משתתפים כולל
+
+              {/* Live Player Count - Made More Prominent */}
+              <div className="flex flex-col items-end gap-2">
+                {/* Active Sessions Count */}
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                  <span className="text-gray-700 text-sm font-semibold">
+                    {totalActiveSessions} חדרים פעילים
                   </span>
+                </div>
+
+                {/* Live Player Count - Large and Prominent with Real-time Animation */}
+                {(totalOnlinePlayers > 0 || (lobby && isLobbyActive(lobby))) && (
+                  <motion.div
+                    animate={{
+                      scale: playerCountChanged ? [1, 1.1, 1] : 1,
+                      boxShadow: playerCountChanged
+                        ? ["0 0 0 0 rgba(34, 197, 94, 0.4)", "0 0 0 10px rgba(34, 197, 94, 0)", "0 0 0 0 rgba(34, 197, 94, 0)"]
+                        : "0 0 0 0 rgba(34, 197, 94, 0)"
+                    }}
+                    transition={{ duration: 0.6 }}
+                    className={`rounded-lg px-3 py-1 min-w-[120px] transition-all duration-300 ${
+                      playerCountChanged
+                        ? 'bg-green-100 border-2 border-green-400'
+                        : 'bg-green-50 border border-green-200'
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                      <Users className={`w-4 h-4 transition-colors duration-300 ${
+                        playerCountChanged ? 'text-green-700' : 'text-green-600'
+                      }`} />
+                      <span className={`font-bold text-base transition-colors duration-300 ${
+                        playerCountChanged ? 'text-green-900' : 'text-green-800'
+                      }`}>
+                        {totalOnlinePlayers}
+                      </span>
+                      <span className={`text-sm transition-colors duration-300 ${
+                        playerCountChanged ? 'text-green-800' : 'text-green-700'
+                      }`}>
+                        משתתפים
+                      </span>
+                    </div>
+                    {totalOnlinePlayers > 0 && (
+                      <div className="text-center">
+                        <div className={`w-2 h-2 rounded-full mx-auto ${
+                          playerCountChanged
+                            ? 'bg-green-600 animate-bounce'
+                            : 'bg-green-500 animate-pulse'
+                        }`}></div>
+                        <span className={`text-xs transition-colors duration-300 ${
+                          playerCountChanged ? 'text-green-700' : 'text-green-600'
+                        }`}>
+                          {playerCountChanged ? 'עודכן כעת!' : 'בזמן אמת'}
+                        </span>
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+
+                {/* No Players State */}
+                {totalOnlinePlayers === 0 && lobby && isLobbyActive(lobby) && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-1 min-w-[120px]">
+                    <div className="flex items-center justify-center gap-2">
+                      <Clock className="w-4 h-4 text-yellow-600" />
+                      <span className="text-yellow-800 font-bold text-sm">
+                        מחכה לשחקנים
+                      </span>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
