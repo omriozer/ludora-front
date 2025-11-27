@@ -28,8 +28,7 @@ import {
   ClipboardList,
   BookOpenCheck,
   QrCode,
-  X,
-  Clock
+  X
 } from 'lucide-react';
 import { renderQRCode, LUDORA_OFFICIAL_PRESET } from '@/utils/qrCodeUtils';
 import { computeLobbyStatus, isLobbyActive, isLobbyJoinable, filterActiveLobbies, filterJoinableLobbies, getLobbyStatusConfig, findBestJoinableLobby, findMostRecentLobby } from '@/utils/lobbyUtils';
