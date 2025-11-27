@@ -1,10 +1,8 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
-import { GraduationCap, Mail } from 'lucide-react';
+import { Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useUser } from '@/contexts/UserContext';
 import LogoDisplay from '@/components/ui/LogoDisplay';
-import { getProductTypeName } from '@/config/productTypes';
 import {
   getContactEmail,
   getContactPhone,
@@ -117,61 +115,61 @@ export default function Footer({ isMaintenanceMode = false }) {
     );
   }
 
-  // Teacher portal footer - full design
+  // Teacher portal footer - matching student portal compact design
   return (
-    <footer className="bg-gray-900 text-white py-8" role="contentinfo">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid md:grid-cols-4 gap-8 mb-8">
-          <div>
-            <Link to="/" className="flex items-center gap-2 mb-4 hover:opacity-80 transition-opacity cursor-pointer">
-              <LogoDisplay className="h-12 md:h-16 object-contain -mb-4" style={{marginBottom: '-1.5rem'}} />
+    <footer className="bg-gray-900 text-white py-4" role="contentinfo">
+      <div className="max-w-6xl mx-auto px-4">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+          {/* Logo and description - compact */}
+          <div className="flex items-center gap-3">
+            <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+              <LogoDisplay size="small" className="h-8 object-contain" />
             </Link>
-            <p className="font-semibold text-sm leading-relaxed">
+            <span className="text-sm font-medium hidden md:block">
               {settings?.site_description || 'בית ללמידה אחרת'}
-            </p>
+            </span>
           </div>
 
-          <div>
-            <h4 className="font-semibold mb-4">{footerTexts.importantLinks}</h4>
-            <ul className="space-y-2">
-              <li><Link to="/privacy" className="text-gray-400 hover:text-white transition-colors">{footerTexts.privacy}</Link></li>
-              <li><Link to="/terms" className="text-gray-400 hover:text-white transition-colors">{footerTexts.terms}</Link></li>
-              <li><Link to="/accessibility" className="text-gray-400 hover:text-white transition-colors">{footerTexts.accessibility}</Link></li>
-            </ul>
+          {/* Links - compact */}
+          <div className="flex items-center gap-3 text-sm">
+            <Link to="/privacy" className="text-gray-400 hover:text-white transition-colors">
+              {footerTexts.privacy}
+            </Link>
+            <span className="text-gray-600">•</span>
+            <Link to="/terms" className="text-gray-400 hover:text-white transition-colors">
+              {footerTexts.terms}
+            </Link>
+            <span className="text-gray-600">•</span>
+            <Link to="/accessibility" className="text-gray-400 hover:text-white transition-colors">
+              {footerTexts.accessibility}
+            </Link>
           </div>
 
-          <div>
-            <h4 className="font-semibold mb-4">{footerTexts.contactUs}</h4>
-            <p className="text-gray-400 mb-4">{footerTexts.contactDescription}</p>
-            <div className="space-y-3">
-              {/* WhatsApp Button */}
+          {/* Contact section - compact */}
+          <div className="text-center md:text-right">
+            <p className="text-xs text-gray-400 mb-2">{footerTexts.contactDescription}</p>
+            <div className="flex gap-2 justify-center md:justify-end">
               <a
                 href={getWhatsAppUrl(getContactPhone(settings), 'שלום, יש לי שאלה על לודורה')}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block"
               >
-                <Button className="bg-green-600 hover:bg-green-700 text-white border-0 w-full transition-colors">
-                  <WhatsAppIcon className="w-4 h-4 mr-2" />
+                <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white border-0 px-3 py-1 text-xs">
+                  <WhatsAppIcon className="w-3 h-3 mr-1" />
                   {footerTexts.whatsappMessage}
                 </Button>
               </a>
-
-              {/* Email Button */}
               <a
                 href={getEmailUrl(getContactEmail(settings), 'שאלה על לודורה', '')}
-                className="block"
               >
-                <Button className="bg-blue-600 hover:bg-blue-700 text-white border-0 w-full transition-colors">
-                  <Mail className="w-4 h-4 mr-2" />
+                <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-3 py-1 text-xs">
+                  <Mail className="w-3 h-3 mr-1" />
                   {footerTexts.emailMessage}
                 </Button>
               </a>
-
-              {/* Contact Us Button - Hidden in maintenance mode */}
               {!isMaintenanceMode && (
-                <Link to="/contact" className="block">
-                  <Button variant="outline" className="bg-transparent border-white text-white hover:bg-white hover:text-gray-900 w-full">
+                <Link to="/contact">
+                  <Button size="sm" variant="outline" className="bg-transparent border-gray-400 text-gray-300 hover:bg-gray-800 hover:text-white px-3 py-1 text-xs">
                     {footerTexts.sendMessage}
                   </Button>
                 </Link>
@@ -180,8 +178,9 @@ export default function Footer({ isMaintenanceMode = false }) {
           </div>
         </div>
 
-        <div className="border-t border-gray-800 mt-8 pt-8 text-center">
-          <p className="font-semibold">{footerTexts.copyright}</p>
+        {/* Copyright - compact */}
+        <div className="border-t border-gray-800 mt-3 pt-3 text-center">
+          <p className="text-xs text-gray-400">{footerTexts.copyright}</p>
         </div>
       </div>
     </footer>
