@@ -295,7 +295,7 @@ export function UserProvider({ children }) {
       // Show success message
       toast({
         title: "התנתקת בהצלחה! 👋",
-        description: "תודה שיצא לך להשתמש במערכת",
+        description: "תודה! נתראה בקרוב!",
         variant: "default",
       });
     } catch (error) {
@@ -317,7 +317,7 @@ export function UserProvider({ children }) {
       // Show success message
       toast({
         title: "התנתקת בהצלחה! 👋",
-        description: "תודה שיצא לך להשתמש במערכת",
+        description: "תודה! נתראה בקרוב!",
         variant: "default",
       });
     } catch (error) {
@@ -326,7 +326,7 @@ export function UserProvider({ children }) {
       // Show error message
       toast({
         title: "שגיאה בהתנתקות 🎮",
-        description: "בעיה בהתנתקות, אך המערכת נוקתה מקומית.",
+        description: "נותקת מהמערכת בכשיר זה בלבד. אם היה לך חיבורים פעילים במכשירים אחרים, יתכן והם נשארו מחוברים",
         variant: "destructive",
       });
     }
