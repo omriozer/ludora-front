@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { apiRequest } from '@/services/apiClient';
 import { Purchase } from '@/services/entities';
 import { toast } from '@/components/ui/use-toast';
-import ludlog from '@/lib/ludlog';
+import { ludlog, luderror } from '@/lib/ludlog';
 
 // GLOBAL REQUEST DEDUPLICATION: Prevent multiple simultaneous calls to same API
 let globalRequestPromise = null;
@@ -123,7 +123,7 @@ export const usePaymentPageStatusCheck = (options = {}) => {
           // Clear global request on error
           globalRequestPromise = null;
 
-          console.error('❌ Error checking payment page status:', err);
+          luderror.payment('Error checking payment page status', err);
           setError(err.message);
           setIsChecking(false);
 
@@ -165,7 +165,7 @@ export const usePaymentPageStatusCheck = (options = {}) => {
       setPendingCount(count);
       return count;
     } catch (err) {
-      console.error('❌ Error getting pending purchases count:', err);
+      luderror.payment('Error getting pending purchases count', err);
       return 0;
     }
   }, []);
