@@ -41,7 +41,7 @@ const SuspenseLoader = () => (
 
 // Student Portal Component (only allowed routes)
 function StudentPortal() {
-	const { currentUser, settings, settingsLoadFailed, login } = useUser();
+	const { currentUser, settings, settingsLoadFailed, isLoading, settingsLoading, login } = useUser();
 	const { showLoginModal, openLoginModal, closeLoginModal, executeCallback, modalMessage } = useLoginModal();
 	const location = useLocation();
 
@@ -216,6 +216,21 @@ function StudentPortal() {
 		}
 	};
 
+	// Handle loading state - wait for both user auth AND settings to load
+	// Only show loading if settings haven't failed (to avoid infinite spinner when API is down)
+	if (isLoading || (settingsLoading && !settingsLoadFailed)) {
+		return (
+			<div className="flex items-center justify-center min-h-screen">
+				<LudoraLoadingSpinner
+					message="טוען את המערכת..."
+					size="lg"
+					theme="educational"
+					showLogo={true}
+				/>
+			</div>
+		);
+	}
+
 	// Show maintenance page if enabled OR if settings loading failed (but allow admins to bypass)
 	// IMPORTANT: Check maintenance/error state BEFORE loading state to prevent infinite spinner
 	const isMaintenanceMode = getSetting(settings, SYSTEM_KEYS.MAINTENANCE_MODE, false);
@@ -369,25 +384,8 @@ function App() {
 	const { currentUser, isLoading } = useUser();
 	const location = useLocation();
 
-	// Check if we're on the student portal
-	const isOnStudentPortal = isStudentPortal();
-
-	// If on student portal, render student app without main layout/navigation
-	if (isOnStudentPortal) {
-		return (
-			<AudioCacheProvider>
-				<ConfirmationProvider>
-					<AuthErrorProvider>
-						<StudentPortal />
-						<EnhancedToaster />
-					</AuthErrorProvider>
-				</ConfirmationProvider>
-			</AudioCacheProvider>
-		);
-	}
-
-	// Teacher portal logic (everything below is for teacher portal)
-	// Handle subscription payment result query parameters
+	// Teacher portal logic - Handle subscription payment result query parameters
+	// Must be called before any conditional returns to avoid React Hooks rules violation
 	useEffect(() => {
 		const params = new URLSearchParams(location.search);
 
@@ -412,6 +410,24 @@ function App() {
 		}
 	}, [location.search]);
 
+	// Check if we're on the student portal
+	const isOnStudentPortal = isStudentPortal();
+
+	// If on student portal, render student app without main layout/navigation
+	if (isOnStudentPortal) {
+		return (
+			<AudioCacheProvider>
+				<ConfirmationProvider>
+					<AuthErrorProvider>
+						<StudentPortal />
+						<EnhancedToaster />
+					</AuthErrorProvider>
+				</ConfirmationProvider>
+			</AudioCacheProvider>
+		);
+	}
+
+	// Teacher portal rendering
 	return (
 		<AudioCacheProvider>
 			<ConfirmationProvider>
