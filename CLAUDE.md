@@ -117,6 +117,9 @@ src/components/
 ├── classroom/             # Teacher management
 │   ├── ClassroomList.jsx
 │   └── StudentInvites.jsx
+├── admin/                 # Admin-specific components
+│   ├── FloatingAdminMenu.jsx
+│   └── AdminRoute.jsx
 └── email/                 # Email templates
     └── EmailTemplateBuilder.jsx
 ```
@@ -444,7 +447,143 @@ function ProductCard({ product }) {
 
 ---
 
-## 6. TESTING PATTERNS
+## 6. ADMIN PAGE PATTERNS (Nov 2025)
+
+### Admin-Only Page Structure
+
+**Admin pages follow specific patterns for consistency and security:**
+
+```javascript
+// ✅ CORRECT: Admin page with proper authentication
+import { useState, useEffect, useCallback } from 'react';
+import { useUser } from '@/contexts/UserContext';
+import { useNavigate } from 'react-router-dom';
+import { Settings } from '@/services/entities';
+
+export default function PortalsSettings() {
+  const navigate = useNavigate();
+  const { currentUser, settings, isLoading: userLoading } = useUser();
+  const [isLoading, setIsLoading] = useState(true);
+  const [formData, setFormData] = useState({
+    students_access: 'all',
+    student_onboarding_enabled: false,
+    teacher_onboarding_enabled: true
+  });
+
+  // Admin access check
+  const loadData = useCallback(async () => {
+    try {
+      if (currentUser.role !== 'admin') {
+        navigate('/');
+        return;
+      }
+
+      // Initialize form with current settings
+      const currentSettings = settings || {};
+      setFormData({
+        students_access: currentSettings.students_access || 'all',
+        student_onboarding_enabled: currentSettings.student_onboarding_enabled || false,
+        teacher_onboarding_enabled: currentSettings.teacher_onboarding_enabled || true
+      });
+    } catch (error) {
+      showMessage('error', 'שגיאה בטעינת הנתונים');
+    }
+    setIsLoading(false);
+  }, [currentUser, settings, navigate]);
+
+  // Form submission with Settings entity
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      if (settings) {
+        await Settings.update(settings.id, formData);
+      } else {
+        await Settings.create(formData);
+      }
+      showMessage('success', 'הגדרות נשמרו בהצלחה');
+      await loadData(); // Reload updated data
+    } catch (error) {
+      showMessage('error', 'שגיאה בשמירת ההגדרות');
+    }
+    setIsSaving(false);
+  };
+}
+```
+
+### Admin Route Protection
+
+```javascript
+// ✅ CORRECT: Route protection in App.jsx
+<Route
+  path='/portals-settings'
+  element={
+    <AdminRoute>
+      <AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ADMIN}>
+        <LazyPages.PortalsSettings />
+      </AuthAwareSuspense>
+    </AdminRoute>
+  }
+/>
+
+// ✅ CORRECT: Lazy loading registration
+export const PortalsSettings = lazy(() => import('./PortalsSettings'));
+```
+
+### Settings Management Patterns
+
+```javascript
+// ✅ CORRECT: Settings entity integration
+import { Settings } from '@/services/entities';
+
+// Read settings (automatically handled by UserContext)
+const { settings } = useUser();
+
+// Update settings with proper error handling
+const updateSetting = async (key, value) => {
+  try {
+    await Settings.update(settings.id, { [key]: value });
+    showSuccess('Setting updated successfully');
+  } catch (error) {
+    showError('Failed to update setting');
+  }
+};
+
+// Bulk settings update
+const updateMultipleSettings = async (updates) => {
+  try {
+    await Settings.update(settings.id, updates);
+    showSuccess('Settings saved successfully');
+  } catch (error) {
+    showError('Failed to save settings');
+  }
+};
+```
+
+### Admin Navigation Integration
+
+```javascript
+// ✅ CORRECT: Adding items to FloatingAdminMenu.jsx
+const adminMenuItems = [
+  {
+    title: "הגדרות פורטלים",
+    url: "/portals-settings",
+    icon: <Globe className="w-4 h-4" />,
+    description: "הגדרות פורטל תלמידים ומורים"
+  },
+  // ... other items
+];
+```
+
+**NEW: Portal Settings Management (Nov 2025):**
+- **Route**: `/portals-settings` - Admin-only portal configuration
+- **Settings Keys**: `student_onboarding_enabled`, `teacher_onboarding_enabled`
+- **Access Control**: Admin role required, automatic redirect for non-admins
+- **Form Pattern**: React Hook Form + Settings entity integration
+- **UI Pattern**: Hebrew RTL with professional admin design
+
+---
+
+## 7. TESTING PATTERNS
 
 ### Component Testing with Cypress
 
@@ -625,6 +764,21 @@ const mutation = useMutation(updateData, {
   onSuccess: () => queryClient.invalidateQueries(['settings'])
 });
 ```
+
+**CRITICAL: Time-based cache violations fixed (Nov 2025):**
+```javascript
+// ❌ REMOVED: Time-based cache duration
+const CACHE_DURATION = 5 * 60 * 1000; // ❌ BLOCKS PR APPROVAL
+if (Date.now() - cacheEntry.timestamp > CACHE_DURATION) { // ❌ BLOCKS PR APPROVAL
+
+// ✅ ADDED: Data-driven cache invalidation
+const cachedData = cache.get(cacheKey);
+if (!cachedData || cachedData.dataVersion !== currentDataVersion) {
+  // Invalidate based on data changes, not time
+}
+```
+
+**Fixed in useSubscriptionState hook:** Replaced timestamp-based cache expiration with dataVersion-based invalidation to comply with architectural rules.
 
 ---
 
