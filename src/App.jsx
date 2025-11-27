@@ -279,93 +279,100 @@ function StudentPortal() {
 	}
 
 	return (
-		<>
+		<div className="min-h-screen flex flex-col">
+			{/* Header */}
 			<StudentsNav teacherInfo={teacherInfo} />
-			<Routes>
-				{/* Student Home */}
-				<Route
-					path='/'
-					element={
-						<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
-							<LazyPages.StudentHome />
-						</AuthAwareSuspense>
-					}
-				/>
 
-				{/* Teacher Catalog */}
-				<Route
-					path='/portal/:userCode'
-					element={
-						<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
-							<LazyPages.TeacherCatalog />
-						</AuthAwareSuspense>
-					}
-				/>
+			{/* Main Content Area - fills remaining space between header and footer */}
+			<main className="flex-1 flex flex-col">
+				<Routes>
+					{/* Student Home */}
+					<Route
+						path='/'
+						element={
+							<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
+								<LazyPages.StudentHome />
+							</AuthAwareSuspense>
+						}
+					/>
 
-				{/* Game Lobby Join */}
-				<Route
-					path='/lobby/:code'
-					element={
-						<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
-							<LazyPages.LobbyJoin />
-						</AuthAwareSuspense>
-					}
-				/>
+					{/* Teacher Catalog */}
+					<Route
+						path='/portal/:userCode'
+						element={
+							<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
+								<LazyPages.TeacherCatalog />
+							</AuthAwareSuspense>
+						}
+					/>
 
-				{/* Game Play Session */}
-				<Route
-					path='/play/:code'
-					element={
-						<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
-							<LazyPages.GamePlay />
-						</AuthAwareSuspense>
-					}
-				/>
+					{/* Game Lobby Join */}
+					<Route
+						path='/lobby/:code'
+						element={
+							<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
+								<LazyPages.LobbyJoin />
+							</AuthAwareSuspense>
+						}
+					/>
 
-				{/* Allowed public pages */}
-				<Route
-					path='/privacy'
-					element={
-						<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
-							<LazyPages.PrivacyPolicy />
-						</AuthAwareSuspense>
-					}
-				/>
-				<Route
-					path='/terms'
-					element={
-						<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
-							<LazyPages.TermsOfService />
-						</AuthAwareSuspense>
-					}
-				/>
-				<Route
-					path='/accessibility'
-					element={
-						<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
-							<LazyPages.Accessibility />
-						</AuthAwareSuspense>
-					}
-				/>
-				<Route
-					path='/contact'
-					element={
-						<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
-							<LazyPages.Contact />
-						</AuthAwareSuspense>
-					}
-				/>
+					{/* Game Play Session */}
+					<Route
+						path='/play/:code'
+						element={
+							<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
+								<LazyPages.GamePlay />
+							</AuthAwareSuspense>
+						}
+					/>
 
-				{/* Student 404 Page */}
-				<Route
-					path='*'
-					element={
-						<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
-							<LazyPages.StudentNotFound />
-						</AuthAwareSuspense>
-					}
-				/>
-			</Routes>
+					{/* Allowed public pages */}
+					<Route
+						path='/privacy'
+						element={
+							<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
+								<LazyPages.PrivacyPolicy />
+							</AuthAwareSuspense>
+						}
+					/>
+					<Route
+						path='/terms'
+						element={
+							<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
+								<LazyPages.TermsOfService />
+							</AuthAwareSuspense>
+						}
+					/>
+					<Route
+						path='/accessibility'
+						element={
+							<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
+								<LazyPages.Accessibility />
+							</AuthAwareSuspense>
+						}
+					/>
+					<Route
+						path='/contact'
+						element={
+							<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
+								<LazyPages.Contact />
+							</AuthAwareSuspense>
+						}
+					/>
+
+					{/* Student 404 Page */}
+					<Route
+						path='*'
+						element={
+							<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
+								<LazyPages.StudentNotFound />
+							</AuthAwareSuspense>
+						}
+					/>
+				</Routes>
+			</main>
+
+			{/* Footer */}
 			<Footer />
 
 			{/* Student Login Modal for Navigation */}
@@ -376,7 +383,7 @@ function StudentPortal() {
 					message={modalMessage}
 				/>
 			)}
-		</>
+		</div>
 	);
 }
 

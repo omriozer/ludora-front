@@ -44,21 +44,31 @@ const TeacherCatalogContent = () => {
   const [redirectCountdown, setRedirectCountdown] = useState(5);
 
   // Check if player is connected to a teacher (required for game access)
+  // Only show this error if:
+  // 1. Player is authenticated
+  // 2. Player has no teacher connection
+  // 3. Catalog has been loaded (so we know the teacher exists)
+  // 4. Teacher assignment dialog was declined (not just inactive)
   useEffect(() => {
-    // Wait for auth to load
-    if (isLoading) return;
+    // Wait for auth to load and catalog to load
+    if (isLoading || loading) return;
 
-    // Only check for authenticated players
-    if (isPlayerAuthenticated && currentPlayer) {
+    // Only check for authenticated players after catalog is loaded
+    if (isPlayerAuthenticated && currentPlayer && catalog) {
       const hasTeacherConnection = currentPlayer.teacher_id || currentPlayer.teacher;
 
-      if (!hasTeacherConnection) {
+      // Only show "teacher required" if:
+      // - No teacher connection AND
+      // - Teacher assignment dialog is not currently being shown AND
+      // - We've given a chance for the assignment dialog to appear first
+      if (!hasTeacherConnection && !showTeacherAssignment && teacherAssignmentData === null) {
+        // This means the teacher assignment was offered but declined/closed
         setShowTeacherRequired(true);
       } else {
         setShowTeacherRequired(false);
       }
     }
-  }, [isPlayerAuthenticated, currentPlayer, isLoading]);
+  }, [isPlayerAuthenticated, currentPlayer, isLoading, loading, catalog, showTeacherAssignment, teacherAssignmentData]);
 
   // Redirect countdown when teacher connection is missing
   useEffect(() => {
@@ -201,6 +211,10 @@ const TeacherCatalogContent = () => {
       setShowTeacherAssignment(false);
       setTeacherAssignmentData(null);
 
+      // Redirect to home page after successful connection
+      // This prevents the "teacher required" logic from triggering
+      navigate('/', { replace: true });
+
     } catch (error) {
       // Error handling is done in the confirmation dialog component
     } finally {
@@ -211,6 +225,10 @@ const TeacherCatalogContent = () => {
   const handleTeacherAssignmentCancel = () => {
     setShowTeacherAssignment(false);
     setTeacherAssignmentData(null);
+
+    // Since the user chose not to connect to this teacher,
+    // the "teacher required" check will trigger and show a helpful explanation
+    // rather than just an immediate redirect
   };
 
   // Socket.IO real-time updates for lobby status changes
@@ -330,7 +348,7 @@ const TeacherCatalogContent = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-200/40 via-blue-200/30 to-pink-200/40 flex items-center justify-center">
+      <div className="flex-1 bg-gradient-to-br from-purple-200/40 via-blue-200/30 to-pink-200/40 flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-lg text-purple-700 font-medium">טוען את משחקי המורה...</p>
@@ -341,7 +359,7 @@ const TeacherCatalogContent = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-200/40 via-blue-200/30 to-pink-200/40 flex items-center justify-center p-4">
+      <div className="flex-1 bg-gradient-to-br from-purple-200/40 via-blue-200/30 to-pink-200/40 flex items-center justify-center p-4">
         <div className="max-w-md w-full text-center bg-white/80 backdrop-blur-sm rounded-3xl p-8 shadow-xl">
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <UserIcon className="w-8 h-8 text-red-600" />
@@ -362,35 +380,54 @@ const TeacherCatalogContent = () => {
   // Show teacher connection required warning with redirect countdown
   if (showTeacherRequired) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-200/40 via-yellow-200/30 to-red-200/40 flex items-center justify-center p-4">
+      <div className="flex-1 bg-gradient-to-br from-orange-200/40 via-yellow-200/30 to-red-200/40 flex items-center justify-center p-4">
         <div className="max-w-md w-full text-center bg-white/80 backdrop-blur-sm rounded-3xl p-8 shadow-xl">
           <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <AlertTriangle className="w-8 h-8 text-orange-600" />
           </div>
-          <h2 className="text-xl font-bold text-gray-800 mb-2">נדרשת התחברות למורה</h2>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">התחברות למורה נדרשת</h2>
           <p className="text-gray-600 mb-4">
-            כדי לגשת לתוכן ומשחקים, עליך להתחבר למורה תחילה.
+            כדי לגשת למשחקים של {catalog?.teacher?.name || 'המורה'}, עליך להתחבר אליו תחילה.
           </p>
           <p className="text-gray-500 mb-6 text-sm">
-            בקש מהמורה שלך קוד הזמנה או קישור התחברות.
+            חזור ולחץ על "התחבר למורה" כדי להיכנס לקטלוג המשחקים.
           </p>
 
-          {/* Countdown indicator */}
-          <div className="mb-6">
-            <div className="w-12 h-12 mx-auto rounded-full bg-orange-100 flex items-center justify-center">
-              <span className="text-2xl font-bold text-orange-600">{redirectCountdown}</span>
-            </div>
-            <p className="text-sm text-gray-500 mt-2">
-              מעביר לעמוד הבית בעוד {redirectCountdown} שניות...
-            </p>
+          {/* Action buttons */}
+          <div className="space-y-3 mb-6">
+            <Button
+              onClick={() => {
+                // Re-show teacher assignment dialog
+                if (catalog && catalog.teacher) {
+                  setTeacherAssignmentData({
+                    teacher: catalog.teacher,
+                    teacher_id: catalog.teacher.id
+                  });
+                  setShowTeacherAssignment(true);
+                  setShowTeacherRequired(false); // Hide the error screen
+                }
+              }}
+              className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white px-6 py-3 rounded-2xl"
+            >
+              <UserIcon className="w-4 h-4 ml-2" />
+              התחבר ל{catalog?.teacher?.name || 'המורה'}
+            </Button>
+
+            <Link to="/">
+              <Button
+                variant="outline"
+                className="w-full border-2 border-gray-200 hover:bg-gray-50 px-6 py-3 rounded-2xl"
+              >
+                <Home className="w-4 h-4 ml-2" />
+                חזרה לעמוד הבית
+              </Button>
+            </Link>
           </div>
 
-          <Link to="/">
-            <Button className="bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 text-white px-6 py-3 rounded-2xl">
-              <Home className="w-4 h-4 ml-2" />
-              חזרה לעמוד הבית עכשיו
-            </Button>
-          </Link>
+          {/* Optional countdown - but much longer to be less aggressive */}
+          <p className="text-xs text-gray-500 text-center">
+            או חזרה אוטומטית לעמוד הבית בעוד {redirectCountdown} שניות
+          </p>
         </div>
       </div>
     );
@@ -398,7 +435,7 @@ const TeacherCatalogContent = () => {
 
   if (!catalog || !gamesWithLobbies.length) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-200/40 via-blue-200/30 to-pink-200/40 flex items-center justify-center p-4">
+      <div className="flex-1 bg-gradient-to-br from-purple-200/40 via-blue-200/30 to-pink-200/40 flex items-center justify-center p-4">
         <div className="max-w-md w-full text-center bg-white/80 backdrop-blur-sm rounded-3xl p-8 shadow-xl">
           <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <GamepadIcon className="w-8 h-8 text-blue-600" />
@@ -420,9 +457,9 @@ const TeacherCatalogContent = () => {
   }
 
   return (
-    <div className="min-h-screen student-portal-background">
+    <div className="flex-1 flex flex-col student-portal-background">
       {/* Content */}
-      <main className="max-w-6xl mx-auto px-4 py-8">
+      <main className="flex-1 max-w-6xl mx-auto px-4 py-8 w-full">
         {/* Page-level Connection Status */}
         <div className="mb-6 flex justify-center">
           <Badge

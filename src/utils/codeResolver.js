@@ -3,7 +3,7 @@
 // Handles teacher portal codes and game lobby codes
 
 import { apiRequestAnonymous } from '@/services/apiClient';
-import { ludlog, luderror } from '@/lib/ludlog';
+import { ludlog } from '@/lib/ludlog';
 
 /**
  * Validate invitation code format (8 characters: A-Z, 1-9, excludes 0 and O)
@@ -79,13 +79,13 @@ export function normalizeActivityCode(code) {
  * @returns {Promise<Object>} Success: { type: 'portal', code, teacherData } | Error thrown
  */
 async function validateInvitationCode(code) {
-  ludlog.validation(`🔍 Validating invitation code: ${code}`);
+  ludlog.ui(`🔍 Validating invitation code: ${code}`);
 
   try {
     // Try to get teacher catalog using the code
     const teacherData = await apiRequestAnonymous(`/games/teacher/${code}`);
 
-    ludlog.validation(`✅ Invitation code valid: ${code}`, { data: teacherData });
+    ludlog.ui(`✅ Invitation code valid: ${code}`, { data: teacherData });
 
     return {
       type: 'portal',
@@ -94,7 +94,7 @@ async function validateInvitationCode(code) {
       redirectPath: `/portal/${code}`
     };
   } catch (error) {
-    ludlog.validation(`❌ Invitation code invalid: ${code}`, { data: error });
+    ludlog.ui(`❌ Invitation code invalid: ${code}`, { data: error });
     throw error;
   }
 }
@@ -105,7 +105,7 @@ async function validateInvitationCode(code) {
  * @returns {Promise<Object>} Success: { type: 'lobby', code, lobbyData } | Error thrown
  */
 async function validateLobbyCode(code) {
-  ludlog.validation(`🔍 Validating lobby code: ${code}`);
+  ludlog.ui(`🔍 Validating lobby code: ${code}`);
 
   try {
     // Try to join lobby by code (validation only, using temp participant)
@@ -132,7 +132,7 @@ async function validateLobbyCode(code) {
 
     const lobbyData = await response.json();
 
-    ludlog.validation(`✅ Lobby code valid: ${code}`, { data: lobbyData });
+    ludlog.ui(`✅ Lobby code valid: ${code}`, { data: lobbyData });
 
     return {
       type: 'lobby',
@@ -141,7 +141,7 @@ async function validateLobbyCode(code) {
       redirectPath: `/lobby/${code}`
     };
   } catch (error) {
-    ludlog.validation(`❌ Lobby code invalid: ${code}`, { data: error });
+    ludlog.ui(`❌ Lobby code invalid: ${code}`, { data: error });
     throw error;
   }
 }
@@ -161,7 +161,7 @@ async function validateLobbyCode(code) {
 export async function resolveActivityCode(rawCode, options = {}) {
   const { type = null, navigate, showConfirmationDialog, suppressErrors = false } = options;
 
-  ludlog.general(`🔍 Resolving activity code: ${rawCode}`, { data: { typeHint: type } });
+  ludlog.generic(`🔍 Resolving activity code: ${rawCode}`, { data: { typeHint: type } });
 
   // Normalize the code
   const code = normalizeActivityCode(rawCode);
@@ -186,7 +186,6 @@ export async function resolveActivityCode(rawCode, options = {}) {
       errorMessage = 'קוד פעילות חייב להיות באורך 6 תווים (לובי משחק) או 8 תווים (פורטל מורה)';
     } else {
       // Length is 6 or 8, but format is invalid
-      const codeType = getCodeType(code);
       if (code.length === 6) {
         title = 'קוד לובי לא תקין';
         errorMessage = 'קוד לובי חייב להכיל רק אותיות A-Z ומספרים 2-9 (לא כולל 0, 1, I, O)';
@@ -246,14 +245,14 @@ export async function resolveActivityCode(rawCode, options = {}) {
 
     // Success! Navigate to the resolved path
     if (navigate && result.redirectPath) {
-      ludlog.navigation(`🚀 Navigating to: ${result.redirectPath}`);
+      ludlog.ui(`🚀 Navigating to: ${result.redirectPath}`);
       navigate(result.redirectPath);
     }
 
     return result;
 
   } catch (error) {
-    ludlog.validation(`❌ Failed to resolve activity code: ${code}`, { data: error });
+    ludlog.ui(`❌ Failed to resolve activity code: ${code}`, { data: error });
 
     // Show user-friendly error message
     let errorMessage;
@@ -291,14 +290,14 @@ export async function resolveActivityCode(rawCode, options = {}) {
 export function parseQRCodeData(qrData) {
   if (!qrData || typeof qrData !== 'string') return null;
 
-  ludlog.general(`🔍 Parsing QR code data: ${qrData}`);
+  ludlog.generic(`🔍 Parsing QR code data: ${qrData}`);
 
   // Check for portal URL pattern: /my.ludora.app/portal/CODE or /portal/CODE (8-character invitation codes)
   const portalMatch = qrData.match(/\/portal\/([A-Z0-9]{8})/i);
   if (portalMatch) {
     const code = portalMatch[1].toUpperCase();
     if (isValidInvitationCode(code)) {
-      ludlog.validation(`📋 Found invitation code in QR: ${code}`);
+      ludlog.ui(`📋 Found invitation code in QR: ${code}`);
       return { code, type: 'portal' };
     }
   }
@@ -308,7 +307,7 @@ export function parseQRCodeData(qrData) {
   if (lobbyMatch) {
     const code = lobbyMatch[1].toUpperCase();
     if (isValidLobbyCode(code)) {
-      ludlog.validation(`🎮 Found lobby code in QR: ${code}`);
+      ludlog.ui(`🎮 Found lobby code in QR: ${code}`);
       return { code, type: 'lobby' };
     }
   }
@@ -316,7 +315,7 @@ export function parseQRCodeData(qrData) {
   // Check for plain code (6 or 8 characters)
   const plainCode = normalizeActivityCode(qrData);
   if (isValidActivityCode(plainCode)) {
-    ludlog.validation(`🔤 Found plain code in QR: ${plainCode}`);
+    ludlog.ui(`🔤 Found plain code in QR: ${plainCode}`);
 
     // Determine type based on format
     const codeType = getCodeType(plainCode);
@@ -342,7 +341,7 @@ export function parseQRCodeData(qrData) {
  * @returns {Promise<Object>} Resolved code data
  */
 export async function handleQRScanResult(qrData, navigate, showConfirmationDialog) {
-  ludlog.navigation(`📱 Handling QR scan result: ${qrData}`);
+  ludlog.ui(`📱 Handling QR scan result: ${qrData}`);
 
   const parsed = parseQRCodeData(qrData);
 

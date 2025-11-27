@@ -6,13 +6,14 @@ import { useUser } from '@/contexts/UserContext';
 import { checkCameraAvailability } from '@/utils/qrScannerUtils';
 import { useActivityCodeHandler } from '@/hooks/useActivityCodeHandler';
 import LogoDisplay from '@/components/ui/LogoDisplay';
+import ConnectedTeachersList from '@/components/students/ConnectedTeachersList';
 
 /**
  * Beautiful home page for the student portal
  * Features engaging design with placeholder content areas
  */
 const StudentHome = () => {
-  const { settings } = useUser();
+  const { settings, currentPlayer, isPlayerAuthenticated } = useUser();
   const [isCameraAvailable, setIsCameraAvailable] = useState(false);
   const [showScrollArrow, setShowScrollArrow] = useState(true);
   const [confirmationDialog, setConfirmationDialog] = useState({ isOpen: false });
@@ -94,7 +95,7 @@ const StudentHome = () => {
         }
       `}</style>
 
-    <div className="min-h-screen">
+    <div className="flex-1 flex flex-col">
       {/* Hero Section */}
       <section className="relative py-16 px-4 sm:px-6 lg:px-8 text-center overflow-hidden">
         {/* Background decoration */}
@@ -144,6 +145,19 @@ const StudentHome = () => {
           </div>
         </div>
       </section>
+
+      {/* Connected Teachers Section - Show when player is authenticated and has teacher connection */}
+      {isPlayerAuthenticated && currentPlayer && (currentPlayer.teacher_id || currentPlayer.teacher) && (
+        <section className="py-8 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-purple-50/50 via-blue-50/30 to-indigo-50/50">
+          <div className="max-w-4xl mx-auto">
+            <ConnectedTeachersList
+              currentPlayer={currentPlayer}
+              variant="full"
+              className="mb-4"
+            />
+          </div>
+        </section>
+      )}
 
       {/* Fun illustration section */}
       <section className="py-16 px-4 sm:px-6 lg:px-8">
