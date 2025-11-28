@@ -19,6 +19,7 @@ import { getToolCategoryLabel } from "@/config/toolCategories";
 import { isAdmin } from "@/lib/userUtils";
 import { useUser } from "@/contexts/UserContext";
 import { useProductAccess } from "@/hooks/useProductAccess";
+import { ludlog } from '@/lib/ludlog';
 
 // Hebrew grade names constant
 export const HEBREW_GRADES = {
@@ -76,6 +77,16 @@ export default function ProductCard({
   // Handle successful purchase for ProductActionBar
   const handlePurchaseSuccess = () => {
     // Purchase handled successfully
+  };
+
+  // Handle successful subscription claim for ProductActionBar
+  const handleSubscriptionClaimSuccess = (claimResult) => {
+    // Subscription claim handled successfully
+    ludlog.ui('Product claimed via subscription from ProductCard', {
+      productId: product.id,
+      productType: product.product_type,
+      claimResult
+    });
   };
 
   const handleDetailsClick = () => {
@@ -363,7 +374,9 @@ export default function ProductCard({
                   size="default"
                   className="text-base font-semibold"
                   showCartButton={true}
+                  showSubscriptionClaim={true}
                   onPurchaseSuccess={handlePurchaseSuccess}
+                  onSubscriptionClaimSuccess={handleSubscriptionClaimSuccess}
                   onFileAccess={onFileAccess}
                   onPdfPreview={onPdfPreview}
                 />

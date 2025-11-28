@@ -8,6 +8,7 @@ import FileAccessButton from '@/components/ui/FileAccessButton';
 import LessonPlanAccessButton from '@/components/ui/LessonPlanAccessButton';
 import CourseAccessButton from '@/components/ui/CourseAccessButton';
 import WorkshopAccessButton from '@/components/ui/WorkshopAccessButton';
+import SubscriptionClaimButton from '@/components/ui/SubscriptionClaimButton';
 
 /**
  * Product Action Bar - Smart container that shows appropriate buttons based on product state
@@ -23,6 +24,8 @@ import WorkshopAccessButton from '@/components/ui/WorkshopAccessButton';
  * @param {function} onCourseAccess - Callback for course access
  * @param {function} onWorkshopAccess - Callback for workshop access
  * @param {function} onPurchaseSuccess - Callback for successful purchase
+ * @param {function} onSubscriptionClaimSuccess - Callback for successful subscription claim
+ * @param {boolean} showSubscriptionClaim - Whether to show subscription claim option
  */
 export default function ProductActionBar({
   product,
@@ -31,12 +34,14 @@ export default function ProductActionBar({
   size = 'lg',
   fullWidth = false,
   showCartButton = true,
+  showSubscriptionClaim = true,
   onFileAccess,
   onPdfPreview,
   onLessonPlanAccess,
   onCourseAccess,
   onWorkshopAccess,
-  onPurchaseSuccess
+  onPurchaseSuccess,
+  onSubscriptionClaimSuccess
 }) {
   const navigate = useNavigate();
 
@@ -133,6 +138,41 @@ export default function ProductActionBar({
           </Button>
         );
     }
+  }
+
+  // If user doesn't have access, check for subscription claim option
+  if (!hasAccess && showSubscriptionClaim) {
+    return (
+      <div className={`flex items-center gap-2 ${fullWidth ? 'w-full' : ''}`}>
+        <SubscriptionClaimButton
+          product={product}
+          className={`flex-1 ${className}`}
+          size={size}
+          fullWidth={!showCartButton}
+          onClaimSuccess={onSubscriptionClaimSuccess}
+          variant="default"
+        />
+        {/* Show regular purchase options alongside subscription claim */}
+        {canPurchase && !isFree && showCartButton && canAddToCart && (
+          <AddToCartButton
+            product={product}
+            className=""
+            size={size}
+            onSuccess={onPurchaseSuccess}
+          />
+        )}
+        {canPurchase && (
+          <BuyProductButton
+            product={product}
+            className={showCartButton ? "" : `flex-1 ${className}`}
+            size={size}
+            fullWidth={!showCartButton}
+            onSuccess={onPurchaseSuccess}
+            variant="secondary"
+          />
+        )}
+      </div>
+    );
   }
 
   // If item is in cart, show "In Cart" button

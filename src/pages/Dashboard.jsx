@@ -29,6 +29,7 @@ import ColorWheelWidget from "@/components/dashboard/widgets/ColorWheelWidget";
 import TableDisplayWidget from "@/components/dashboard/widgets/TableDisplayWidget";
 import MyProductsWidget from "@/components/dashboard/widgets/MyProductsWidget";
 import GameSharingWidget from "@/components/dashboard/widgets/GameSharingWidget";
+import SubscriptionUsageDashboard from "@/components/subscription/SubscriptionUsageDashboard";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { ludlog, luderror } from '@/lib/ludlog';
 import { toast } from "@/components/ui/use-toast";
@@ -140,7 +141,8 @@ const WidgetRenderer = ({ widget, isEditMode, onRemove, onMoveUp, onMoveDown, ca
       'color-wheel': ['small', 'medium'],      // Small and medium only
       'table-display': ['medium', 'large'],    // Medium and large only
       'my-products': ['small', 'medium', 'large'], // All sizes
-      'game-sharing': ['small', 'medium']     // Small and medium only
+      'game-sharing': ['small', 'medium'],     // Small and medium only
+      'subscription-status': ['medium', 'large'] // Medium and large only
     };
 
     return sizeConfigs[widgetType] || ['medium']; // Default to medium only
@@ -241,6 +243,19 @@ const WidgetRenderer = ({ widget, isEditMode, onRemove, onMoveUp, onMoveDown, ca
               <GameSharingWidget
                 widgetId={widget.id}
                 settings={widget.settings}
+              />
+            </CardContent>
+          </Card>
+        );
+      case 'subscription-status':
+        return (
+          <Card className="h-full border-0 bg-gradient-to-br from-purple-50 to-indigo-50 shadow-lg hover:shadow-xl transition-all duration-300">
+            <CardContent className="p-4 h-full">
+              <SubscriptionUsageDashboard
+                currentUser={user}
+                className="h-full"
+                showTitle={false}
+                compact={widget.size === 'medium'}
               />
             </CardContent>
           </Card>
@@ -391,6 +406,21 @@ export default function Dashboard() {
           };
         }
 
+        // Add Subscription Status widget if it doesn't exist in the API
+        if (!widgets['subscription-status']) {
+          widgets['subscription-status'] = {
+            id: 'subscription-status',
+            name: 'סטטוס מנוי',
+            description: 'עקוב אחרי השימוש שלך בגבולות המנוי החודשיים',
+            category: 'subscriptions',
+            icon: 'crown',
+            defaultSettings: {
+              title: 'סטטוס מנוי',
+              size: 'medium'
+            }
+          };
+        }
+
         // Filter out game-sharing widget based on NAV_GAMES_VISIBILITY setting
         const filteredWidgets = filterWidgetsByVisibility(widgets);
         setAvailableWidgets(filteredWidgets);
@@ -441,6 +471,12 @@ export default function Dashboard() {
           name: 'שיתוף המשחקים',
           description: 'שתף את קטלוג המשחקים שלך עם תלמידים',
           category: 'classroom'
+        },
+        'subscription-status': {
+          id: 'subscription-status',
+          name: 'סטטוס מנוי',
+          description: 'עקוב אחרי השימוש שלך בגבולות המנוי החודשיים',
+          category: 'subscriptions'
         }
       });
 
@@ -487,6 +523,12 @@ export default function Dashboard() {
           name: 'שיתוף המשחקים',
           description: 'שתף את קטלוג המשחקים שלך עם תלמידים',
           category: 'classroom'
+        },
+        'subscription-status': {
+          id: 'subscription-status',
+          name: 'סטטוס מנוי',
+          description: 'עקוב אחרי השימוש שלך בגבולות המנוי החודשיים',
+          category: 'subscriptions'
         }
       });
       setAvailableWidgets(filteredFallbackWidgets);
@@ -729,6 +771,10 @@ export default function Dashboard() {
       },
       'my-products': {
         small: 'col-span-1',
+        medium: 'col-span-1 md:col-span-2',
+        large: 'col-span-1 md:col-span-2 xl:col-span-3'
+      },
+      'subscription-status': {
         medium: 'col-span-1 md:col-span-2',
         large: 'col-span-1 md:col-span-2 xl:col-span-3'
       }
