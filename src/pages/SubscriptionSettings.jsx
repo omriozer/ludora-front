@@ -27,12 +27,17 @@ import {
   Play,
   Infinity,
   Copy, // Added Copy icon for duplicate functionality
-  Power
+  Power,
+  FileText,
+  BookOpen,
+  Video,
+  GraduationCap,
+  Wrench
 } from "lucide-react";
 
 export default function SubscriptionSettings() {
   // Use global state from UserContext instead of direct API calls
-  const { currentUser, settings, isLoading: userLoading } = useUser();
+  const { currentUser, settings, isLoading: userLoading, refreshSettings } = useUser();
 
   const [subscriptionPlans, setSubscriptionPlans] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -64,6 +69,31 @@ export default function SubscriptionSettings() {
         enabled: false,
         unlimited: false,
         monthly_limit: 10
+      },
+      files_access: {
+        enabled: false,
+        unlimited: false,
+        monthly_limit: 20
+      },
+      lesson_plans_access: {
+        enabled: false,
+        unlimited: false,
+        monthly_limit: 15
+      },
+      workshops_access: {
+        enabled: false,
+        unlimited: false,
+        monthly_limit: 5
+      },
+      courses_access: {
+        enabled: false,
+        unlimited: false,
+        monthly_limit: 3
+      },
+      tools_access: {
+        enabled: false,
+        unlimited: false,
+        monthly_limit: 8
       },
       classroom_management: {
         enabled: false,
@@ -111,17 +141,21 @@ export default function SubscriptionSettings() {
   const handleToggleSubscriptionSystem = async (enabled) => {
     setIsSavingSettings(true);
     try {
-      const updatedSettings = { ...settings, subscription_system_enabled: enabled };
-
-      if (settings && settings.id) {
-        await Settings.update(settings.id, updatedSettings);
-      } else {
-        await Settings.create(updatedSettings);
+      if (!settings || !settings.id) {
+        throw new Error('Settings not available from UserContext');
       }
 
-      // Settings are updated on the server - no need to update local state
+      // Update the settings object with the new subscription_system_enabled value
+      await Settings.update(settings.id, {
+        subscription_system_enabled: enabled
+      });
+
       showMessage('success', enabled ? 'תוכנית המנויים הופעלה' : 'תוכנית המנויים הושבתה');
+
+      // Refresh settings immediately to update UI without reload
+      await refreshSettings();
     } catch (error) {
+      console.error('Error updating subscription system setting:', error);
       luderror.payment("Error updating subscription system setting:", error);
       showMessage('error', 'שגיאה בעדכון הגדרת תוכנית המנויים');
     }
@@ -168,6 +202,31 @@ export default function SubscriptionSettings() {
           enabled: false,
           unlimited: false,
           monthly_limit: 10
+        },
+        files_access: {
+          enabled: false,
+          unlimited: false,
+          monthly_limit: 20
+        },
+        lesson_plans_access: {
+          enabled: false,
+          unlimited: false,
+          monthly_limit: 15
+        },
+        workshops_access: {
+          enabled: false,
+          unlimited: false,
+          monthly_limit: 5
+        },
+        courses_access: {
+          enabled: false,
+          unlimited: false,
+          monthly_limit: 3
+        },
+        tools_access: {
+          enabled: false,
+          unlimited: false,
+          monthly_limit: 8
         },
         classroom_management: {
           enabled: false,
@@ -225,6 +284,31 @@ export default function SubscriptionSettings() {
           unlimited: plan.benefits?.games_access?.unlimited || false,
           monthly_limit: plan.benefits?.games_access?.monthly_limit || 10
         },
+        files_access: {
+          enabled: plan.benefits?.files_access?.enabled || false,
+          unlimited: plan.benefits?.files_access?.unlimited || false,
+          monthly_limit: plan.benefits?.files_access?.monthly_limit || 20
+        },
+        lesson_plans_access: {
+          enabled: plan.benefits?.lesson_plans_access?.enabled || false,
+          unlimited: plan.benefits?.lesson_plans_access?.unlimited || false,
+          monthly_limit: plan.benefits?.lesson_plans_access?.monthly_limit || 15
+        },
+        workshops_access: {
+          enabled: plan.benefits?.workshops_access?.enabled || false,
+          unlimited: plan.benefits?.workshops_access?.unlimited || false,
+          monthly_limit: plan.benefits?.workshops_access?.monthly_limit || 5
+        },
+        courses_access: {
+          enabled: plan.benefits?.courses_access?.enabled || false,
+          unlimited: plan.benefits?.courses_access?.unlimited || false,
+          monthly_limit: plan.benefits?.courses_access?.monthly_limit || 3
+        },
+        tools_access: {
+          enabled: plan.benefits?.tools_access?.enabled || false,
+          unlimited: plan.benefits?.tools_access?.unlimited || false,
+          monthly_limit: plan.benefits?.tools_access?.monthly_limit || 8
+        },
         classroom_management: {
           enabled: plan.benefits?.classroom_management?.enabled || false,
           unlimited_classrooms: plan.benefits?.classroom_management?.unlimited_classrooms || false,
@@ -260,6 +344,31 @@ export default function SubscriptionSettings() {
           enabled: plan.benefits?.games_access?.enabled || false,
           unlimited: plan.benefits?.games_access?.unlimited || false,
           monthly_limit: plan.benefits?.games_access?.monthly_limit || 10
+        },
+        files_access: {
+          enabled: plan.benefits?.files_access?.enabled || false,
+          unlimited: plan.benefits?.files_access?.unlimited || false,
+          monthly_limit: plan.benefits?.files_access?.monthly_limit || 20
+        },
+        lesson_plans_access: {
+          enabled: plan.benefits?.lesson_plans_access?.enabled || false,
+          unlimited: plan.benefits?.lesson_plans_access?.unlimited || false,
+          monthly_limit: plan.benefits?.lesson_plans_access?.monthly_limit || 15
+        },
+        workshops_access: {
+          enabled: plan.benefits?.workshops_access?.enabled || false,
+          unlimited: plan.benefits?.workshops_access?.unlimited || false,
+          monthly_limit: plan.benefits?.workshops_access?.monthly_limit || 5
+        },
+        courses_access: {
+          enabled: plan.benefits?.courses_access?.enabled || false,
+          unlimited: plan.benefits?.courses_access?.unlimited || false,
+          monthly_limit: plan.benefits?.courses_access?.monthly_limit || 3
+        },
+        tools_access: {
+          enabled: plan.benefits?.tools_access?.enabled || false,
+          unlimited: plan.benefits?.tools_access?.unlimited || false,
+          monthly_limit: plan.benefits?.tools_access?.monthly_limit || 8
         },
         classroom_management: {
           enabled: plan.benefits?.classroom_management?.enabled || false,
@@ -727,6 +836,191 @@ export default function SubscriptionSettings() {
                             </div>
                           )}
 
+                          {/* Files Access */}
+                          {plan.benefits?.files_access?.enabled ? (
+                            <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-xl border border-blue-100">
+                              <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <FileText className="w-4 h-4 text-white" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="font-medium text-blue-900 flex items-center gap-2">
+                                  גישה לקבצים
+                                  {plan.benefits.files_access.unlimited && (
+                                    <Infinity className="w-4 h-4 text-blue-600" />
+                                  )}
+                                </div>
+                                <div className="text-sm text-blue-700 mt-1">
+                                  {plan.benefits.files_access.unlimited ?
+                                    'גישה בלתי מוגבלת לכל הקבצים' :
+                                    `עד ${plan.benefits.files_access.monthly_limit} קבצים בחודש`
+                                  }
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 opacity-50">
+                              <div className="w-8 h-8 bg-gray-300 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <FileText className="w-4 h-4 text-white" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="font-medium text-gray-600">
+                                  גישה לקבצים
+                                </div>
+                                <div className="text-sm text-gray-500 mt-1">
+                                  לא כלול במנוי זה
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Lesson Plans Access */}
+                          {plan.benefits?.lesson_plans_access?.enabled ? (
+                            <div className="flex items-start gap-3 p-3 bg-orange-50 rounded-xl border border-orange-100">
+                              <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <BookOpen className="w-4 h-4 text-white" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="font-medium text-orange-900 flex items-center gap-2">
+                                  גישה לתכניות לימוד
+                                  {plan.benefits.lesson_plans_access.unlimited && (
+                                    <Infinity className="w-4 h-4 text-orange-600" />
+                                  )}
+                                </div>
+                                <div className="text-sm text-orange-700 mt-1">
+                                  {plan.benefits.lesson_plans_access.unlimited ?
+                                    'גישה בלתי מוגבלת לתכניות לימוד' :
+                                    `עד ${plan.benefits.lesson_plans_access.monthly_limit} תכניות בחודש`
+                                  }
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 opacity-50">
+                              <div className="w-8 h-8 bg-gray-300 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <BookOpen className="w-4 h-4 text-white" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="font-medium text-gray-600">
+                                  גישה לתכניות לימוד
+                                </div>
+                                <div className="text-sm text-gray-500 mt-1">
+                                  לא כלול במנוי זה
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Workshops Access */}
+                          {plan.benefits?.workshops_access?.enabled ? (
+                            <div className="flex items-start gap-3 p-3 bg-purple-50 rounded-xl border border-purple-100">
+                              <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <Video className="w-4 h-4 text-white" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="font-medium text-purple-900 flex items-center gap-2">
+                                  גישה לסדנאות
+                                  {plan.benefits.workshops_access.unlimited && (
+                                    <Infinity className="w-4 h-4 text-purple-600" />
+                                  )}
+                                </div>
+                                <div className="text-sm text-purple-700 mt-1">
+                                  {plan.benefits.workshops_access.unlimited ?
+                                    'גישה בלתי מוגבלת לסדנאות' :
+                                    `עד ${plan.benefits.workshops_access.monthly_limit} סדנאות בחודש`
+                                  }
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 opacity-50">
+                              <div className="w-8 h-8 bg-gray-300 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <Video className="w-4 h-4 text-white" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="font-medium text-gray-600">
+                                  גישה לסדנאות
+                                </div>
+                                <div className="text-sm text-gray-500 mt-1">
+                                  לא כלול במנוי זה
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Courses Access */}
+                          {plan.benefits?.courses_access?.enabled ? (
+                            <div className="flex items-start gap-3 p-3 bg-indigo-50 rounded-xl border border-indigo-100">
+                              <div className="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <GraduationCap className="w-4 h-4 text-white" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="font-medium text-indigo-900 flex items-center gap-2">
+                                  גישה לקורסים
+                                  {plan.benefits.courses_access.unlimited && (
+                                    <Infinity className="w-4 h-4 text-indigo-600" />
+                                  )}
+                                </div>
+                                <div className="text-sm text-indigo-700 mt-1">
+                                  {plan.benefits.courses_access.unlimited ?
+                                    'גישה בלתי מוגבלת לקורסים' :
+                                    `עד ${plan.benefits.courses_access.monthly_limit} קורסים בחודש`
+                                  }
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 opacity-50">
+                              <div className="w-8 h-8 bg-gray-300 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <GraduationCap className="w-4 h-4 text-white" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="font-medium text-gray-600">
+                                  גישה לקורסים
+                                </div>
+                                <div className="text-sm text-gray-500 mt-1">
+                                  לא כלול במנוי זה
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Tools Access */}
+                          {plan.benefits?.tools_access?.enabled ? (
+                            <div className="flex items-start gap-3 p-3 bg-yellow-50 rounded-xl border border-yellow-100">
+                              <div className="w-8 h-8 bg-yellow-500 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <Wrench className="w-4 h-4 text-white" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="font-medium text-yellow-900 flex items-center gap-2">
+                                  גישה לכלים
+                                  {plan.benefits.tools_access.unlimited && (
+                                    <Infinity className="w-4 h-4 text-yellow-600" />
+                                  )}
+                                </div>
+                                <div className="text-sm text-yellow-700 mt-1">
+                                  {plan.benefits.tools_access.unlimited ?
+                                    'גישה בלתי מוגבלת לכלים' :
+                                    `עד ${plan.benefits.tools_access.monthly_limit} כלים בחודש`
+                                  }
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 opacity-50">
+                              <div className="w-8 h-8 bg-gray-300 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <Wrench className="w-4 h-4 text-white" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="font-medium text-gray-600">
+                                  גישה לכלים
+                                </div>
+                                <div className="text-sm text-gray-500 mt-1">
+                                  לא כלול במנוי זה
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
                           {/* Classroom Management */}
                           {plan.benefits?.classroom_management?.enabled ? (
                             <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-xl border border-blue-100">
@@ -846,9 +1140,9 @@ export default function SubscriptionSettings() {
 
         {/* Subscription Plan Form Modal */}
         {showForm && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
-            <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-white rounded-3xl shadow-2xl">
-              <div className="p-8">
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 min-h-screen min-w-full">
+            <div className="w-full max-w-6xl max-h-[95vh] overflow-y-auto bg-white rounded-3xl shadow-2xl">
+              <div className="p-6">
                 <div className="flex items-center justify-between mb-8">
                   <h3 className="text-2xl font-bold text-gray-900">
                     {editingPlan ? 'עריכת תוכנית מנוי' : 'יצירת תוכנית מנוי חדשה'}
@@ -858,8 +1152,8 @@ export default function SubscriptionSettings() {
                   </Button>
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-8">
-                  {/* Basic Information */}
+                <div className="grid lg:grid-cols-3 md:grid-cols-2 gap-6">
+                  {/* Column 1: Basic Information */}
                   <div className="space-y-6">
                     <div>
                       <Label htmlFor="name" className="text-sm font-medium text-gray-700 mb-2 block">
@@ -956,8 +1250,13 @@ export default function SubscriptionSettings() {
                       </div>
                     </div>
 
+                  </div>
+
+                  {/* Column 2: Discount & Plan Settings */}
+                  <div className="space-y-6">
                     {/* Discount Settings */}
-                    <div className="border-t pt-6">
+                    <div>
+                      <h4 className="text-lg font-semibold text-gray-900 mb-4">הגדרות הנחה</h4>
                       <div className="flex items-center gap-3 mb-4">
                         <Switch
                           checked={formData.has_discount}
@@ -969,7 +1268,7 @@ export default function SubscriptionSettings() {
                       </div>
 
                       {formData.has_discount && (
-                        <div className="grid grid-cols-3 gap-4">
+                        <div className="space-y-4">
                           <div>
                             <Label className="text-sm font-medium text-gray-700 mb-2 block">
                               סוג הנחה
@@ -1015,57 +1314,60 @@ export default function SubscriptionSettings() {
                     </div>
 
                     {/* Plan Settings */}
-                    <div className="border-t pt-6 space-y-4">
-                      <div>
-                        <Label className="text-sm font-medium text-gray-700 mb-2 block">
-                          סוג תוכנית *
-                        </Label>
-                        <select
-                          value={formData.plan_type}
-                          onChange={(e) => setFormData({...formData, plan_type: e.target.value})}
-                          className="w-full rounded-lg border border-gray-300 px-3 py-2"
-                        >
-                          <option value="free">חינם</option>
-                          <option value="pro">פרימיום</option>
-                        </select>
-                      </div>
+                    <div className="border-t pt-6">
+                      <h4 className="text-lg font-semibold text-gray-900 mb-4">הגדרות תוכנית</h4>
+                      <div className="space-y-4">
+                        <div>
+                          <Label className="text-sm font-medium text-gray-700 mb-2 block">
+                            סוג תוכנית *
+                          </Label>
+                          <select
+                            value={formData.plan_type}
+                            onChange={(e) => setFormData({...formData, plan_type: e.target.value})}
+                            className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                          >
+                            <option value="free">חינם</option>
+                            <option value="pro">פרימיום</option>
+                          </select>
+                        </div>
 
-                      <div className="flex items-center gap-3">
-                        <Switch
-                          checked={formData.is_default}
-                          onCheckedChange={(checked) => setFormData({...formData, is_default: checked})}
-                        />
-                        <Label className="text-sm font-medium text-gray-700">
-                          תוכנית ברירת מחדל
-                        </Label>
-                      </div>
+                        <div className="flex items-center gap-3">
+                          <Switch
+                            checked={formData.is_default}
+                            onCheckedChange={(checked) => setFormData({...formData, is_default: checked})}
+                          />
+                          <Label className="text-sm font-medium text-gray-700">
+                            תוכנית ברירת מחדל
+                          </Label>
+                        </div>
 
-                      <div className="flex items-center gap-3">
-                        <Switch
-                          checked={formData.is_active}
-                          onCheckedChange={(checked) => setFormData({...formData, is_active: checked})}
-                        />
-                        <Label className="text-sm font-medium text-gray-700">
-                          תוכנית פעילה
-                        </Label>
-                      </div>
+                        <div className="flex items-center gap-3">
+                          <Switch
+                            checked={formData.is_active}
+                            onCheckedChange={(checked) => setFormData({...formData, is_active: checked})}
+                          />
+                          <Label className="text-sm font-medium text-gray-700">
+                            תוכנית פעילה
+                          </Label>
+                        </div>
 
-                      <div>
-                        <Label htmlFor="sort_order" className="text-sm font-medium text-gray-700 mb-2 block">
-                          סדר הצגה
-                        </Label>
-                        <Input
-                          id="sort_order"
-                          type="number"
-                          value={formData.sort_order}
-                          onChange={(e) => setFormData({...formData, sort_order: parseInt(e.target.value) || 0})}
-                          className="rounded-lg"
-                        />
+                        <div>
+                          <Label htmlFor="sort_order" className="text-sm font-medium text-gray-700 mb-2 block">
+                            סדר הצגה
+                          </Label>
+                          <Input
+                            id="sort_order"
+                            type="number"
+                            value={formData.sort_order}
+                            onChange={(e) => setFormData({...formData, sort_order: parseInt(e.target.value) || 0})}
+                            className="rounded-lg"
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* Benefits */}
+                  {/* Column 3: Benefits */}
                   <div className="space-y-4">
                     <h3 className="font-semibold text-gray-900 mb-4">הטבות</h3>
 
@@ -1094,13 +1396,208 @@ export default function SubscriptionSettings() {
 
                           {!formData.benefits.games_access.unlimited && (
                             <div>
-                              <Label htmlFor="monthly_limit">מגבלת משחקים חודשית</Label>
+                              <Label htmlFor="games_monthly_limit">מגבלת משחקים חודשית</Label>
                               <Input
-                                id="monthly_limit"
+                                id="games_monthly_limit"
                                 type="number"
                                 min="1"
                                 value={formData.benefits.games_access.monthly_limit}
                                 onChange={(e) => updateFormField('benefits.games_access.monthly_limit', parseInt(e.target.value) || 10)}
+                              />
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+
+                    {/* Files Access */}
+                    <div className="border rounded-lg p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label className="flex items-center gap-2">
+                          <FileText className="w-4 h-4" />
+                          גישה לקבצים
+                        </Label>
+                        <Switch
+                          checked={formData.benefits.files_access.enabled}
+                          onCheckedChange={(checked) => updateFormField('benefits.files_access.enabled', checked)}
+                        />
+                      </div>
+
+                      {formData.benefits.files_access.enabled && (
+                        <>
+                          <div className="flex items-center justify-between">
+                            <Label>גישה בלתי מוגבלת</Label>
+                            <Switch
+                              checked={formData.benefits.files_access.unlimited}
+                              onCheckedChange={(checked) => updateFormField('benefits.files_access.unlimited', checked)}
+                            />
+                          </div>
+
+                          {!formData.benefits.files_access.unlimited && (
+                            <div>
+                              <Label htmlFor="files_monthly_limit">מגבלת קבצים חודשית</Label>
+                              <Input
+                                id="files_monthly_limit"
+                                type="number"
+                                min="1"
+                                value={formData.benefits.files_access.monthly_limit}
+                                onChange={(e) => updateFormField('benefits.files_access.monthly_limit', parseInt(e.target.value) || 20)}
+                              />
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+
+                    {/* Lesson Plans Access */}
+                    <div className="border rounded-lg p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label className="flex items-center gap-2">
+                          <BookOpen className="w-4 h-4" />
+                          גישה לתכניות לימוד
+                        </Label>
+                        <Switch
+                          checked={formData.benefits.lesson_plans_access.enabled}
+                          onCheckedChange={(checked) => updateFormField('benefits.lesson_plans_access.enabled', checked)}
+                        />
+                      </div>
+
+                      {formData.benefits.lesson_plans_access.enabled && (
+                        <>
+                          <div className="flex items-center justify-between">
+                            <Label>גישה בלתי מוגבלת</Label>
+                            <Switch
+                              checked={formData.benefits.lesson_plans_access.unlimited}
+                              onCheckedChange={(checked) => updateFormField('benefits.lesson_plans_access.unlimited', checked)}
+                            />
+                          </div>
+
+                          {!formData.benefits.lesson_plans_access.unlimited && (
+                            <div>
+                              <Label htmlFor="lesson_plans_monthly_limit">מגבלת תכניות לימוד חודשית</Label>
+                              <Input
+                                id="lesson_plans_monthly_limit"
+                                type="number"
+                                min="1"
+                                value={formData.benefits.lesson_plans_access.monthly_limit}
+                                onChange={(e) => updateFormField('benefits.lesson_plans_access.monthly_limit', parseInt(e.target.value) || 15)}
+                              />
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+
+                    {/* Workshops Access */}
+                    <div className="border rounded-lg p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label className="flex items-center gap-2">
+                          <Video className="w-4 h-4" />
+                          גישה לסדנאות
+                        </Label>
+                        <Switch
+                          checked={formData.benefits.workshops_access.enabled}
+                          onCheckedChange={(checked) => updateFormField('benefits.workshops_access.enabled', checked)}
+                        />
+                      </div>
+
+                      {formData.benefits.workshops_access.enabled && (
+                        <>
+                          <div className="flex items-center justify-between">
+                            <Label>גישה בלתי מוגבלת</Label>
+                            <Switch
+                              checked={formData.benefits.workshops_access.unlimited}
+                              onCheckedChange={(checked) => updateFormField('benefits.workshops_access.unlimited', checked)}
+                            />
+                          </div>
+
+                          {!formData.benefits.workshops_access.unlimited && (
+                            <div>
+                              <Label htmlFor="workshops_monthly_limit">מגבלת סדנאות חודשית</Label>
+                              <Input
+                                id="workshops_monthly_limit"
+                                type="number"
+                                min="1"
+                                value={formData.benefits.workshops_access.monthly_limit}
+                                onChange={(e) => updateFormField('benefits.workshops_access.monthly_limit', parseInt(e.target.value) || 5)}
+                              />
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+
+                    {/* Courses Access */}
+                    <div className="border rounded-lg p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label className="flex items-center gap-2">
+                          <GraduationCap className="w-4 h-4" />
+                          גישה לקורסים
+                        </Label>
+                        <Switch
+                          checked={formData.benefits.courses_access.enabled}
+                          onCheckedChange={(checked) => updateFormField('benefits.courses_access.enabled', checked)}
+                        />
+                      </div>
+
+                      {formData.benefits.courses_access.enabled && (
+                        <>
+                          <div className="flex items-center justify-between">
+                            <Label>גישה בלתי מוגבלת</Label>
+                            <Switch
+                              checked={formData.benefits.courses_access.unlimited}
+                              onCheckedChange={(checked) => updateFormField('benefits.courses_access.unlimited', checked)}
+                            />
+                          </div>
+
+                          {!formData.benefits.courses_access.unlimited && (
+                            <div>
+                              <Label htmlFor="courses_monthly_limit">מגבלת קורסים חודשית</Label>
+                              <Input
+                                id="courses_monthly_limit"
+                                type="number"
+                                min="1"
+                                value={formData.benefits.courses_access.monthly_limit}
+                                onChange={(e) => updateFormField('benefits.courses_access.monthly_limit', parseInt(e.target.value) || 3)}
+                              />
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+
+                    {/* Tools Access */}
+                    <div className="border rounded-lg p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label className="flex items-center gap-2">
+                          <Wrench className="w-4 h-4" />
+                          גישה לכלים
+                        </Label>
+                        <Switch
+                          checked={formData.benefits.tools_access.enabled}
+                          onCheckedChange={(checked) => updateFormField('benefits.tools_access.enabled', checked)}
+                        />
+                      </div>
+
+                      {formData.benefits.tools_access.enabled && (
+                        <>
+                          <div className="flex items-center justify-between">
+                            <Label>גישה בלתי מוגבלת</Label>
+                            <Switch
+                              checked={formData.benefits.tools_access.unlimited}
+                              onCheckedChange={(checked) => updateFormField('benefits.tools_access.unlimited', checked)}
+                            />
+                          </div>
+
+                          {!formData.benefits.tools_access.unlimited && (
+                            <div>
+                              <Label htmlFor="tools_monthly_limit">מגבלת כלים חודשית</Label>
+                              <Input
+                                id="tools_monthly_limit"
+                                type="number"
+                                min="1"
+                                value={formData.benefits.tools_access.monthly_limit}
+                                onChange={(e) => updateFormField('benefits.tools_access.monthly_limit', parseInt(e.target.value) || 8)}
                               />
                             </div>
                           )}
