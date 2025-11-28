@@ -72,9 +72,9 @@ export default function ProductTypeSelector({
           });
         }
 
-        // Use navbar ordering: files, tools, games, workshops, courses, lesson_plans
+        // Use navbar ordering: files, tools, games, workshops, courses, lesson_plans, bundle
         // Only include product types, not other nav items like classrooms, account, etc.
-        const productTypesToCheck = ['file', 'tool', 'game', 'workshop', 'course', 'lesson_plan'];
+        const productTypesToCheck = ['file', 'tool', 'game', 'workshop', 'course', 'lesson_plan', 'bundle'];
 
         const adminOnlyTypesSet = new Set();
 
@@ -82,6 +82,7 @@ export default function ProductTypeSelector({
           // Map product type to feature key (same logic as Products.jsx)
           const featureKey = productType === 'file' ? 'files' :
                            productType === 'lesson_plan' ? 'lesson_plans' :
+                           productType === 'bundle' ? 'bundles' :
                            `${productType}s`;
 
           try {

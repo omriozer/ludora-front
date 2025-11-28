@@ -7,7 +7,7 @@
  * All other components should import and use names from this file.
  */
 
-import { Calendar, BookOpen, FileText, Play, Star } from "lucide-react";
+import { Calendar, BookOpen, FileText, Play, Star, Package } from "lucide-react";
 
 // Product Types Configuration with Catalog Settings
 export const PRODUCT_TYPES = {
@@ -193,6 +193,36 @@ export const PRODUCT_TYPES = {
         primary: 'רכישה',
         secondary: 'פרטים נוספים',
         owned: 'הצגת שיעור'
+      }
+    }
+  },
+  bundle: {
+    key: 'bundle',
+    url: '/bundles',
+    singular: 'קיט',
+    plural: 'קיטים',
+    navText: 'קיטים',
+    description: 'חבילות מוצרים במחיר מיוחד',
+    icon: Package,
+    color: 'from-purple-500 to-pink-500',
+    bgColor: 'bg-purple-50',
+    borderColor: 'border-purple-200',
+    gradient: "from-purple-500 via-pink-500 to-rose-600",
+    fallbackImageUrl: "https://images.unsplash.com/photo-1607083206869-4c7672e72a8a?w=400&h=250&fit=crop&q=60",
+    catalog: {
+      title: 'קטלוג קיטים',
+      subtitle: 'חבילות מוצרים חינוכיים במחיר מיוחד - קבצים, משחקים, הדרכות ועוד',
+      searchPlaceholder: 'חפש קיטים...',
+      emptyStateTitle: 'לא נמצאו קיטים',
+      emptyStateSubtitle: 'נסה לשנות את הפילטרים או החיפוש',
+      loadingMessage: 'טוען קיטים...',
+      filters: ['search', 'category', 'price', 'composition'],
+      cardLayout: 'detailed',
+      showTabs: false,
+      actions: {
+        primary: 'רכישת קיט',
+        secondary: 'פרטים נוספים',
+        owned: 'גישה לקיט'
       }
     }
   }
@@ -603,6 +633,10 @@ export const TYPE_ATTRIBUTE_SCHEMAS = {
   },
   tool: {
     // Tools use the same basic fields as files - no special attributes needed
+  },
+  bundle: {
+    // Bundles use bundle_items JSONB field - no type-specific attributes
+    // Bundle composition is managed through the Bundle Composition Section
   },
   lesson_plan: {
     context: {

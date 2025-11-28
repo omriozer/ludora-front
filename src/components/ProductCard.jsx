@@ -20,6 +20,8 @@ import { isAdmin } from "@/lib/userUtils";
 import { useUser } from "@/contexts/UserContext";
 import { useProductAccess } from "@/hooks/useProductAccess";
 import { ludlog } from '@/lib/ludlog';
+import KitBadge from "@/components/ui/KitBadge";
+import { isBundle } from "@/lib/bundleUtils";
 
 // Hebrew grade names constant
 export const HEBREW_GRADES = {
@@ -172,6 +174,11 @@ export default function ProductCard({
       case 'tool':
         return 'כלי דיגיטלי';
 
+      case 'bundle':
+        // Import bundle utils to get composition text
+        const { getBundleCompositionText } = require('@/lib/bundleUtils');
+        return getBundleCompositionText(product);
+
       default:
         return '';
     }
@@ -283,8 +290,14 @@ export default function ProductCard({
           )}
         </div>
 
-        {/* Always Visible - Top Right: Price or Owned Indicator */}
-        <div className="absolute top-4 right-4 z-30">
+        {/* Always Visible - Top Right: Price or Owned Indicator + Kit Badge */}
+        <div className="absolute top-4 right-4 z-30 flex flex-col items-end gap-2">
+          {/* Kit Badge for bundle products */}
+          {isBundle(product) && (
+            <KitBadge product={product} variant="default" size="sm" />
+          )}
+
+          {/* Price or Owned Status */}
           {hasAccess ? (
             <div className="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center gap-2">
               <CheckCircle className="w-3 h-3" />

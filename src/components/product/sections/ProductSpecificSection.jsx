@@ -34,6 +34,7 @@ import CourseProductSection from './product-specific/CourseProductSection';
 import ToolProductSection from './product-specific/ToolProductSection';
 import GameProductSection from './product-specific/GameProductSection';
 import LessonPlanProductSection from './product-specific/LessonPlanProductSection';
+import BundleProductSection from './product-specific/BundleProductSection';
 import VisualTemplateEditor from '@/components/templates/VisualTemplateEditor';
 
 /**
@@ -335,6 +336,12 @@ export const ProductSpecificSection = ({
 
           {formData.product_type === 'lesson_plan' && (
             <LessonPlanProductSection
+              {...commonProps}
+            />
+          )}
+
+          {formData.product_type === 'bundle' && (
+            <BundleProductSection
               {...commonProps}
             />
           )}

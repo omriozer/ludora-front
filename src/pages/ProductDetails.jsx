@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ludlog, luderror } from '@/lib/ludlog';
+import KitBadge from "@/components/ui/KitBadge";
+import { isBundle, getBundleComposition, getBundleCompositionLabel } from "@/lib/bundleUtils";
 import {
   Calendar,
   Clock,
@@ -376,6 +378,8 @@ export default function ProductDetails() {
         return <FileText className="w-6 h-6" />;
       case 'lesson_plan':
         return <GraduationCap className="w-6 h-6" />;
+      case 'bundle':
+        return <Package className="w-6 h-6" />;
       default:
         return <Package className="w-6 h-6" />;
     }

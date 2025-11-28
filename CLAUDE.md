@@ -100,13 +100,17 @@ src/components/
 ├── ui/                    # Reusable UI components
 │   ├── Button.jsx
 │   ├── Card.jsx
-│   └── Modal.jsx
+│   ├── Modal.jsx
+│   └── KitBadge.jsx      # Bundle product visual indicator
 ├── auth/                  # Authentication components
 │   ├── LoginForm.jsx
 │   └── ProtectedRoute.jsx
 ├── product/               # Product creation/editing
 │   ├── ProductEditor.jsx
-│   └── ProductUpload.jsx
+│   ├── ProductUpload.jsx
+│   └── sections/
+│       └── product-specific/
+│           └── BundleProductSection.jsx  # Bundle composition UI
 ├── catalog/               # Product browsing
 │   ├── ProductGrid.jsx
 │   └── FilterSidebar.jsx
@@ -583,7 +587,99 @@ const adminMenuItems = [
 
 ---
 
-## 7. TESTING PATTERNS
+## 7. BUNDLE UI PATTERNS (NEW: Nov 2025)
+
+### Bundle Product Components
+
+**Bundle products (קיט) have specialized UI components for creation and display:**
+
+```javascript
+// ✅ CORRECT: Bundle detection and display
+import { isBundle, getBundleItemCount } from '@/lib/bundleUtils';
+import KitBadge from '@/components/ui/KitBadge';
+
+function ProductCard({ product }) {
+  return (
+    <Card>
+      <CardHeader>
+        {isBundle(product) && (
+          <KitBadge product={product} variant="default" size="md" />
+        )}
+        <h3>{product.title}</h3>
+      </CardHeader>
+      <CardBody>
+        {isBundle(product) ? (
+          <p>{getBundleItemCount(product)} items in bundle</p>
+        ) : (
+          <p>{product.description}</p>
+        )}
+      </CardBody>
+    </Card>
+  );
+}
+```
+
+### Bundle Creation UI
+
+```javascript
+// ✅ CORRECT: Bundle composition interface
+import BundleProductSection from '@/components/product/sections/product-specific/BundleProductSection';
+
+// Used in ProductEditor when product_type === 'bundle'
+<BundleProductSection
+  formData={formData}
+  updateFormData={updateFormData}
+  editingProduct={editingProduct}
+  isFieldValid={isFieldValid}
+  getFieldError={getFieldError}
+/>
+
+// Manages bundle_items array with search/selection UI
+// Validates composition rules (min/max items, same type, etc.)
+// Shows real-time pricing calculations
+```
+
+### Bundle Utilities
+
+```javascript
+// ✅ CORRECT: Centralized bundle logic
+import {
+  isBundle,                    // Check if product is a bundle
+  isBundleable,                // Check if type can be bundled
+  getBundleItemCount,          // Get number of items
+  getBundleComposition,        // Get item counts by type
+  getBundleCompositionLabel,   // Hebrew label for composition
+  validateBundleItems          // Validate bundle rules
+} from '@/lib/bundleUtils';
+
+// Bundle detection pattern used throughout the app
+if (isBundle(product)) {
+  // Show bundle-specific UI
+}
+
+// Check if product can be included in bundles
+if (isBundleable(product.product_type)) {
+  // Allow selection in bundle composer
+}
+```
+
+### Visual Indicators
+
+**KitBadge Component Variants:**
+- **default**: Standard badge with item count
+- **compact**: Icon only for space-constrained layouts
+- **full**: Badge with complete composition breakdown
+
+```javascript
+// Different badge variants for different contexts
+<KitBadge product={product} variant="default" />   // "קיט • 5"
+<KitBadge product={product} variant="compact" />   // Icon only
+<KitBadge product={product} variant="full" />      // "קיט • 2 קבצים, 3 משחקים"
+```
+
+---
+
+## 8. TESTING PATTERNS
 
 ### Component Testing with Cypress
 
