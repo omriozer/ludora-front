@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Game, Purchase, User, Workshop, Course, File, Tool, Product, Transaction } from "@/services/entities";
+import { Game, Purchase, User, Workshop, Course, File, Tool, Product, Transaction, Subscription, SubscriptionPlan } from "@/services/entities";
 import { purchaseUtils } from "@/utils/api.js";
 import { ludlog, luderror } from '@/lib/ludlog';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -169,6 +169,79 @@ export default function PaymentResult() {
           if (transactions && transactions.length > 0) {
             const transactionData = transactions[0];
             finalOrderNumber = transactionData.id;
+
+            // Check if this is a subscription payment
+            const isSubscriptionPayment = transactionData.metadata?.subscription_id ||
+                                          transactionData.metadata?.transaction_type === 'subscription_payment';
+
+            if (isSubscriptionPayment) {
+              ludlog.payment('PaymentResult: Detected subscription payment transaction:', {
+                subscriptionId: transactionData.metadata?.subscription_id,
+                transactionType: transactionData.metadata?.transaction_type
+              });
+
+              // Handle subscription payment flow
+              try {
+                const subscriptionId = transactionData.metadata.subscription_id;
+                const subscription = await Subscription.findById(subscriptionId);
+
+                if (subscription) {
+                  ludlog.payment('PaymentResult: Loaded subscription data:', {
+                    subscriptionId: subscription.id,
+                    status: subscription.status
+                  });
+
+                  // Load subscription plan details
+                  const subscriptionPlan = await SubscriptionPlan.findById(subscription.subscription_plan_id);
+
+                  // Set up subscription-specific display
+                  setPurchase({
+                    id: subscription.id,
+                    payment_amount: subscription.monthly_price,
+                    payment_status: subscription.status,
+                    transaction_id: transactionData.id,
+                    metadata: {
+                      ...transactionData.metadata,
+                      subscription_type: 'subscription'
+                    }
+                  });
+
+                  setItem({
+                    id: subscription.id,
+                    title: subscriptionPlan?.name || 'מינוי פרימיום',
+                    short_description: subscriptionPlan?.description || 'גישה למכללת לודורה',
+                    product_type: 'subscription',
+                    subscription_plan: subscriptionPlan,
+                    subscription: subscription
+                  });
+
+                  setItemType('subscription');
+
+                  // Set status based on subscription status
+                  if (subscription.status === 'active') {
+                    finalStatus = 'success';
+                  } else if (subscription.status === 'failed') {
+                    finalStatus = 'failure';
+                  } else if (subscription.status === 'pending') {
+                    finalStatus = transactionUid ? 'success' : 'pending';
+                  } else {
+                    finalStatus = 'unknown';
+                  }
+
+                  ludlog.payment('PaymentResult: Subscription payment setup complete:', {
+                    subscriptionId: subscription.id,
+                    status: finalStatus,
+                    planName: subscriptionPlan?.name
+                  });
+
+                  setIsLoading(false);
+                  return; // Exit early for subscription payments
+                }
+              } catch (subscriptionError) {
+                luderror.payment('PaymentResult: Error loading subscription data:', subscriptionError);
+                // Fall back to regular transaction processing
+              }
+            }
 
             // Use payment_status field, not status field
             const actualStatus = transactionData.payment_status || transactionData.status;
@@ -464,24 +537,46 @@ export default function PaymentResult() {
 
   const getStatusTitle = () => {
     if (isFree) {
+      if (itemType === 'subscription') {
+        return status === 'success' ? 'המינוי החינם הופעל בהצלחה!' : 'שגיאה בהפעלת המינוי החינם';
+      }
       return status === 'success' ? 'קיבלת גישה חינם בהצלחה!' : 'שגיאה בקבלת הגישה החינם';
     }
-    
+
     switch (status) {
       case 'success':
+        if (itemType === 'subscription') {
+          return 'המינוי הופעל בהצלחה!';
+        }
         return 'התשלום הושלם בהצלחה!';
       case 'failure':
+        if (itemType === 'subscription') {
+          return 'תשלום המינוי נכשל';
+        }
         return 'התשלום נכשל';
       case 'cancel':
+        if (itemType === 'subscription') {
+          return 'תשלום המינוי בוטל';
+        }
         return 'התשלום בוטל';
+      case 'pending':
+        if (itemType === 'subscription') {
+          return 'ממתין לאישור תשלום המינוי';
+        }
+        return 'ממתין לאישור תשלום';
       default:
+        if (itemType === 'subscription') {
+          return 'מצב תשלום המינוי לא ידוע';
+        }
         return 'מצב תשלום לא ידוע';
     }
   };
 
   const getStatusMessage = () => {
     if (isFree && status === 'success') {
-      if (itemType === 'game') {
+      if (itemType === 'subscription') {
+        return 'המינוי החינם הופעל בהצלחה! תוכל לגשת לכל התכנים עכשיו.';
+      } else if (itemType === 'game') {
         return `ה${getProductTypeName('game', 'singular')} נוסף ל${getProductTypeName('game', 'plural')} שלך. תוכל להתחיל לשחק עכשיו!`;
       } else {
         return 'המוצר נוסף לחשבון שלך. תוכל לגשת אליו עכשיו!';
@@ -490,27 +585,49 @@ export default function PaymentResult() {
 
     switch (status) {
       case 'success':
-        if (isMultiProduct) {
+        if (itemType === 'subscription') {
+          return 'תודה על הרישום! המינוי פעיל עכשיו ותוכל לגשת לכל התכנים.';
+        } else if (isMultiProduct) {
           return `תודה על הרכישה! ${totalPurchases} מוצרים זמינים עכשיו בחשבון שלך.`;
         }
         return 'תודה על הרכישה! המוצר זמין עכשיו בחשבון שלך.';
       case 'failure':
+        if (itemType === 'subscription') {
+          return 'תשלום המינוי לא הושלם. אנא נסה שוב או פנה לתמיכה.';
+        }
         return 'התשלום לא הושלם. אנא נסה שוב או פנה לתמיכה.';
       case 'cancel':
+        if (itemType === 'subscription') {
+          return 'ביטלת את תשלום המינוי. תוכל לנסות שוב בכל עת.';
+        }
         return 'ביטלת את התשלום. תוכל לנסות שוב בכל עת.';
+      case 'pending':
+        if (itemType === 'subscription') {
+          return 'תשלום המינוי מתבצע כעת. המינוי יופעל ברגע שהתשלום יאושר.';
+        }
+        return 'התשלום מתבצע כעת. המוצר יהיה זמין ברגע שהתשלום יאושר.';
       default:
+        if (itemType === 'subscription') {
+          return 'מצב תשלום המינוי לא ברור. אנא פנה לתמיכה.';
+        }
         return 'מצב התשלום לא ברור. אנא פנה לתמיכה.';
     }
   };
 
   const getItemIcon = () => {
+    if (itemType === 'subscription') {
+      return <CheckCircle className="w-5 h-5 text-emerald-600" />;
+    }
+
     if (itemType === 'game') {
       return <Gamepad2 className="w-5 h-5 text-purple-600" />;
     }
-    
+
     if (!item) return <FileText className="w-5 h-5 text-gray-600" />;
-    
+
     switch (item.product_type) {
+      case 'subscription':
+        return <CheckCircle className="w-5 h-5 text-emerald-600" />;
       case 'workshop':
         return <Calendar className="w-5 h-5 text-blue-600" />;
       case 'course':
@@ -529,13 +646,35 @@ export default function PaymentResult() {
   const getActionButton = () => {
     if (status !== 'success') {
       return (
-        <Button 
+        <Button
           onClick={() => navigate("/")}
           className="w-full"
         >
           <ArrowLeft className="w-4 h-4 ml-2" />
           חזרה לדף הבית
         </Button>
+      );
+    }
+
+    if (itemType === 'subscription') {
+      return (
+        <div className="space-y-3">
+          <Button
+            onClick={() => navigate("/account")}
+            className="w-full bg-emerald-600 hover:bg-emerald-700"
+          >
+            <CheckCircle className="w-4 h-4 ml-2" />
+            לניהול המינוי
+          </Button>
+          <Button
+            onClick={() => navigate("/catalog")}
+            className="w-full"
+            variant="outline"
+          >
+            <FileText className="w-4 h-4 ml-2" />
+            גישה לתכנים
+          </Button>
+        </div>
       );
     }
 
@@ -746,25 +885,51 @@ export default function PaymentResult() {
                       <p className="text-sm text-gray-600 mt-1">{item.short_description}</p>
                     )}
                     <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
-                      {isFree ? (
-                        <span className="text-green-600 font-medium">חינם</span>
-                      ) : purchase && (
-                        <span>₪{purchase.payment_amount}</span>
-                      )}
-                      {purchase && !purchaseUtils.hasLifetimeAccess(purchase) && (
-                        <span className="flex items-center gap-1 text-blue-600">
-                          <Clock className="w-3 h-3" />
-                          גישה עד: {purchaseUtils.formatAccessExpiry(purchase)}
-                        </span>
-                      )}
-                      {purchase && purchaseUtils.hasLifetimeAccess(purchase) && (
-                        <span className="text-green-600 font-medium">גישה לכל החיים</span>
-                      )}
-                      {itemType === 'product' && item.product_type === 'workshop' && item.scheduled_date && (
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {format(new Date(item.scheduled_date), 'dd/MM/yyyy HH:mm', { locale: he })}
-                        </span>
+                      {itemType === 'subscription' ? (
+                        <>
+                          {isFree ? (
+                            <span className="text-green-600 font-medium">מינוי חינם</span>
+                          ) : purchase && (
+                            <span>₪{purchase.payment_amount} לחודש</span>
+                          )}
+                          {item.subscription && (
+                            <span className="flex items-center gap-1 text-emerald-600">
+                              <CheckCircle className="w-3 h-3" />
+                              {item.subscription.status === 'active' ? 'מינוי פעיל' :
+                               item.subscription.status === 'pending' ? 'ממתין לאישור' :
+                               'מינוי לא פעיל'}
+                            </span>
+                          )}
+                          {item.subscription && item.subscription.next_billing_date && (
+                            <span className="flex items-center gap-1 text-blue-600">
+                              <Clock className="w-3 h-3" />
+                              חיוב הבא: {format(new Date(item.subscription.next_billing_date), 'dd/MM/yyyy', { locale: he })}
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          {isFree ? (
+                            <span className="text-green-600 font-medium">חינם</span>
+                          ) : purchase && (
+                            <span>₪{purchase.payment_amount}</span>
+                          )}
+                          {purchase && !purchaseUtils.hasLifetimeAccess(purchase) && (
+                            <span className="flex items-center gap-1 text-blue-600">
+                              <Clock className="w-3 h-3" />
+                              גישה עד: {purchaseUtils.formatAccessExpiry(purchase)}
+                            </span>
+                          )}
+                          {purchase && purchaseUtils.hasLifetimeAccess(purchase) && (
+                            <span className="text-green-600 font-medium">גישה לכל החיים</span>
+                          )}
+                          {itemType === 'product' && item.product_type === 'workshop' && item.scheduled_date && (
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              {format(new Date(item.scheduled_date), 'dd/MM/yyyy HH:mm', { locale: he })}
+                            </span>
+                          )}
+                        </>
                       )}
                     </div>
                     {isMultiProduct && (

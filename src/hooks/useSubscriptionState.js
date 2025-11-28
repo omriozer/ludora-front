@@ -443,6 +443,16 @@ export function useSubscriptionState(user) {
       return 'התוכנית הנוכחית';
     }
 
+    // Check if user has an active pending subscription for this plan
+    const hasPendingSubscriptionForPlan = subscriptionState.subscriptions?.some(sub =>
+      sub.subscription_plan_id === plan.id && sub.status === 'pending'
+    );
+
+    // If there's a pending subscription, show waiting status like one-time purchases
+    if (hasPendingSubscriptionForPlan) {
+      return 'ממתין לאישור תשלום';
+    }
+
     // Always evaluate the action for each plan to get the most accurate button text
     const actionDecision = SubscriptionBusinessLogic.determineSubscriptionAction(
       user,
@@ -455,7 +465,7 @@ export function useSubscriptionState(user) {
     // Handle specific action types
     switch (actionDecision.actionType) {
       case SubscriptionBusinessLogic.ACTION_TYPES.RETRY_PAYMENT:
-        return 'המשך תשלום';
+        return 'ממתין לאישור תשלום'; // Match one-time purchase UX
       case SubscriptionBusinessLogic.ACTION_TYPES.REPLACE_PENDING:
         return 'החלף תוכנית ממתינה';
       case SubscriptionBusinessLogic.ACTION_TYPES.CANCEL_PENDING_DOWNGRADE:
@@ -469,7 +479,7 @@ export function useSubscriptionState(user) {
       default:
         return 'בחר תוכנית';
     }
-  }, [isCurrentPlan, subscriptionState.summary, user, subscriptionState.purchases, subscriptionState.plans, subscriptionState.subscriptions]);
+  }, [isCurrentPlan, subscriptionState.summary, subscriptionState.subscriptions, user, subscriptionState.purchases, subscriptionState.plans]);
 
   // Initialize data on mount and user change
   useEffect(() => {
