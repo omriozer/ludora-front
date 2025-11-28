@@ -148,6 +148,14 @@ export const useProductFormValidation = (editingProduct, formData, uploadedFileI
       }
     }
 
+    // Bundle specific validation - check is_bundle flag, not product_type
+    if (formData.type_attributes?.is_bundle === true) {
+      const bundleItems = formData.type_attributes?.bundle_items || [];
+      if (bundleItems.length < 2) {
+        errors.bundle_items = 'יש להוסיף לפחות 2 מוצרים לקיט';
+      }
+    }
+
     return {
       isValid: Object.keys(errors).length === 0,
       errors
@@ -176,24 +184,27 @@ export const useProductFormValidation = (editingProduct, formData, uploadedFileI
   const canPublish = useCallback(() => {
     const { isValid } = validateForm();
 
-    // Debug logging to understand why publishing might be disabled
-
     if (!isValid) {
-      ludlog.ui('canPublish: Form validation failed');
       return false;
     }
     if (isNewProduct) {
-      ludlog.ui('canPublish: Product is new (not saved yet);');
-      return false;
-    }
-    if (isFileProduct && !hasUploadedFile) {
-      ludlog.media('canPublish: File product missing uploaded file');
       return false;
     }
 
-    ludlog.ui('canPublish: All conditions passed');
+    // Bundle products: Check if there are multiple products linked
+    if (formData.type_attributes?.is_bundle === true) {
+      const bundleItems = formData.type_attributes?.bundle_items || [];
+      if (bundleItems.length < 2) {
+        return false;
+      }
+    }
+    // File products: Check if file is uploaded (but not for bundles)
+    else if (isFileProduct && !formData.type_attributes?.is_bundle && !hasUploadedFile) {
+      return false;
+    }
+
     return true;
-  }, [validateForm, isNewProduct, isFileProduct, hasUploadedFile, editingProduct, uploadedFileInfo]);
+  }, [validateForm, isNewProduct, isFileProduct, hasUploadedFile, editingProduct, uploadedFileInfo, formData.product_type, formData.type_attributes?.is_bundle, formData.type_attributes?.bundle_items]);
 
   return {
     sectionAccess,

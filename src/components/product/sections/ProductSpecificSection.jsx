@@ -1,29 +1,10 @@
-import React, { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import {
-  FileText,
-  Calendar,
-  BookOpen,
-  Wrench,
-  Upload,
-  Play,
-  Trash2,
-  Plus,
-  X,
-  Loader2,
-  Download,
-  Eye,
-  AlertCircle,
-  Link as LinkIcon
-} from 'lucide-react';
+import { FileText } from 'lucide-react';
 import { getProductTypeName, getAttributeSchema } from '@/config/productTypes';
 import { getProductTypeIconByType } from '@/lib/layoutUtils';
 
@@ -63,6 +44,7 @@ export const ProductSpecificSection = ({
   globalSettings
 }) => {
   const [selectedModuleVideoTab, setSelectedModuleVideoTab] = useState({});
+
 
   // Disabled section component
   const DisabledSectionMessage = ({ title, message, icon: Icon }) => (
@@ -147,7 +129,10 @@ export const ProductSpecificSection = ({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Icon className="w-5 h-5" />
-          הגדרות ספציפיות ל{getProductTypeName(formData.product_type, 'singular')}
+          הגדרות ספציפיות ל{formData.type_attributes?.is_bundle ?
+            `קיט ${getProductTypeName(formData.product_type, 'plural')}` :
+            getProductTypeName(formData.product_type, 'singular')
+          }
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -300,7 +285,7 @@ export const ProductSpecificSection = ({
 
         {/* Render product-specific sections */}
         <div className="space-y-6">
-          {formData.product_type === 'file' && (
+          {formData.product_type === 'file' && !formData.type_attributes?.is_bundle && (
             <FileProductSection
               {...commonProps}
               showFooterPreview={showFooterPreview}
@@ -308,13 +293,13 @@ export const ProductSpecificSection = ({
             />
           )}
 
-          {formData.product_type === 'workshop' && (
+          {formData.product_type === 'workshop' && !formData.type_attributes?.is_bundle && (
             <WorkshopProductSection
               {...commonProps}
             />
           )}
 
-          {formData.product_type === 'course' && (
+          {formData.product_type === 'course' && !formData.type_attributes?.is_bundle && (
             <CourseProductSection
               {...commonProps}
               selectedModuleVideoTab={selectedModuleVideoTab}
@@ -322,25 +307,25 @@ export const ProductSpecificSection = ({
             />
           )}
 
-          {formData.product_type === 'tool' && (
+          {formData.product_type === 'tool' && !formData.type_attributes?.is_bundle && (
             <ToolProductSection
               {...commonProps}
             />
           )}
 
-          {formData.product_type === 'game' && (
+          {formData.product_type === 'game' && !formData.type_attributes?.is_bundle && (
             <GameProductSection
               {...commonProps}
             />
           )}
 
-          {formData.product_type === 'lesson_plan' && (
+          {formData.product_type === 'lesson_plan' && !formData.type_attributes?.is_bundle && (
             <LessonPlanProductSection
               {...commonProps}
             />
           )}
 
-          {formData.product_type === 'bundle' && (
+          {formData.type_attributes?.is_bundle && (
             <BundleProductSection
               {...commonProps}
             />

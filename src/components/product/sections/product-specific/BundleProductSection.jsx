@@ -13,14 +13,15 @@ import {
   Trash2,
   Info
 } from 'lucide-react';
-import { ProductAPI } from '@/services/apiClient';
+import { Product } from '@/services/apiClient';
 import { getProductTypeName, PRODUCT_TYPES } from '@/config/productTypes';
 import { ludlog, luderror } from '@/lib/ludlog';
 import {
   getBundleComposition,
   getBundleCompositionLabel,
   validateBundleItems,
-  isBundleable
+  isBundleable,
+  getAllBundleableTypes
 } from '@/lib/bundleUtils';
 import KitBadge from '@/components/ui/KitBadge';
 
@@ -38,22 +39,24 @@ export default function BundleProductSection({
   updateFormData,
   editingProduct,
   isFieldValid,
-  getFieldError
+  getFieldError,
+  currentUser
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [selectedType, setSelectedType] = useState('all');
-  const [bundleItems, setBundleItems] = useState(formData.bundle_items || []);
+  const [selectedType, setSelectedType] = useState('file');
+  const [bundleItems, setBundleItems] = useState(formData.type_attributes?.bundle_items || []);
 
   // Sync bundle items with form data
   // Note: bundleItems intentionally excluded from dependency array to prevent infinite loop
-  // We only want to sync when formData.bundle_items changes, not when bundleItems changes
+  // We only want to sync when formData.type_attributes.bundle_items changes, not when bundleItems changes
   useEffect(() => {
-    if (formData.bundle_items !== bundleItems) {
-      setBundleItems(formData.bundle_items || []);
+    const formBundleItems = formData.type_attributes?.bundle_items || [];
+    if (JSON.stringify(formBundleItems) !== JSON.stringify(bundleItems)) {
+      setBundleItems(formBundleItems);
     }
-  }, [formData.bundle_items]);
+  }, [formData.type_attributes?.bundle_items]);
 
   // Search for products to add to bundle
   const handleSearch = async () => {
@@ -66,20 +69,37 @@ export default function BundleProductSection({
     try {
       ludlog.ui('Searching for products to add to bundle:', { query: searchQuery, type: selectedType });
 
-      // Build search filters
+      // Fetch products using Product.find() (search filtering done frontend-side)
+      // Backend handles access control automatically based on user role:
+      // - Admins can access all products (creator_user_id null + own products)
+      // - Content creators can only access their own products
       const filters = {
-        search: searchQuery,
-        is_published: true, // Only show published products
-        limit: 20
+        product_type: selectedType,
+        is_published: true // Only show published products
       };
 
-      // Filter by product type if not "all"
-      if (selectedType !== 'all') {
-        filters.product_type = selectedType;
+      ludlog.ui('Bundle search - user role:', { role: currentUser?.role, userId: currentUser?.id });
+
+      // Fetch all products of the selected type
+      ludlog.ui('Bundle search filters:', filters);
+      const response = await Product.find(filters);
+      let allResults = response.results || response || [];
+
+      // Apply frontend search filtering (like AssociateProductDialog pattern)
+      let results = allResults;
+      if (searchQuery.trim()) {
+        const searchTerm = searchQuery.toLowerCase();
+        results = allResults.filter(product =>
+          product.title?.toLowerCase().includes(searchTerm) ||
+          product.short_description?.toLowerCase().includes(searchTerm) ||
+          product.description?.toLowerCase().includes(searchTerm) ||
+          product.category?.toLowerCase().includes(searchTerm)
+        );
       }
 
-      // Fetch products
-      const results = await ProductAPI.find(filters);
+      // Limit results for performance
+      results = results.slice(0, 20);
+      ludlog.ui('Bundle search raw results:', { count: results.length, results: results.slice(0, 3).map(r => ({ id: r.id, title: r.title, creator_user_id: r.creator_user_id })) });
 
       // Filter out non-bundleable products and current bundle itself
       const bundleableResults = results.filter(product => {
@@ -126,7 +146,12 @@ export default function BundleProductSection({
 
     const updatedItems = [...bundleItems, newItem];
     setBundleItems(updatedItems);
-    updateFormData({ bundle_items: updatedItems });
+    updateFormData({
+      type_attributes: {
+        is_bundle: true,
+        bundle_items: updatedItems
+      }
+    });
 
     // Remove from search results
     setSearchResults(searchResults.filter(p => p.id !== product.id));
@@ -138,7 +163,12 @@ export default function BundleProductSection({
   const handleRemoveProduct = (index) => {
     const updatedItems = bundleItems.filter((_, i) => i !== index);
     setBundleItems(updatedItems);
-    updateFormData({ bundle_items: updatedItems });
+    updateFormData({
+      type_attributes: {
+        is_bundle: true,
+        bundle_items: updatedItems
+      }
+    });
 
     ludlog.ui('Removed product from bundle:', { index, count: updatedItems.length });
   };
@@ -173,7 +203,10 @@ export default function BundleProductSection({
               </div>
               {bundleItems.length > 0 && (
                 <KitBadge
-                  product={{ product_type: 'bundle', bundle_items: bundleItems }}
+                  product={{
+                    product_type: formData.product_type,
+                    type_attributes: { is_bundle: true, bundle_items: bundleItems }
+                  }}
                   variant="full"
                   size="lg"
                 />
@@ -256,14 +289,11 @@ export default function BundleProductSection({
                 onChange={(e) => setSelectedType(e.target.value)}
                 className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="all">כל הסוגים</option>
-                {Object.entries(PRODUCT_TYPES)
-                  .filter(([key]) => isBundleable(key))
-                  .map(([key, config]) => (
-                    <option key={key} value={key}>
-                      {config.plural}
-                    </option>
-                  ))}
+                {getAllBundleableTypes().map((typeConfig) => (
+                  <option key={typeConfig.key} value={typeConfig.key}>
+                    {typeConfig.plural}
+                  </option>
+                ))}
               </select>
               <Button
                 onClick={handleSearch}

@@ -51,8 +51,30 @@ export const BasicInfoSection = ({
   }, []);
 
   // Handle product type selection
-  const handleProductTypeSelect = (productType) => {
-    updateFormData({ product_type: productType });
+  const handleProductTypeSelect = (selection) => {
+    // Check if this is a bundle selection (format: "type:bundle")
+    if (selection.includes(':bundle')) {
+      const [productType] = selection.split(':');
+
+      // Set the base product type with bundle flag
+      updateFormData({
+        product_type: productType,
+        type_attributes: {
+          ...formData.type_attributes,
+          is_bundle: true
+        }
+      });
+    } else {
+      // Regular product type selection
+      updateFormData({
+        product_type: selection,
+        type_attributes: {
+          ...formData.type_attributes,
+          is_bundle: false
+        }
+      });
+    }
+
     if (onStepChange) {
       onStepChange('form');
     }
@@ -148,7 +170,10 @@ export const BasicInfoSection = ({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Info className="w-5 h-5" />
-          מידע בסיסי - {getProductTypeName(formData.product_type, 'singular')}
+          מידע בסיסי - {formData.type_attributes?.is_bundle ?
+            `קיט ${getProductTypeName(formData.product_type, 'plural')}` :
+            getProductTypeName(formData.product_type, 'singular')
+          }
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -218,6 +243,49 @@ export const BasicInfoSection = ({
             />
             {!isFieldValid('price') && (
               <p className="text-sm text-red-600 mt-1">{getFieldError('price')}</p>
+            )}
+
+            {/* Bundle Pricing Information */}
+            {formData.type_attributes?.is_bundle && formData.type_attributes?.bundle_items && (
+              (() => {
+                const bundleItems = formData.type_attributes.bundle_items || [];
+                const totalOriginalPrice = bundleItems.reduce((sum, item) => {
+                  const price = item._metadata?.price || 0;
+                  return sum + parseFloat(price);
+                }, 0);
+                const bundlePrice = parseFloat(formData.price || 0);
+                const savings = totalOriginalPrice - bundlePrice;
+                const savingsPercentage = totalOriginalPrice > 0 ? Math.round((savings / totalOriginalPrice) * 100) : 0;
+
+                return totalOriginalPrice > 0 && (
+                  <div className="mt-3 p-4 bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-700">סכום מוצרים נפרדים:</span>
+                        <span className="text-lg font-bold text-gray-900">₪{totalOriginalPrice.toFixed(2)}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-700">מחיר הקיט:</span>
+                        <span className="text-lg font-bold text-purple-700">₪{bundlePrice.toFixed(2)}</span>
+                      </div>
+                      {savings > 0 && (
+                        <div className="flex items-center justify-between pt-2 border-t border-purple-200">
+                          <span className="text-sm font-medium text-green-700">חיסכון ללקוח:</span>
+                          <div className="text-left">
+                            <span className="text-lg font-bold text-green-600">₪{savings.toFixed(2)}</span>
+                            <span className="text-sm text-green-600 mr-1">({savingsPercentage}%)</span>
+                          </div>
+                        </div>
+                      )}
+                      {bundleItems.length > 0 && (
+                        <div className="pt-2 text-xs text-gray-600">
+                          {bundleItems.length} מוצרים בקיט
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()
             )}
           </div>
 

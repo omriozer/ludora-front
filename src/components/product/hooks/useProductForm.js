@@ -127,7 +127,7 @@ export const useProductForm = (editingProduct = null, currentUser = null) => {
       // Tool specific
       tool_url: '',
       tool_description: '',
-      tool_category: ''
+      tool_category: '',
     };
   }, [editingProduct, currentUser]);
 
@@ -136,16 +136,43 @@ export const useProductForm = (editingProduct = null, currentUser = null) => {
   const [isSaving, setIsSaving] = useState(false);
   const [saveAndContinue, setSaveAndContinue] = useState(false);
 
-  // Update form data when editingProduct changes
+  // Update form data when editingProduct changes (only for existing products)
+  // CRITICAL: Only depend on editingProduct?.id to prevent infinite re-renders
+  // The getInitialFormData callback reference changes on every render due to its dependencies,
+  // which would cause this effect to run constantly and overwrite user input.
+  // By depending only on the product ID, we ensure this effect only runs when
+  // switching between products or loading a product for the first time.
   useEffect(() => {
-    const newInitialData = getInitialFormData();
-    setFormData(newInitialData);
-    setInitialFormData(newInitialData);
-  }, [getInitialFormData]);
+    // Only run this effect when editing an existing product, not for new product creation
+    if (editingProduct?.id) {
+      const newInitialData = getInitialFormData();
+      setFormData(newInitialData);
+      setInitialFormData(newInitialData);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingProduct?.id]); // ✅ Only re-run when product ID actually changes
 
-  // Helper function to update form data
+  // Helper function to update form data with proper nested object merging
   const updateFormData = useCallback((updates) => {
-    setFormData(prev => ({ ...prev, ...updates }));
+    setFormData(prev => {
+      const newData = { ...prev };
+
+      // Handle updates object by object to ensure proper merging
+      for (const [key, value] of Object.entries(updates)) {
+        if (key === 'type_attributes' && typeof value === 'object' && value !== null && !Array.isArray(value)) {
+          // Deep merge type_attributes to preserve existing attributes
+          newData[key] = {
+            ...prev[key],
+            ...value
+          };
+        } else {
+          // For all other fields, normal assignment
+          newData[key] = value;
+        }
+      }
+
+      return newData;
+    });
   }, []);
 
   // Helper function to update nested form data (like arrays)

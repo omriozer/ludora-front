@@ -76,6 +76,12 @@ export const WizardLayout = ({
       productContent: () => {
         if (!formData.product_type) return false;
 
+        // Check if this is a bundle first
+        if (formData.type_attributes?.is_bundle === true) {
+          const bundleItems = formData.type_attributes?.bundle_items || [];
+          return bundleItems.length >= 2; // Bundle products need at least 2 linked products
+        }
+
         if (formData.product_type === 'file') {
           return hasUploadedFile; // File products MUST have an uploaded file
         }
@@ -139,6 +145,8 @@ export const WizardLayout = ({
     JSON.stringify(formData.file_configs?.files?.filter(f => f.file_role === 'opening')), // Trigger on opening files change
     formData.file_configs?.presentation?.length, // For lesson plan SVG slides validation
     formData.is_published, // For publishing step validation
+    formData.type_attributes?.is_bundle, // For bundle product detection
+    formData.type_attributes?.bundle_items?.length, // For bundle items count validation
     hasUploadedFile,
     visibleSections.length // Only depend on length, not the entire array
   ]);
@@ -194,12 +202,15 @@ export const WizardLayout = ({
   // Handle form submission
   const handleSubmit = async (continueEditing = false) => {
     const validation = validateForm();
+
     if (!validation.isValid) {
       showMessage('error', 'יש למלא את כל השדות החובה לפני השמירה');
       return;
     }
 
-    if (!canSave()) {
+    const canSaveNow = canSave();
+
+    if (!canSaveNow) {
       showMessage('error', 'לא ניתן לשמור את המוצר כרגע');
       return;
     }
@@ -216,7 +227,6 @@ export const WizardLayout = ({
         showMessage('success', 'המוצר נשמר בהצלחה! ניתן להמשיך לערוך');
       }
     } catch (error) {
-      console.error('Save error:', error);
       showMessage('error', error.message || 'אירעה שגיאה בשמירת המוצר');
     } finally {
       setIsSaving(false);

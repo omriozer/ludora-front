@@ -72,9 +72,9 @@ export default function ProductTypeSelector({
           });
         }
 
-        // Use navbar ordering: files, tools, games, workshops, courses, lesson_plans, bundle
+        // Use navbar ordering: files, tools, games, workshops, courses, lesson_plans
         // Only include product types, not other nav items like classrooms, account, etc.
-        const productTypesToCheck = ['file', 'tool', 'game', 'workshop', 'course', 'lesson_plan', 'bundle'];
+        const productTypesToCheck = ['file', 'tool', 'game', 'workshop', 'course', 'lesson_plan'];
 
         const adminOnlyTypesSet = new Set();
 
@@ -82,7 +82,6 @@ export default function ProductTypeSelector({
           // Map product type to feature key (same logic as Products.jsx)
           const featureKey = productType === 'file' ? 'files' :
                            productType === 'lesson_plan' ? 'lesson_plans' :
-                           productType === 'bundle' ? 'bundles' :
                            `${productType}s`;
 
           try {
@@ -225,15 +224,17 @@ export default function ProductTypeSelector({
           const isSelected = selectedType === type.key;
           const isAdminOnly = adminOnlyTypes.has(type.key);
 
+          // Skip bundle options for 'all' and 'tool' types
+          const showBundleOption = type.key !== 'all' && type.key !== 'tool';
+
           return (
             <Card
               key={type.key}
-              className={`cursor-pointer transition-all duration-200 hover:shadow-md ${
+              className={`transition-all duration-200 hover:shadow-md ${
                 isSelected
                   ? 'ring-2 ring-blue-500 bg-blue-50'
                   : 'hover:shadow-lg hover:scale-[1.02]'
               }`}
-              onClick={() => onSelect?.(type.key)}
             >
               <CardContent className={`${config.padding} flex items-center gap-3`}>
                 <div className="relative">
@@ -259,6 +260,36 @@ export default function ProductTypeSelector({
                     </p>
                   )}
                 </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-2 ml-auto">
+                  {/* Regular Product Button */}
+                  <button
+                    onClick={() => onSelect?.(type.key)}
+                    className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                      isSelected && !selectedType?.includes(':bundle')
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    צור {type.singular}
+                  </button>
+
+                  {/* Bundle Option */}
+                  {showBundleOption && (
+                    <button
+                      onClick={() => onSelect?.(`${type.key}:bundle`)}
+                      className={`px-3 py-1 rounded text-sm font-medium transition-colors flex items-center gap-1 ${
+                        selectedType === `${type.key}:bundle`
+                          ? 'bg-purple-600 text-white'
+                          : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                      }`}
+                    >
+                      <Package className="w-3 h-3" />
+                      קיט
+                    </button>
+                  )}
+                </div>
               </CardContent>
             </Card>
           );
@@ -275,15 +306,17 @@ export default function ProductTypeSelector({
         const isSelected = selectedType === type.key;
         const isAdminOnly = adminOnlyTypes.has(type.key);
 
+        // Skip bundle options for 'all' and 'tool' types
+        const showBundleOption = type.key !== 'all' && type.key !== 'tool';
+
         return (
           <Card
             key={type.key}
-            className={`cursor-pointer transition-all duration-200 hover:shadow-md ${
+            className={`transition-all duration-200 ${
               isSelected
                 ? 'ring-2 ring-blue-500 bg-blue-50'
-                : 'hover:shadow-lg hover:scale-105'
+                : 'hover:shadow-lg'
             }`}
-            onClick={() => onSelect?.(type.key)}
           >
             <CardContent className={`${config.padding} text-center space-y-3`}>
               <div className="relative">
@@ -307,6 +340,36 @@ export default function ProductTypeSelector({
                   <p className={`${config.description} text-gray-500 mt-1 line-clamp-2`}>
                     {type.description}
                   </p>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col gap-2 mt-3">
+                {/* Regular Product Button */}
+                <button
+                  onClick={() => onSelect?.(type.key)}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    isSelected && !selectedType?.includes(':bundle')
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  צור {type.singular}
+                </button>
+
+                {/* Bundle Option */}
+                {showBundleOption && (
+                  <button
+                    onClick={() => onSelect?.(`${type.key}:bundle`)}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                      selectedType === `${type.key}:bundle`
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                    }`}
+                  >
+                    <Package className="w-4 h-4" />
+                    צור קיט {type.plural}
+                  </button>
                 )}
               </div>
             </CardContent>

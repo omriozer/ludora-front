@@ -286,6 +286,7 @@ export default function ProductPage() {
           ...productData,
           is_ludora_creator: productData.creator_user_id === null
         };
+
         result = await ProductAPI.create(createData);
 
         // Save entity-specific data for new products if entity was created
@@ -326,6 +327,7 @@ export default function ProductPage() {
           ...productData,
           is_ludora_creator: productData.creator_user_id === null
         };
+
         result = await ProductAPI.update(productId, updateData);
 
         // Save content topic association for existing products
@@ -532,7 +534,7 @@ export default function ProductPage() {
         }));
       }
     } catch (error) {
-      console.error('Error saving footer settings:', error);
+      luderror.media('Error saving footer settings:', error);
       throw error;
     }
   };
@@ -698,12 +700,20 @@ export default function ProductPage() {
     }
   ];
 
-  // Page title
+  // Page title with bundle awareness
   const getPageTitle = () => {
     if (isNewProduct) {
+      if (formData.type_attributes?.is_bundle) {
+        const baseTypeName = getProductTypeName(formData.product_type, 'plural') || 'מוצרים';
+        return `יצירת קיט ${baseTypeName}`;
+      }
       return 'יצירת מוצר חדש';
     }
     const productTypeName = getProductTypeName(formData.product_type, 'singular') || 'מוצר';
+    if (formData.type_attributes?.is_bundle) {
+      const baseTypeName = getProductTypeName(formData.product_type, 'plural') || 'מוצרים';
+      return `עריכת קיט ${baseTypeName}`;
+    }
     return `עריכת ${productTypeName}`;
   };
 
@@ -723,7 +733,12 @@ export default function ProductPage() {
                     {getPageTitle()}
                   </h1>
                   <p className="text-gray-600 text-sm sm:text-base md:text-lg mt-1">
-                    {isNewProduct ? 'צור מוצר חדש במערכת' : 'ערוך את פרטי המוצר'}
+                    {isNewProduct
+                      ? (formData.type_attributes?.is_bundle
+                          ? 'צור קיט חדש במערכת'
+                          : 'צור מוצר חדש במערכת')
+                      : 'ערוך את פרטי המוצר'
+                    }
                   </p>
                 </div>
               </div>

@@ -4,6 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CheckCircle, AlertCircle, Eye, X, Check, Clock } from 'lucide-react';
+import { ludlog } from '@/lib/ludlog';
 
 /**
  * PublishSection - Handles publishing settings and final controls
@@ -166,6 +167,12 @@ export const PublishSection = ({
                     status: (() => {
                       if (!formData.product_type) return 'pending';
 
+                      // Check if this is a bundle first
+                      if (formData.type_attributes?.is_bundle === true) {
+                        return (formData.type_attributes?.bundle_items && formData.type_attributes.bundle_items.length >= 2) ? 'passed' : 'failed';
+                      }
+
+                      // Regular product type validation
                       switch (formData.product_type) {
                         case 'file':
                           return hasUploadedFile ? 'passed' : 'failed';
@@ -182,6 +189,13 @@ export const PublishSection = ({
                     description: (() => {
                       if (!formData.product_type) return 'יש לבחור סוג מוצר תחילה';
 
+                      // Check if this is a bundle first
+                      if (formData.type_attributes?.is_bundle === true) {
+                        return (formData.type_attributes?.bundle_items && formData.type_attributes.bundle_items.length >= 2) ?
+                          `קושרו ${formData.type_attributes.bundle_items.length} מוצרים לקיט` : 'יש לקשר לפחות 2 מוצרים לקיט';
+                      }
+
+                      // Regular product type descriptions
                       switch (formData.product_type) {
                         case 'file':
                           return hasUploadedFile ? 'קובץ הועלה בהצלחה' : 'יש להעלות קובץ';

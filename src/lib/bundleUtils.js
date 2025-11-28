@@ -5,13 +5,15 @@
  * All bundle-related logic should use these functions for consistency.
  */
 
+import { getProductTypeName, PRODUCT_TYPES } from '@/config/productTypes';
+
 /**
  * Check if a product is a bundle
  * @param {Object} product - Product object
  * @returns {boolean} True if product is a bundle
  */
 export function isBundle(product) {
-  return product?.product_type === 'bundle';
+  return product?.type_attributes?.is_bundle === true;
 }
 
 /**
@@ -21,27 +23,27 @@ export function isBundle(product) {
  * @returns {boolean} True if product type can be included in bundles
  */
 export function isBundleable(productType) {
-  return productType !== 'tool' && productType !== 'bundle';
+  return productType !== 'tool';
 }
 
 /**
  * Get bundle item count from product
- * @param {Object} product - Product object with bundle_items JSONB field
+ * @param {Object} product - Product object with bundle_items in type_attributes
  * @returns {number} Number of items in the bundle
  */
 export function getBundleItemCount(product) {
   if (!isBundle(product)) return 0;
-  return product?.bundle_items?.length || 0;
+  return product?.type_attributes?.bundle_items?.length || 0;
 }
 
 /**
  * Get bundle items from product
- * @param {Object} product - Product object with bundle_items JSONB field
+ * @param {Object} product - Product object with bundle_items in type_attributes
  * @returns {Array} Array of bundle items with product_type and product_id
  */
 export function getBundleItems(product) {
   if (!isBundle(product)) return [];
-  return product?.bundle_items || [];
+  return product?.type_attributes?.bundle_items || [];
 }
 
 /**
@@ -68,8 +70,6 @@ export function getBundleComposition(product) {
  * @returns {string} Hebrew label like "2 קבצים, 3 משחקים"
  */
 export function getBundleCompositionLabel(composition) {
-  const { getProductTypeName } = require('@/config/productTypes');
-
   const parts = Object.entries(composition).map(([type, count]) => {
     const typeName = getProductTypeName(type, 'plural');
     return `${count} ${typeName}`;
@@ -169,4 +169,21 @@ export function areBundleCompositionsEqual(items1, items2) {
     .join(',');
 
   return sorted1 === sorted2;
+}
+
+/**
+ * Get all bundleable product types regardless of visibility filtering
+ * Used by bundle interface to show complete list of types that can be bundled
+ * @returns {Array} Array of product type configurations for bundleable types
+ */
+export function getAllBundleableTypes() {
+  // All product types that can be bundled (everything except tools)
+  const bundleableTypeKeys = ['file', 'game', 'workshop', 'course', 'lesson_plan'];
+
+  return bundleableTypeKeys
+    .filter(key => PRODUCT_TYPES[key]) // Ensure type exists in configuration
+    .map(key => ({
+      key,
+      ...PRODUCT_TYPES[key]
+    }));
 }
