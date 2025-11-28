@@ -46,6 +46,7 @@ import { toast } from '@/components/ui/use-toast';
 import { urls } from '@/config/urls';
 import { NAV_VISIBILITY_OPTIONS, NAVIGATION_KEYS } from "@/constants/settingsKeys";
 import { usePaymentPageStatusCheck } from '@/hooks/usePaymentPageStatusCheck';
+import { useSubscriptionPaymentStatusCheck } from '@/hooks/useSubscriptionPaymentStatusCheck';
 
 // Static fallback arrays for specializations - defined outside component
 const FALLBACK_SPECIALIZATIONS = [
@@ -119,6 +120,26 @@ const MyAccount = () => {
       // Refresh subscription data when payments are processed
       if (update.type === 'continue_polling' || update.count > 0) {
         subscriptionState.refreshData();
+      }
+    }
+  });
+
+  // Subscription payment status checking - check for pending subscription payments and handle abandoned pages
+  const subscriptionPaymentStatus = useSubscriptionPaymentStatusCheck({
+    enabled: true,
+    showToasts: true, // Show user notifications about subscription status changes
+    onStatusUpdate: (update) => {
+      ludlog.payment('MyAccount: Subscription status update received:', { data: update });
+
+      // Refresh subscription data when subscription payments are processed
+      if (update.type === 'subscription_activated' || update.type === 'subscription_cancelled') {
+        subscriptionState.refreshData();
+
+        // Also refresh user data to get updated subscription status
+        if (update.type === 'subscription_activated') {
+          // User might have new subscription plan active
+          window.location.reload(); // Force full page refresh to update all subscription state
+        }
       }
     }
   });

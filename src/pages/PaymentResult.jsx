@@ -25,6 +25,7 @@ import { PRODUCT_TYPES, getProductTypeName } from "@/config/productTypes";
 import { useUser } from "@/contexts/UserContext";
 import { toast } from "@/components/ui/use-toast";
 import { usePaymentPageStatusCheck } from '@/hooks/usePaymentPageStatusCheck';
+import { useSubscriptionPaymentStatusCheck } from '@/hooks/useSubscriptionPaymentStatusCheck';
 
 export default function PaymentResult() {
   const navigate = useNavigate();
@@ -60,6 +61,29 @@ export default function PaymentResult() {
         ludlog.payment('PaymentResult: Payment reverted to cart', { data: { action: 'redirectingToCheckout' } });
         setTimeout(() => {
           navigate('/checkout');
+        }, 2000); // Give time for toast to show
+      }
+    }
+  });
+
+  // Subscription payment status checking - check for pending subscriptions and handle abandoned pages
+  const subscriptionPaymentStatus = useSubscriptionPaymentStatusCheck({
+    enabled: true,
+    showToasts: true, // Show user notifications about subscription status changes
+    onStatusUpdate: (update) => {
+      ludlog.payment('PaymentResult: Subscription status update received:', { data: update });
+
+      // Reload payment result when subscription status changes
+      if (update.type === 'subscription_activated' && update.count > 0) {
+        ludlog.payment('PaymentResult: Reloading payment result due to subscription activation');
+        loadPaymentResult();
+      }
+
+      // Handle cancelled subscriptions
+      if (update.type === 'subscription_cancelled') {
+        ludlog.payment('PaymentResult: Subscription cancelled due to abandoned payment', { data: { action: 'redirectingToSubscriptions' } });
+        setTimeout(() => {
+          navigate('/account?tab=subscription');
         }, 2000); // Give time for toast to show
       }
     }

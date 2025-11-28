@@ -3,6 +3,7 @@ import { apiRequest } from '@/services/apiClient';
 import SubscriptionBusinessLogic from '@/services/SubscriptionBusinessLogic';
 import { ludlog, luderror } from '@/lib/ludlog';
 import { toast } from '@/components/ui/use-toast';
+import { useSubscriptionPaymentStatusCheck } from '@/hooks/useSubscriptionPaymentStatusCheck';
 
 // Global cache for subscription data to prevent duplicate API calls
 // Uses data-driven invalidation (no time-based expiration)
@@ -43,6 +44,51 @@ export function useSubscriptionState(user) {
     selectedPlan: null,
     actionDecision: null
   });
+
+  // State for tracking if we need to refresh after payment status updates
+  const [needsRefresh, setNeedsRefresh] = useState(false);
+
+  // Subscription payment status checking - automatically locks/unlocks subscription changes
+  const subscriptionPaymentStatus = useSubscriptionPaymentStatusCheck({
+    enabled: !!user?.id, // Only enabled when user is authenticated
+    showToasts: false, // Don't show toasts here since it's background checking
+    onStatusUpdate: useCallback((update) => {
+      ludlog.payment('useSubscriptionState: Subscription payment status update:', { data: update });
+
+      if (update.type === 'subscription_activated') {
+        // Unlock subscription changes when subscription is activated
+        setActionState(prev => ({ ...prev, processing: false }));
+
+        // Clear cache and trigger refresh
+        clearSubscriptionCache(user?.id);
+        setNeedsRefresh(true);
+
+        ludlog.payment('✅ Subscription activated - unlocked subscription changes');
+      } else if (update.type === 'subscription_cancelled') {
+        // Unlock subscription changes when subscription payment is cancelled/failed
+        setActionState(prev => ({ ...prev, processing: false }));
+
+        // Clear cache and trigger refresh
+        clearSubscriptionCache(user?.id);
+        setNeedsRefresh(true);
+
+        ludlog.payment('✅ Subscription payment cancelled - unlocked subscription changes');
+      }
+    }, [user?.id]),
+    checkInterval: 30000 // Check every 30 seconds for pending subscription payments
+  });
+
+  // Lock subscription changes when there are pending subscription payments being checked
+  useEffect(() => {
+    if (subscriptionPaymentStatus.isChecking && subscriptionPaymentStatus.pendingCount > 0) {
+      // Lock subscription changes while checking payment status
+      setActionState(prev => ({
+        ...prev,
+        processing: true
+      }));
+      ludlog.payment('🔒 Locked subscription changes - checking pending subscription payments');
+    }
+  }, [subscriptionPaymentStatus.isChecking, subscriptionPaymentStatus.pendingCount]);
 
   /**
    * Load subscription plans from dedicated subscription API (with caching)
@@ -486,10 +532,34 @@ export function useSubscriptionState(user) {
     initializeData();
   }, [initializeData]);
 
+  // Handle refresh trigger from subscription payment status updates
+  useEffect(() => {
+    if (needsRefresh) {
+      ludlog.payment('🔄 Refreshing subscription data after payment status update');
+
+      // Small delay to ensure backend has processed the subscription status change
+      const refreshTimeout = setTimeout(() => {
+        initializeData();
+        setNeedsRefresh(false);
+      }, 1000);
+
+      return () => clearTimeout(refreshTimeout);
+    }
+  }, [needsRefresh, initializeData]);
+
   return {
     // State
     ...subscriptionState,
     ...actionState,
+
+    // Payment status checking state
+    paymentStatusChecking: {
+      isChecking: subscriptionPaymentStatus.isChecking,
+      pendingCount: subscriptionPaymentStatus.pendingCount,
+      lastCheckTime: subscriptionPaymentStatus.lastCheckTime,
+      statusSummary: subscriptionPaymentStatus.statusSummary,
+      error: subscriptionPaymentStatus.error
+    },
 
     // Actions
     evaluatePlanSelection,
