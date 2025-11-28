@@ -3,6 +3,11 @@
  * Bright, colorful, and kid-friendly CSS classes for the student experience
  */
 
+/* CSS Custom Properties for Responsive Layout */
+:root {
+  --student-nav-width: 200px; /* Default expanded width on desktop */
+}
+
 /* Enhanced keyframes for student portal animations */
 @keyframes wiggle {
   0%, 7% {

@@ -340,6 +340,12 @@ export default function FloatingAdminMenu({ currentUser }) {
           description: "הגדרות פורטל תלמידים ומורים"
         },
         {
+          title: "פיצ'רים פורטל תלמידים",
+          url: "/student-features",
+          icon: <GraduationCap className="w-4 h-4" />,
+          description: "ניהול תכונות וניווט פורטל התלמידים"
+        },
+        {
           title: "ניהול צלילים",
           url: "/audio",
           icon: <Volume2 className="w-4 h-4" />,

@@ -26,6 +26,7 @@ export const StudentNotFound = lazy(() => import('./students/StudentNotFound'));
 export const TeacherCatalog = lazy(() => import('./students/TeacherCatalog'));
 export const LobbyJoin = lazy(() => import('./students/LobbyJoin'));
 export const GamePlay = lazy(() => import('./students/GamePlay'));
+export const MyTeachersPage = lazy(() => import('./students/MyTeachersPage'));
 
 // Product and content pages
 export const ProductDetails = lazy(() => import('./ProductDetails'));
@@ -65,6 +66,7 @@ export const FeatureControl = lazy(() => import('./FeatureControl'));
 export const BrandSettings = lazy(() => import('./BrandSettings'));
 export const ProductSettings = lazy(() => import('./ProductSettings'));
 export const PortalsSettings = lazy(() => import('./PortalsSettings'));
+export const StudentFeatures = lazy(() => import('./StudentFeatures'));
 export const CategoryManagement = lazy(() => import('./CategoryManagement'));
 export const ContentTopicsManagement = lazy(() => import('./ContentTopicsManagement'));
 export const AudioManagement = lazy(() => import('./AudioManagement'));

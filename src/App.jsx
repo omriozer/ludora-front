@@ -280,11 +280,11 @@ function StudentPortal() {
 
 	return (
 		<div className="min-h-screen flex flex-col">
-			{/* Header */}
+			{/* Sidebar Navigation */}
 			<StudentsNav teacherInfo={teacherInfo} />
 
-			{/* Main Content Area - fills remaining space between header and footer */}
-			<main className="flex-1 flex flex-col">
+			{/* Main Content Area - with responsive margin for sidebar */}
+			<main className="flex-1 flex flex-col transition-all duration-300" style={{ marginRight: 'var(--student-nav-width, 0px)' }}>
 				<Routes>
 					{/* Student Home */}
 					<Route
@@ -322,6 +322,16 @@ function StudentPortal() {
 						element={
 							<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
 								<LazyPages.GamePlay />
+							</AuthAwareSuspense>
+						}
+					/>
+
+					{/* My Teachers Page */}
+					<Route
+						path='/my-teachers'
+						element={
+							<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
+								<LazyPages.MyTeachersPage />
 							</AuthAwareSuspense>
 						}
 					/>
@@ -933,6 +943,16 @@ function App() {
 							<AdminRoute>
 								<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ADMIN}>
 									<LazyPages.PortalsSettings />
+								</AuthAwareSuspense>
+							</AdminRoute>
+						}
+					/>
+					<Route
+						path='/student-features'
+						element={
+							<AdminRoute>
+								<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ADMIN}>
+									<LazyPages.StudentFeatures />
 								</AuthAwareSuspense>
 							</AdminRoute>
 						}
