@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Game, Purchase, User, Workshop, Course, File, Tool, Product, Transaction, Subscription, SubscriptionPlan } from "@/services/entities";
+import { Game, Purchase, User, Workshop, Course, File, Tool, Product, Transaction } from "@/services/entities";
+import { apiRequest } from "@/services/apiClient";
 import { purchaseUtils } from "@/utils/api.js";
 import { ludlog, luderror } from '@/lib/ludlog';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -183,22 +184,25 @@ export default function PaymentResult() {
               // Handle subscription payment flow
               try {
                 const subscriptionId = transactionData.metadata.subscription_id;
-                const subscription = await Subscription.findById(subscriptionId);
+                const subscription = await apiRequest(`/subscriptions/${subscriptionId}`);
 
-                if (subscription) {
+                if (subscription && subscription.success && subscription.data) {
+                  const subscriptionData = subscription.data;
                   ludlog.payment('PaymentResult: Loaded subscription data:', {
-                    subscriptionId: subscription.id,
-                    status: subscription.status
+                    subscriptionId: subscriptionData.id,
+                    status: subscriptionData.status
                   });
 
-                  // Load subscription plan details
-                  const subscriptionPlan = await SubscriptionPlan.findById(subscription.subscription_plan_id);
+                  // Load subscription plan details via API
+                  const subscriptionPlan = await apiRequest(`/subscriptions/plans/${subscriptionData.subscription_plan_id}`);
+
+                  const planData = subscriptionPlan?.success ? subscriptionPlan.data : null;
 
                   // Set up subscription-specific display
                   setPurchase({
-                    id: subscription.id,
-                    payment_amount: subscription.monthly_price,
-                    payment_status: subscription.status,
+                    id: subscriptionData.id,
+                    payment_amount: subscriptionData.monthly_price,
+                    payment_status: subscriptionData.status,
                     transaction_id: transactionData.id,
                     metadata: {
                       ...transactionData.metadata,
@@ -207,31 +211,31 @@ export default function PaymentResult() {
                   });
 
                   setItem({
-                    id: subscription.id,
-                    title: subscriptionPlan?.name || 'מינוי פרימיום',
-                    short_description: subscriptionPlan?.description || 'גישה למכללת לודורה',
+                    id: subscriptionData.id,
+                    title: planData?.name || 'מינוי פרימיום',
+                    short_description: planData?.description || 'גישה למכללת לודורא',
                     product_type: 'subscription',
-                    subscription_plan: subscriptionPlan,
-                    subscription: subscription
+                    subscription_plan: planData,
+                    subscription: subscriptionData
                   });
 
                   setItemType('subscription');
 
                   // Set status based on subscription status
-                  if (subscription.status === 'active') {
+                  if (subscriptionData.status === 'active') {
                     finalStatus = 'success';
-                  } else if (subscription.status === 'failed') {
+                  } else if (subscriptionData.status === 'failed') {
                     finalStatus = 'failure';
-                  } else if (subscription.status === 'pending') {
+                  } else if (subscriptionData.status === 'pending') {
                     finalStatus = transactionUid ? 'success' : 'pending';
                   } else {
                     finalStatus = 'unknown';
                   }
 
                   ludlog.payment('PaymentResult: Subscription payment setup complete:', {
-                    subscriptionId: subscription.id,
+                    subscriptionId: subscriptionData.id,
                     status: finalStatus,
-                    planName: subscriptionPlan?.name
+                    planName: planData?.name
                   });
 
                   setIsLoading(false);
