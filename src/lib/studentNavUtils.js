@@ -15,6 +15,28 @@ import {
   getSetting
 } from '@/constants/settingsKeys';
 
+// Student portal display text constants
+const STUDENT_DISPLAY_TEXT = {
+  authenticatedUser: 'משתמש מחובר',
+  anonymousPlayer: 'שחקן אנונימי',
+  guest: 'אורח',
+  connectedUserLabel: 'שחקן',
+  authStatus: {
+    registeredAccount: 'חשבון רשום',
+    connectedAccount: 'מחובר לחשבון',
+    anonymousAccess: 'גישה אנונימית',
+    notConnected: 'לא מחובר'
+  }
+};
+
+// Student portal authentication status color classes (using design system)
+const STUDENT_AUTH_COLORS = {
+  registered: 'text-emerald-600',    // Green for registered accounts
+  connected: 'text-blue-600',       // Blue for connected accounts
+  anonymous: 'text-orange-500',     // Orange for anonymous access
+  disconnected: 'text-gray-500'     // Gray for not connected
+};
+
 /**
  * Get icon component from icon name string
  * @param {string} iconName - Icon name (e.g., 'Keyboard', 'GraduationCap')
@@ -217,4 +239,117 @@ export function validateSPFeatures(spFeatures) {
   }
 
   return true;
+}
+
+/**
+ * Get connected user from player object checking multiple possible property paths
+ * Checks various naming conventions and nested structures for connected user data
+ * @param {Object} currentPlayer - Player object that may have connected user
+ * @returns {Object|null} Connected user object or null if not found
+ * @example
+ * const connectedUser = getConnectedUser(currentPlayer);
+ * if (connectedUser) {
+ *   // Connected user found: connectedUser.full_name || connectedUser.email
+ * }
+ */
+export function getConnectedUser(currentPlayer) {
+  if (!currentPlayer) return null;
+
+  // Check for connected user in various property names and nested paths
+  return currentPlayer.user ||
+         currentPlayer.User ||
+         currentPlayer.connected_user ||
+         currentPlayer.connectedUser ||
+         currentPlayer.user_info ||
+         currentPlayer.userInfo ||
+         currentPlayer.profile?.user ||
+         currentPlayer.userData ||
+         currentPlayer.accountInfo ||
+         null;
+}
+
+/**
+ * Get the best available display name for student portal
+ * Prioritizes connected user names over anonymous player names
+ * @param {Object} currentUser - Current authenticated user (Firebase)
+ * @param {Object} currentPlayer - Current authenticated player
+ * @param {boolean} isAuthenticated - Is user authenticated (Firebase)
+ * @param {boolean} isPlayerAuthenticated - Is player authenticated (player session)
+ * @returns {string} Display name to show in UI
+ * @example
+ * // Returns: "שם המשתמש" for Firebase authenticated users
+ * // Returns: "שם תלמיד" for players connected to users
+ * // Returns: "שחקן אנונימי" for anonymous players
+ * // Returns: "אורח" for guests
+ * const displayName = getStudentDisplayName(currentUser, currentPlayer, isAuth, isPlayerAuth);
+ */
+export function getStudentDisplayName(currentUser, currentPlayer, isAuthenticated, isPlayerAuthenticated) {
+  // Priority 1: Firebase authenticated user (highest priority)
+  if (isAuthenticated && currentUser) {
+    return currentUser.full_name || currentUser.email || STUDENT_DISPLAY_TEXT.authenticatedUser;
+  }
+
+  // Priority 2: Player with connected user (check multiple possible property names)
+  if (isPlayerAuthenticated && currentPlayer) {
+    const connectedUser = getConnectedUser(currentPlayer);
+
+    if (connectedUser) {
+      return connectedUser.full_name ||
+             connectedUser.name ||
+             connectedUser.email ||
+             connectedUser.display_name ||
+             `${STUDENT_DISPLAY_TEXT.authenticatedUser} (${currentPlayer.display_name || STUDENT_DISPLAY_TEXT.connectedUserLabel})`;
+    }
+
+    // Priority 3: Player display name (no connected user)
+    return currentPlayer.display_name || STUDENT_DISPLAY_TEXT.anonymousPlayer;
+  }
+
+  // Fallback: Generic name
+  return STUDENT_DISPLAY_TEXT.guest;
+}
+
+/**
+ * Get authentication status information for display
+ * @param {Object} currentUser - Current authenticated user (Firebase)
+ * @param {Object} currentPlayer - Current authenticated player
+ * @param {boolean} isAuthenticated - Is user authenticated (Firebase)
+ * @param {boolean} isPlayerAuthenticated - Is player authenticated (player session)
+ * @returns {Object} Authentication status with text and color class from student design system
+ * @example
+ * // Returns: { text: "חשבון רשום", color: "text-emerald-600" }
+ * // Returns: { text: "מחובר לחשבון", color: "text-blue-600" }
+ * // Returns: { text: "גישה אנונימית", color: "text-orange-500" }
+ * // Returns: { text: "לא מחובר", color: "text-gray-500" }
+ * const authStatus = getStudentAuthStatus(currentUser, currentPlayer, isAuth, isPlayerAuth);
+ */
+export function getStudentAuthStatus(currentUser, currentPlayer, isAuthenticated, isPlayerAuthenticated) {
+  if (isAuthenticated && currentUser) {
+    return {
+      text: STUDENT_DISPLAY_TEXT.authStatus.registeredAccount,
+      color: STUDENT_AUTH_COLORS.registered
+    };
+  }
+
+  if (isPlayerAuthenticated && currentPlayer) {
+    // Check for connected user
+    const connectedUser = getConnectedUser(currentPlayer);
+
+    if (connectedUser) {
+      return {
+        text: STUDENT_DISPLAY_TEXT.authStatus.connectedAccount,
+        color: STUDENT_AUTH_COLORS.connected
+      };
+    }
+
+    return {
+      text: STUDENT_DISPLAY_TEXT.authStatus.anonymousAccess,
+      color: STUDENT_AUTH_COLORS.anonymous
+    };
+  }
+
+  return {
+    text: STUDENT_DISPLAY_TEXT.authStatus.notConnected,
+    color: STUDENT_AUTH_COLORS.disconnected
+  };
 }

@@ -782,12 +782,99 @@ if (!cachedData || cachedData.dataVersion !== currentDataVersion) {
 
 ---
 
-## 10. KEY FILE LOCATIONS
+## 10. STUDENT PORTAL UTILITY PATTERNS (Nov 2025)
+
+### Student Portal Navigation Utilities
+
+**NEW: Centralized student display utilities for consistent user presentation across the portal:**
+
+Located in `/src/lib/studentNavUtils.js`, these utilities provide reusable functions for displaying user information in the student portal:
+
+```javascript
+import {
+  getStudentDisplayName,
+  getStudentAuthStatus,
+  getConnectedUser
+} from '@/lib/studentNavUtils';
+
+// Get display name with authentication hierarchy
+const displayName = getStudentDisplayName(
+  firebaseUser,      // From UserContext
+  connectedPlayer,   // From StudentPortalContext
+  anonymousPlayer   // From StudentPortalContext
+);
+// Returns: "יניב" (firebase) | "Player 123" | "אורח 456" | "אורח"
+
+// Get authentication status with design system colors
+const authStatus = getStudentAuthStatus(firebaseUser, connectedPlayer);
+// Returns: { status: "מחובר", color: "text-emerald-600" }
+//      or: { status: "אורח", color: "text-gray-500" }
+
+// Get connected user object for display
+const user = getConnectedUser(firebaseUser, connectedPlayer);
+// Returns: { display_name: "יניב", isAuthenticated: true }
+//      or: { display_name: "Player 123", isAuthenticated: false }
+//      or: null
+```
+
+**Key Patterns:**
+- **Authentication Hierarchy**: Firebase users > connected players > anonymous players > guests
+- **Design System Integration**: Uses `STUDENT_AUTH_COLORS` constants with student portal colors
+- **Hebrew Display Text**: All strings in `STUDENT_DISPLAY_TEXT` constants for consistency
+- **Reusable Across Components**: Exported utilities for use in navigation, headers, game UI, etc.
+
+**Design Constants:**
+```javascript
+// Text constants for Hebrew display
+const STUDENT_DISPLAY_TEXT = {
+  GUEST_PREFIX: 'אורח',
+  PLAYER_PREFIX: 'Player',
+  AUTHENTICATED_STATUS: 'מחובר',
+  GUEST_STATUS: 'אורח'
+};
+
+// Student portal design system colors
+const STUDENT_AUTH_COLORS = {
+  AUTHENTICATED: 'text-emerald-600',  // Not text-green-600
+  GUEST: 'text-gray-500'
+};
+```
+
+**Usage in Components:**
+```javascript
+// In StudentsNav.jsx or any student portal component
+const displayName = getStudentDisplayName(
+  currentUser?.firebaseUser,
+  studentPortal?.connectedPlayer,
+  studentPortal?.anonymousPlayer
+);
+
+const { status, color } = getStudentAuthStatus(
+  currentUser?.firebaseUser,
+  studentPortal?.connectedPlayer
+);
+
+// Display with proper styling
+<span className={color}>
+  {displayName} • {status}
+</span>
+```
+
+**Important Notes:**
+- Always use these utilities in student portal components for consistency
+- Never hardcode authentication display logic in components
+- Use the exported constants for colors and text to maintain design system consistency
+- These utilities handle all authentication modes: Firebase, player sessions, and anonymous
+
+---
+
+## 11. KEY FILE LOCATIONS
 
 ### Essential Frontend Files
 - **API Client**: `/src/services/apiClient.js`
 - **Teacher Design System**: `/src/styles/colorSchema.js`, `/src/styles/globalStyles.css`
 - **Student Design System**: `/src/styles/studentsColorSchema.js`, `/src/styles/studentsGlobalStyles.css`
+- **Student Portal Utilities**: `/src/lib/studentNavUtils.js`
 - **Auth Components**: `/src/components/auth/`
 - **Layouts**: `/src/components/layouts/`
 
@@ -798,7 +885,7 @@ if (!cachedData || cachedData.dataVersion !== currentDataVersion) {
 
 ---
 
-## 11. Frontend Development Checklist
+## 12. Frontend Development Checklist
 
 **Before implementing:**
 - [ ] Determine which portal this component/page serves (teacher vs student)

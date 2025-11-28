@@ -9,7 +9,12 @@ import { checkCameraAvailability } from '@/utils/qrScannerUtils';
 import { useActivityCodeHandler } from '@/hooks/useActivityCodeHandler';
 import { useLoginModal } from '@/hooks/useLoginModal';
 import LogoDisplay from '@/components/ui/LogoDisplay';
-import { getStudentNavFeatures, getDefaultStudentNavFeatures } from '@/lib/studentNavUtils';
+import {
+  getStudentNavFeatures,
+  getDefaultStudentNavFeatures,
+  getStudentDisplayName,
+  getStudentAuthStatus
+} from '@/lib/studentNavUtils';
 
 /**
  * Collapsible sidebar navigation for the student portal
@@ -133,69 +138,6 @@ const StudentsNav = ({ teacherInfo = null }) => {
     setIsCollapsed(!isCollapsed);
   };
 
-  // Helper function to get the best available display name
-  const getDisplayName = () => {
-    // Priority 1: Firebase authenticated user (highest priority)
-    if (isAuthenticated && currentUser) {
-      return currentUser.full_name || currentUser.email || 'משתמש מחובר';
-    }
-
-    // Priority 2: Player with connected user (check multiple possible property names)
-    if (isPlayerAuthenticated && currentPlayer) {
-      // Check for connected user in various property names and nested paths
-      const connectedUser = currentPlayer.user ||
-                           currentPlayer.User ||
-                           currentPlayer.connected_user ||
-                           currentPlayer.connectedUser ||
-                           currentPlayer.user_info ||
-                           currentPlayer.userInfo ||
-                           currentPlayer.profile?.user ||
-                           currentPlayer.userData ||
-                           currentPlayer.accountInfo;
-
-      if (connectedUser) {
-        return connectedUser.full_name ||
-               connectedUser.name ||
-               connectedUser.email ||
-               connectedUser.display_name ||
-               `משתמש מחובר (${currentPlayer.display_name || 'שחקן'})`;
-      }
-
-      // Priority 3: Player display name (no connected user)
-      return currentPlayer.display_name || 'שחקן אנונימי';
-    }
-
-    // Fallback: Generic name
-    return 'אורח';
-  };
-
-  // Helper function to get authentication status indicator
-  const getAuthStatus = () => {
-    if (isAuthenticated && currentUser) {
-      return { text: 'חשבון רשום', color: 'text-green-600' };
-    }
-
-    if (isPlayerAuthenticated && currentPlayer) {
-      // Check for connected user
-      const connectedUser = currentPlayer.user ||
-                           currentPlayer.User ||
-                           currentPlayer.connected_user ||
-                           currentPlayer.connectedUser ||
-                           currentPlayer.user_info ||
-                           currentPlayer.userInfo ||
-                           currentPlayer.profile?.user ||
-                           currentPlayer.userData ||
-                           currentPlayer.accountInfo;
-
-      if (connectedUser) {
-        return { text: 'מחובר לחשבון', color: 'text-blue-600' };
-      }
-
-      return { text: 'גישה אנונימית', color: 'text-orange-600' };
-    }
-
-    return { text: 'לא מחובר', color: 'text-gray-500' };
-  };
 
   // Render activity input feature
   const renderActivityInputFeature = (feature) => {
@@ -462,19 +404,22 @@ const StudentsNav = ({ teacherInfo = null }) => {
             /* Logout Section */
             <div className="space-y-2">
               {/* User Info (only when expanded) */}
-              {!isCollapsed && (
-                <div className="text-center px-2">
-                  <div className="flex items-center justify-center gap-1 mb-1">
-                    <User className="w-3 h-3 text-purple-600" />
-                    <span className="text-xs font-semibold text-gray-800 truncate">
-                      {getDisplayName()}
-                    </span>
+              {!isCollapsed && (() => {
+                const authStatus = getStudentAuthStatus(currentUser, currentPlayer, isAuthenticated, isPlayerAuthenticated);
+                return (
+                  <div className="text-center px-2">
+                    <div className="flex items-center justify-center gap-1 mb-1">
+                      <User className="w-3 h-3 text-purple-600" />
+                      <span className="text-xs font-semibold text-gray-800 truncate">
+                        {getStudentDisplayName(currentUser, currentPlayer, isAuthenticated, isPlayerAuthenticated)}
+                      </span>
+                    </div>
+                    <div className={`text-xs font-medium ${authStatus.color}`}>
+                      {authStatus.text}
+                    </div>
                   </div>
-                  <div className={`text-xs font-medium ${getAuthStatus().color}`}>
-                    {getAuthStatus().text}
-                  </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* Logout Button */}
               <Button
