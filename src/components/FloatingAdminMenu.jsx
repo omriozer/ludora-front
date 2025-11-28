@@ -7,12 +7,10 @@ import {
   Crown,
   Settings as SettingsIcon, // Renamed to avoid conflict with Settings entity
   Users,
-  Play,
   FileText,
   Mail,
   ShoppingCart,
   Calendar,
-  BarChart3,
   Palette,
   Shield,
   Volume2,
@@ -21,16 +19,11 @@ import {
   Layers,
   Move,
   CreditCard,
-  MessageSquare, // Added from outline
-  Monitor,       // Added from outline
-  Gamepad2,      // Added from outline
-  Wrench,        // Added from outline
   Tag,           // Added from outline
-  ChevronRight,  // Added from outline
   Globe,         // Added from outline
   School,        // Added for school management feature
-  BookOpen,      // Added for curriculum management
-  HelpCircle     // Added for help system
+  HelpCircle,     // Added for help system
+  GraduationCap
 } from "lucide-react";
 import { showSuccess, showError } from '@/utils/messaging';
 import { APP_VERSION } from '@/constants/version';
@@ -39,7 +32,7 @@ export default function FloatingAdminMenu({ currentUser }) {
   const { settings, refreshSettings } = useUser();
   const [isOpen, setIsOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [isImpersonating, setIsImpersonating] = useState(false);
+  const [_isImpersonating, setIsImpersonating] = useState(false);
   const [isUpdatingMaintenance, setIsUpdatingMaintenance] = useState(false); // State for loading indicator
 
   // Draggable functionality states
