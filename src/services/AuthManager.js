@@ -272,17 +272,18 @@ export class AuthManager {
         allowAnonymous: studentsAccess !== STUDENTS_ACCESS_MODES.INVITE_ONLY
       };
 
-      // CRITICAL: Try Player authentication FIRST on student portal
-      // This ensures player sessions take priority over admin Firebase sessions
+      // CRITICAL: Try Firebase authentication FIRST on student portal
+      // This ensures Firebase users (teachers/admins) take priority over anonymous player sessions
+      // Firebase auth as primary (teachers/admins can access student portal)
+      strategy.methods.push('firebase');
+
+      // Player authentication as fallback
       if (studentsAccess === STUDENTS_ACCESS_MODES.INVITE_ONLY || studentsAccess === STUDENTS_ACCESS_MODES.AUTHED_ONLY) {
         strategy.methods.push('player');
       } else {
-        // 'all' mode - always try player auth
+        // 'all' mode - always try player auth as fallback
         strategy.methods.push('player');
       }
-
-      // Firebase auth as fallback (teachers/admins can access student portal)
-      strategy.methods.push('firebase');
 
       return strategy;
     }
