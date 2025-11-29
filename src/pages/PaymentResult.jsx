@@ -70,6 +70,7 @@ export default function PaymentResult() {
   const subscriptionPaymentStatus = useSubscriptionPaymentStatusCheck({
     enabled: true,
     showToasts: true, // Show user notifications about subscription status changes
+    checkInterval: 20000, // CRITICAL FIX: Poll every 20 seconds (same as purchase flow)
     onStatusUpdate: (update) => {
       ludlog.payment('PaymentResult: Subscription status update received:', { data: update });
 
@@ -208,6 +209,28 @@ export default function PaymentResult() {
               // Handle subscription payment flow
               try {
                 const subscriptionId = transactionData.metadata.subscription_id;
+
+                // CRITICAL FIX: Trigger polling for subscription payment if redirect detected
+                if (transactionUid && transactionData.payment_status === 'pending') {
+                  ludlog.payment('🔍 PayPlus redirect detected for subscription, triggering payment status check...');
+
+                  try {
+                    const pollResult = await apiRequest('/subscriptions/check-payment-status', {
+                      method: 'POST'
+                    });
+
+                    ludlog.payment('✅ Subscription polling triggered successfully:', pollResult);
+
+                    // Check if subscription was activated by the poll
+                    if (pollResult.summary?.activated > 0) {
+                      ludlog.payment('🎉 Subscription activated during polling!');
+                    }
+                  } catch (pollError) {
+                    luderror.payment('Failed to trigger subscription polling (non-critical):', pollError);
+                    // Continue - hook will retry periodically
+                  }
+                }
+
                 const subscription = await apiRequest(`/api/subscriptions/${subscriptionId}`);
 
                 if (subscription && subscription.success && subscription.data) {
@@ -565,6 +588,15 @@ export default function PaymentResult() {
         return <XCircle className="w-16 h-16 text-red-500 mx-auto" />;
       case 'cancel':
         return <AlertTriangle className="w-16 h-16 text-yellow-500 mx-auto" />;
+      case 'pending':
+        return (
+          <div className="relative w-16 h-16 mx-auto">
+            <Clock className="w-16 h-16 text-blue-500 animate-pulse" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="animate-spin rounded-full h-20 w-20 border-b-2 border-blue-500"></div>
+            </div>
+          </div>
+        );
       default:
         return <AlertTriangle className="w-16 h-16 text-gray-500 mx-auto" />;
     }
@@ -875,8 +907,9 @@ export default function PaymentResult() {
           <CardHeader className="text-center pb-2">
             {getStatusIcon()}
             <CardTitle className={`text-2xl mt-4 ${
-              status === 'success' ? 'text-green-700' : 
-              status === 'failure' ? 'text-red-700' : 
+              status === 'success' ? 'text-green-700' :
+              status === 'failure' ? 'text-red-700' :
+              status === 'pending' ? 'text-blue-700' :
               'text-yellow-700'
             }`}>
               {getStatusTitle()}
@@ -886,6 +919,29 @@ export default function PaymentResult() {
             <p className="text-center text-gray-600 text-lg">
               {getStatusMessage()}
             </p>
+
+            {/* Polling status indicator for pending subscriptions */}
+            {status === 'pending' && itemType === 'subscription' && subscriptionPaymentStatus.isChecking && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+                <div className="flex items-center justify-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  <p className="text-blue-800 text-sm">
+                    בודק סטטוס תשלום...
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Show last check time for pending subscriptions */}
+            {status === 'pending' && itemType === 'subscription' && subscriptionPaymentStatus.lastCheckTime && !subscriptionPaymentStatus.isChecking && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
+                <p className="text-blue-700 text-sm">
+                  בדיקה אחרונה: {new Date(subscriptionPaymentStatus.lastCheckTime).toLocaleTimeString('he-IL')}
+                  <br />
+                  <span className="text-xs text-blue-600">הבדיקה הבאה בעוד מספר שניות...</span>
+                </p>
+              </div>
+            )}
 
             {autoRedirectSeconds > 0 && status === 'success' && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">

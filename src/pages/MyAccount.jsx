@@ -128,6 +128,7 @@ const MyAccount = () => {
   const subscriptionPaymentStatus = useSubscriptionPaymentStatusCheck({
     enabled: true,
     showToasts: true, // Show user notifications about subscription status changes
+    checkInterval: 20000, // CRITICAL FIX: Poll every 20 seconds for pending subscriptions
     onStatusUpdate: (update) => {
       ludlog.payment('MyAccount: Subscription status update received:', { data: update });
 

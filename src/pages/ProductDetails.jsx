@@ -51,6 +51,7 @@ import GameDetailsSection from "@/components/game/details/GameDetailsSection";
 import { useLoginModal } from "@/hooks/useLoginModal";
 import { useProductAccess } from "@/hooks/useProductAccess";
 import { usePaymentPageStatusCheck } from '@/hooks/usePaymentPageStatusCheck';
+import BundlePreviewModal from "@/components/BundlePreviewModal";
 
 export default function ProductDetails() {
   const navigate = useNavigate();
@@ -65,6 +66,7 @@ export default function ProductDetails() {
   const [error, setError] = useState(null);
   const [detailsTexts, setDetailsTexts] = useState({});
   const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
+  const [bundlePreviewModalOpen, setBundlePreviewModalOpen] = useState(false);
 
   // Use centralized product access logic - same as ProductActionBar
   const { hasAccess } = useProductAccess(item, userPurchases);
@@ -173,9 +175,23 @@ export default function ProductDetails() {
     }
   };
 
-  // Handle asset preview for lesson plans and files without access
+  // Handle asset preview for lesson plans, files, and bundles without access
   const handleAssetPreview = () => {
-    // Check if user is authenticated
+    ludlog.ui('Preview button clicked', {
+      productType: item.product_type,
+      isBundle: isBundle(item),
+      bundlePreviewModalOpen
+    });
+
+    // Check if this is a bundle product
+    if (isBundle(item)) {
+      ludlog.ui('Opening bundle preview modal');
+      // For bundle products, open bundle preview modal directly (no auth required for preview)
+      setBundlePreviewModalOpen(true);
+      return;
+    }
+
+    // Check if user is authenticated for individual file/lesson plan previews
     if (!currentUser) {
       const assetPreviewCallback = () => {
         // Add a small delay to ensure all state updates from login are complete
@@ -335,12 +351,31 @@ export default function ProductDetails() {
 
       // Ensure the item includes the purchase data immediately
       setItem({...productDetails, purchase: userPurchase});
+
+      // Check for openPdf URL parameter after data loads (for navigation from bundle modal)
+      if (urlParams.get('openPdf') === 'true') {
+        ludlog.ui('Processing openPdf parameter after data load');
+        // Remove the parameter from URL
+        urlParams.delete('openPdf');
+        window.history.replaceState({}, '', `${window.location.pathname}?${urlParams.toString()}`);
+
+        // Close bundle modal if it's open
+        if (bundlePreviewModalOpen) {
+          ludlog.ui('Closing bundle modal before opening PDF');
+          setBundlePreviewModalOpen(false);
+        }
+
+        // Open asset viewer for file assets with a small delay to ensure modal closes
+        setTimeout(() => {
+          setPdfViewerOpen(true);
+        }, 100);
+      }
     } catch (e) {
       luderror.validation("Error loading product:", e);
       setError("שגיאה בטעינת הנתונים");
     }
     setIsLoading(false);
-  }, [pdfViewerOpen, currentUser]);
+  }, [pdfViewerOpen, currentUser, bundlePreviewModalOpen]);
 
   useEffect(() => {
     if (!userLoading) {
@@ -365,10 +400,19 @@ export default function ProductDetails() {
 
 
   const getProductTypeLabel = (type) => {
+    // Check if this is a bundle product first
+    if (isBundle(item)) {
+      return 'קיט';
+    }
     return getProductTypeName(type, 'singular') || 'מוצר';
   };
 
   const getProductIcon = (type) => {
+    // Check if this is a bundle product first
+    if (isBundle(item)) {
+      return <Package className="w-6 h-6" />;
+    }
+
     switch (type) {
       case 'workshop':
         return <Calendar className="w-6 h-6" />;
@@ -512,7 +556,15 @@ export default function ProductDetails() {
                     className="text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-xl px-3 sm:px-4 md:px-5 py-2 sm:py-2.5 md:py-3 flex-shrink-0 font-medium transition-all duration-200 hover:scale-[1.02]"
                   >
                     <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 md:w-5 md:h-5 ml-1.5 sm:ml-2" />
-                    <span className="text-sm sm:text-base md:text-base whitespace-nowrap hidden sm:inline">בחזרה ל{getProductTypeName(item.product_type || itemType, 'plural')}</span>
+                    <span className="text-sm sm:text-base md:text-base whitespace-nowrap hidden sm:inline">בחזרה ל{(() => {
+                      if (isBundle(item)) {
+                        // For bundles, show the bundled product type plural
+                        const bundleComposition = getBundleComposition(item);
+                        const firstType = Object.keys(bundleComposition)[0];
+                        return getProductTypeName(firstType, 'plural');
+                      }
+                      return getProductTypeName(item.product_type || itemType, 'plural');
+                    })()}</span>
                     <span className="text-sm whitespace-nowrap sm:hidden">חזרה</span>
                   </Button>
 
@@ -538,6 +590,7 @@ export default function ProductDetails() {
                     const isFile = item.product_type === 'file' || itemType === 'file';
                     const isPdf = item.file_type === 'pdf' || item.file_name?.toLowerCase().endsWith('.pdf');
                     const isLessonPlan = item.product_type === 'lesson_plan';
+                    const isBundleOfFiles = isBundle(item) && getBundleComposition(item).file > 0;
 
                     // Check if file asset has preview enabled
                     const filePreviewEnabled = isFile && isPdf && item.allow_preview;
@@ -545,7 +598,10 @@ export default function ProductDetails() {
                     // Check if lesson plan asset has preview enabled
                     const lessonPlanPreviewEnabled = isLessonPlan && item.preview_info?.allow_slide_preview;
 
-                    const shouldShow = !hasAccess && (filePreviewEnabled || lessonPlanPreviewEnabled);
+                    // Check if bundle has file items (any type of bundle can have preview if it contains files)
+                    const bundlePreviewEnabled = isBundleOfFiles;
+
+                    const shouldShow = !hasAccess && (filePreviewEnabled || lessonPlanPreviewEnabled || bundlePreviewEnabled);
 
                     return shouldShow;
                   })() && (
@@ -594,14 +650,23 @@ export default function ProductDetails() {
                   />
                 </div>
 
-                {/* Product Type Badge */}
+                {/* Product Type Badge / Kit Badge */}
                 <div className="absolute top-4 sm:top-6 right-4 sm:right-6">
-                  <Badge className="bg-white/95 text-gray-800 px-3 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base font-bold rounded-full shadow-lg">
-                    <div className="flex items-center gap-2">
-                      {getProductIcon(item.product_type)}
-                      <span className="hidden sm:inline">{getProductTypeLabel(item.product_type)}</span>
-                    </div>
-                  </Badge>
+                  {isBundle(item) ? (
+                    <KitBadge
+                      product={item}
+                      variant="default"
+                      size="lg"
+                      className="bg-white/95 text-gray-800 shadow-lg"
+                    />
+                  ) : (
+                    <Badge className="bg-white/95 text-gray-800 px-3 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base font-bold rounded-full shadow-lg">
+                      <div className="flex items-center gap-2">
+                        {getProductIcon(item.product_type)}
+                        <span className="hidden sm:inline">{getProductTypeLabel(item.product_type)}</span>
+                      </div>
+                    </Badge>
+                  )}
                 </div>
 
                 {/* Category Badge */}
@@ -691,12 +756,21 @@ export default function ProductDetails() {
               {/* Header without image */}
               <div className="text-center">
                 <div className="flex flex-wrap items-center gap-2 mb-4 sm:mb-6 justify-center">
-                  <Badge className="bg-blue-600 text-white px-3 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base font-bold rounded-full">
-                    <div className="flex items-center gap-2">
-                      {getProductIcon(item.product_type)}
-                      <span className="hidden sm:inline">{getProductTypeLabel(item.product_type)}</span>
-                    </div>
-                  </Badge>
+                  {isBundle(item) ? (
+                    <KitBadge
+                      product={item}
+                      variant="default"
+                      size="lg"
+                      className="bg-blue-600 text-white"
+                    />
+                  ) : (
+                    <Badge className="bg-blue-600 text-white px-3 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base font-bold rounded-full">
+                      <div className="flex items-center gap-2">
+                        {getProductIcon(item.product_type)}
+                        <span className="hidden sm:inline">{getProductTypeLabel(item.product_type)}</span>
+                      </div>
+                    </Badge>
+                  )}
                   {item.category && (
                     <Badge variant="outline" className="text-sm sm:text-base font-medium px-3 sm:px-4 py-1.5 sm:py-2 rounded-full">
                       {item.category}
@@ -1511,6 +1585,27 @@ export default function ProductDetails() {
                     </>
                   )}
 
+                  {item.product_type === 'bundle' && isBundle(item) && (
+                    <>
+                      <div className="flex items-center gap-2 sm:gap-3 overflow-hidden">
+                        <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-500 flex-shrink-0" />
+                        <span className="text-xs sm:text-sm font-medium text-gray-800 break-words min-w-0">גישה לכל המוצרים בקיט</span>
+                      </div>
+                      <div className="flex items-center gap-2 sm:gap-3 overflow-hidden">
+                        <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-500 flex-shrink-0" />
+                        <span className="text-xs sm:text-sm font-medium text-gray-800 break-words min-w-0">{getBundleCompositionLabel(getBundleComposition(item))}</span>
+                      </div>
+                      <div className="flex items-center gap-2 sm:gap-3 overflow-hidden">
+                        <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-500 flex-shrink-0" />
+                        <span className="text-xs sm:text-sm font-medium text-gray-800 break-words min-w-0">חיסכון משמעותי לעומת רכישה נפרדת</span>
+                      </div>
+                      <div className="flex items-center gap-2 sm:gap-3 overflow-hidden">
+                        <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-500 flex-shrink-0" />
+                        <span className="text-xs sm:text-sm font-medium text-gray-800 break-words min-w-0">הורדה ושימוש נפרד בכל מוצר</span>
+                      </div>
+                    </>
+                  )}
+
                   <div className="flex items-center gap-2 sm:gap-3 overflow-hidden">
                     <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-500 flex-shrink-0" />
                     <span className="text-xs sm:text-sm font-medium text-gray-800 break-words min-w-0">תמיכה טכנית</span>
@@ -1536,6 +1631,15 @@ export default function ProductDetails() {
             onClose={() => setPdfViewerOpen(false)}
           />
         </div>
+      )}
+
+      {/* Bundle Preview Modal */}
+      {bundlePreviewModalOpen && isBundle(item) && (
+        <BundlePreviewModal
+          bundle={item}
+          isOpen={bundlePreviewModalOpen}
+          onClose={() => setBundlePreviewModalOpen(false)}
+        />
       )}
     </div>
   );

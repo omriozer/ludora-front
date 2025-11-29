@@ -587,7 +587,7 @@ const adminMenuItems = [
 
 ---
 
-## 7. BUNDLE UI PATTERNS (NEW: Nov 2025)
+## 7. BUNDLE UI PATTERNS (NEW: Nov 2025, Enhanced Publishing: Nov 29)
 
 ### Bundle Product Components
 
@@ -619,10 +619,10 @@ function ProductCard({ product }) {
 }
 ```
 
-### Bundle Creation UI
+### Bundle Creation UI (Enhanced Nov 29, 2025)
 
 ```javascript
-// ✅ CORRECT: Bundle composition interface
+// ✅ CORRECT: Bundle composition interface with validation
 import BundleProductSection from '@/components/product/sections/product-specific/BundleProductSection';
 
 // Used in ProductEditor when product_type === 'bundle'
@@ -634,33 +634,95 @@ import BundleProductSection from '@/components/product/sections/product-specific
   getFieldError={getFieldError}
 />
 
-// Manages bundle_items array with search/selection UI
-// Validates composition rules (min/max items, same type, etc.)
-// Shows real-time pricing calculations
+// Enhanced bundle publishing workflow:
+// 1. Product search with real-time filtering
+// 2. Visual product selection with thumbnails
+// 3. Automatic pricing calculations
+// 4. Live validation feedback
+// 5. Publishing readiness indicators
 ```
 
-### Bundle Utilities
+### Bundle Publishing Validation (CRITICAL FIX - Nov 29, 2025)
+
+**Frontend validation chain for bundle publishing:**
 
 ```javascript
-// ✅ CORRECT: Centralized bundle logic
+// useProductFormValidation.js - Bundle-specific validation
+const validateBundlePublishing = (formData) => {
+  if (formData.product_type === 'bundle') {
+    // Check bundle has items (not files)
+    if (!formData.bundle_items?.length) {
+      return { valid: false, error: 'Bundle must contain products' };
+    }
+
+    // Validate pricing requirements
+    const totalOriginalPrice = calculateTotalPrice(formData.bundle_items);
+    if (formData.price >= totalOriginalPrice) {
+      return { valid: false, error: 'Bundle price must be less than total' };
+    }
+
+    // Check minimum savings (5%)
+    const savings = ((totalOriginalPrice - formData.price) / totalOriginalPrice) * 100;
+    if (savings < 5) {
+      return { valid: false, error: 'Bundle must offer at least 5% savings' };
+    }
+
+    return { valid: true };
+  }
+  // Non-bundle validation...
+};
+
+// PublishSection.jsx - Bundle publishing UI
+const canPublishBundle = () => {
+  if (!formData.bundle_items?.length) return false;
+  if (!formData.title || !formData.price) return false;
+  if (!validateBundlePricing(formData)) return false;
+  return true;
+};
+
+// Visual feedback for publishing readiness
+{formData.product_type === 'bundle' && (
+  <div className="bundle-publish-checklist">
+    <ChecklistItem done={formData.bundle_items?.length >= 2}>
+      At least 2 products added
+    </ChecklistItem>
+    <ChecklistItem done={formData.price < calculateTotal()}>
+      Bundle price offers savings
+    </ChecklistItem>
+    <ChecklistItem done={allProductsPublished(formData.bundle_items)}>
+      All products are published
+    </ChecklistItem>
+  </div>
+)}
+```
+
+### Bundle Utilities (Enhanced)
+
+```javascript
+// ✅ CORRECT: Centralized bundle logic with validation
 import {
   isBundle,                    // Check if product is a bundle
   isBundleable,                // Check if type can be bundled
   getBundleItemCount,          // Get number of items
   getBundleComposition,        // Get item counts by type
   getBundleCompositionLabel,   // Hebrew label for composition
-  validateBundleItems          // Validate bundle rules
+  validateBundleItems,         // Validate bundle rules
+  validateBundlePricing,       // Check pricing requirements
+  calculateBundleSavings       // Calculate discount percentage
 } from '@/lib/bundleUtils';
 
-// Bundle detection pattern used throughout the app
-if (isBundle(product)) {
-  // Show bundle-specific UI
+// Bundle validation during creation
+const validationResult = validateBundleItems(selectedItems, userRole);
+if (!validationResult.valid) {
+  showError(validationResult.errors.join(', '));
+  return;
 }
 
-// Check if product can be included in bundles
-if (isBundleable(product.product_type)) {
-  // Allow selection in bundle composer
-}
+// Real-time pricing validation
+const pricingValid = validateBundlePricing({
+  price: bundlePrice,
+  bundle_items: selectedItems
+});
 ```
 
 ### Visual Indicators
@@ -675,6 +737,24 @@ if (isBundleable(product.product_type)) {
 <KitBadge product={product} variant="default" />   // "קיט • 5"
 <KitBadge product={product} variant="compact" />   // Icon only
 <KitBadge product={product} variant="full" />      // "קיט • 2 קבצים, 3 משחקים"
+```
+
+### Bundle Step Validation UI
+
+**Enhanced step validation in WizardLayout:**
+```javascript
+// Proper step validation for bundle products
+const isStepValid = (step) => {
+  if (formData.product_type === 'bundle') {
+    switch(step) {
+      case 'basic': return formData.title && formData.description;
+      case 'specific': return formData.bundle_items?.length >= 2;
+      case 'pricing': return validateBundlePricing(formData);
+      case 'publish': return canPublishBundle();
+    }
+  }
+  // Regular product validation...
+};
 ```
 
 ---

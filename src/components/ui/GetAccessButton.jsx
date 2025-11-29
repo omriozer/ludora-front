@@ -5,6 +5,7 @@ import { ShoppingCart, Plus } from 'lucide-react';
 import { ludlog, luderror } from '@/lib/ludlog';
 import { getProductTypeName } from '@/config/productTypes';
 import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
+import { isBundle, getBundleComposition } from '@/lib/bundleUtils';
 import {
   findProductForEntity,
   createPendingPurchase,
@@ -103,6 +104,15 @@ export default function GetAccessButton({
   };
 
   const getAccessText = () => {
+    // Handle bundle products specially
+    if (isBundle(product)) {
+      // Get the product type from bundle composition
+      const bundleComposition = getBundleComposition(product);
+      const firstType = Object.keys(bundleComposition)[0];
+      const bundleTypeName = getProductTypeName(firstType, 'plural');
+      return `רכישת קיט ${bundleTypeName}`;
+    }
+
     const productName = getProductTypeName(product?.product_type, 'singular');
 
     // For paid products (price checking is now async, so we check product.price if available)

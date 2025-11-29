@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ShoppingCart, Users } from 'lucide-react';
+import { ShoppingCart, Users, Package } from 'lucide-react';
 import { useProductAccess } from '@/hooks/useProductAccess';
 import BuyProductButton from '@/components/ui/BuyProductButton';
 import AddToCartButton from '@/components/ui/AddToCartButton';
@@ -116,6 +116,25 @@ export default function ProductActionBar({
               <Users className="w-5 h-5 sm:w-6 sm:h-6" />
               <span>נהל תלמידים</span>
             </span>
+          </Button>
+        );
+      case 'bundle':
+        return (
+          <Button
+            onClick={(e) => {
+              e.stopPropagation();
+              // For bundle products, navigate to the catalog filtered by the user's purchases to show their accessible products
+              navigate('/catalog?view=my-products');
+            }}
+            className={`group relative overflow-hidden bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white font-bold rounded-full shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 border-2 border-purple-400/20 ${fullWidth ? 'w-full' : ''} ${className}`}
+            size={size}
+          >
+            <span className="relative z-10 flex items-center justify-center gap-2 sm:gap-3">
+              <Package className="w-5 h-5 sm:w-6 sm:h-6" />
+              <span>צפה במוצרים שלך</span>
+            </span>
+            <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+            <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 animate-pulse"></div>
           </Button>
         );
       default:
