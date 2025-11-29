@@ -208,7 +208,7 @@ export default function PaymentResult() {
               // Handle subscription payment flow
               try {
                 const subscriptionId = transactionData.metadata.subscription_id;
-                const subscription = await apiRequest(`/subscriptions/${subscriptionId}`);
+                const subscription = await apiRequest(`/api/subscriptions/${subscriptionId}`);
 
                 if (subscription && subscription.success && subscription.data) {
                   const subscriptionData = subscription.data;
@@ -218,9 +218,15 @@ export default function PaymentResult() {
                   });
 
                   // Load subscription plan details via API
-                  const subscriptionPlan = await apiRequest(`/subscriptions/plans/${subscriptionData.subscription_plan_id}`);
+                  const subscriptionPlansResponse = await apiRequest(`/api/subscriptions/plans`);
 
-                  const planData = subscriptionPlan?.success ? subscriptionPlan.data : null;
+                  let planData = null;
+                  if (subscriptionPlansResponse?.success && subscriptionPlansResponse.data) {
+                    // Find the specific plan by ID
+                    planData = subscriptionPlansResponse.data.find(plan =>
+                      plan.id === subscriptionData.subscription_plan_id
+                    );
+                  }
 
                   // Set up subscription-specific display
                   setPurchase({
@@ -251,7 +257,8 @@ export default function PaymentResult() {
                   } else if (subscriptionData.status === 'failed') {
                     finalStatus = 'failure';
                   } else if (subscriptionData.status === 'pending') {
-                    finalStatus = transactionUid ? 'success' : 'pending';
+                    // If subscription is pending, show pending status regardless of transaction_uid
+                    finalStatus = 'pending';
                   } else {
                     finalStatus = 'unknown';
                   }
