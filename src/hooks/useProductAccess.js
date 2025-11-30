@@ -1,5 +1,7 @@
 // Central business logic hook for product access and purchase states
 import { useMemo } from 'react';
+import { isBundle, getBundleComposition } from '@/lib/bundleUtils';
+import { getProductTypeName as getProductTypeNameFromConfig } from '@/config/productTypes';
 
 /**
  * Centralized function to find user purchase for a product
@@ -165,14 +167,15 @@ export const getAccessActionText = (action, productType) => {
  * Get localized text for purchase actions
  * @param {string} action - Action type (free, buy, checkout)
  * @param {string} productType - Product type for context
+ * @param {Object} product - Full product object (needed for bundle composition)
  * @returns {string} Localized text
  */
-export const getPurchaseActionText = (action, productType) => {
+export const getPurchaseActionText = (action, productType, product = null) => {
   switch (action) {
     case 'free':
       return 'הוספה לספרייה'; // Universal text for all free products
     case 'buy':
-      return `רכוש ${getProductTypeName(productType)}`;
+      return `רכוש ${getProductTypeName(productType, product)}`;
     case 'checkout':
       return 'בעגלה - לתשלום';
     default:
@@ -183,21 +186,26 @@ export const getPurchaseActionText = (action, productType) => {
 /**
  * Helper function to get product type name in Hebrew
  * @param {string} productType - Product type
+ * @param {Object} product - Full product object (needed for bundle composition)
  * @returns {string} Hebrew product name
  */
-const getProductTypeName = (productType) => {
-  switch (productType) {
-    case 'file':
-      return 'קובץ';
-    case 'course':
-      return 'קורס';
-    case 'workshop':
-      return 'סדנה';
-    case 'tool':
-      return 'כלי';
-    case 'game':
-      return 'משחק';
-    default:
-      return 'מוצר';
+const getProductTypeName = (productType, product = null) => {
+  // Handle bundles specially - show bundle + composition type in plural
+  if (productType === 'bundle' && product && isBundle(product)) {
+    const bundleComposition = getBundleComposition(product);
+    const compositionTypes = Object.keys(bundleComposition);
+
+    if (compositionTypes.length === 1) {
+      // Single type bundle - show "קיט קבצים", "קיט משחקים", etc.
+      const compositionType = compositionTypes[0];
+      const pluralName = getProductTypeNameFromConfig(compositionType, 'plural');
+      return `קיט ${pluralName}`;
+    } else {
+      // Mixed bundle - just show "קיט"
+      return 'קיט';
+    }
   }
+
+  // Use the centralized product type names from config (singular form)
+  return getProductTypeNameFromConfig(productType, 'singular') || 'מוצר';
 };

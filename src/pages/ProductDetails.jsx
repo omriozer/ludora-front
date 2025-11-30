@@ -51,6 +51,7 @@ import GameDetailsSection from "@/components/game/details/GameDetailsSection";
 import { useLoginModal } from "@/hooks/useLoginModal";
 import { useProductAccess } from "@/hooks/useProductAccess";
 import { usePaymentPageStatusCheck } from '@/hooks/usePaymentPageStatusCheck';
+import { useSubscriptionPaymentStatusCheck } from '@/hooks/useSubscriptionPaymentStatusCheck';
 import BundlePreviewModal from "@/components/BundlePreviewModal";
 
 export default function ProductDetails() {
@@ -67,6 +68,7 @@ export default function ProductDetails() {
   const [detailsTexts, setDetailsTexts] = useState({});
   const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
   const [bundlePreviewModalOpen, setBundlePreviewModalOpen] = useState(false);
+  const [selectedBundleProduct, setSelectedBundleProduct] = useState(null); // For bundle product PDF viewing
 
   // Use centralized product access logic - same as ProductActionBar
   const { hasAccess } = useProductAccess(item, userPurchases);
@@ -81,6 +83,21 @@ export default function ProductDetails() {
       // Reload product data when payments are processed (user might have new access)
       if (update.type === 'continue_polling' && update.count > 0) {
         loadData();
+      }
+    }
+  });
+
+  // Subscription payment status checking - check for pending subscriptions and handle completion/failure
+  const subscriptionPaymentStatus = useSubscriptionPaymentStatusCheck({
+    enabled: true,
+    showToasts: true, // Show user notifications about subscription status changes
+    checkInterval: 20000, // Check every 20 seconds as specified by user
+    onStatusUpdate: (update) => {
+      ludlog.payment('ProductDetails: Subscription status update received:', { data: update });
+
+      // Reload user data when subscription is activated or cancelled
+      if (update.type === 'subscription_activated' || update.type === 'subscription_cancelled') {
+        loadData(); // Refresh to get updated user subscription status
       }
     }
   });
@@ -237,6 +254,57 @@ export default function ProductDetails() {
       // Open asset viewer for file assets
       setPdfViewerOpen(true);
     }
+  };
+
+  // Bundle modal callback for individual product preview
+  const handleBundleProductPreview = (product) => {
+    ludlog.ui('ProductDetails - bundle product preview callback', {
+      productTitle: product.title,
+      productType: product.product_type,
+      productId: product.id
+    });
+
+    // Close bundle modal first
+    setBundlePreviewModalOpen(false);
+
+    // Handle different product types
+    if (product.product_type === 'lesson_plan') {
+      // For lesson plans, still need to navigate to presentation
+      if (!currentUser) {
+        const previewCallback = () => {
+          navigate(`/lesson-plan-presentation?id=${product.entity_id || product.id}&preview=true`);
+        };
+        openLoginModal(
+          previewCallback,
+          'נדרשת הרשמה לתצוגה מקדימה'
+        );
+        return;
+      }
+      navigate(`/lesson-plan-presentation?id=${product.entity_id || product.id}&preview=true`);
+    } else if (product.product_type === 'file') {
+      // For files, open PDF viewer directly without navigation - stay on bundle page!
+      ludlog.ui('Opening PDF viewer for bundle product directly', {
+        productTitle: product.title,
+        fileType: product.file_type
+      });
+
+      // Set the selected product and open PDF viewer directly
+      setSelectedBundleProduct(product);
+      setPdfViewerOpen(true);
+    }
+  };
+
+  // Bundle modal callback for viewing full product details
+  const handleBundleProductView = (product) => {
+    ludlog.ui('ProductDetails - bundle product view callback', {
+      productTitle: product.title,
+      productType: product.product_type,
+      productId: product.id
+    });
+
+    // Close bundle modal and navigate to product details
+    setBundlePreviewModalOpen(false);
+    navigate(`/product-details?type=${product.product_type}&id=${product.id}`);
   };
 
   // Handle course access
@@ -1035,7 +1103,7 @@ export default function ProductDetails() {
               </Card>
             )}
 
-            {item.product_type === 'file' && (
+            {item.product_type === 'file' && !isBundle(item) && (
               <div className="bg-white shadow-xl rounded-2xl sm:rounded-3xl w-full max-w-full overflow-hidden">
                 <div className="bg-gradient-to-r from-purple-500 to-pink-600 text-white p-4 sm:p-6">
                   <h3 className="flex items-center gap-2 sm:gap-3 text-lg sm:text-xl font-semibold">
@@ -1130,6 +1198,75 @@ export default function ProductDetails() {
                           <p className="font-bold text-gray-900 text-sm sm:text-lg break-words">
                             {format(new Date(item.updated_at), 'dd/MM/yyyy', { locale: he })}
                           </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Bundle Details Section - Shows all products in the bundle */}
+            {isBundle(item) && (
+              <div className="bg-white shadow-xl rounded-2xl sm:rounded-3xl w-full max-w-full overflow-hidden">
+                <div className="bg-gradient-to-r from-purple-500 to-pink-600 text-white p-4 sm:p-6">
+                  <h3 className="flex items-center gap-2 sm:gap-3 text-lg sm:text-xl font-semibold">
+                    <Package className="w-5 h-5 sm:w-6 sm:h-6" />
+                    פרטי הקבצים בקיט
+                  </h3>
+                </div>
+                <div className="p-4 sm:p-6 md:p-8">
+                  <div className="grid grid-cols-1 gap-4 sm:gap-6 overflow-hidden">
+                    {/* Bundle Summary */}
+                    <div className="flex items-center gap-3 p-4 sm:p-6 bg-purple-50 rounded-xl sm:rounded-2xl overflow-hidden">
+                      <div className="w-12 h-12 sm:w-14 sm:h-14 bg-purple-100 rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0">
+                        <Package className="w-6 h-6 sm:w-7 sm:h-7 text-purple-600" />
+                      </div>
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <div className="text-sm font-medium text-gray-900 mb-1">הרכב הקיט</div>
+                        <div className="text-xs sm:text-sm text-gray-600 break-words">
+                          {getBundleCompositionLabel(getBundleComposition(item))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Individual Products in Bundle */}
+                    {item.type_attributes?.bundle_items?.map((bundleItem, index) => (
+                      <div key={bundleItem.product_id || index} className="flex items-center gap-3 p-4 sm:p-6 bg-blue-50 rounded-xl sm:rounded-2xl overflow-hidden">
+                        <div className="w-12 h-12 sm:w-14 sm:h-14 bg-blue-100 rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0">
+                          <FileText className="w-6 h-6 sm:w-7 sm:h-7 text-blue-600" />
+                        </div>
+                        <div className="flex-1 min-w-0 overflow-hidden">
+                          <div className="text-sm font-medium text-gray-900 mb-1">
+                            {bundleItem._metadata?.title || `מוצר ${index + 1}`}
+                          </div>
+                          <div className="text-xs sm:text-sm text-gray-600 break-words">
+                            <div>סוג: {getProductTypeName(bundleItem.product_type, 'singular')}</div>
+                            {bundleItem._metadata?.price && (
+                              <div className="mt-1">מחיר יחידה: ₪{bundleItem._metadata.price}</div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Bundle Savings */}
+                    {item.type_attributes?.savings_percentage && (
+                      <div className="flex items-center gap-3 p-4 sm:p-6 bg-green-50 rounded-xl sm:rounded-2xl overflow-hidden">
+                        <div className="w-12 h-12 sm:w-14 sm:h-14 bg-green-100 rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0">
+                          <CheckCircle className="w-6 h-6 sm:w-7 sm:h-7 text-green-600" />
+                        </div>
+                        <div className="flex-1 min-w-0 overflow-hidden">
+                          <div className="text-sm font-medium text-gray-900 mb-1">חיסכון בקיט</div>
+                          <div className="text-xs sm:text-sm text-gray-600 break-words">
+                            <div>{item.type_attributes.savings_percentage}% חיסכון לעומת רכישה נפרדת</div>
+                            {item.type_attributes?.original_total_price && (
+                              <div className="mt-1">
+                                מחיר מקורי: ₪{item.type_attributes.original_total_price} •
+                                מחיר קיט: ₪{item.price}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     )}
@@ -1585,7 +1722,7 @@ export default function ProductDetails() {
                     </>
                   )}
 
-                  {item.product_type === 'bundle' && isBundle(item) && (
+                  {isBundle(item) && (
                     <>
                       <div className="flex items-center gap-2 sm:gap-3 overflow-hidden">
                         <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-500 flex-shrink-0" />
@@ -1619,16 +1756,23 @@ export default function ProductDetails() {
 
       {/* Asset Viewer Modal */}
       {(() => {
-        const shouldShowModal = pdfViewerOpen && (item.product_type === 'file' || itemType === 'file');
+        // Show PDF viewer for main product OR for selected bundle product
+        const shouldShowModal = pdfViewerOpen && (
+          (item.product_type === 'file' || itemType === 'file') || // Main product is file
+          (selectedBundleProduct && selectedBundleProduct.product_type === 'file') // Selected bundle product is file
+        );
         return shouldShowModal;
       })() && (
         <div data-testid="asset-viewer-modal">
           <PdfViewer
-            fileId={item.entity_id || item.id}
-            fileName={item.file_name || `${item.title}.pdf`}
+            fileId={(selectedBundleProduct && selectedBundleProduct.entity_id) || item.entity_id || item.id}
+            fileName={(selectedBundleProduct && selectedBundleProduct.file_name) || item.file_name || `${(selectedBundleProduct && selectedBundleProduct.title) || item.title}.pdf`}
             hasAccess={hasAccess}
-            allowPreview={item.allow_preview}
-            onClose={() => setPdfViewerOpen(false)}
+            allowPreview={(selectedBundleProduct && selectedBundleProduct.allow_preview) || item.allow_preview}
+            onClose={() => {
+              setPdfViewerOpen(false);
+              setSelectedBundleProduct(null); // Clear selected bundle product when closing
+            }}
           />
         </div>
       )}
@@ -1639,6 +1783,8 @@ export default function ProductDetails() {
           bundle={item}
           isOpen={bundlePreviewModalOpen}
           onClose={() => setBundlePreviewModalOpen(false)}
+          onProductPreview={handleBundleProductPreview}
+          onProductView={handleBundleProductView}
         />
       )}
     </div>

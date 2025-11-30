@@ -138,7 +138,7 @@ export default function BuyProductButton({
 
   const buttonText = isFree
     ? 'הוספה לספרייה'
-    : getPurchaseActionText('buy', productType);
+    : getPurchaseActionText('buy', productType, product);
 
   return (
     <Button

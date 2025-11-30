@@ -15,6 +15,7 @@ import { useProductActions } from "@/hooks/useProductActions";
 import PdfViewer from "@/components/pdf/PdfViewer";
 import { ludlog, luderror } from '@/lib/ludlog';
 import { usePaymentPageStatusCheck } from '@/hooks/usePaymentPageStatusCheck';
+import { useSubscriptionPaymentStatusCheck } from '@/hooks/useSubscriptionPaymentStatusCheck';
 
 /**
  * MyProductsWidget - Clean product access widget without purchase details
@@ -54,6 +55,21 @@ const MyProductsWidget = ({
       // Reload products when payments are completed (new products available)
       if (update.type === 'continue_polling' && update.count > 0) {
         loadMyProducts();
+      }
+    }
+  });
+
+  // Subscription payment status checking - check for pending subscriptions and handle completion/failure
+  const subscriptionPaymentStatus = useSubscriptionPaymentStatusCheck({
+    enabled: true,
+    showToasts: true, // Show user notifications about subscription status changes
+    checkInterval: 20000, // Check every 20 seconds as specified by user
+    onStatusUpdate: (update) => {
+      ludlog.payment('MyProductsWidget: Subscription status update received:', { data: update });
+
+      // Reload products when subscription is activated or cancelled
+      if (update.type === 'subscription_activated' || update.type === 'subscription_cancelled') {
+        loadMyProducts(); // Refresh to get updated user subscription access
       }
     }
   });

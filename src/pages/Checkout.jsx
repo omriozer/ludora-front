@@ -47,6 +47,7 @@ import CouponInput from "@/components/CouponInput";
 import couponClient from "@/services/couponClient";
 import { ludlog, luderror } from '@/lib/ludlog';
 import { usePaymentPageStatusCheck } from '@/hooks/usePaymentPageStatusCheck';
+import { useSubscriptionPaymentStatusCheck } from '@/hooks/useSubscriptionPaymentStatusCheck';
 
 
 export default function Checkout() {
@@ -99,6 +100,21 @@ export default function Checkout() {
       // Reload checkout data when payments are processed or abandoned
       if (update.type === 'reverted_to_cart' || update.type === 'continue_polling') {
         loadCheckoutData();
+      }
+    }
+  });
+
+  // Subscription payment status checking - check for pending subscriptions and handle completion/failure
+  const subscriptionPaymentStatus = useSubscriptionPaymentStatusCheck({
+    enabled: true,
+    showToasts: true, // Show user notifications about subscription status changes
+    checkInterval: 20000, // Check every 20 seconds as specified by user
+    onStatusUpdate: (update) => {
+      ludlog.payment('Checkout: Subscription status update received:', { data: update });
+
+      // Reload checkout data when subscription is activated or cancelled
+      if (update.type === 'subscription_activated' || update.type === 'subscription_cancelled') {
+        loadCheckoutData(); // Refresh to get updated user subscription status
       }
     }
   });

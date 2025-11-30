@@ -29,6 +29,7 @@ import FeatureFlagService from '@/services/FeatureFlagService';
 import { getProductTypeIconByType } from '@/lib/layoutUtils';
 import { toast } from '@/components/ui/use-toast';
 import { usePaymentPageStatusCheck } from '@/hooks/usePaymentPageStatusCheck';
+import { useSubscriptionPaymentStatusCheck } from '@/hooks/useSubscriptionPaymentStatusCheck';
 import { ludlog } from "@/lib/ludlog";
 
 export default function Products() {
@@ -69,6 +70,21 @@ export default function Products() {
       // Refresh products list when payments are processed (user might have new access)
       if (update.type === 'continue_polling' && update.count > 0) {
         loadData();
+      }
+    }
+  });
+
+  // Subscription payment status checking - check for pending subscriptions and handle completion/failure
+  const subscriptionPaymentStatus = useSubscriptionPaymentStatusCheck({
+    enabled: true,
+    showToasts: true, // Show user notifications about subscription status changes
+    checkInterval: 20000, // Check every 20 seconds as specified by user
+    onStatusUpdate: (update) => {
+      ludlog.payment('Products: Subscription status update received:', update);
+
+      // Reload products data when subscription is activated or cancelled
+      if (update.type === 'subscription_activated' || update.type === 'subscription_cancelled') {
+        loadData(); // Refresh to get updated user subscription status
       }
     }
   });

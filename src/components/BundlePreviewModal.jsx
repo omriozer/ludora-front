@@ -7,8 +7,6 @@ import { Eye, FileText, Package, Play, BookOpen, X, ExternalLink, GraduationCap 
 import { getBundleItems } from '@/lib/bundleUtils';
 import { getProductTypeName } from '@/config/productTypes';
 import { useUser } from '@/contexts/UserContext';
-import { useLoginModal } from '@/hooks/useLoginModal';
-import { useNavigate } from 'react-router-dom';
 import { apiRequest } from '@/services/apiClient';
 import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
 import { ludlog, luderror } from '@/lib/ludlog';
@@ -18,13 +16,11 @@ import { ludlog, luderror } from '@/lib/ludlog';
  * Shows all products within a bundle with individual preview options
  * following the same access logic as individual product details pages
  */
-export default function BundlePreviewModal({ bundle, isOpen, onClose }) {
+export default function BundlePreviewModal({ bundle, isOpen, onClose, onProductPreview, onProductView }) {
   const [bundleProducts, setBundleProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { currentUser } = useUser();
-  const { openLoginModal } = useLoginModal();
-  const navigate = useNavigate();
 
   // Debug logging
   console.log('BundlePreviewModal rendered', {
@@ -92,9 +88,9 @@ export default function BundlePreviewModal({ bundle, isOpen, onClose }) {
     loadBundleProducts();
   }, [isOpen, bundle]);
 
-  // Handle individual product preview
+  // Handle individual product preview using callback pattern (same as ProductDetails)
   const handleProductPreview = (product) => {
-    console.log('handleProductPreview called', {
+    ludlog.ui('Bundle modal - preview button clicked', {
       productTitle: product.title,
       productType: product.product_type,
       fileType: product.file_type,
@@ -110,7 +106,7 @@ export default function BundlePreviewModal({ bundle, isOpen, onClose }) {
     const filePreviewEnabled = isFile && isPdf && product.allow_preview;
     const lessonPlanPreviewEnabled = isLessonPlan && product.preview_info?.allow_slide_preview;
 
-    console.log('Preview availability', {
+    ludlog.ui('Bundle modal - preview availability', {
       isFile,
       isPdf,
       isLessonPlan,
@@ -119,68 +115,28 @@ export default function BundlePreviewModal({ bundle, isOpen, onClose }) {
     });
 
     if (!filePreviewEnabled && !lessonPlanPreviewEnabled) {
-      console.log('No preview available for this product');
+      ludlog.ui('Bundle modal - no preview available for this product');
       return; // No preview available
     }
 
-    // For preview, redirect to product details with openPdf parameter or lesson plan preview
-    if (isLessonPlan) {
-      const productId = product.entity_id || product.id; // For lesson plans, entity_id is correct since we need the lesson plan entity ID
-      const url = `/lesson-plan-presentation?id=${productId}&preview=true`;
-      console.log('Navigating to lesson plan preview:', url);
-      if (!currentUser) {
-        openLoginModal(
-          () => navigate(url),
-          'נדרשת הרשמה לתצוגה מקדימה'
-        );
-      } else {
-        navigate(url);
-      }
-    } else {
-      // For file preview - use the product ID, NOT entity_id
-      const productId = product.id;
-      const url = `/product-details?type=${product.product_type}&id=${productId}&openPdf=true`;
-      console.log('Navigating to file preview:', {
-        url,
-        calculatedProductId: productId,
-        originalProductId: product.id,
-        entityId: product.entity_id,
-        currentUser: !!currentUser
-      });
-
-      if (!currentUser) {
-        console.log('No current user, opening login modal');
-        openLoginModal(
-          () => {
-            console.log('After login, navigating to:', url);
-            navigate(url);
-          },
-          'נדרשת הרשמה לתצוגה מקדימה'
-        );
-      } else {
-        console.log('Current user exists, navigating directly to:', url);
-        // Test if navigation works at all
-        console.log('About to call navigate() function');
-        try {
-          navigate(url);
-          console.log('Navigate function called successfully');
-        } catch (err) {
-          console.error('Error calling navigate:', err);
-        }
-      }
+    // Use callback pattern instead of navigation
+    if (onProductPreview) {
+      ludlog.ui('Bundle modal - calling onProductPreview callback');
+      onProductPreview(product);
     }
   };
 
-  // Handle navigation to full product details
+  // Handle navigation to full product details using callback pattern
   const handleViewProduct = (product) => {
-    const productId = product.id;
-    const url = `/product-details?type=${product.product_type}&id=${productId}`;
-    console.log('handleViewProduct called - navigating to:', url);
-    try {
-      navigate(url);
-      console.log('View product navigation called successfully');
-    } catch (err) {
-      console.error('Error navigating to view product:', err);
+    ludlog.ui('Bundle modal - view product button clicked', {
+      productTitle: product.title,
+      productId: product.id
+    });
+
+    // Use callback pattern for consistency
+    if (onProductView) {
+      ludlog.ui('Bundle modal - calling onProductView callback');
+      onProductView(product);
     }
   };
 
@@ -288,9 +244,9 @@ export default function BundlePreviewModal({ bundle, isOpen, onClose }) {
                               onClick={() => handleProductPreview(product)}
                               variant="outline"
                               size="sm"
-                              className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                              className="rounded-full px-3 sm:px-4 md:px-5 py-2.5 sm:py-3 md:py-3.5 flex-shrink-0 text-sm sm:text-base md:text-base border-blue-300 text-blue-700 hover:bg-blue-50 hover:border-blue-400 border-2 font-medium transition-all duration-200 hover:scale-[1.02] shadow-sm hover:shadow-md"
                             >
-                              <Eye className="w-4 h-4 ml-1" />
+                              <Eye className="w-4 h-4 sm:w-5 sm:h-5 md:w-5 md:h-5 ml-1.5 sm:ml-2" />
                               <span className="hidden sm:inline">תצוגה מקדימה</span>
                               <span className="sm:hidden">תצוגה</span>
                             </Button>

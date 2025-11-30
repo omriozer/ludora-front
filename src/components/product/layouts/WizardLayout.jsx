@@ -65,13 +65,30 @@ export const WizardLayout = ({
     // Define step-specific validation rules
     const stepRequirements = {
       basicInfo: () => {
-        return !!(formData.title?.trim() &&
-                 formData.description?.trim() &&
-                 formData.price !== undefined &&
-                 formData.price !== '' &&
-                 !isNaN(parseFloat(formData.price)) &&
-                 parseFloat(formData.price) >= 0 &&
-                 formData.product_type);
+        const hasTitle = !!(formData.title?.trim());
+        const hasDescription = !!(formData.description?.trim());
+        const hasValidPrice = !!(formData.price !== undefined &&
+                                 formData.price !== '' &&
+                                 !isNaN(parseFloat(formData.price)) &&
+                                 parseFloat(formData.price) >= 0);
+        const hasProductType = !!(formData.product_type);
+
+        // Debug logging for bundle products to help identify missing fields
+        if (formData.type_attributes?.is_bundle === true || formData.product_type) {
+          console.log('BasicInfo validation debug:', {
+            hasTitle,
+            hasDescription,
+            hasValidPrice,
+            hasProductType,
+            title: formData.title,
+            description: formData.description?.substring(0, 50) + '...',
+            price: formData.price,
+            product_type: formData.product_type,
+            is_bundle: formData.type_attributes?.is_bundle
+          });
+        }
+
+        return hasTitle && hasDescription && hasValidPrice && hasProductType;
       },
       productContent: () => {
         if (!formData.product_type) return false;
@@ -184,7 +201,8 @@ export const WizardLayout = ({
   const goNext = () => {
     if (currentStepIndex < visibleSections.length - 1) {
       const nextStepIndex = currentStepIndex + 1;
-      if (isStepAccessible(nextStepIndex)) {
+      // Allow navigation if current step is valid, regardless of step accessibility for new products
+      if (stepValidation[currentSection.id] && nextStepIndex < visibleSections.length) {
         setCurrentStepIndex(nextStepIndex);
       }
     }
@@ -504,7 +522,7 @@ export const WizardLayout = ({
                 <Button
                   type="button"
                   onClick={goNext}
-                  disabled={isSaving || !isStepAccessible(currentStepIndex + 1)}
+                  disabled={isSaving || !stepValidation[currentSection.id]}
                   className="flex items-center gap-2"
                 >
                   הבא
