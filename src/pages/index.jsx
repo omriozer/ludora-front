@@ -30,7 +30,8 @@ import BrandSettings from './BrandSettings';
 import ProductSettings from './ProductSettings';
 import CategoryManagement from './CategoryManagement';
 import AudioManagement from './AudioManagement';
-import SubscriptionSettings from './SubscriptionSettings';
+import AdminSubscriptionSettings from './AdminSubscriptionSettings';
+import Subscriptions from './Subscriptions';
 import NotFound from './NotFound';
 import MyClassrooms from './MyClassrooms';
 import SchoolManagement from './SchoolManagement';
@@ -85,7 +86,8 @@ export {
   ProductSettings,
   CategoryManagement,
   AudioManagement,
-  SubscriptionSettings,
+  AdminSubscriptionSettings,
+  Subscriptions,
   NotFound,
   MyClassrooms,
   SchoolManagement,

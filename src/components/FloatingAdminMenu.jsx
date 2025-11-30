@@ -302,9 +302,9 @@ export default function FloatingAdminMenu({ currentUser }) {
       icon: <Shield className="w-5 h-5" />,
       color: "from-orange-500 to-red-600",
       items: [
-        { 
-          title: "הגדרות מנויים", 
-          url: "/subscriptions", 
+        {
+          title: "הגדרות מנויים",
+          url: "/subscriptions-admin",
           icon: <CreditCard className="w-4 h-4" />,
           description: "ניהול תוכניות מנוי ותמחור"
         },

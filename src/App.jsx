@@ -988,13 +988,25 @@ function App() {
 						}
 					/>
 					<Route
-						path='/subscriptions'
+						path='/subscriptions-admin'
 						element={
 							<AdminRoute>
 								<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ADMIN}>
-									<LazyPages.SubscriptionSettings />
+									<LazyPages.AdminSubscriptionSettings />
 								</AuthAwareSuspense>
 							</AdminRoute>
+						}
+					/>
+					<Route
+						path='/subscriptions'
+						element={
+							<ConditionalRoute visibilityField='nav_account_visibility'>
+								<OnboardingRedirect>
+									<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.PROTECTED}>
+										<LazyPages.Subscriptions />
+									</AuthAwareSuspense>
+								</OnboardingRedirect>
+							</ConditionalRoute>
 						}
 					/>
 					<Route

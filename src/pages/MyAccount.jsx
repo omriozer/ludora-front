@@ -37,7 +37,6 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
-import SubscriptionModal from "../components/SubscriptionModal";
 import PurchaseHistory from "@/components/PurchaseHistory";
 import { useSubscriptionState } from "@/hooks/useSubscriptionState";
 import SubscriptionBusinessLogic from "@/services/SubscriptionBusinessLogic";
@@ -95,9 +94,6 @@ const MyAccount = () => {
   // Edit mode states
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editedProfile, setEditedProfile] = useState({});
-
-  // Subscription modal
-  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
 
   // Invitation code states
   const [invitationCode, setInvitationCode] = useState(currentUser?.invitation_code || null);
@@ -296,7 +292,8 @@ const MyAccount = () => {
         subscriptionInfo: "מידע מנוי",
         mySubscription: "המנוי שלי",
         currentPlan: "תוכנית נוכחית",
-        changePlan: "שינוי תוכנית",
+        manageSubscription: "ניהול מנוי",
+        signUpForSubscription: "הצטרף למנוי",
         purchaseHistory: "היסטוריית רכישות",
         noHistory: "אין היסטוריית רכישות",
         loading: "טוען נתונים...",
@@ -423,33 +420,6 @@ const MyAccount = () => {
   }, []);
 
 
-  const handleSubscriptionChange = (plan) => {
-    // Refresh subscription data when subscription changes
-    subscriptionState.refreshData();
-  };
-
-  // Handle continue payment for pending subscriptions
-  const handleContinuePayment = async (plan) => {
-    try {
-      ludlog.payment('Account page: Continue payment for plan', { data: plan.id });
-
-      // Open subscription modal instead of redirecting to external payment page
-      setShowSubscriptionModal(true);
-
-      toast({
-        title: "מעבר לבחירת תוכנית",
-        description: "בחר את התוכנית והשלם את התשלום",
-        variant: "default"
-      });
-    } catch (error) {
-      luderror.payment('Account page: Error opening subscription modal', error);
-      toast({
-        title: "שגיאה",
-        description: "אירעה שגיאה בפתיחת חלון התשלום",
-        variant: "destructive"
-      });
-    }
-  };
 
   // Ensure all necessary data (user, texts, settings, subscription) is loaded before rendering main content
   if (userLoading || isLoading || settings === null || (settings?.subscription_system_enabled && subscriptionState.loading)) {
@@ -922,7 +892,7 @@ const MyAccount = () => {
                                 <div className="pt-4 space-y-3">
                                   {needsRetryPayment && (
                                     <Button
-                                      onClick={() => handleContinuePayment(pendingPlan)}
+                                      onClick={() => navigate('/subscriptions')}
                                       disabled={subscriptionState.processing}
                                       className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-8 py-5 rounded-xl font-bold text-xl shadow-xl hover:shadow-2xl transform hover:scale-[1.01] transition-all duration-200 border-0"
                                     >
@@ -934,7 +904,7 @@ const MyAccount = () => {
                                       ) : (
                                         <>
                                           <CreditCard className="w-7 h-7 ml-3" />
-                                          השלם תשלום ₪{pendingPlan.price}
+                                          ניהול מנוי - השלם תשלום ₪{pendingPlan.price}
                                         </>
                                       )}
                                     </Button>
@@ -994,7 +964,7 @@ const MyAccount = () => {
                               {/* Small Change Plan Link */}
                               <div className="mt-3 text-center">
                                 <button
-                                  onClick={() => setShowSubscriptionModal(true)}
+                                  onClick={() => navigate('/subscriptions')}
                                   className="text-xs text-gray-500 hover:text-gray-700 underline transition-colors"
                                 >
                                   שנה תוכנית
@@ -1135,18 +1105,19 @@ const MyAccount = () => {
                   ) : null}
 
                   <Button
-                    onClick={() => setShowSubscriptionModal(true)}
-                    disabled={subscriptionState.loading || subscriptionState.processing}
+                    onClick={() => navigate('/subscriptions')}
+                    disabled={subscriptionState.loading}
                     className={`w-full py-3 rounded-xl text-base sm:text-lg font-semibold transition-all ${
-                      subscriptionState.loading || subscriptionState.processing
+                      subscriptionState.loading
                         ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105'
+                        : subscriptionState.summary?.hasActiveSubscription
+                          ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105'
+                          : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105'
                     }`}
                   >
                     <Crown className="w-5 h-5 ml-2" />
                     {subscriptionState.loading ? 'טוען...' :
-                     subscriptionState.processing ? 'מעבד...' :
-                     accountTexts.changePlan}
+                     subscriptionState.summary?.hasActiveSubscription ? 'ניהול מנוי' : 'הצטרף למנוי'}
                   </Button>
                 </CardContent>
               </Card>
@@ -1163,17 +1134,6 @@ const MyAccount = () => {
             />
           </div>
         </div>
-
-        {/* Subscription Modal - only show if subscription system is enabled */}
-        {settings?.subscription_system_enabled && (
-          <SubscriptionModal
-            isOpen={showSubscriptionModal}
-            onClose={() => setShowSubscriptionModal(false)}
-            currentUser={currentUser}
-            onSubscriptionChange={handleSubscriptionChange}
-            isAutoOpened={false}
-          />
-        )}
 
         {/* QR Code Modal for Invitation Code */}
         {showQRModal && (
