@@ -34,7 +34,11 @@ const findUserPurchaseForProduct = (product, userPurchases = []) => {
 
     // For polymorphic associations (tools, games, etc.), match against entity_id
     // For legacy products, match against product ID
-    const matches = (purchaseEntityId === productId || purchaseEntityId === entityId) && isRelevant;
+    // CRITICAL: Add null safety - don't match when both entityId and purchaseEntityId are null
+    const matchesProductId = purchaseEntityId === productId;
+    const matchesEntityId = entityId !== null && purchaseEntityId === entityId;
+    const matches = (matchesProductId || matchesEntityId) && isRelevant;
+
 
     return matches;
   });
@@ -84,6 +88,7 @@ export const useProductAccess = (product, userPurchases = []) => {
     const hasPurchaseRecord = !!purchase; // ANY purchase record exists
     const canAddToCart = !isFree && !hasPurchaseRecord; // No add to cart if ANY purchase exists
     const canPurchase = !hasAccess && !isPurchased;
+
 
     // Determine access action based on product type
     let accessAction = null;
@@ -175,6 +180,21 @@ export const getPurchaseActionText = (action, productType, product = null) => {
     case 'free':
       return 'הוספה לספרייה'; // Universal text for all free products
     case 'buy':
+      // Check if it's a bundle product and generate appropriate text
+      if (product && isBundle(product)) {
+        const bundleComposition = getBundleComposition(product);
+        const compositionTypes = Object.keys(bundleComposition);
+
+        if (compositionTypes.length === 1) {
+          // Single type bundle - show "רכוש קיט קבצים", "רכוש קיט מערכי שיעור", etc.
+          const compositionType = compositionTypes[0];
+          const pluralName = getProductTypeNameFromConfig(compositionType, 'plural');
+          return `רכוש קיט ${pluralName}`;
+        } else {
+          // Mixed bundle - just show "רכוש קיט"
+          return 'רכוש קיט';
+        }
+      }
       return `רכוש ${getProductTypeName(productType, product)}`;
     case 'checkout':
       return 'בעגלה - לתשלום';

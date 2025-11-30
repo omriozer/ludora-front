@@ -8,6 +8,7 @@ import { useLoginModal } from '@/hooks/useLoginModal';
 import { useCart } from '@/contexts/CartContext';
 import { getPurchaseActionText } from '@/hooks/useProductAccess';
 import { useUser } from '@/contexts/UserContext';
+import { isBundle } from '@/lib/bundleUtils';
 import {
   showPurchaseSuccessToast,
   showPurchaseErrorToast

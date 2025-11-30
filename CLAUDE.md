@@ -587,7 +587,7 @@ const adminMenuItems = [
 
 ---
 
-## 7. BUNDLE UI PATTERNS (NEW: Nov 2025, Enhanced Publishing: Nov 29)
+## 7. BUNDLE UI PATTERNS (NEW: Nov 2025, Enhanced: Nov 29-30)
 
 ### Bundle Product Components
 
@@ -706,15 +706,17 @@ import {
   getBundleItemCount,          // Get number of items
   getBundleComposition,        // Get item counts by type
   getBundleCompositionLabel,   // Hebrew label for composition
-  validateBundleItems,         // Validate bundle rules
-  validateBundlePricing,       // Check pricing requirements
-  calculateBundleSavings       // Calculate discount percentage
+  getBundleCompositionText,    // Full text description
+  validateBundleItems,         // Validate bundle rules (max 50 items)
+  formatBundleItemsForAPI,     // Format for backend submission
+  areBundleCompositionsEqual,  // Compare bundle compositions
+  getAllBundleableTypes        // Get all bundleable product types
 } from '@/lib/bundleUtils';
 
-// Bundle validation during creation
-const validationResult = validateBundleItems(selectedItems, userRole);
+// Bundle validation during creation (supports mixed types)
+const validationResult = validateBundleItems(selectedItems);
 if (!validationResult.valid) {
-  showError(validationResult.errors.join(', '));
+  showError(validationResult.error);
   return;
 }
 
@@ -739,6 +741,37 @@ const pricingValid = validateBundlePricing({
 <KitBadge product={product} variant="full" />      // "קיט • 2 קבצים, 3 משחקים"
 ```
 
+### Bundle Preview Modal (NEW: Nov 30, 2025)
+
+**BundlePreviewModal component for viewing bundle contents:**
+
+```javascript
+import BundlePreviewModal from '@/components/BundlePreviewModal';
+
+// Usage with callback patterns for navigation
+<BundlePreviewModal
+  bundle={bundleProduct}
+  isOpen={showModal}
+  onClose={() => setShowModal(false)}
+  onProductPreview={(product) => {
+    // Handle individual product preview
+    // Only enabled for PDF files and lesson plans with preview enabled
+  }}
+  onProductView={(product) => {
+    // Navigate to full product details
+    navigate(`/products/${product.id}`);
+  }}
+/>
+
+// Features:
+// - Loads all bundle products with API details
+// - Shows product type badges and icons
+// - Preview button only for previewable products
+// - Responsive card layout for bundle items
+// - Loading states with LudoraLoadingSpinner
+// - Error handling for failed product loads
+```
+
 ### Bundle Step Validation UI
 
 **Enhanced step validation in WizardLayout:**
@@ -759,7 +792,89 @@ const isStepValid = (step) => {
 
 ---
 
-## 8. TESTING PATTERNS
+## 8. SUBSCRIPTION UI PATTERNS (NEW: Nov 29-30, 2025)
+
+### Subscription Payment Status Hook
+
+**Automatic detection and handling of abandoned subscription payment pages:**
+
+```javascript
+import { useSubscriptionPaymentStatusCheck } from '@/hooks/useSubscriptionPaymentStatusCheck';
+
+// Use in components that need subscription status awareness
+const {
+  isChecking,
+  pendingCount,
+  statusSummary,
+  checkSubscriptionPaymentStatus,
+  hasPendingSubscriptions,
+  hasRecentlyChecked
+} = useSubscriptionPaymentStatusCheck({
+  enabled: true,                    // Auto-check on mount
+  onStatusUpdate: (update) => {
+    // Handle activation/cancellation
+    if (update.type === 'subscription_activated') {
+      refetchUserData();
+    }
+  },
+  checkInterval: null,             // Optional periodic checking
+  showToasts: true                 // User notifications
+});
+
+// Features:
+// - Global request deduplication (prevents duplicate API calls)
+// - 2-second debouncing to prevent rapid-fire requests
+// - Automatic retry with backoff for processing delays
+// - Toast notifications for status changes
+// - Efficient pending check before full status check
+```
+
+### Subscription Layout Detection
+
+**Automatic layout detection for subscription purchase flows:**
+
+```javascript
+// PaymentResult.jsx - Smart layout detection
+const getLayoutForSubscription = (subscription) => {
+  // Automatically chooses correct layout based on subscription state
+  if (subscription?.status === 'active') {
+    return 'subscription_success';  // Shows success UI
+  } else if (subscription?.status === 'pending') {
+    return 'subscription_pending';   // Shows processing UI
+  } else {
+    return 'subscription_failed';    // Shows failure UI
+  }
+};
+
+// Subscription-specific UI elements
+// - Activation status indicators
+// - Next billing date display
+// - Benefits summary
+// - Manage subscription button
+```
+
+### Enhanced Subscription Toggle
+
+**Improved subscription system toggle with immediate UI updates:**
+
+```javascript
+// SubscriptionSettings.jsx - Fixed toggle behavior
+const handleSubscriptionToggle = async (newValue) => {
+  setLocalSubscriptionEnabled(newValue);  // Immediate UI update
+
+  try {
+    await Settings.update(settingId, {
+      subscription_system_enabled: newValue
+    });
+    await refetchSettings();  // Sync with backend
+  } catch (error) {
+    setLocalSubscriptionEnabled(!newValue);  // Revert on error
+    showError('Failed to update subscription settings');
+  }
+};
+```
+
+## 9. TESTING PATTERNS
 
 ### Component Testing with Cypress
 

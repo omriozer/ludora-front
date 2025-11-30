@@ -8,6 +8,7 @@ import { useCart } from '@/contexts/CartContext';
 import { useUser } from '@/contexts/UserContext';
 import paymentClient from '@/services/paymentClient';
 import { toast } from '@/components/ui/use-toast';
+import { isBundle, getBundleItems } from '@/lib/bundleUtils';
 
 /**
  * Add to Cart Button - Handles adding items to cart only
@@ -53,6 +54,7 @@ export default function AddToCartButton({
     setIsAddingToCart(true);
 
     try {
+
       const entityType = product.product_type || 'file';
       const entityId = product.entity_id || product.id;
 

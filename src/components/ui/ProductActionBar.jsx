@@ -9,6 +9,8 @@ import LessonPlanAccessButton from '@/components/ui/LessonPlanAccessButton';
 import CourseAccessButton from '@/components/ui/CourseAccessButton';
 import WorkshopAccessButton from '@/components/ui/WorkshopAccessButton';
 import SubscriptionClaimButton from '@/components/ui/SubscriptionClaimButton';
+import { isBundle, getBundleComposition } from '@/lib/bundleUtils';
+import { getProductTypeName } from '@/config/productTypes';
 
 /**
  * Product Action Bar - Smart container that shows appropriate buttons based on product state
@@ -61,6 +63,44 @@ export default function ProductActionBar({
   if (hasAccess) {
     switch (productType) {
       case 'file':
+        // Handle bundle files specially - show bundle navigation instead of file access
+        if (isBundle(product)) {
+          // Generate dynamic bundle text based on composition
+          const getBundleActionText = () => {
+            const composition = getBundleComposition(product);
+            const compositionTypes = Object.keys(composition);
+
+            if (compositionTypes.length === 1) {
+              // Single type bundle: "ערכת קבצים", "ערכת מערכי שיעור", etc.
+              const pluralName = getProductTypeName(compositionTypes[0], 'plural');
+              return `ערכת ${pluralName}`;
+            } else {
+              // Mixed type bundle: "ערכת מוצרים"
+              return 'ערכת מוצרים';
+            }
+          };
+
+          return (
+            <Button
+              onClick={(e) => {
+                e.stopPropagation();
+                // For bundle products, navigate to the catalog filtered by the user's purchases to show their accessible products
+                navigate('/catalog?view=my-products');
+              }}
+              className={`group relative overflow-hidden bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white font-bold rounded-full shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 border-2 border-purple-400/20 ${fullWidth ? 'w-full' : ''} ${className}`}
+              size={size}
+            >
+              <span className="relative z-10 flex items-center justify-center gap-2 sm:gap-3">
+                <Package className="w-5 h-5 sm:w-6 sm:h-6" />
+                <span>{getBundleActionText()}</span>
+              </span>
+              <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+              <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 animate-pulse"></div>
+            </Button>
+          );
+        }
+
+        // Regular file access
         return (
           <FileAccessButton
             product={product}
@@ -116,25 +156,6 @@ export default function ProductActionBar({
               <Users className="w-5 h-5 sm:w-6 sm:h-6" />
               <span>נהל תלמידים</span>
             </span>
-          </Button>
-        );
-      case 'bundle':
-        return (
-          <Button
-            onClick={(e) => {
-              e.stopPropagation();
-              // For bundle products, navigate to the catalog filtered by the user's purchases to show their accessible products
-              navigate('/catalog?view=my-products');
-            }}
-            className={`group relative overflow-hidden bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white font-bold rounded-full shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 border-2 border-purple-400/20 ${fullWidth ? 'w-full' : ''} ${className}`}
-            size={size}
-          >
-            <span className="relative z-10 flex items-center justify-center gap-2 sm:gap-3">
-              <Package className="w-5 h-5 sm:w-6 sm:h-6" />
-              <span>צפה במוצרים שלך</span>
-            </span>
-            <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 animate-pulse"></div>
           </Button>
         );
       default:
@@ -256,13 +277,15 @@ export default function ProductActionBar({
 
     // Single buy button (for free products or when cart button is disabled)
     return (
-      <BuyProductButton
-        product={product}
-        className={className}
-        size={size}
-        fullWidth={fullWidth}
-        onSuccess={onPurchaseSuccess}
-      />
+      <div className={`flex items-center justify-center ${fullWidth ? 'w-full' : ''}`}>
+        <BuyProductButton
+          product={product}
+          className={className}
+          size={size}
+          fullWidth={fullWidth}
+          onSuccess={onPurchaseSuccess}
+        />
+      </div>
     );
   }
 

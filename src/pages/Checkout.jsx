@@ -1,12 +1,9 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Purchase } from "@/services/entities";
 import { useUser } from "@/contexts/UserContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Label } from "@/components/ui/label";
 import {
   ShoppingCart,
   Trash2,
@@ -14,46 +11,40 @@ import {
   CheckCircle,
   CreditCard,
   ArrowLeft,
-  Play,
   Video,
   FileText,
   Download,
   Gamepad2,
-  Users,
   Calendar,
   Clock,
   Tag,
-  Percent,
   Shield,
   RotateCcw,
   Loader2
 } from "lucide-react";
-import { format } from "date-fns";
-import { he } from "date-fns/locale";
 import LudoraLoadingSpinner from "@/components/ui/LudoraLoadingSpinner";
-import { PRODUCT_TYPES, getProductTypeName } from "@/config/productTypes";
+import { getProductTypeName } from "@/config/productTypes";
 import {
   getCartAndPendingPurchases,
   calculateTotalPrice,
-  groupPurchasesByType,
   showPurchaseErrorToast,
   findProductForEntity
 } from "@/utils/purchaseHelpers";
-import paymentClient from "@/services/paymentClient";
-import { createPayplusPaymentPage, apiRequest } from "@/services/apiClient";
+import { createPayplusPaymentPage } from "@/services/apiClient";
 import { toast } from "@/components/ui/use-toast";
 import { useCart } from "@/contexts/CartContext";
 import CouponInput from "@/components/CouponInput";
-import couponClient from "@/services/couponClient";
 import { ludlog, luderror } from '@/lib/ludlog';
 import { usePaymentPageStatusCheck } from '@/hooks/usePaymentPageStatusCheck';
 import { useSubscriptionPaymentStatusCheck } from '@/hooks/useSubscriptionPaymentStatusCheck';
+import { isBundle, getBundleItemCount } from '@/lib/bundleUtils';
+import KitBadge from '@/components/ui/KitBadge';
 
 
 export default function Checkout() {
   const navigate = useNavigate();
   const { removeFromCart } = useCart();
-  const { currentUser, settings, isLoading: userLoading } = useUser();
+  const { currentUser, isLoading: userLoading } = useUser();
 
   const [cartItems, setCartItems] = useState([]);
   const [cartItemProducts, setCartItemProducts] = useState({}); // Map of purchase.id -> Product
@@ -74,7 +65,7 @@ export default function Checkout() {
   });
 
   // State for dynamic texts fetched from the database
-  const [checkoutTexts, setCheckoutTexts] = useState({
+  const [checkoutTexts] = useState({
     checkoutTitle: "עגלת קניות",
     emptyCart: "עגלת הקניות ריקה",
     emptyCartDescription: "אין פריטים בעגלת הקניות. לחצו כאן לחזרה לקטלוג",
@@ -91,7 +82,7 @@ export default function Checkout() {
   });
 
   // Payment page status checking - check for pending payments and handle abandoned pages
-  const paymentStatus = usePaymentPageStatusCheck({
+  usePaymentPageStatusCheck({
     enabled: true,
     showToasts: true, // Show user notifications about payment status changes
     onStatusUpdate: (update) => {
@@ -105,7 +96,7 @@ export default function Checkout() {
   });
 
   // Subscription payment status checking - check for pending subscriptions and handle completion/failure
-  const subscriptionPaymentStatus = useSubscriptionPaymentStatusCheck({
+  useSubscriptionPaymentStatusCheck({
     enabled: true,
     showToasts: true, // Show user notifications about subscription status changes
     checkInterval: 20000, // Check every 20 seconds as specified by user
@@ -233,7 +224,7 @@ export default function Checkout() {
 
       // Remove product data for this item
       setCartItemProducts(prevProducts => {
-        const { [purchaseId]: removed, ...remaining } = prevProducts;
+        const { [purchaseId]: _, ...remaining } = prevProducts;
         return remaining;
       });
 
@@ -336,8 +327,13 @@ export default function Checkout() {
   };
 
 
-  // Get product type icon
-  const getProductIcon = (type) => {
+  // Get product type icon with bundle support
+  const getProductIcon = (type, product = null) => {
+    // Check if this is a bundle product
+    if (product && isBundle(product)) {
+      return <Tag className="w-5 h-5 text-indigo-600" />; // Bundle icon
+    }
+
     switch (type) {
       case 'workshop':
         return <Calendar className="w-5 h-5 text-blue-600" />;
@@ -349,6 +345,8 @@ export default function Checkout() {
         return <Download className="w-5 h-5 text-orange-600" />;
       case 'game':
         return <Gamepad2 className="w-5 h-5 text-pink-600" />;
+      case 'bundle':
+        return <Tag className="w-5 h-5 text-indigo-600" />;
       default:
         return <FileText className="w-5 h-5 text-gray-600" />;
     }
@@ -458,96 +456,123 @@ export default function Checkout() {
               </CardHeader>
 
               <CardContent className="space-y-4">
-                {cartItems.map((purchase) => (
-                  <div
-                    key={purchase.id}
-                    className={`flex items-center gap-4 p-4 rounded-2xl transition-colors ${
-                      purchase.payment_status === 'pending'
-                        ? 'bg-yellow-50 border-l-4 border-yellow-400'
-                        : 'bg-gray-50'
-                    }`}
-                  >
-                    <div className="flex-shrink-0">
-                      {getProductIcon(purchase.purchasable_type)}
-                    </div>
+                {cartItems.map((purchase) => {
+                  const product = cartItemProducts[purchase.id];
+                  const isBundleProduct = product && isBundle(product);
 
-                    <div className="flex-1 text-right">
-                      <h3 className="font-semibold text-gray-900">
-                        {purchase.metadata?.product_title || 'מוצר לא ידוע'}
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        {getProductTypeName(purchase.purchasable_type, 'singular')}
-                      </p>
-                      {/* Access Days Display */}
-                      {cartItemProducts[purchase.id] && (
-                        <div className="flex items-center gap-2 mt-1">
-                          <Clock className="w-3 h-3 text-green-600" />
-                          <span className="text-xs text-green-700 font-medium">
-                            {cartItemProducts[purchase.id].access_days === null || cartItemProducts[purchase.id].access_days === undefined
-                              ? 'גישה לכל החיים'
-                              : `${cartItemProducts[purchase.id].access_days} ימים`}
-                          </span>
-                        </div>
-                      )}
-
-                      {/* Payment Status Badge */}
-                      {purchase.payment_status && purchase.payment_status !== 'cart' && (
-                        <div className="flex items-center gap-2 mt-2">
-                          {purchase.payment_status === 'pending' ? (
-                            <>
-                              <div className="flex items-center gap-2">
-                                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-yellow-100 text-yellow-800 text-xs font-medium">
-                                  <Loader2 className="w-3 h-3 animate-spin" />
-                                  ממתין לאישור תשלום
-                                </span>
-                              </div>
-                            </>
-                          ) : purchase.payment_status === 'completed' ? (
-                            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-100 text-green-800 text-xs font-medium">
-                              <CheckCircle className="w-3 h-3" />
-                              הושלם
-                            </span>
-                          ) : purchase.payment_status === 'refunded' ? (
-                            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-xs font-medium">
-                              <RotateCcw className="w-3 h-3" />
-                              הוחזר
-                            </span>
-                          ) : purchase.payment_status === 'abandoned' ? (
-                            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-100 text-red-800 text-xs font-medium">
-                              <AlertCircle className="w-3 h-3" />
-                              נטוש
-                            </span>
-                          ) : null}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="text-left">
-                      <div className="text-lg font-bold text-blue-600">
-                        ₪{purchase.payment_amount}
-                      </div>
-                    </div>
-
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemoveItem(purchase.id)}
-                      disabled={purchase.payment_status === 'pending'}
-                      className={`${
+                  return (
+                    <div
+                      key={purchase.id}
+                      className={`flex items-center gap-4 p-4 rounded-2xl transition-colors ${
                         purchase.payment_status === 'pending'
-                          ? 'text-gray-400 cursor-not-allowed hover:bg-transparent'
-                          : 'text-red-600 hover:text-red-700 hover:bg-red-50'
+                          ? 'bg-yellow-50 border-l-4 border-yellow-400'
+                          : isBundleProduct
+                          ? 'bg-gradient-to-r from-indigo-50 to-purple-50 border-l-4 border-indigo-400'
+                          : 'bg-gray-50'
                       }`}
-                      title={
-                        purchase.payment_status === 'pending'
-                          ? 'לא ניתן להסיר פריט בעת תשלום. אנא המתן להשלמת התשלום.'
-                          : 'הסר מהעגלה'
-                      }
                     >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                ))}
+                      <div className="flex-shrink-0">
+                        {getProductIcon(purchase.purchasable_type, product)}
+                      </div>
+
+                      <div className="flex-1 text-right">
+                        <div className="flex items-center gap-2 justify-end mb-1">
+                          <h3 className="font-semibold text-gray-900">
+                            {purchase.metadata?.product_title || 'מוצר לא ידוע'}
+                          </h3>
+                          {isBundleProduct && (
+                            <KitBadge product={product} variant="compact" size="sm" />
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2 justify-end">
+                          <p className="text-sm text-gray-600">
+                            {isBundleProduct ? 'קיט מוצרים' : getProductTypeName(purchase.purchasable_type, 'singular')}
+                          </p>
+                        </div>
+
+                        {/* Bundle composition info */}
+                        {isBundleProduct && (
+                          <div className="flex items-center gap-2 justify-end mt-1">
+                            <span className="text-xs text-indigo-700 font-medium">
+                              {getBundleItemCount(product)} מוצרים בקיט
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Access Days Display */}
+                        {cartItemProducts[purchase.id] && (
+                          <div className="flex items-center gap-2 justify-end mt-1">
+                            <Clock className="w-3 h-3 text-green-600" />
+                            <span className="text-xs text-green-700 font-medium">
+                              {cartItemProducts[purchase.id].access_days === null || cartItemProducts[purchase.id].access_days === undefined
+                                ? 'גישה לכל החיים'
+                                : `${cartItemProducts[purchase.id].access_days} ימים`}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Payment Status Badge */}
+                        {purchase.payment_status && purchase.payment_status !== 'cart' && (
+                          <div className="flex items-center gap-2 justify-end mt-2">
+                            {purchase.payment_status === 'pending' ? (
+                              <>
+                                <div className="flex items-center gap-2">
+                                  <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-yellow-100 text-yellow-800 text-xs font-medium">
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                    ממתין לאישור תשלום
+                                  </span>
+                                </div>
+                              </>
+                            ) : purchase.payment_status === 'completed' ? (
+                              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-100 text-green-800 text-xs font-medium">
+                                <CheckCircle className="w-3 h-3" />
+                                הושלם
+                              </span>
+                            ) : purchase.payment_status === 'refunded' ? (
+                              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-xs font-medium">
+                                <RotateCcw className="w-3 h-3" />
+                                הוחזר
+                              </span>
+                            ) : purchase.payment_status === 'abandoned' ? (
+                              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-100 text-red-800 text-xs font-medium">
+                                <AlertCircle className="w-3 h-3" />
+                                נטוש
+                              </span>
+                            ) : null}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Price Display */}
+                      <div className="text-left">
+                        <div className="text-lg font-bold text-blue-600">
+                          ₪{purchase.payment_amount}
+                        </div>
+                      </div>
+
+                      {/* Remove Button */}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRemoveItem(purchase.id)}
+                        disabled={purchase.payment_status === 'pending'}
+                        className={`${
+                          purchase.payment_status === 'pending'
+                            ? 'text-gray-400 cursor-not-allowed hover:bg-transparent'
+                            : 'text-red-600 hover:text-red-700 hover:bg-red-50'
+                        }`}
+                        title={
+                          purchase.payment_status === 'pending'
+                            ? 'לא ניתן להסיר פריט בעת תשלום. אנא המתן להשלמת התשלום.'
+                            : 'הסר מהעגלה'
+                        }
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  );
+                })}
               </CardContent>
             </Card>
           </div>
@@ -589,7 +614,7 @@ export default function Checkout() {
                         {/* Total discounts summary */}
                         {appliedCoupons.length > 1 && (
                           <div className="flex justify-between text-green-700 font-medium border-t border-green-200 pt-1">
-                            <span>סה"כ הנחות</span>
+                            <span>סה&quot;כ הנחות</span>
                             <span>-₪{pricingBreakdown.discounts.toFixed(2)}</span>
                           </div>
                         )}
