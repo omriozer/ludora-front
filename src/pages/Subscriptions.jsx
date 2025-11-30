@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "@/contexts/UserContext";
-import { Purchase, SubscriptionHistory } from "@/services/entities";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,7 +20,7 @@ import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import SubscriptionModal from "../components/SubscriptionModal";
 import { useSubscriptionState } from "@/hooks/useSubscriptionState";
-import { ludlog, luderror } from '@/lib/ludlog';
+import { luderror } from '@/lib/ludlog';
 
 const Subscriptions = () => {
   const navigate = useNavigate();
@@ -38,44 +37,90 @@ const Subscriptions = () => {
   const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Load billing history (both product purchases and subscription payments)
       if (currentUser) {
-        // Load subscription payment history
-        const subscriptionPayments = await SubscriptionHistory.filter(
-          { user_id: currentUser.id },
-          { order: [['created_at', 'DESC']] }
+        // Import entities
+        const { Transaction, SubscriptionHistory } = await import('@/services/entities');
+
+        // Get active subscription to filter billing history
+        const activeSubscription = subscriptionState.summary?.activeSubscription;
+
+        if (!activeSubscription) {
+          setBillingHistory([]);
+          setIsLoading(false);
+          return;
+        }
+
+        // Load billing history from multiple sources
+        const billingItems = [];
+
+        // 1. Load initial payment from Transaction table
+        // Transaction records with metadata.subscription_id matching current subscription
+        try {
+          const transactions = await Transaction.filter({
+            user_id: currentUser.id,
+            payment_status: 'completed'
+          });
+
+          // Filter transactions that have subscription_id in metadata
+          const subscriptionTransactions = transactions.filter(txn => {
+            const metadata = txn.metadata || {};
+            return metadata.subscription_id === activeSubscription.id;
+          });
+
+          // Add initial payment transactions to billing history
+          subscriptionTransactions.forEach(txn => {
+            billingItems.push({
+              id: `txn-${txn.id}`,
+              type: 'initial_payment',
+              date: txn.created_at,
+              amount: parseFloat(txn.amount || 0),
+              status: txn.payment_status,
+              payment_method: txn.payment_method,
+              metadata: txn.metadata,
+              description: 'תשלום ראשוני למנוי'
+            });
+          });
+        } catch (error) {
+          luderror.payments('Error loading subscription transactions:', error);
+        }
+
+        // 2. Load renewal payments from SubscriptionHistory table
+        try {
+          const renewals = await SubscriptionHistory.filter({
+            user_id: currentUser.id,
+            subscription_id: activeSubscription.id
+          });
+
+          // Add renewals to billing history
+          renewals.forEach(renewal => {
+            billingItems.push({
+              id: `renewal-${renewal.id}`,
+              type: 'renewal',
+              date: renewal.payment_date || renewal.created_at,
+              amount: parseFloat(renewal.amount || 0),
+              status: renewal.status,
+              payment_method: renewal.payment_method,
+              metadata: renewal.metadata,
+              description: 'חידוש מנוי'
+            });
+          });
+        } catch (error) {
+          luderror.payments('Error loading subscription renewals:', error);
+        }
+
+        // 3. Sort all billing items by date (newest first)
+        const sortedBillingHistory = billingItems.sort((a, b) =>
+          new Date(b.date) - new Date(a.date)
         );
 
-        // Load product purchases
-        const productPurchases = await Purchase.filter(
-          { buyer_user_id: currentUser.id },
-          { order: [['created_at', 'DESC']] }
-        );
-
-        // Combine and sort by date
-        const combinedHistory = [
-          ...subscriptionPayments.map(sub => ({
-            ...sub,
-            type: 'subscription',
-            date: sub.created_at || sub.start_date,
-            amount: sub.price || 0
-          })),
-          ...productPurchases.map(purchase => ({
-            ...purchase,
-            type: 'purchase',
-            date: purchase.created_at || purchase.created_date,
-            amount: purchase.payment_amount || 0
-          }))
-        ].sort((a, b) => new Date(b.date) - new Date(a.date));
-
-        setBillingHistory(combinedHistory);
+        setBillingHistory(sortedBillingHistory);
       }
     } catch (error) {
-      luderror.payment("Error loading subscription data:", error);
+      luderror.payments("Error loading subscription data:", error);
       setMessage({ type: 'error', text: 'שגיאה בטעינת נתוני מנוי' });
     }
     setIsLoading(false);
-  }, [currentUser]);
+  }, [currentUser, subscriptionState.summary]);
 
   useEffect(() => {
     if (currentUser && !userLoading) {
@@ -152,7 +197,7 @@ const Subscriptions = () => {
             </div>
             <div>
               <h1 className="text-3xl font-bold text-gray-900">ניהול מנוי</h1>
-              <p className="text-gray-600">נהל את המנוי וצפה בהיסטוריית החיובים</p>
+              <p className="text-gray-600">נהל את המנוי וצפה בהיסטוריית חיובי המנוי</p>
             </div>
           </div>
         </div>
@@ -211,18 +256,36 @@ const Subscriptions = () => {
                         </Badge>
                       </div>
 
-                      {activeSubscription?.next_billing_date && (
+                      {activeSubscription?.created_at && (
                         <div className="bg-gray-50 p-4 rounded-xl">
-                          <div className="text-gray-600 text-sm mb-1">
-                            {activeSubscription.payplus_subscription_uid ? 'מתחדש ב' : 'פג ב'}
-                          </div>
+                          <div className="text-gray-600 text-sm mb-1">תאריך יצירת מנוי</div>
                           <div className="font-semibold text-gray-900 flex items-center gap-2">
                             <Calendar className="w-4 h-4" />
-                            {format(new Date(activeSubscription.next_billing_date), 'dd/MM/yyyy', { locale: he })}
+                            {format(new Date(activeSubscription.created_at), 'dd/MM/yyyy HH:mm', { locale: he })}
                           </div>
                         </div>
                       )}
                     </div>
+
+                    {/* Next Renewal Date */}
+                    {activeSubscription?.next_billing_date && (
+                      <div className="bg-blue-50 p-4 rounded-xl border border-blue-200">
+                        <div className="flex items-center gap-3">
+                          <Clock className="w-5 h-5 text-blue-600" />
+                          <div>
+                            <div className="text-blue-800 font-medium text-sm mb-1">
+                              {activeSubscription.payplus_subscription_uid ? 'תאריך החידוש הבא' : 'תוקף המנוי'}
+                            </div>
+                            <div className="text-blue-700 font-semibold">
+                              {format(new Date(activeSubscription.next_billing_date), 'dd/MM/yyyy', { locale: he })}
+                              {activeSubscription.billing_period === 'daily' && ' (חיוב יומי - בדיקה)'}
+                              {activeSubscription.billing_period === 'monthly' && ' (חיוב חודשי)'}
+                              {activeSubscription.billing_period === 'yearly' && ' (חיוב שנתי)'}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Next Billing Info */}
                     {activeSubscription?.status === 'active' &&
@@ -270,57 +333,94 @@ const Subscriptions = () => {
               </CardContent>
             </Card>
 
-            {/* Billing History */}
+            {/* Subscription Billing History */}
             <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm rounded-2xl overflow-hidden">
               <CardHeader className="bg-gradient-to-r from-blue-500 to-cyan-600 text-white p-6">
                 <CardTitle className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
                     <Receipt className="w-5 h-5" />
                   </div>
-                  <span className="text-xl font-medium">היסטוריית חיובים</span>
+                  <span className="text-xl font-medium">היסטוריית חיובי מנוי</span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
                 {billingHistory.length > 0 ? (
                   <div className="divide-y">
-                    {billingHistory.map((item, index) => (
-                      <div key={`${item.type}-${item.id}-${index}`} className="p-4 hover:bg-gray-50 transition-colors">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="font-semibold text-gray-900 mb-1">
-                              {item.type === 'subscription' ? (
+                    {billingHistory.map((item) => {
+                      // Determine payment type icon and label
+                      const isInitialPayment = item.type === 'initial_payment';
+                      const isRenewal = item.type === 'renewal';
+
+                      // Get billing period from active subscription
+                      const billingPeriodLabel = activeSubscription?.billing_period === 'daily'
+                        ? 'יומי (בדיקה)'
+                        : activeSubscription?.billing_period === 'monthly'
+                        ? 'חודשי'
+                        : activeSubscription?.billing_period === 'yearly'
+                        ? 'שנתי'
+                        : '';
+
+                      return (
+                        <div key={item.id} className="p-4 hover:bg-gray-50 transition-colors">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="font-semibold text-gray-900 mb-1">
                                 <span className="flex items-center gap-2">
-                                  <Crown className="w-4 h-4 text-purple-600" />
-                                  חיוב מנוי - {item.subscription_plan?.name || 'מנוי'}
+                                  {isInitialPayment ? (
+                                    <CheckCircle className="w-4 h-4 text-green-600" />
+                                  ) : (
+                                    <Clock className="w-4 h-4 text-blue-600" />
+                                  )}
+                                  {item.description}
+                                  {currentPlan && ` - ${currentPlan.name}`}
+                                  {billingPeriodLabel && ` (${billingPeriodLabel})`}
                                 </span>
-                              ) : (
-                                <span className="flex items-center gap-2">
-                                  <CreditCard className="w-4 h-4 text-blue-600" />
-                                  רכישת מוצר
-                                </span>
-                              )}
+                              </div>
+                              <div className="text-sm text-gray-500 flex flex-col gap-1">
+                                <div className="flex items-center gap-2">
+                                  <Calendar className="w-4 h-4" />
+                                  תאריך: {format(new Date(item.date), 'dd/MM/yyyy HH:mm', { locale: he })}
+                                </div>
+                                {item.payment_method && (
+                                  <div className="flex items-center gap-2">
+                                    <CreditCard className="w-4 h-4" />
+                                    אמצעי תשלום: {item.payment_method}
+                                  </div>
+                                )}
+                                {isInitialPayment && (
+                                  <div className="text-xs text-green-600 font-medium mt-1">
+                                    תשלום ראשוני - הפעלת מנוי
+                                  </div>
+                                )}
+                                {isRenewal && (
+                                  <div className="text-xs text-blue-600 font-medium mt-1">
+                                    חידוש אוטומטי
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                            <div className="text-sm text-gray-500 flex items-center gap-2">
-                              <Clock className="w-4 h-4" />
-                              {format(new Date(item.date), 'dd/MM/yyyy HH:mm', { locale: he })}
+                            <div className="text-right">
+                              <div className="text-xl font-bold text-gray-900 mb-1">
+                                ₪{item.amount.toFixed(2)}
+                              </div>
+                              <Badge className={`text-xs ${getStatusColor(item.status)}`}>
+                                {getStatusText(item.status)}
+                              </Badge>
                             </div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-xl font-bold text-gray-900 mb-1">
-                              ₪{item.amount}
-                            </div>
-                            <Badge className={`text-xs ${getStatusColor(item.status || item.payment_status)}`}>
-                              {getStatusText(item.status || item.payment_status)}
-                            </Badge>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="text-center py-12 px-4">
                     <Receipt className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-600">אין היסטוריית חיובים</p>
+                    <p className="text-gray-600 mb-2">אין היסטוריית חיובי מנוי</p>
+                    {activeSubscription && (
+                      <p className="text-gray-500 text-sm">
+                        המנוי נוצר ב-{format(new Date(activeSubscription.created_at), 'dd/MM/yyyy', { locale: he })}
+                      </p>
+                    )}
                   </div>
                 )}
               </CardContent>
