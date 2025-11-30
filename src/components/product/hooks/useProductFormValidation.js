@@ -148,8 +148,9 @@ export const useProductFormValidation = (editingProduct, formData, uploadedFileI
       }
     }
 
-    // Bundle specific validation - check is_bundle flag, not product_type
-    if (formData.type_attributes?.is_bundle === true) {
+    // Bundle specific validation - only require bundle items for existing products or when publishing
+    // For new products during basic info step, don't require bundle items yet
+    if (formData.type_attributes?.is_bundle === true && !isNewProduct) {
       const bundleItems = formData.type_attributes?.bundle_items || [];
       if (bundleItems.length < 2) {
         errors.bundle_items = 'יש להוסיף לפחות 2 מוצרים לקיט';
