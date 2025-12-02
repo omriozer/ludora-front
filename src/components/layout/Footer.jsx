@@ -54,7 +54,7 @@ export default function Footer({ isMaintenanceMode = false }) {
             <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3 text-center md:text-right">
               <Link to="/" className="flex items-center justify-center md:justify-start gap-2 hover:opacity-80 transition-opacity">
                 <LogoDisplay size="small" className="h-6 object-contain" />
-                <span className="text-xs md:text-sm font-medium mobile-safe-text">
+                <span className="text-xs md:text-sm font-medium mobile-safe-text whitespace-nowrap">
                   {settings?.site_description || 'בית ללמידה אחרת'}
                 </span>
               </Link>
@@ -116,7 +116,7 @@ export default function Footer({ isMaintenanceMode = false }) {
           <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3 text-center md:text-right">
             <Link to="/" className="flex items-center justify-center md:justify-start gap-2 hover:opacity-80 transition-opacity">
               <LogoDisplay size="small" className="h-6 object-contain" />
-              <span className="text-xs md:text-sm font-medium mobile-safe-text">
+              <span className="text-xs md:text-sm font-medium mobile-safe-text whitespace-nowrap">
                 {settings?.site_description || 'בית ללמידה אחרת'}
               </span>
             </Link>
