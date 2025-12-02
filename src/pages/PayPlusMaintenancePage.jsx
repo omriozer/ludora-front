@@ -14,7 +14,9 @@ import {
   Database,
   ExternalLink,
   Loader2,
-  AlertTriangle
+  AlertTriangle,
+  Copy,
+  Check
 } from 'lucide-react';
 
 export default function PayPlusMaintenancePage() {
@@ -23,6 +25,7 @@ export default function PayPlusMaintenancePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [auditResults, setAuditResults] = useState(null);
   const [rawData, setRawData] = useState(null);
+  const [copiedData, setCopiedData] = useState(null);
 
   // Admin access check
   if (currentUser?.role !== 'admin') {
@@ -68,6 +71,21 @@ export default function PayPlusMaintenancePage() {
       const fileName = reportPath.split('/').pop();
       const downloadUrl = `/api/files/temp/${fileName}`;
       window.open(downloadUrl, '_blank');
+    }
+  };
+
+  const copyDataToClipboard = async (data, dataType) => {
+    try {
+      const jsonString = JSON.stringify(data, null, 2);
+      await navigator.clipboard.writeText(jsonString);
+      setCopiedData(dataType);
+      showSuccess('נתונים הועתקו ללוח');
+
+      // Reset copied state after 2 seconds
+      setTimeout(() => setCopiedData(null), 2000);
+    } catch (error) {
+      console.error('Failed to copy:', error);
+      showError('שגיאה בהעתקת הנתונים');
     }
   };
 
@@ -285,13 +303,26 @@ export default function PayPlusMaintenancePage() {
                   <h3 className="text-lg font-bold text-gray-900">דוח מפורט</h3>
                   <p className="text-gray-600">דוח markdown עם כל הפרטים</p>
                 </div>
-                <button
-                  onClick={() => downloadReport(auditResults.report_file)}
-                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-                >
-                  <Download className="w-4 h-4" />
-                  הורד דוח
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => copyDataToClipboard(auditResults, 'audit')}
+                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                  >
+                    {copiedData === 'audit' ? (
+                      <Check className="w-4 h-4" />
+                    ) : (
+                      <Copy className="w-4 h-4" />
+                    )}
+                    {copiedData === 'audit' ? 'הועתק!' : 'העתק JSON'}
+                  </button>
+                  <button
+                    onClick={() => downloadReport(auditResults.report_file)}
+                    className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                  >
+                    <Download className="w-4 h-4" />
+                    הורד דוח
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -302,13 +333,28 @@ export default function PayPlusMaintenancePage() {
       {rawData && (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
           <div className="p-6 border-b border-gray-200">
-            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-              <Database className="w-5 h-5 text-blue-600" />
-              נתונים גולמיים מ-PayPlus
-            </h3>
-            <p className="text-gray-600">
-              נמצאו {rawData.total_subscriptions} מנויים • נטענו ב-{new Date(rawData.retrieved_at).toLocaleString('he-IL')}
-            </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <Database className="w-5 h-5 text-blue-600" />
+                  נתונים גולמיים מ-PayPlus
+                </h3>
+                <p className="text-gray-600">
+                  נמצאו {rawData.total_subscriptions} מנויים • נטענו ב-{new Date(rawData.retrieved_at).toLocaleString('he-IL')}
+                </p>
+              </div>
+              <button
+                onClick={() => copyDataToClipboard(rawData, 'raw')}
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+              >
+                {copiedData === 'raw' ? (
+                  <Check className="w-4 h-4" />
+                ) : (
+                  <Copy className="w-4 h-4" />
+                )}
+                {copiedData === 'raw' ? 'הועתק!' : 'העתק JSON'}
+              </button>
+            </div>
           </div>
           <div className="p-6">
             <div className="bg-gray-50 rounded-lg p-4 max-h-96 overflow-auto">
