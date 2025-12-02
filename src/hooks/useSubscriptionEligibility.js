@@ -34,14 +34,6 @@ export function useSubscriptionEligibility() {
       setEligibilityData(allowanceData);
       setHasEligibility(!!allowanceData?.allowances);
 
-        hasAllowances: !!allowanceData?.allowances,
-        allowanceTypes: allowanceData?.allowances ? Object.keys(allowanceData.allowances) : [],
-        rawResponse: response,
-        allowanceData: allowanceData,
-        dataStructure: typeof allowanceData,
-        allowancesStructure: typeof allowanceData?.allowances
-      });
-
     } catch (error) {
       luderror.ui('Error loading subscription eligibility data:', error);
       setEligibilityData(null);
