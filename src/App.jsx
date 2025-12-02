@@ -1070,6 +1070,18 @@ function App() {
 						}
 					/>
 
+					{/* Maintenance Tools */}
+					<Route
+						path='/maintenance/payplus'
+						element={
+							<AdminRoute>
+								<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ADMIN}>
+									<LazyPages.PayPlusMaintenancePage />
+								</AuthAwareSuspense>
+							</AdminRoute>
+						}
+					/>
+
 					{/* Coupon Admin Routes */}
 					<Route
 						path='/coupons'

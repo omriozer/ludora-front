@@ -77,6 +77,7 @@ export const AdminHelp = lazy(() => import('./AdminHelp'));
 export const Documentation = lazy(() => import('./Documentation'));
 export const TemplateManager = lazy(() => import('./TemplateManager'));
 export const TemplateEditor = lazy(() => import('./TemplateEditor'));
+export const PayPlusMaintenancePage = lazy(() => import('./PayPlusMaintenancePage'));
 
 // Coupon management (admin-only)
 export const CouponDashboard = lazy(() => import('./CouponDashboard'));

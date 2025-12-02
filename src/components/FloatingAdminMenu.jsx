@@ -23,7 +23,8 @@ import {
   Globe,         // Added from outline
   School,        // Added for school management feature
   HelpCircle,     // Added for help system
-  GraduationCap
+  GraduationCap,
+  Wrench         // Added for maintenance tools
 } from "lucide-react";
 import { showSuccess, showError } from '@/utils/messaging';
 import { APP_VERSION } from '@/constants/version';
@@ -349,6 +350,19 @@ export default function FloatingAdminMenu({ currentUser }) {
           url: "/template-manager",
           icon: <Layers className="w-4 h-4" />,
           description: "תבניות תחתיות עמוד, ראשי עמוד וסימני מים"
+        }
+      ]
+    },
+    {
+      title: "כלי תחזוקה",
+      icon: <Wrench className="w-5 h-5" />,
+      color: "from-amber-500 to-yellow-600",
+      items: [
+        {
+          title: "תחזוקת PayPlus",
+          url: "/maintenance/payplus",
+          icon: <CreditCard className="w-4 h-4" />,
+          description: "בדיקת מנויים וסנכרון עם PayPlus"
         }
       ]
     }
