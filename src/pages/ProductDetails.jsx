@@ -218,12 +218,12 @@ export default function ProductDetails() {
             const currentUrl = new URL(window.location.href);
 
             if (item.product_type === 'lesson_plan') {
-              // For lesson plans, redirect to presentation page in preview mode
-              window.location.href = `/lesson-plan-presentation?id=${item.entity_id || item.id}&preview=true`;
+              // For lesson plans, redirect to presentation page
+              navigate(`/lesson-plan-presentation?id=${item.entity_id || item.id}`);
             } else {
               // For file assets, set openPdf parameter
               currentUrl.searchParams.set('openPdf', 'true');
-              window.location.href = currentUrl.toString();
+              navigate(currentUrl.pathname + currentUrl.search);
             }
             return;
           }
@@ -231,7 +231,7 @@ export default function ProductDetails() {
           // Component is still mounted, proceed with asset preview
           if (item.product_type === 'lesson_plan') {
             // Navigate to lesson plan presentation in preview mode
-            navigate(`/lesson-plan-presentation?id=${item.entity_id || item.id}&preview=true`);
+            navigate(`/lesson-plan-presentation?id=${item.entity_id || item.id}`);
           } else {
             // Open asset viewer for file assets
             setPdfViewerOpen(true);
@@ -249,7 +249,7 @@ export default function ProductDetails() {
     // User is authenticated, open asset preview directly
     if (item.product_type === 'lesson_plan') {
       // Navigate to lesson plan presentation in preview mode
-      navigate(`/lesson-plan-presentation?id=${item.entity_id || item.id}&preview=true`);
+      navigate(`/lesson-plan-presentation?id=${item.entity_id || item.id}`);
     } else {
       // Open asset viewer for file assets
       setPdfViewerOpen(true);
@@ -272,7 +272,7 @@ export default function ProductDetails() {
       // For lesson plans, still need to navigate to presentation
       if (!currentUser) {
         const previewCallback = () => {
-          navigate(`/lesson-plan-presentation?id=${product.entity_id || product.id}&preview=true`);
+          navigate(`/lesson-plan-presentation?id=${product.entity_id || product.id}`);
         };
         openLoginModal(
           previewCallback,
@@ -280,7 +280,7 @@ export default function ProductDetails() {
         );
         return;
       }
-      navigate(`/lesson-plan-presentation?id=${product.entity_id || product.id}&preview=true`);
+      navigate(`/lesson-plan-presentation?id=${product.entity_id || product.id}`);
     } else if (product.product_type === 'file') {
       // For files, open PDF viewer directly without navigation - stay on bundle page!
       ludlog.ui('Opening PDF viewer for bundle product directly', {

@@ -103,13 +103,11 @@ export default function LessonPlanPresentation() {
 
 		try {
 
-			// Check authentication using UserContext
-			if (!isAuthenticated || !currentUser) {
-				throw new Error('נדרשת הרשמה לצפייה בפרזנטציה');
-			}
+			// Check authentication for lesson plan presentation
+			// Allow access if user is authenticated (either through isAuthenticated flag OR currentUser exists)
+			const isUserAuthenticated = isAuthenticated || currentUser !== null;
 
-			const token = localStorage.getItem('token') || localStorage.getItem('authToken');
-			if (!token) {
+			if (!isUserAuthenticated) {
 				throw new Error('נדרשת הרשמה לצפייה בפרזנטציה');
 			}
 

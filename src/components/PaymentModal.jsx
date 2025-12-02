@@ -223,7 +223,7 @@ export default function PaymentModal({ product, user, settings, isTestMode = (co
             }
             break;
 
-          case 'pp_responseFromServer':
+          case 'pp_responseFromServer': {
             // Transaction completed (success or failure)
 
             // Let webhook/polling handle the final status update
@@ -231,6 +231,7 @@ export default function PaymentModal({ product, user, settings, isTestMode = (co
             const paymentResult = data.success ? 'success' : 'failed';
             window.location.href = `/PaymentResult?status=${paymentResult}&source=pp_responseFromServer`;
             break;
+          }
 
           case 'pp_paymentPageKilled':
           case 'pp_pageExpired':

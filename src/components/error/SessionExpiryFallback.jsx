@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Shield, LogIn, Home, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,6 +29,7 @@ function SessionExpiryFallback({
   onCustomAction,
   customActionText
 }) {
+  const navigate = useNavigate();
   const { currentUser, logout } = useUser();
   const { openLoginModal } = useLoginModal();
   const isOnStudentPortal = isStudentPortal();
@@ -101,9 +103,8 @@ function SessionExpiryFallback({
       portal: isOnStudentPortal ? 'student' : 'teacher'
     });
 
-    // Navigate to appropriate home page
-    const homeUrl = isOnStudentPortal ? '/' : '/';
-    window.location.href = homeUrl;
+    // Navigate to home page
+    navigate('/');
   };
 
   const getColorClasses = (color) => {

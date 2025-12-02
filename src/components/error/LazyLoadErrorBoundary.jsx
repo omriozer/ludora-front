@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AlertCircle, RefreshCw, Home, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -161,6 +162,7 @@ class LazyLoadErrorBoundary extends React.Component {
  * Fallback UI component shown when lazy loading fails
  */
 function LazyLoadErrorFallback({ error, errorType, errorMessage, onRetry }) {
+  const navigate = useNavigate();
   const { currentUser, logout } = useUser();
   const { openLoginModal } = useLoginModal();
   const authErrorHandler = useGlobalAuthErrorHandler();
@@ -186,7 +188,7 @@ function LazyLoadErrorFallback({ error, errorType, errorMessage, onRetry }) {
 
   const handleGoHome = () => {
     ludlog.ui('User navigating to home from lazy load error boundary', { errorType });
-    window.location.href = '/';
+    navigate('/');
   };
 
   const isAuthError = errorType === 'auth';
