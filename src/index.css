@@ -191,3 +191,181 @@ button:focus-visible {
 .perspective-1000 {
   perspective: 1000px;
 }
+
+/* =============================================================================
+   MOBILE VIEWPORT PROTECTION SYSTEM
+   Prevents content from breaking mobile layout boundaries
+   ============================================================================= */
+
+@layer utilities {
+  /* Core mobile-safe container - PREVENTS VIEWPORT OVERFLOW */
+  .mobile-safe-container {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: hidden;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    word-break: break-word;
+    hyphens: auto;
+  }
+
+  /* Safe flex container - prevents overflow in flex layouts */
+  .mobile-safe-flex {
+    display: flex;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  /* Safe grid container - prevents overflow in grid layouts */
+  .mobile-safe-grid {
+    display: grid;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  /* Safe text container - prevents long text from breaking layout */
+  .mobile-safe-text {
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    word-break: break-word;
+    hyphens: auto;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  /* Constrain child elements within parent bounds */
+  .constrain-children > * {
+    max-width: 100%;
+    overflow-wrap: break-word;
+  }
+
+  /* Responsive image container */
+  .mobile-safe-image {
+    width: 100%;
+    height: auto;
+    max-width: 100%;
+    object-fit: contain;
+  }
+
+  /* Truncate with ellipsis for single-line text */
+  .mobile-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+
+  /* Multi-line truncate with line clamp */
+  .mobile-line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    max-width: 100%;
+  }
+
+  .mobile-line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    max-width: 100%;
+  }
+
+  /* Prevent horizontal scroll on entire page */
+  .mobile-no-scroll-x {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+
+  /* Safe card layout */
+  .mobile-safe-card {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    border-radius: 0.75rem;
+  }
+
+  /* Responsive padding that scales down on mobile */
+  .mobile-padding {
+    padding: clamp(0.5rem, 2vw, 2rem);
+  }
+
+  .mobile-padding-x {
+    padding-left: clamp(0.5rem, 2vw, 2rem);
+    padding-right: clamp(0.5rem, 2vw, 2rem);
+  }
+
+  .mobile-padding-y {
+    padding-top: clamp(0.5rem, 2vw, 2rem);
+    padding-bottom: clamp(0.5rem, 2vw, 2rem);
+  }
+
+  /* Responsive gap that scales */
+  .mobile-gap {
+    gap: clamp(0.5rem, 2vw, 1.5rem);
+  }
+}
+
+/* =============================================================================
+   GLOBAL MOBILE OVERRIDES
+   Apply fail-safe responsive behavior to all pages
+   ============================================================================= */
+
+@layer base {
+  /* Prevent any element from breaking viewport bounds */
+  html {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+
+  body {
+    overflow-x: hidden;
+    max-width: 100vw;
+    min-width: 0;
+  }
+
+  /* Constrain all direct children of main content areas */
+  #root {
+    overflow-x: hidden;
+    max-width: 100vw;
+    min-width: 0;
+  }
+
+  /* Image safety by default */
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Video safety by default */
+  video {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Table responsiveness */
+  table {
+    max-width: 100%;
+    overflow-x: auto;
+    display: block;
+  }
+
+  @media (max-width: 768px) {
+    table {
+      font-size: 0.875rem;
+    }
+  }
+
+  /* Pre and code blocks should scroll, not overflow */
+  pre,
+  code {
+    max-width: 100%;
+    overflow-x: auto;
+    word-wrap: break-word;
+  }
+}

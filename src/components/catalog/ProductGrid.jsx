@@ -6,6 +6,7 @@ import ProductCard from '@/components/ProductCard';
 import { apiDownload } from '@/services/apiClient';
 import PdfViewer from '@/components/pdf/PdfViewer';
 import { showConfirm } from '@/utils/messaging';
+import { useProductAccess } from '@/hooks/useProductAccess';
 
 /**
  * Unified Product Grid Component
@@ -16,7 +17,9 @@ export default function ProductGrid({
   products,
   config,
   currentUser,
-  userPurchases = []
+  userPurchases = [],
+  subscriptionEligibility = null,
+  onSubscriptionSuccess
 }) {
   const navigate = useNavigate();
 
@@ -56,30 +59,30 @@ export default function ProductGrid({
     setPdfViewerOpen(true);
   };
 
-  // Pinterest-style masonry breakpoints
+  // Pinterest-style masonry breakpoints - optimized for mobile
   const getMasonryBreakpoints = () => {
     if (config.cardLayout === 'compact') {
       return {
         default: 5,
-        1100: 4,
-        700: 3,
-        500: 2,
-        350: 1
+        1200: 4,
+        900: 3,
+        600: 2,
+        450: 1  // Better mobile threshold
       };
     } else if (config.cardLayout === 'detailed') {
       return {
         default: 4,
         1100: 3,
-        700: 2,
-        500: 1
+        768: 2,  // iPad and larger phones
+        480: 1   // Mobile devices
       };
     } else {
-      // Default Pinterest layout
+      // Default Pinterest layout - mobile-optimized
       return {
         default: 4,
         1100: 3,
-        700: 2,
-        500: 1
+        768: 2,  // iPad and larger phones
+        480: 1   // Mobile devices
       };
     }
   };
@@ -92,6 +95,9 @@ export default function ProductGrid({
   // PDF viewer state
   const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
+
+  // Use centralized product access logic for selected file (checks backend subscription access)
+  const { hasAccess: selectedFileHasAccess } = useProductAccess(selectedFile, userPurchases);
 
   // Handle card expansion toggle - only one card can be expanded at a time
   const handleToggleExpanded = (productId) => {
@@ -115,11 +121,12 @@ export default function ProductGrid({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.6 }}
+      className="mobile-safe-container"
     >
       <Masonry
         breakpointCols={masonryBreakpoints}
-        className="flex w-auto -ml-4"
-        columnClassName="pl-4 bg-clip-padding"
+        className="flex w-auto -ml-2 md:-ml-4 mobile-safe-flex"
+        columnClassName="pl-2 md:pl-4 bg-clip-padding mobile-safe-container"
       >
       {products.map((product, index) => {
         return (
@@ -128,6 +135,7 @@ export default function ProductGrid({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: index * 0.05 }}
+            className="mobile-safe-card w-full"
           >
             <ProductCard
               product={product}
@@ -137,6 +145,8 @@ export default function ProductGrid({
               isExpanded={expandedCardId === product.id}
               onToggleExpanded={handleToggleExpanded}
               onEdit={handleProductEdit}
+              subscriptionEligibility={subscriptionEligibility}
+              onSubscriptionSuccess={onSubscriptionSuccess}
             />
           </motion.div>
         );
@@ -148,13 +158,12 @@ export default function ProductGrid({
         <PdfViewer
           fileId={selectedFile.entity_id || selectedFile.id}
           fileName={selectedFile.file_name || `${selectedFile.title}.pdf`}
-          hasAccess={userPurchases.some(purchase => {
-            const purchaseEntityId = purchase.purchasable_id || purchase.product_id;
-            const isRelevant = ['paid', 'completed'].includes(purchase.payment_status);
-            return (purchaseEntityId === selectedFile.id || purchaseEntityId === selectedFile.entity_id) && isRelevant;
-          })}
+          hasAccess={selectedFileHasAccess}
           allowPreview={selectedFile.allow_preview}
-          onClose={() => setPdfViewerOpen(false)}
+          onClose={() => {
+            setPdfViewerOpen(false);
+            setSelectedFile(null);
+          }}
         />
       )}
     </motion.div>

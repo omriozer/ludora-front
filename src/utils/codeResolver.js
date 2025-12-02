@@ -109,12 +109,8 @@ async function validateLobbyCode(code) {
 
   try {
     // Try to join lobby by code (validation only, using temp participant)
-    const response = await fetch('/api/game-lobbies/join-by-code', {
+    const lobbyData = await apiRequestAnonymous('/game-lobbies/join-by-code', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      credentials: 'omit', // Anonymous request
       body: JSON.stringify({
         lobby_code: code,
         participant: {
@@ -124,13 +120,6 @@ async function validateLobbyCode(code) {
         }
       })
     });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: response.statusText }));
-      throw new Error(error.error || `Lobby validation failed: ${response.status}`);
-    }
-
-    const lobbyData = await response.json();
 
     ludlog.ui(`✅ Lobby code valid: ${code}`, { data: lobbyData });
 

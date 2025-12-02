@@ -10,18 +10,43 @@ import { useSubscriptionPaymentStatusCheck } from '@/hooks/useSubscriptionPaymen
 const subscriptionCache = {
   plans: { data: null, dataVersion: null },
   purchases: new Map(), // userId -> { data, dataVersion }
-  subscriptions: new Map() // userId -> { data, dataVersion }
+  subscriptions: new Map(), // userId -> { data, dataVersion }
+  transactions: new Map() // userId -> { data, dataVersion }
+};
+
+// Global request deduplication to prevent simultaneous identical API calls
+const activeRequests = {
+  plans: null,
+  purchases: new Map(), // userId -> Promise
+  subscriptions: new Map(), // userId -> Promise
+  transactions: new Map() // userId -> Promise
 };
 
 // Helper function to clear subscription caches (data-driven invalidation)
 export const clearSubscriptionCache = (userId = null) => {
   subscriptionCache.plans = { data: null, dataVersion: null };
+
+  // Also clear active requests to prevent serving stale data
+  activeRequests.plans = null;
+
   if (userId) {
     subscriptionCache.purchases.delete(userId);
     subscriptionCache.subscriptions.delete(userId);
+    subscriptionCache.transactions.delete(userId);
+
+    // Clear active requests for specific user
+    activeRequests.purchases.delete(userId);
+    activeRequests.subscriptions.delete(userId);
+    activeRequests.transactions.delete(userId);
   } else {
     subscriptionCache.purchases.clear();
     subscriptionCache.subscriptions.clear();
+    subscriptionCache.transactions.clear();
+
+    // Clear all active requests
+    activeRequests.purchases.clear();
+    activeRequests.subscriptions.clear();
+    activeRequests.transactions.clear();
   }
 };
 
@@ -33,7 +58,8 @@ export function useSubscriptionState(user) {
   const [subscriptionState, setSubscriptionState] = useState({
     plans: [],
     purchases: [],
-    subscriptions: [], // Add subscriptions data
+    subscriptions: [],
+    transactions: [], // Add transactions data
     loading: true,
     summary: null,
     error: null
@@ -91,7 +117,7 @@ export function useSubscriptionState(user) {
   }, [subscriptionPaymentStatus.isChecking, subscriptionPaymentStatus.pendingCount]);
 
   /**
-   * Load subscription plans from dedicated subscription API (with caching)
+   * Load subscription plans from dedicated subscription API (with caching and request deduplication)
    */
   const loadPlans = useCallback(async () => {
     try {
@@ -103,25 +129,46 @@ export function useSubscriptionState(user) {
         return plansCache.data;
       }
 
-      ludlog.payment('🔄 Loading subscription plans from API...');
-      const response = await apiRequest('/subscriptions/plans');
-
-      if (response && response.success && response.data) {
-        const activePlans = response.data;
-
-        // Update cache with current data (no expiration)
-        subscriptionCache.plans = {
-          data: activePlans,
-          dataVersion: Date.now() // Simple version for cache debugging
-        };
-
-        ludlog.payment('✅ Subscription plans loaded and cached:', { data: activePlans.length });
-        return activePlans;
+      // Check if request already in flight
+      if (activeRequests.plans) {
+        ludlog.payment('🔄 Request already in flight, waiting for existing plans request');
+        return await activeRequests.plans;
       }
 
-      luderror.api('Invalid plans response:', response);
-      return [];
+      ludlog.payment('🔄 Loading subscription plans from API...');
+
+      // Create request promise for deduplication
+      const requestPromise = apiRequest('/subscriptions/plans')
+        .then(response => {
+          if (response && response.success && response.data) {
+            const activePlans = response.data;
+
+            // Update cache with current data (no expiration)
+            subscriptionCache.plans = {
+              data: activePlans,
+              dataVersion: Date.now() // Simple version for cache debugging
+            };
+
+            ludlog.payment('✅ Subscription plans loaded and cached:', { data: activePlans.length });
+            return activePlans;
+          }
+
+          luderror.api('Invalid plans response:', response);
+          return [];
+        })
+        .finally(() => {
+          // Clean up active request tracking
+          activeRequests.plans = null;
+        });
+
+      // Store the promise for deduplication
+      activeRequests.plans = requestPromise;
+
+      return await requestPromise;
+
     } catch (error) {
+      // Clean up active request tracking on error
+      activeRequests.plans = null;
       luderror.payment('Failed to load subscription plans:', error);
       throw new Error('שגיאה בטעינת תוכניות המנוי');
     }
@@ -167,14 +214,15 @@ export function useSubscriptionState(user) {
   }, [user?.id]);
 
   /**
-   * Load user subscriptions from dedicated subscription API (with caching)
+   * Load user subscriptions from dedicated subscription API (with caching and request deduplication)
    */
   const loadSubscriptions = useCallback(async () => {
     if (!user?.id) return [];
 
+    const userId = user.id;
+
     try {
       // Check cache first - only invalidate on explicit cache clearing
-      const userId = user.id;
       const userCacheEntry = subscriptionCache.subscriptions.get(userId);
 
       if (userCacheEntry?.data) {
@@ -182,27 +230,87 @@ export function useSubscriptionState(user) {
         return userCacheEntry.data;
       }
 
+      // Check if request already in flight for this user
+      if (activeRequests.subscriptions.has(userId)) {
+        ludlog.payment('🔄 Request already in flight, waiting for existing subscription request for user:', { data: userId });
+        return await activeRequests.subscriptions.get(userId);
+      }
+
       ludlog.payment('🔄 Loading user subscriptions from API for user ID:', { data: userId });
-      const response = await apiRequest('/subscriptions/user');
 
-      if (response && response.success && response.data) {
-        const subscriptions = response.data.subscriptions || [];
+      // Create request promise for deduplication
+      const requestPromise = apiRequest('/subscriptions/user')
+        .then(response => {
+          if (response && response.success && response.data) {
+            const subscriptions = response.data.subscriptions || [];
 
+            // Update cache with current data (no expiration)
+            subscriptionCache.subscriptions.set(userId, {
+              data: subscriptions,
+              dataVersion: Date.now() // Simple version for cache debugging
+            });
+
+            ludlog.payment('✅ User subscriptions loaded and cached:', { data: subscriptions.length });
+            return subscriptions;
+          }
+
+          luderror.payment('Invalid subscriptions response:', response);
+          return [];
+        })
+        .finally(() => {
+          // Clean up active request tracking
+          activeRequests.subscriptions.delete(userId);
+        });
+
+      // Store the promise for deduplication
+      activeRequests.subscriptions.set(userId, requestPromise);
+
+      return await requestPromise;
+
+    } catch (error) {
+      // Clean up active request tracking on error
+      activeRequests.subscriptions.delete(userId);
+      luderror.payment('Failed to load user subscriptions:', error);
+      // Don't throw here - subscriptions might not exist for new users
+      return [];
+    }
+  }, [user?.id]);
+
+  /**
+   * Load user transactions from API (with caching)
+   */
+  const loadTransactions = useCallback(async () => {
+    if (!user?.id) return [];
+
+    try {
+      // Check cache first - only invalidate on explicit cache clearing
+      const userId = user.id;
+      const userCacheEntry = subscriptionCache.transactions.get(userId);
+
+      if (userCacheEntry?.data) {
+        ludlog.payment('✅ Using cached user transactions for user', { data: userId });
+        return userCacheEntry.data;
+      }
+
+      ludlog.payment('🔄 Loading user transactions from API for user ID:', { data: userId });
+      const response = await apiRequest(`/entities/transaction?user_id=${user.id}`);
+
+      if (response && Array.isArray(response)) {
         // Update cache with current data (no expiration)
-        subscriptionCache.subscriptions.set(userId, {
-          data: subscriptions,
+        subscriptionCache.transactions.set(userId, {
+          data: response,
           dataVersion: Date.now() // Simple version for cache debugging
         });
 
-        ludlog.payment('✅ User subscriptions loaded and cached:', { data: subscriptions.length });
-        return subscriptions;
+        ludlog.payment('✅ User transactions loaded and cached:', { data: response.length });
+        return response;
       }
 
-      luderror.payment('Invalid subscriptions response:', response);
+      luderror.payment('Invalid transactions response:', response);
       return [];
     } catch (error) {
-      luderror.payment('Failed to load user subscriptions:', error);
-      // Don't throw here - subscriptions might not exist for new users
+      luderror.payment('Failed to load user transactions:', error);
+      // Don't throw here - transactions might not exist for new users
       return [];
     }
   }, [user?.id]);
@@ -223,10 +331,11 @@ export function useSubscriptionState(user) {
     try {
       setSubscriptionState(prev => ({ ...prev, loading: true, error: null }));
 
-      const [plans, purchases, subscriptions] = await Promise.all([
+      const [plans, purchases, subscriptions, transactions] = await Promise.all([
         loadPlans(),
         loadPurchases(),
-        loadSubscriptions()
+        loadSubscriptions(),
+        loadTransactions()
       ]);
 
       const summary = SubscriptionBusinessLogic.getSubscriptionSummary(purchases, plans, subscriptions);
@@ -235,6 +344,7 @@ export function useSubscriptionState(user) {
         plans,
         purchases,
         subscriptions,
+        transactions,
         summary,
         loading: false,
         error: null
@@ -249,7 +359,7 @@ export function useSubscriptionState(user) {
         error: error.message || 'שגיאה בטעינת נתוני המנוי'
       }));
     }
-  }, [user?.id, loadPlans, loadPurchases, loadSubscriptions]);
+  }, [user?.id, loadPlans, loadPurchases, loadSubscriptions, loadTransactions]);
 
   /**
    * Evaluate plan selection and determine action

@@ -14,13 +14,21 @@ import {
   Crown,
   Clock,
   ArrowRight,
-  Receipt
+  Receipt,
+  FileText,
+  BookOpen,
+  Users,
+  BarChart3,
+  Gamepad2,
+  TrendingUp,
+  Info
 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import SubscriptionModal from "../components/SubscriptionModal";
 import { useSubscriptionState } from "@/hooks/useSubscriptionState";
 import { luderror } from '@/lib/ludlog';
+import { getProductTypeName } from '@/config/productTypes';
 
 const Subscriptions = () => {
   const navigate = useNavigate();
@@ -38,8 +46,8 @@ const Subscriptions = () => {
     setIsLoading(true);
     try {
       if (currentUser) {
-        // Import entities
-        const { Transaction, SubscriptionHistory } = await import('@/services/entities');
+        // Import SubscriptionHistory entity (Transaction now comes from hook)
+        const { SubscriptionHistory } = await import('@/services/entities');
 
         // Get active subscription to filter billing history
         const activeSubscription = subscriptionState.summary?.activeSubscription;
@@ -53,33 +61,48 @@ const Subscriptions = () => {
         // Load billing history from multiple sources
         const billingItems = [];
 
-        // 1. Load initial payment from Transaction table
+        // 1. Load initial payment from Transaction table (from subscription hook)
         // Transaction records with metadata.subscription_id matching current subscription
         try {
-          const transactions = await Transaction.filter({
-            user_id: currentUser.id,
-            payment_status: 'completed'
-          });
+          // Use transactions from subscription state instead of separate query
+          const transactions = subscriptionState.transactions || [];
 
           // Filter transactions that have subscription_id in metadata
+          // Ensure string comparison to handle data type mismatches
           const subscriptionTransactions = transactions.filter(txn => {
             const metadata = txn.metadata || {};
-            return metadata.subscription_id === activeSubscription.id;
+            // Only include completed subscription transactions
+            return txn.payment_status === 'completed' &&
+                   String(metadata.subscription_id) === String(activeSubscription.id);
           });
 
           // Add initial payment transactions to billing history
           subscriptionTransactions.forEach(txn => {
+            // Determine transaction type from metadata
+            const transactionType = txn.metadata?.transaction_type;
+            let description = 'תשלום מנוי';
+            let type = 'subscription_payment';
+
+            if (transactionType === 'subscription_payment') {
+              description = 'תשלום ראשוני למנוי';
+              type = 'initial_payment';
+            } else if (transactionType === 'subscription_renewal') {
+              description = 'חידוש מנוי';
+              type = 'renewal';
+            }
+
             billingItems.push({
               id: `txn-${txn.id}`,
-              type: 'initial_payment',
+              type: type,
               date: txn.created_at,
               amount: parseFloat(txn.amount || 0),
               status: txn.payment_status,
               payment_method: txn.payment_method,
               metadata: txn.metadata,
-              description: 'תשלום ראשוני למנוי'
+              description: description
             });
           });
+
         } catch (error) {
           luderror.payments('Error loading subscription transactions:', error);
         }
@@ -120,7 +143,7 @@ const Subscriptions = () => {
       setMessage({ type: 'error', text: 'שגיאה בטעינת נתוני מנוי' });
     }
     setIsLoading(false);
-  }, [currentUser, subscriptionState.summary]);
+  }, [currentUser, subscriptionState.summary, subscriptionState.transactions]);
 
   useEffect(() => {
     if (currentUser && !userLoading) {
@@ -443,42 +466,262 @@ const Subscriptions = () => {
               </CardContent>
             </Card>
 
-            {/* Subscription Benefits */}
+            {/* Subscription Benefits and Usage */}
             {currentPlan && (
               <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm rounded-2xl overflow-hidden">
                 <CardHeader className="p-6 border-b">
-                  <CardTitle className="text-lg">הטבות המנוי</CardTitle>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-purple-600" />
+                    הטבות והשימוש
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="p-6">
-                  <div className="space-y-3">
-                    {currentPlan.benefits?.games_access?.enabled && (
-                      <div className="flex items-center gap-3 text-sm">
-                        <CheckCircle className="w-4 h-4 text-green-600" />
-                        <span>
-                          גישה למשחקים
-                          {currentPlan.benefits.games_access.unlimited ?
-                            ' (ללא הגבלה)' :
-                            ` (עד ${currentPlan.benefits.games_access.monthly_limit})`}
-                        </span>
+                  <div className="space-y-4">
+                    {/* Games Access */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                          currentPlan.benefits?.games_access?.enabled ?
+                          'bg-blue-100' : 'bg-gray-100'
+                        }`}>
+                          <Gamepad2 className={`w-4 h-4 ${
+                            currentPlan.benefits?.games_access?.enabled ?
+                            'text-blue-600' : 'text-gray-400'
+                          }`} />
+                        </div>
+                        <div className="flex-1">
+                          <div className={`font-medium ${
+                            currentPlan.benefits?.games_access?.enabled ?
+                            'text-gray-900' : 'text-gray-500'
+                          }`}>{`גישה ל${getProductTypeName('game', 'plural')}`}</div>
+                          <div className="text-sm text-gray-500">
+                            {currentPlan.benefits?.games_access?.enabled ? (
+                              currentPlan.benefits.games_access.unlimited ?
+                                'שימוש ללא הגבלה' :
+                                `עד ${currentPlan.benefits.games_access.monthly_limit} בחודש`
+                            ) : (
+                              'לא כלול במנוי זה'
+                            )}
+                          </div>
+                        </div>
+                        <Badge className={
+                          currentPlan.benefits?.games_access?.enabled ?
+                          "text-green-600 bg-green-50 border-green-200" :
+                          "text-gray-600 bg-gray-50 border-gray-200"
+                        }>
+                          {currentPlan.benefits?.games_access?.enabled ? 'זמין' : 'לא זמין'}
+                        </Badge>
                       </div>
-                    )}
-                    {currentPlan.benefits?.files_access?.enabled && (
-                      <div className="flex items-center gap-3 text-sm">
-                        <CheckCircle className="w-4 h-4 text-green-600" />
-                        <span>
-                          גישה לקבצים
-                          {currentPlan.benefits.files_access.unlimited ?
-                            ' (ללא הגבלה)' :
-                            ` (עד ${currentPlan.benefits.files_access.monthly_limit})`}
-                        </span>
+                      {currentPlan.benefits?.games_access?.enabled && !currentPlan.benefits.games_access.unlimited && (
+                        <div className="mr-11">
+                          <div className="flex justify-between text-xs text-gray-500 mb-1">
+                            <span>שימוש החודש: 0 / {currentPlan.benefits.games_access.monthly_limit}</span>
+                            <span>0%</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div className="bg-blue-600 h-2 rounded-full" style={{ width: '0%' }}></div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Files Access */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                          currentPlan.benefits?.files_access?.enabled ?
+                          'bg-orange-100' : 'bg-gray-100'
+                        }`}>
+                          <FileText className={`w-4 h-4 ${
+                            currentPlan.benefits?.files_access?.enabled ?
+                            'text-orange-600' : 'text-gray-400'
+                          }`} />
+                        </div>
+                        <div className="flex-1">
+                          <div className={`font-medium ${
+                            currentPlan.benefits?.files_access?.enabled ?
+                            'text-gray-900' : 'text-gray-500'
+                          }`}>{`גישה ל${getProductTypeName('file', 'plural')}`}</div>
+                          <div className="text-sm text-gray-500">
+                            {currentPlan.benefits?.files_access?.enabled ? (
+                              currentPlan.benefits.files_access.unlimited ?
+                                'שימוש ללא הגבלה' :
+                                `עד ${currentPlan.benefits.files_access.monthly_limit} בחודש`
+                            ) : (
+                              'לא כלול במנוי זה'
+                            )}
+                          </div>
+                        </div>
+                        <Badge className={
+                          currentPlan.benefits?.files_access?.enabled ?
+                          "text-green-600 bg-green-50 border-green-200" :
+                          "text-gray-600 bg-gray-50 border-gray-200"
+                        }>
+                          {currentPlan.benefits?.files_access?.enabled ? 'זמין' : 'לא זמין'}
+                        </Badge>
                       </div>
-                    )}
-                    {currentPlan.benefits?.reports_access && (
-                      <div className="flex items-center gap-3 text-sm">
-                        <CheckCircle className="w-4 h-4 text-green-600" />
-                        <span>צפיה בדוחות</span>
+                      {currentPlan.benefits?.files_access?.enabled && !currentPlan.benefits.files_access.unlimited && (
+                        <div className="mr-11">
+                          <div className="flex justify-between text-xs text-gray-500 mb-1">
+                            <span>שימוש החודש: 0 / {currentPlan.benefits.files_access.monthly_limit}</span>
+                            <span>0%</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div className="bg-orange-600 h-2 rounded-full" style={{ width: '0%' }}></div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Lesson Plans Access */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                          currentPlan.benefits?.lesson_plans_access?.enabled ?
+                          'bg-green-100' : 'bg-gray-100'
+                        }`}>
+                          <BookOpen className={`w-4 h-4 ${
+                            currentPlan.benefits?.lesson_plans_access?.enabled ?
+                            'text-green-600' : 'text-gray-400'
+                          }`} />
+                        </div>
+                        <div className="flex-1">
+                          <div className={`font-medium ${
+                            currentPlan.benefits?.lesson_plans_access?.enabled ?
+                            'text-gray-900' : 'text-gray-500'
+                          }`}>{`גישה ל${getProductTypeName('lesson_plan', 'plural')}`}</div>
+                          <div className="text-sm text-gray-500">
+                            {currentPlan.benefits?.lesson_plans_access?.enabled ? (
+                              currentPlan.benefits.lesson_plans_access.unlimited ?
+                                'שימוש ללא הגבלה' :
+                                `עד ${currentPlan.benefits.lesson_plans_access.monthly_limit} בחודש`
+                            ) : (
+                              'לא כלול במנוי זה'
+                            )}
+                          </div>
+                        </div>
+                        <Badge className={
+                          currentPlan.benefits?.lesson_plans_access?.enabled ?
+                          "text-green-600 bg-green-50 border-green-200" :
+                          "text-gray-600 bg-gray-50 border-gray-200"
+                        }>
+                          {currentPlan.benefits?.lesson_plans_access?.enabled ? 'זמין' : 'לא זמין'}
+                        </Badge>
                       </div>
-                    )}
+                      {currentPlan.benefits?.lesson_plans_access?.enabled && !currentPlan.benefits.lesson_plans_access.unlimited && (
+                        <div className="mr-11">
+                          <div className="flex justify-between text-xs text-gray-500 mb-1">
+                            <span>שימוש החודש: 0 / {currentPlan.benefits.lesson_plans_access.monthly_limit}</span>
+                            <span>0%</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div className="bg-green-600 h-2 rounded-full" style={{ width: '0%' }}></div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Classrooms Management */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                          currentPlan.benefits?.classroom_management?.enabled ?
+                          'bg-purple-100' : 'bg-gray-100'
+                        }`}>
+                          <Users className={`w-4 h-4 ${
+                            currentPlan.benefits?.classroom_management?.enabled ?
+                            'text-purple-600' : 'text-gray-400'
+                          }`} />
+                        </div>
+                        <div className="flex-1">
+                          <div className={`font-medium ${
+                            currentPlan.benefits?.classroom_management?.enabled ?
+                            'text-gray-900' : 'text-gray-500'
+                          }`}>ניהול כיתות</div>
+                          <div className="text-sm text-gray-500">
+                            {currentPlan.benefits?.classroom_management?.enabled ? (
+                              <>
+                                {currentPlan.benefits.classroom_management.unlimited_classrooms ?
+                                  'כיתות ללא הגבלה' :
+                                  `עד ${currentPlan.benefits.classroom_management.max_classrooms} כיתות`}
+                                {!currentPlan.benefits.classroom_management.unlimited_total_students &&
+                                  ` • עד ${currentPlan.benefits.classroom_management.max_total_students} תלמידים`}
+                              </>
+                            ) : (
+                              'לא כלול במנוי זה'
+                            )}
+                          </div>
+                        </div>
+                        <Badge className={
+                          currentPlan.benefits?.classroom_management?.enabled ?
+                          "text-green-600 bg-green-50 border-green-200" :
+                          "text-gray-600 bg-gray-50 border-gray-200"
+                        }>
+                          {currentPlan.benefits?.classroom_management?.enabled ? 'זמין' : 'לא זמין'}
+                        </Badge>
+                      </div>
+                      {currentPlan.benefits?.classroom_management?.enabled && (
+                        <div className="mr-11 space-y-2">
+                          {!currentPlan.benefits.classroom_management.unlimited_classrooms && (
+                            <div>
+                              <div className="flex justify-between text-xs text-gray-500 mb-1">
+                                <span>כיתות: 0 / {currentPlan.benefits.classroom_management.max_classrooms}</span>
+                                <span>0%</span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div className="bg-purple-600 h-2 rounded-full" style={{ width: '0%' }}></div>
+                              </div>
+                            </div>
+                          )}
+                          {!currentPlan.benefits.classroom_management.unlimited_total_students && (
+                            <div>
+                              <div className="flex justify-between text-xs text-gray-500 mb-1">
+                                <span>תלמידים: 0 / {currentPlan.benefits.classroom_management.max_total_students}</span>
+                                <span>0%</span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div className="bg-purple-600 h-2 rounded-full" style={{ width: '0%' }}></div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Reports Access */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                          currentPlan.benefits?.reports_access ?
+                          'bg-indigo-100' : 'bg-gray-100'
+                        }`}>
+                          <BarChart3 className={`w-4 h-4 ${
+                            currentPlan.benefits?.reports_access ?
+                            'text-indigo-600' : 'text-gray-400'
+                          }`} />
+                        </div>
+                        <div className="flex-1">
+                          <div className={`font-medium ${
+                            currentPlan.benefits?.reports_access ?
+                            'text-gray-900' : 'text-gray-500'
+                          }`}>צפיה בדוחות</div>
+                          <div className="text-sm text-gray-500">
+                            {currentPlan.benefits?.reports_access ?
+                              'גישה מלאה לכל הדוחות והנתונים' :
+                              'לא כלול במנוי זה'
+                            }
+                          </div>
+                        </div>
+                        <Badge className={
+                          currentPlan.benefits?.reports_access ?
+                          "text-green-600 bg-green-50 border-green-200" :
+                          "text-gray-600 bg-gray-50 border-gray-200"
+                        }>
+                          {currentPlan.benefits?.reports_access ? 'זמין' : 'לא זמין'}
+                        </Badge>
+                      </div>
+                    </div>
+
                   </div>
                 </CardContent>
               </Card>

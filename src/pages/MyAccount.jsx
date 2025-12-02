@@ -1,27 +1,21 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { User } from "@/services/entities"; // Keep User for updateMyUserData calls only
 import { useUser } from "@/contexts/UserContext";
-import { purchaseUtils } from "@/utils/api.js";
 import { apiRequest } from '@/services/apiClient';
 import { renderQRCode, LUDORA_OFFICIAL_PRESET } from '@/utils/qrCodeUtils';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  Play,
   Calendar,
-  Clock,
-  DollarSign,
   RefreshCw,
   AlertTriangle,
   CheckCircle,
   User as UserIcon,
-  MessageSquare,
   X,
   Edit,
   Save,
@@ -35,8 +29,6 @@ import {
   GraduationCap,
   BookOpen
 } from "lucide-react";
-import { format } from "date-fns";
-import { he } from "date-fns/locale";
 import PurchaseHistory from "@/components/PurchaseHistory";
 import { useSubscriptionState } from "@/hooks/useSubscriptionState";
 import SubscriptionBusinessLogic from "@/services/SubscriptionBusinessLogic";
@@ -84,12 +76,10 @@ const MyAccount = () => {
   // Use global state from UserContext instead of direct API calls
   const { currentUser, settings, isLoading: userLoading, updateUser } = useUser();
 
-  const [registrations, setRegistrations] = useState([]);
-  const [workshops, setWorkshops] = useState([]);
+  const [_registrations, setRegistrations] = useState([]);
+  const [_workshops, setWorkshops] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState(null);
-  const [supportPopup, setSupportPopup] = useState({ show: false, registrationId: null });
-  const [supportMessage, setSupportMessage] = useState("");
 
   // Edit mode states
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -1022,6 +1012,17 @@ const MyAccount = () => {
                                 : 'text-gray-600'
                             }`}>
                               {subscriptionState.summary?.hasActiveSubscription ? 'פעיל' : 'חינם'}
+                              {console.log('')}
+                              {console.log('')}
+                              {console.log('')}
+                              {console.log('')}
+                              {console.log('')}
+                              {console.log('subscriptionState: ', subscriptionState)}
+                              {console.log('')}
+                              {console.log('')}
+                              {console.log('')}
+                              {console.log('')}
+                              {console.log('')}
                             </div>
                           </div>
 

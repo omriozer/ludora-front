@@ -718,21 +718,21 @@ export default function ProductPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20" dir="rtl">
-      <div className="max-w-full mx-auto px-0 py-2 sm:px-1 sm:py-3 lg:px-8 xl:px-16 lg:py-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 mobile-no-scroll-x mobile-safe-container" dir="rtl">
+      <div className="max-w-full mx-auto mobile-padding-x py-2 sm:py-3 lg:py-4 mobile-safe-container">
         {/* Page Header */}
-        <div className="mb-4 md:mb-6">
-          <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 rounded-2xl md:rounded-3xl p-4 sm:p-6 md:p-8 border border-blue-100/50 shadow-lg backdrop-blur-sm ring-1 ring-blue-900/5">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 md:gap-6">
+        <div className="mb-4 md:mb-6 mobile-safe-container">
+          <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 rounded-2xl md:rounded-3xl mobile-padding border border-blue-100/50 shadow-lg backdrop-blur-sm ring-1 ring-blue-900/5 mobile-safe-card">
+            <div className="mobile-safe-flex flex-col lg:flex-row lg:items-center lg:justify-between mobile-gap">
               <div className="flex items-center gap-3 md:gap-4">
                 <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-2 md:p-3 rounded-lg md:rounded-xl shadow-lg">
                   <Package className="w-6 h-6 md:w-8 md:h-8 text-white" />
                 </div>
-                <div>
-                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+                <div className="mobile-safe-container">
+                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent mobile-safe-text">
                     {getPageTitle()}
                   </h1>
-                  <p className="text-gray-600 text-sm sm:text-base md:text-lg mt-1">
+                  <p className="text-gray-600 text-sm sm:text-base md:text-lg mt-1 mobile-safe-text">
                     {isNewProduct
                       ? (formData.type_attributes?.is_bundle
                           ? 'צור קיט חדש במערכת'
@@ -758,7 +758,7 @@ export default function ProductPage() {
         </div>
 
         {/* Product Form Content */}
-        <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 overflow-hidden mobile-safe-card">
           <WizardLayout
             editingProduct={editingProduct}
             formData={formData}

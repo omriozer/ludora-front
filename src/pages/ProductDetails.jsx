@@ -555,7 +555,7 @@ export default function ProductDetails() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 mobile-safe-flex items-center justify-center mobile-safe-container">
         <LudoraLoadingSpinner
           message={detailsTexts.loading}
           status="loading"
@@ -568,9 +568,9 @@ export default function ProductDetails() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50 flex items-center justify-center p-6">
+      <div className="min-h-screen bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50 mobile-safe-flex items-center justify-center mobile-padding mobile-safe-container">
         <div className="text-center max-w-md">
-          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+          <div className="w-20 h-20 bg-red-100 rounded-full mobile-safe-flex items-center justify-center mx-auto mb-6">
             <AlertCircle className="w-10 h-10 text-red-600" />
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-4">{error}</h2>
@@ -588,9 +588,9 @@ export default function ProductDetails() {
 
   if (!item) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50 flex items-center justify-center p-6">
+      <div className="min-h-screen bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50 mobile-safe-flex items-center justify-center mobile-padding mobile-safe-container">
         <div className="text-center max-w-md">
-          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+          <div className="w-20 h-20 bg-red-100 rounded-full mobile-safe-flex items-center justify-center mx-auto mb-6">
             <AlertCircle className="w-10 h-10 text-red-600" />
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-4">{detailsTexts.notFound}</h2>
@@ -608,96 +608,106 @@ export default function ProductDetails() {
 
   return (
 
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/30 overflow-x-hidden w-full max-w-full">
-      <div className="max-w-7xl mx-auto px-1 sm:px-3 md:px-4 lg:px-6 pb-4 sm:pb-6 md:pb-8 w-full min-w-0 max-w-full">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/30 mobile-no-scroll-x mobile-safe-container">
+      <div className="max-w-7xl mx-auto mobile-padding-x pb-4 sm:pb-6 md:pb-8 mobile-safe-container">
 
         {/* Enhanced Sticky Header with Back Button and Purchase Button */}
         {!hasAccess && (
-          <div className="sticky top-0 z-50 -mx-1 sm:-mx-3 md:-mx-4 lg:-mx-6 mb-4 sm:mb-6 md:mb-8">
-            <div className="bg-white/95 backdrop-blur-xl border-b border-gray-200/50 shadow-xl shadow-blue-500/5">
-              <div className="max-w-7xl mx-auto px-1 sm:px-3 md:px-4 lg:px-6 py-3 sm:py-4 md:py-5">
-                <div className="flex items-center gap-2 sm:gap-3 md:gap-5">
-                  {/* Enhanced Back Button */}
-                  <Button
-                    variant="ghost"
-                    onClick={() => window.history.back()}
-                    className="text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-xl px-3 sm:px-4 md:px-5 py-2 sm:py-2.5 md:py-3 flex-shrink-0 font-medium transition-all duration-200 hover:scale-[1.02]"
-                  >
-                    <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 md:w-5 md:h-5 ml-1.5 sm:ml-2" />
-                    <span className="text-sm sm:text-base md:text-base whitespace-nowrap hidden sm:inline">בחזרה ל{(() => {
-                      if (isBundle(item)) {
-                        // For bundles, show the bundled product type plural
-                        const bundleComposition = getBundleComposition(item);
-                        const firstType = Object.keys(bundleComposition)[0];
-                        return getProductTypeName(firstType, 'plural');
-                      }
-                      return getProductTypeName(item.product_type || itemType, 'plural');
-                    })()}</span>
-                    <span className="text-sm whitespace-nowrap sm:hidden">חזרה</span>
-                  </Button>
+          <div className="sticky top-0 z-50 left-0 right-0 w-full mb-4 sm:mb-6 md:mb-8 mobile-safe-container">
+            <div className="bg-white/95 backdrop-blur-xl border-b border-gray-200/50 shadow-xl shadow-blue-500/5 w-full mobile-safe-container">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4 md:py-5 mobile-safe-container">
+                {/* Mobile: Stack vertically, Desktop: Single row */}
+                <div className="mobile-safe-flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-2 mobile-safe-container mobile-no-scroll-x">
 
-                  {/* Enhanced Product Title - Takes remaining space */}
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm sm:text-base md:text-lg font-bold text-gray-900 truncate leading-tight">{item.title}</div>
-                  </div>
-
-                  {/* Enhanced Price Badge - Now visible on all screens */}
-                  <div className="flex-shrink-0">
-                    <PriceDisplayTag
-                      originalPrice={item.price}
-                      discount={item.discount}
-                      variant="badge"
-                      size="lg"
-                      showDiscount={false}
-                      className="shadow-md hover:shadow-lg transition-shadow duration-200"
-                    />
-                  </div>
-
-                  {/* Preview Button for Assets (Files and Lesson Plans) without access but with preview allowed */}
-                  {(() => {
-                    const isFile = item.product_type === 'file' || itemType === 'file';
-                    const isPdf = item.file_type === 'pdf' || item.file_name?.toLowerCase().endsWith('.pdf');
-                    const isLessonPlan = item.product_type === 'lesson_plan';
-                    const isBundleOfFiles = isBundle(item) && getBundleComposition(item).file > 0;
-
-                    // Check if file asset has preview enabled
-                    const filePreviewEnabled = isFile && isPdf && item.allow_preview;
-
-                    // Check if lesson plan asset has preview enabled
-                    const lessonPlanPreviewEnabled = isLessonPlan && item.preview_info?.allow_slide_preview;
-
-                    // Check if bundle has file items (any type of bundle can have preview if it contains files)
-                    const bundlePreviewEnabled = isBundleOfFiles;
-
-                    const shouldShow = !hasAccess && (filePreviewEnabled || lessonPlanPreviewEnabled || bundlePreviewEnabled);
-
-                    return shouldShow;
-                  })() && (
+                  {/* Top Row: Back Button, Title, Price Badge */}
+                  <div className="mobile-safe-flex items-center mobile-gap w-full sm:flex-1 min-w-0 mobile-safe-container mobile-no-scroll-x">
+                    {/* Enhanced Back Button - Mobile-optimized touch target */}
                     <Button
-                      onClick={handleAssetPreview}
-                      variant="outline"
-                      className="rounded-full px-3 sm:px-4 md:px-5 py-2.5 sm:py-3 md:py-3.5 flex-shrink-0 text-sm sm:text-base md:text-base border-blue-300 text-blue-700 hover:bg-blue-50 hover:border-blue-400 border-2 font-medium transition-all duration-200 hover:scale-[1.02] shadow-sm hover:shadow-md"
-                      size="sm"
+                      variant="ghost"
+                      onClick={() => window.history.back()}
+                      className="text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-xl px-3 py-2.5 min-h-[44px] flex-shrink-0 font-medium transition-all duration-200 hover:scale-[1.02] mobile-safe-container"
                     >
-                      <Eye className="w-4 h-4 sm:w-5 sm:h-5 md:w-5 md:h-5 ml-1.5 sm:ml-2" />
-                      <span className="hidden sm:inline">תצוגה מקדימה</span>
-                      <span className="sm:hidden">תצוגה</span>
+                      <ArrowLeft className="w-5 h-5 ml-2" />
+                      <span className="text-sm whitespace-nowrap hidden sm:inline">בחזרה ל{(() => {
+                        if (isBundle(item)) {
+                          // For bundles, show the bundled product type plural
+                          const bundleComposition = getBundleComposition(item);
+                          const firstType = Object.keys(bundleComposition)[0];
+                          return getProductTypeName(firstType, 'plural');
+                        }
+                        return getProductTypeName(item.product_type || itemType, 'plural');
+                      })()}</span>
+                      <span className="text-sm whitespace-nowrap sm:hidden">חזרה</span>
                     </Button>
-                  )}
 
-                  {/* Enhanced Purchase Button - Unified Design */}
-                  <ProductActionBar
-                    product={item}
-                    userPurchases={userPurchases}
-                    className="px-4 sm:px-6 md:px-8 lg:px-10 py-3 sm:py-3.5 md:py-4 flex-shrink-0 text-sm sm:text-base md:text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02]"
-                    size="lg"
-                    showCartButton={false}
-                    onFileAccess={handleFileAccess}
-                    onPdfPreview={handleAssetPreview}
-                    onCourseAccess={handleCourseAccess}
-                    onWorkshopAccess={handleWorkshopAccess}
-                    onLessonPlanAccess={handleLessonPlanAccess}
-                  />
+                    {/* Enhanced Product Title - Takes remaining space with proper mobile truncation */}
+                    <div className="flex-1 min-w-0 mobile-safe-text mobile-safe-container px-2">
+                      <div className="text-sm sm:text-base md:text-lg font-bold text-gray-900 mobile-truncate mobile-safe-text leading-tight">{item.title}</div>
+                    </div>
+
+                    {/* Enhanced Price Badge - Visible on all screens */}
+                    <div className="flex-shrink-0">
+                      <PriceDisplayTag
+                        originalPrice={item.price}
+                        discount={item.discount}
+                        variant="badge"
+                        size="lg"
+                        showDiscount={false}
+                        className="shadow-md hover:shadow-lg transition-shadow duration-200"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Action Buttons Row - Mobile: Full width buttons, Desktop: Right-aligned */}
+                  <div className="mobile-safe-flex items-center gap-2 w-full sm:w-auto sm:flex-shrink-0 mobile-safe-container mobile-no-scroll-x">
+                    {/* Preview Button for Assets (Files and Lesson Plans) without access but with preview allowed */}
+                    {(() => {
+                      const isFile = item.product_type === 'file' || itemType === 'file';
+                      const isPdf = item.file_type === 'pdf' || item.file_name?.toLowerCase().endsWith('.pdf');
+                      const isLessonPlan = item.product_type === 'lesson_plan';
+                      const isBundleOfFiles = isBundle(item) && getBundleComposition(item).file > 0;
+
+                      // Check if file asset has preview enabled
+                      const filePreviewEnabled = isFile && isPdf && item.allow_preview;
+
+                      // Check if lesson plan asset has preview enabled
+                      const lessonPlanPreviewEnabled = isLessonPlan && item.preview_info?.allow_slide_preview;
+
+                      // Check if bundle has file items (any type of bundle can have preview if it contains files)
+                      const bundlePreviewEnabled = isBundleOfFiles;
+
+                      const shouldShow = !hasAccess && (filePreviewEnabled || lessonPlanPreviewEnabled || bundlePreviewEnabled);
+
+                      return shouldShow;
+                    })() && (
+                      <Button
+                        onClick={handleAssetPreview}
+                        variant="outline"
+                        className="rounded-full px-3 sm:px-4 py-3 min-h-[44px] w-full sm:w-auto text-sm border-blue-300 text-blue-700 hover:bg-blue-50 hover:border-blue-400 border-2 font-medium transition-all duration-200 hover:scale-[1.02] shadow-sm hover:shadow-md"
+                      >
+                        <Eye className="w-5 h-5 ml-2" />
+                        <span className="hidden sm:inline">תצוגה מקדימה</span>
+                        <span className="sm:hidden">תצוגה</span>
+                      </Button>
+                    )}
+
+                    {/* Enhanced Purchase Button - Mobile: Full width, Desktop: Auto width */}
+                    <div className="w-full sm:w-auto mobile-safe-container">
+                      <ProductActionBar
+                        product={item}
+                        userPurchases={userPurchases}
+                        className="w-full px-4 sm:px-6 py-3 min-h-[44px] text-sm sm:text-base font-semibold shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02]"
+                        size="lg"
+                        showCartButton={false}
+                        onFileAccess={handleFileAccess}
+                        onPdfPreview={handleAssetPreview}
+                        onCourseAccess={handleCourseAccess}
+                        onWorkshopAccess={handleWorkshopAccess}
+                        onLessonPlanAccess={handleLessonPlanAccess}
+                        onBundleAccess={() => setBundlePreviewModalOpen(true)}
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -705,9 +715,9 @@ export default function ProductDetails() {
         )}
 
         {/* Hero Section */}
-        <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl shadow-blue-500/10 overflow-hidden mb-8 w-full max-w-full">
+        <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl shadow-blue-500/10 overflow-hidden mb-8 mobile-safe-card">
           {(item.image_url && item.image_url !== '') ? (
-            <div className="flex flex-col">
+            <div className="mobile-safe-flex flex-col">
               {/* Image Section - Full Width on Top */}
               <div className="relative w-full">
                 <div className="h-64 sm:h-80 md:h-96 overflow-hidden">
@@ -729,7 +739,7 @@ export default function ProductDetails() {
                     />
                   ) : (
                     <Badge className="bg-white/95 text-gray-800 px-3 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base font-bold rounded-full shadow-lg">
-                      <div className="flex items-center gap-2">
+                      <div className="mobile-safe-flex items-center mobile-gap">
                         {getProductIcon(item.product_type)}
                         <span className="hidden sm:inline">{getProductTypeLabel(item.product_type)}</span>
                       </div>
@@ -759,8 +769,8 @@ export default function ProductDetails() {
               </div>
 
               {/* Content Section - Full Width Below Image */}
-              <div className="p-6 sm:p-8 md:p-10">
-                <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-4 sm:mb-6 leading-tight text-right">
+              <div className="mobile-padding mobile-safe-container">
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-4 sm:mb-6 leading-tight text-right mobile-safe-text">
                   {item.title}
                 </h1>
 
@@ -790,13 +800,13 @@ export default function ProductDetails() {
                 )}
 
                 {item.short_description && (
-                  <p className="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4 leading-relaxed text-right">
+                  <p className="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4 leading-relaxed text-right mobile-safe-text">
                     {item.short_description}
                   </p>
                 )}
 
                 {item.description && (
-                  <p className="text-base sm:text-lg text-gray-700 mb-6 sm:mb-8 leading-relaxed text-right">
+                  <p className="text-base sm:text-lg text-gray-700 mb-6 sm:mb-8 leading-relaxed text-right mobile-safe-text">
                     {item.description}
                   </p>
                 )}
@@ -815,15 +825,16 @@ export default function ProductDetails() {
                     onCourseAccess={handleCourseAccess}
                     onWorkshopAccess={handleWorkshopAccess}
                     onLessonPlanAccess={handleLessonPlanAccess}
+                    onBundleAccess={() => setBundlePreviewModalOpen(true)}
                   />
                 </div>
               </div>
             </div>
           ) : (
-            <div className="p-6 sm:p-8 md:p-10">
+            <div className="mobile-padding mobile-safe-container">
               {/* Header without image */}
-              <div className="text-center">
-                <div className="flex flex-wrap items-center gap-2 mb-4 sm:mb-6 justify-center">
+              <div className="text-center mobile-safe-container">
+                <div className="mobile-safe-flex flex-wrap items-center mobile-gap mb-4 sm:mb-6 justify-center">
                   {isBundle(item) ? (
                     <KitBadge
                       product={item}
@@ -833,7 +844,7 @@ export default function ProductDetails() {
                     />
                   ) : (
                     <Badge className="bg-blue-600 text-white px-3 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base font-bold rounded-full">
-                      <div className="flex items-center gap-2">
+                      <div className="mobile-safe-flex items-center mobile-gap">
                         {getProductIcon(item.product_type)}
                         <span className="hidden sm:inline">{getProductTypeLabel(item.product_type)}</span>
                       </div>
@@ -853,7 +864,7 @@ export default function ProductDetails() {
                   />
                 </div>
 
-                <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 sm:mb-6 leading-tight">
+                <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 sm:mb-6 leading-tight mobile-safe-text">
                   {item.title}
                 </h1>
 
@@ -883,12 +894,12 @@ export default function ProductDetails() {
                 )}
 
                 {item.short_description && (
-                  <p className="text-lg sm:text-xl md:text-2xl font-semibold text-gray-800 leading-relaxed mb-4 sm:mb-6 max-w-3xl mx-auto">
+                  <p className="text-lg sm:text-xl md:text-2xl font-semibold text-gray-800 leading-relaxed mb-4 sm:mb-6 max-w-3xl mx-auto mobile-safe-text">
                     {item.short_description}
                   </p>
                 )}
                 {item.description && (
-                  <p className="text-base sm:text-lg md:text-xl text-gray-700 leading-relaxed mb-6 sm:mb-8 max-w-3xl mx-auto">
+                  <p className="text-base sm:text-lg md:text-xl text-gray-700 leading-relaxed mb-6 sm:mb-8 max-w-3xl mx-auto mobile-safe-text">
                     {item.description}
                   </p>
                 )}
@@ -907,6 +918,7 @@ export default function ProductDetails() {
                     onCourseAccess={handleCourseAccess}
                     onWorkshopAccess={handleWorkshopAccess}
                     onLessonPlanAccess={handleLessonPlanAccess}
+                    onBundleAccess={() => setBundlePreviewModalOpen(true)}
                   />
                 </div>
               </div>
@@ -983,6 +995,7 @@ export default function ProductDetails() {
                     onCourseAccess={handleCourseAccess}
                     onWorkshopAccess={handleWorkshopAccess}
                     onLessonPlanAccess={handleLessonPlanAccess}
+                    onBundleAccess={() => setBundlePreviewModalOpen(true)}
                   />
                 </div>
               )}
@@ -991,9 +1004,9 @@ export default function ProductDetails() {
         )}
 
         {/* Main Content Grid */}
-        <div className="flex flex-col lg:grid lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 min-w-0 overflow-hidden w-full max-w-full">
+        <div className="mobile-safe-flex flex-col lg:grid lg:grid-cols-3 mobile-gap">
           {/* Main Content */}
-          <div className="lg:col-span-2 space-y-4 sm:space-y-6 lg:space-y-8 min-w-0 overflow-hidden w-full">
+          <div className="lg:col-span-2 space-y-4 sm:space-y-6 lg:space-y-8 mobile-safe-container">
 
             {/* General Video Section - only show if not a recorded workshop video handled above */}
             {item.video_file_url && !(item.product_type === 'workshop' && item.workshop_type === 'recorded') && (
@@ -1577,7 +1590,7 @@ export default function ProductDetails() {
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-4 sm:space-y-6 min-w-0 overflow-hidden w-full">
+          <div className="space-y-4 sm:space-y-6 mobile-safe-container">
             {/* Product Info - Only show if there's content to display */}
             {(() => {
               const hasTargetAudience = item.target_audience;

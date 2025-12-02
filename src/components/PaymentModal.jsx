@@ -259,10 +259,10 @@ export default function PaymentModal({ product, user, settings, isTestMode = (co
 
   if (showIframe && paymentUrl) {
     return (
-      <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
-        <div className="bg-white rounded-lg w-full max-w-4xl h-[90vh] flex flex-col">
-          <div className="flex items-center justify-between p-4 border-b">
-            <h2 className="text-xl font-semibold">תשלום מאובטח</h2>
+      <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-2 sm:p-4 z-50 mobile-safe-container">
+        <div className="bg-white rounded-lg w-full max-w-4xl h-[95vh] sm:h-[90vh] flex flex-col mobile-safe-card">
+          <div className="mobile-safe-flex items-center justify-between p-3 sm:p-4 border-b flex-shrink-0">
+            <h2 className="text-base sm:text-xl font-semibold mobile-truncate flex-1 min-w-0">תשלום מאובטח</h2>
             <Button
               variant="ghost"
               size="icon"
@@ -290,11 +290,12 @@ export default function PaymentModal({ product, user, settings, isTestMode = (co
                 resetPaymentFlags();
                 onClose();
               }}
+              className="min-h-[44px] min-w-[44px] flex-shrink-0"
             >
-              <X className="w-4 h-4" />
+              <X className="w-4 h-4 sm:w-5 sm:h-5" />
             </Button>
           </div>
-          <div className="flex-1">
+          <div className="flex-1 min-h-0 overflow-hidden">
             <iframe
               src={paymentUrl}
               className="w-full h-full border-0"
@@ -307,51 +308,52 @@ export default function PaymentModal({ product, user, settings, isTestMode = (co
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" dir="rtl">
-      <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <CreditCard className="w-5 h-5" />
-              אישור רכישה
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-3 sm:p-4 z-50 mobile-safe-container" dir="rtl">
+      <Card className="w-full max-w-md max-h-[92vh] sm:max-h-[90vh] overflow-y-auto mobile-safe-card">
+        <CardHeader className="mobile-padding sticky top-0 bg-white z-10 border-b">
+          <div className="mobile-safe-flex items-center justify-between">
+            <CardTitle className="mobile-safe-flex items-center gap-2 flex-1 min-w-0">
+              <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+              <span className="mobile-truncate text-base sm:text-lg">אישור רכישה</span>
             </CardTitle>
             <Button
               variant="ghost"
               size="icon"
               onClick={onClose}
               disabled={isCreatingPayment}
+              className="min-h-[44px] min-w-[44px] flex-shrink-0"
             >
-              <X className="w-4 h-4" />
+              <X className="w-4 h-4 sm:w-5 sm:h-5" />
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-3 sm:space-y-4 mobile-padding">
           {error && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
+            <Alert variant="destructive" className="mobile-safe-container">
+              <AlertCircle className="h-4 w-4 flex-shrink-0" />
+              <AlertDescription className="mobile-safe-text text-sm">{error}</AlertDescription>
             </Alert>
           )}
 
           {/* Product Summary */}
-          <div className="p-4 bg-gray-50 rounded-lg">
-            <h3 className="font-semibold mb-2">{product.title}</h3>
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <span>מחיר מקורי:</span>
-                <span className={discountAmount > 0 ? 'line-through text-gray-500' : 'text-xl font-bold text-blue-600'}>
+          <div className="p-3 sm:p-4 bg-gray-50 rounded-lg mobile-safe-container">
+            <h3 className="font-semibold mb-2 text-sm sm:text-base mobile-truncate">{product.title}</h3>
+            <div className="space-y-2 mobile-safe-container">
+              <div className="mobile-safe-flex justify-between items-center text-sm sm:text-base">
+                <span className="mobile-safe-text">מחיר מקורי:</span>
+                <span className={discountAmount > 0 ? 'line-through text-gray-500 flex-shrink-0' : 'text-lg sm:text-xl font-bold text-blue-600 flex-shrink-0'}>
                   ₪{product.price}
                 </span>
               </div>
               {discountAmount > 0 && (
                 <>
-                  <div className="flex justify-between items-center text-green-600">
-                    <span>הנחה:</span>
-                    <span>-₪{discountAmount}</span>
+                  <div className="mobile-safe-flex justify-between items-center text-green-600 text-sm sm:text-base">
+                    <span className="mobile-safe-text">הנחה:</span>
+                    <span className="flex-shrink-0">-₪{discountAmount}</span>
                   </div>
-                  <div className="flex justify-between items-center border-t pt-2">
-                    <span className="font-semibold">מחיר סופי:</span>
-                    <span className="text-xl font-bold text-blue-600">₪{finalPrice}</span>
+                  <div className="mobile-safe-flex justify-between items-center border-t pt-2">
+                    <span className="font-semibold mobile-safe-text text-sm sm:text-base">מחיר סופי:</span>
+                    <span className="text-lg sm:text-xl font-bold text-blue-600 flex-shrink-0">₪{finalPrice}</span>
                   </div>
                 </>
               )}
@@ -360,59 +362,59 @@ export default function PaymentModal({ product, user, settings, isTestMode = (co
 
           {/* Test Mode Warning */}
           {isTestMode && (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
+            <Alert className="mobile-safe-container">
+              <AlertCircle className="h-4 w-4 flex-shrink-0" />
+              <AlertDescription className="mobile-safe-text text-sm">
                 מצב בדיקה - לא יבוצע חיוב אמיתי
               </AlertDescription>
             </Alert>
           )}
 
           {/* User Information Display */}
-          <div className="space-y-3">
-            <h4 className="font-semibold">פרטי הרוכש:</h4>
-            
-            <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
-              <User className="w-5 h-5 text-blue-600" />
-              <div>
-                <div className="font-medium">{user.display_name || user.full_name}</div>
-                <div className="text-sm text-gray-600">שם מלא</div>
+          <div className="space-y-2 sm:space-y-3 mobile-safe-container">
+            <h4 className="font-semibold text-sm sm:text-base mobile-safe-text">פרטי הרוכש:</h4>
+
+            <div className="mobile-safe-flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-blue-50 rounded-lg">
+              <User className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
+              <div className="flex-1 min-w-0 mobile-safe-text">
+                <div className="font-medium text-sm sm:text-base mobile-truncate">{user.display_name || user.full_name}</div>
+                <div className="text-xs sm:text-sm text-gray-600">שם מלא</div>
               </div>
             </div>
 
-            <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
-              <Mail className="w-5 h-5 text-blue-600" />
-              <div>
-                <div className="font-medium">{user.email}</div>
-                <div className="text-sm text-gray-600">אימייל</div>
+            <div className="mobile-safe-flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-blue-50 rounded-lg">
+              <Mail className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
+              <div className="flex-1 min-w-0 mobile-safe-text">
+                <div className="font-medium text-sm sm:text-base mobile-truncate">{user.email}</div>
+                <div className="text-xs sm:text-sm text-gray-600">אימייל</div>
               </div>
             </div>
 
             {user.phone && (
-              <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
-                <Phone className="w-5 h-5 text-blue-600" />
-                <div>
-                  <div className="font-medium">{user.phone}</div>
-                  <div className="text-sm text-gray-600">טלפון</div>
+              <div className="mobile-safe-flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-blue-50 rounded-lg">
+                <Phone className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
+                <div className="flex-1 min-w-0 mobile-safe-text">
+                  <div className="font-medium text-sm sm:text-base mobile-truncate">{user.phone}</div>
+                  <div className="text-xs sm:text-sm text-gray-600">טלפון</div>
                 </div>
               </div>
             )}
           </div>
 
           {/* Coupon Section */}
-          <div className="space-y-3">
-            <Label className="flex items-center gap-2">
-              <Tag className="w-4 h-4" />
-              קופון הנחה (אופציונלי)
+          <div className="space-y-2 sm:space-y-3 mobile-safe-container">
+            <Label className="mobile-safe-flex items-center gap-2 text-sm sm:text-base">
+              <Tag className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+              <span className="mobile-safe-text">קופון הנחה (אופציונלי)</span>
             </Label>
             
             {appliedCoupon ? (
-              <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <span className="font-medium text-green-800">{appliedCoupon.name}</span>
-                    <div className="text-sm text-green-600">
-                      {appliedCoupon.discount_type === 'percentage' 
+              <div className="p-2 sm:p-3 bg-green-50 border border-green-200 rounded-lg mobile-safe-container">
+                <div className="mobile-safe-flex justify-between items-center gap-2">
+                  <div className="flex-1 min-w-0 mobile-safe-text">
+                    <span className="font-medium text-green-800 text-sm sm:text-base mobile-truncate block">{appliedCoupon.name}</span>
+                    <div className="text-xs sm:text-sm text-green-600">
+                      {appliedCoupon.discount_type === 'percentage'
                         ? `${appliedCoupon.discount_value}% הנחה`
                         : `₪${appliedCoupon.discount_value} הנחה`
                       }
@@ -423,23 +425,26 @@ export default function PaymentModal({ product, user, settings, isTestMode = (co
                     size="sm"
                     onClick={handleRemoveCoupon}
                     disabled={isCreatingPayment}
+                    className="min-h-[44px] flex-shrink-0 text-xs sm:text-sm"
                   >
                     הסר
                   </Button>
                 </div>
               </div>
             ) : (
-              <div className="flex gap-2">
+              <div className="mobile-safe-flex gap-2">
                 <Input
                   value={couponCode}
                   onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                   placeholder="הכנס קוד קופון"
                   disabled={isApplyingCoupon || isCreatingPayment}
+                  className="flex-1 min-w-0 min-h-[44px] text-sm sm:text-base"
                 />
                 <Button
                   onClick={handleApplyCoupon}
                   disabled={!couponCode.trim() || isApplyingCoupon || isCreatingPayment}
                   variant="outline"
+                  className="min-h-[44px] min-w-[44px] flex-shrink-0"
                 >
                   {isApplyingCoupon ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -449,31 +454,31 @@ export default function PaymentModal({ product, user, settings, isTestMode = (co
                 </Button>
               </div>
             )}
-            
+
             {couponError && (
-              <div className="text-sm text-red-600">{couponError}</div>
+              <div className="text-xs sm:text-sm text-red-600 mobile-safe-text">{couponError}</div>
             )}
           </div>
 
           {/* Payment Button */}
-          <div className="pt-4">
+          <div className="pt-3 sm:pt-4 mobile-safe-container">
             <Button
               onClick={handlePayment}
               disabled={isCreatingPayment}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-lg py-3"
+              className="w-full min-h-[52px] bg-blue-600 hover:bg-blue-700 text-base sm:text-lg py-3 mobile-safe-flex items-center justify-center"
             >
               {isCreatingPayment ? (
                 <>
-                  <Loader2 className="w-4 h-4 ml-2 animate-spin" />
-                  פותח דף תשלום...
+                  <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 ml-2 animate-spin flex-shrink-0" />
+                  <span className="mobile-safe-text">פותח דף תשלום...</span>
                 </>
               ) : (
-                `תשלום מאובטח ₪${finalPrice}`
+                <span className="mobile-safe-text">{`תשלום מאובטח ₪${finalPrice}`}</span>
               )}
             </Button>
           </div>
 
-          <div className="text-xs text-gray-500 text-center">
+          <div className="text-xs text-gray-500 text-center mobile-safe-text">
             תשלום מאובטח באמצעות PayPlus
           </div>
         </CardContent>

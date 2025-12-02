@@ -1,7 +1,9 @@
 // Central business logic hook for product access and purchase states
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { isBundle, getBundleComposition } from '@/lib/bundleUtils';
 import { getProductTypeName as getProductTypeNameFromConfig } from '@/config/productTypes';
+import { ludlog, luderror } from '@/lib/ludlog';
+import { apiRequest } from '@/services/apiClient';
 
 /**
  * Centralized function to find user purchase for a product
@@ -47,12 +49,176 @@ const findUserPurchaseForProduct = (product, userPurchases = []) => {
 };
 
 /**
+ * Check comprehensive access via backend AccessControlService
+ * This checks Purchase records, SubscriptionPurchase records, and creator access
+ * @param {string} productType - Product type (file, game, workshop, etc.)
+ * @param {string} entityId - Entity ID
+ * @returns {Promise<Object>} Access check result with hasAccess, accessType, reason
+ */
+const checkBackendAccess = async (productType, entityId) => {
+  try {
+      productType,
+      entityId
+    });
+
+    const accessResult = await apiRequest(
+      `/access/check/${productType}/${entityId}`,
+      { suppressUserErrors: true }
+    );
+
+      hasAccess: accessResult.hasAccess,
+      accessType: accessResult.accessType,
+      reason: accessResult.reason
+    });
+
+    return accessResult;
+  } catch (error) {
+
+    // If 401/403, user doesn't have access - return no access
+    if (error.statusCode === 401 || error.statusCode === 403) {
+      return { hasAccess: false, accessType: 'none', reason: 'authentication_required' };
+    }
+
+    // For other errors, return error state
+    return { hasAccess: false, accessType: 'error', reason: error.message };
+  }
+};
+
+/**
+ * Check if user has subscription benefits for a product (supports both single products and bundles)
+ * @param {Object} product - Product object
+ * @param {Object} allowanceData - User's subscription allowances data
+ * @returns {boolean} Whether user can claim this product via subscription
+ */
+export const checkSubscriptionEligibility = (product, allowanceData) => {
+    productId: product?.id,
+    productType: product?.product_type,
+    hasProduct: !!product,
+    hasAllowanceData: !!allowanceData,
+    hasAllowances: !!allowanceData?.allowances,
+    allowanceData: allowanceData,
+    allowanceStructure: allowanceData ? Object.keys(allowanceData) : null
+  });
+
+  if (!product || !allowanceData?.allowances) {
+    ludlog.ui('checkSubscriptionEligibility: Early return false', {
+      reason: !product ? 'no product' : 'no allowanceData.allowances',
+      hasProduct: !!product,
+      hasAllowanceData: !!allowanceData,
+      hasAllowances: !!allowanceData?.allowances
+    });
+    return false;
+  }
+
+  // Handle bundle products - check if user has enough allowances for ALL products in bundle
+  if (isBundle(product)) {
+    const bundleItems = product.type_attributes?.bundle_items;
+    if (!bundleItems || !Array.isArray(bundleItems)) {
+      return false;
+    }
+
+    // Group bundle items by product type to count required allowances
+    const requiredAllowances = {};
+    bundleItems.forEach(item => {
+      const productType = item.product_type;
+      requiredAllowances[productType] = (requiredAllowances[productType] || 0) + 1;
+    });
+
+    // Check if user has enough allowances for each product type in the bundle
+    for (const [productType, requiredCount] of Object.entries(requiredAllowances)) {
+      const allowance = allowanceData.allowances[productType];
+
+      if (!allowance) {
+        return false; // No subscription benefit for this product type
+      }
+
+      if (allowance.unlimited) {
+        continue; // Unlimited allowance for this type, OK
+      }
+
+      if (!allowance.remaining || allowance.remaining < requiredCount) {
+        return false; // Not enough remaining allowances for this product type
+      }
+    }
+
+    return true; // Has enough allowances for all product types in bundle
+  }
+
+  // Handle single products
+  const productType = product.product_type;
+  const allowance = allowanceData.allowances[productType];
+
+    productType: productType,
+    availableAllowanceTypes: Object.keys(allowanceData.allowances),
+    allowance: allowance,
+    hasAllowance: !!allowance,
+    isUnlimited: allowance?.unlimited,
+    remaining: allowance?.remaining
+  });
+
+  if (!allowance) {
+    ludlog.ui('checkSubscriptionEligibility: No allowance for product type', {
+      productType: productType,
+      availableTypes: Object.keys(allowanceData.allowances)
+    });
+    return false; // No subscription benefit for this product type
+  }
+
+  if (allowance.unlimited) {
+    ludlog.ui('checkSubscriptionEligibility: Unlimited allowance - returning true');
+    return true; // Unlimited allowance
+  }
+
+  const hasRemaining = allowance.remaining > 0;
+  ludlog.ui('checkSubscriptionEligibility: Final check', {
+    remaining: allowance.remaining,
+    hasRemaining: hasRemaining
+  });
+
+  return hasRemaining; // Has remaining allowances
+};
+
+/**
  * Hook to determine product access state and available actions
+ * Enhanced to check backend AccessControlService for subscription claims
  * @param {Object} product - Product object with embedded purchase data OR product object
  * @param {Array} userPurchases - Array of user purchases (optional, for ProductGrid style)
+ * @param {boolean} checkBackend - Whether to check backend for comprehensive access (default: true)
  * @returns {Object} Product access state and available actions
  */
-export const useProductAccess = (product, userPurchases = []) => {
+export const useProductAccess = (product, userPurchases = [], checkBackend = true) => {
+  const [backendAccessState, setBackendAccessState] = useState(null);
+  const [isCheckingBackend, setIsCheckingBackend] = useState(false);
+
+  // Check backend access when product changes (for subscription claims)
+  useEffect(() => {
+    const performBackendCheck = async () => {
+      // Skip if no product, no entity_id, or backend check disabled
+      if (!product || !product.entity_id || !checkBackend) {
+        setBackendAccessState(null);
+        return;
+      }
+
+      const productType = product.product_type || 'file';
+
+        productId: product.id,
+        productType,
+        entityId: product.entity_id
+      });
+
+      setIsCheckingBackend(true);
+      const accessResult = await checkBackendAccess(productType, product.entity_id);
+      setBackendAccessState(accessResult);
+      setIsCheckingBackend(false);
+
+        hasAccess: accessResult.hasAccess,
+        accessType: accessResult.accessType
+      });
+    };
+
+    performBackendCheck();
+  }, [product?.id, product?.entity_id, checkBackend]);
+
   return useMemo(() => {
     if (!product) {
       return {
@@ -64,7 +230,9 @@ export const useProductAccess = (product, userPurchases = []) => {
         accessAction: null,
         purchaseAction: null,
         productType: null,
-        purchase: null
+        purchase: null,
+        accessType: null,
+        isCheckingAccess: false
       };
     }
 
@@ -74,11 +242,16 @@ export const useProductAccess = (product, userPurchases = []) => {
     const productType = product.product_type || 'file';
     const isFree = !product.price || product.price === 0 || product.price === "0";
 
-    // Determine access state (handle both 'paid' and 'completed' like PurchaseHistory)
+    // Determine access state - ENHANCED with backend check
     const isSuccessfullyPaid = purchase && (purchase.payment_status === 'paid' || purchase.payment_status === 'completed');
-    const hasAccess = isSuccessfullyPaid &&
+    const hasLocalAccess = isSuccessfullyPaid &&
                      (!purchase.access_expires_at || // null = lifetime access
                       (purchase.access_expires_at && new Date(purchase.access_expires_at) > new Date()));
+
+    // CRITICAL: Check backend access (includes subscription claims)
+    const hasBackendAccess = backendAccessState?.hasAccess || false;
+    const hasAccess = hasLocalAccess || hasBackendAccess;
+    const accessType = backendAccessState?.accessType || (hasLocalAccess ? 'purchase' : 'none');
 
     // Determine cart/purchase state
     const isInCart = purchase && purchase.payment_status === 'cart';
@@ -89,6 +262,12 @@ export const useProductAccess = (product, userPurchases = []) => {
     const canAddToCart = !isFree && !hasPurchaseRecord; // No add to cart if ANY purchase exists
     const canPurchase = !hasAccess && !isPurchased;
 
+      hasLocalAccess,
+      hasBackendAccess,
+      hasAccess,
+      accessType,
+      isCheckingBackend
+    });
 
     // Determine access action based on product type
     let accessAction = null;
@@ -136,9 +315,11 @@ export const useProductAccess = (product, userPurchases = []) => {
       accessAction,
       purchaseAction,
       productType,
-      purchase
+      purchase,
+      accessType, // NEW: Type of access (creator, purchase, subscription_claim)
+      isCheckingAccess: isCheckingBackend // NEW: Loading state for backend check
     };
-  }, [product, userPurchases]);
+  }, [product, userPurchases, backendAccessState, isCheckingBackend]);
 };
 
 /**
@@ -170,17 +351,50 @@ export const getAccessActionText = (action, productType) => {
 
 /**
  * Get localized text for purchase actions
- * @param {string} action - Action type (free, buy, checkout)
+ * @param {string} action - Action type (free, buy, checkout, claim)
  * @param {string} productType - Product type for context
  * @param {Object} product - Full product object (needed for bundle composition)
+ * @param {boolean} hasSubscriptionBenefits - Whether user can claim via subscription
  * @returns {string} Localized text
  */
-export const getPurchaseActionText = (action, productType, product = null) => {
+export const getPurchaseActionText = (action, productType, product = null, hasSubscriptionBenefits = false) => {
   switch (action) {
     case 'free':
       return 'הוספה לספרייה'; // Universal text for all free products
+    case 'claim':
+      // Subscription claim text
+      if (product && isBundle(product)) {
+        const bundleComposition = getBundleComposition(product);
+        const compositionTypes = Object.keys(bundleComposition);
+
+        if (compositionTypes.length === 1) {
+          const compositionType = compositionTypes[0];
+          const pluralName = getProductTypeNameFromConfig(compositionType, 'plural');
+          return `קבלת קיט ${pluralName}`;
+        } else {
+          return 'קבלת קיט';
+        }
+      }
+      return `קבלת ${getProductTypeName(productType, product)}`;
     case 'buy':
-      // Check if it's a bundle product and generate appropriate text
+      // Check if user has subscription benefits for this product
+      if (hasSubscriptionBenefits) {
+        if (product && isBundle(product)) {
+          const bundleComposition = getBundleComposition(product);
+          const compositionTypes = Object.keys(bundleComposition);
+
+          if (compositionTypes.length === 1) {
+            const compositionType = compositionTypes[0];
+            const pluralName = getProductTypeNameFromConfig(compositionType, 'plural');
+            return `קבלת קיט ${pluralName}`;
+          } else {
+            return 'קבלת קיט';
+          }
+        }
+        return `קבלת ${getProductTypeName(productType, product)}`;
+      }
+
+      // Regular purchase text
       if (product && isBundle(product)) {
         const bundleComposition = getBundleComposition(product);
         const compositionTypes = Object.keys(bundleComposition);

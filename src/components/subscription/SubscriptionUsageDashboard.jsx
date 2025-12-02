@@ -7,6 +7,7 @@ import { useToast } from "@/components/ui/use-toast";
 import LudoraLoadingSpinner from "@/components/ui/LudoraLoadingSpinner";
 import useSubscriptionState from "@/hooks/useSubscriptionState";
 import { ludlog, luderror } from '@/lib/ludlog';
+import { apiRequest } from '@/services/apiClient';
 import {
   Crown,
   TrendingUp,
@@ -61,19 +62,7 @@ export default function SubscriptionUsageDashboard({
       });
 
       // Call the subscription benefits API to get current allowances
-      const response = await fetch('/api/subscriptions/benefits/my-allowances', {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to load allowance status: ${response.status} ${response.statusText}`);
-      }
-
-      const allowanceData = await response.json();
+      const allowanceData = await apiRequest('/subscriptions/benefits/my-allowances');
       setAllowanceStatus(allowanceData);
       setLastUpdated(new Date());
 
@@ -130,7 +119,7 @@ export default function SubscriptionUsageDashboard({
       return { color: 'text-green-600', icon: Infinity, status: 'unlimited' };
     }
 
-    const usagePercent = ((allowance.monthly_limit - allowance.remaining) / allowance.monthly_limit) * 100;
+    const usagePercent = ((allowance.allowed - allowance.remaining) / allowance.allowed) * 100;
 
     if (usagePercent >= 100) {
       return { color: 'text-red-600', icon: AlertTriangle, status: 'exhausted' };
@@ -155,8 +144,8 @@ export default function SubscriptionUsageDashboard({
       if (allowance.unlimited) {
         unlimited++;
       } else {
-        used += (allowance.monthly_limit - allowance.remaining);
-        total += allowance.monthly_limit;
+        used += (allowance.allowed - allowance.remaining);
+        total += allowance.allowed;
       }
     });
 
@@ -299,7 +288,7 @@ export default function SubscriptionUsageDashboard({
             {Object.entries(allowanceStatus.allowances).map(([productType, allowance]) => {
               const { color, icon: StatusIcon, status } = getUsageStatus(allowance);
               const usagePercent = allowance.unlimited ? 100 :
-                ((allowance.monthly_limit - allowance.remaining) / allowance.monthly_limit) * 100;
+                ((allowance.allowed - allowance.remaining) / allowance.allowed) * 100;
 
               return (
                 <div
@@ -333,7 +322,7 @@ export default function SubscriptionUsageDashboard({
                         ) : (
                           <>
                             <span className={color}>
-                              {allowance.remaining} מתוך {allowance.monthly_limit} נותרו
+                              {allowance.remaining} מתוך {allowance.allowed} נותרו
                             </span>
                             <div className="flex-1 max-w-24">
                               <div className="bg-gray-200 rounded-full h-2">

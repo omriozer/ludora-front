@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useLocation, useNavigate, Link } from 'react-router-dom';
+import { apiRequestAnonymous } from '@/services/apiClient';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { GamepadIcon, Users, Home, Crown, AlertCircle, CheckCircle, XCircle, PlayIcon } from 'lucide-react';
@@ -29,19 +30,7 @@ const GamePlay = () => {
     const fetchSessionData = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/game-sessions/${code}`);
-
-        if (!response.ok) {
-          if (response.status === 404) {
-            throw new Error('חדר משחק לא נמצא');
-          }
-          if (response.status === 403) {
-            throw new Error('אין לך גישה לחדר משחק הזה');
-          }
-          throw new Error('שגיאה בטעינת נתוני החדר');
-        }
-
-        const data = await response.json();
+        const data = await apiRequestAnonymous(`/game-sessions/${code}`);
         setSessionData(data.session);
         setLobbyData(data.lobby);
         setGameStarted(!!data.session.started_at);
@@ -64,13 +53,10 @@ const GamePlay = () => {
       if (!sessionData?.id) return;
 
       try {
-        const response = await fetch(`/api/game-sessions/${sessionData.id}`);
-        if (response.ok) {
-          const data = await response.json();
-          setSessionData(data.session);
-          setGameStarted(!!data.session.started_at);
-          setGameFinished(!!data.session.finished_at);
-        }
+        const data = await apiRequestAnonymous(`/game-sessions/${sessionData.id}`);
+        setSessionData(data.session);
+        setGameStarted(!!data.session.started_at);
+        setGameFinished(!!data.session.finished_at);
       } catch (err) {
         console.error('Failed to refresh session data:', err);
       }
@@ -89,7 +75,7 @@ const GamePlay = () => {
     }
 
     try {
-      await fetch(`/api/game-sessions/${sessionData.id}/participants/${participantId}`, {
+      await apiRequestAnonymous(`/game-sessions/${sessionData.id}/participants/${participantId}`, {
         method: 'DELETE'
       });
     } catch (err) {

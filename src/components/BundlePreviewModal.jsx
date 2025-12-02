@@ -22,15 +22,6 @@ export default function BundlePreviewModal({ bundle, isOpen, onClose, onProductP
   const [error, setError] = useState(null);
   const { currentUser } = useUser();
 
-  // Debug logging
-  console.log('BundlePreviewModal rendered', {
-    isOpen,
-    bundle: bundle?.title,
-    bundleType: bundle?.product_type,
-    isBundle: bundle?.type_attributes?.is_bundle,
-    bundleItems: bundle?.type_attributes?.bundle_items
-  });
-
   // Load bundle products data
   useEffect(() => {
     if (!isOpen || !bundle) return;
@@ -41,16 +32,16 @@ export default function BundlePreviewModal({ bundle, isOpen, onClose, onProductP
         setError(null);
 
         const bundleItems = getBundleItems(bundle);
-        console.log('Bundle items found:', bundleItems);
+        ludlog.ui('Bundle items found:', { count: bundleItems?.length });
 
         if (!bundleItems || bundleItems.length === 0) {
-          console.log('No bundle items found');
+          ludlog.ui('No bundle items found');
           setError('לא נמצאו מוצרים בקיט');
           return;
         }
 
         // Fetch details for each product in the bundle
-        console.log('Fetching details for', bundleItems.length, 'products');
+        ludlog.ui('Fetching bundle product details:', { count: bundleItems.length });
         const productPromises = bundleItems.map(async (item) => {
           try {
             const productDetails = await apiRequest(`/entities/product/${item.product_id}/details`);
@@ -64,12 +55,10 @@ export default function BundlePreviewModal({ bundle, isOpen, onClose, onProductP
         const products = await Promise.all(productPromises);
         const validProducts = products.filter(product => product !== null);
 
-        console.log('Loaded products:', validProducts.map(p => ({
-          title: p?.title,
-          type: p?.product_type,
-          fileType: p?.file_type,
-          allowPreview: p?.allow_preview
-        })));
+        ludlog.ui('Loaded bundle products:', {
+          total: validProducts.length,
+          types: validProducts.map(p => p?.product_type)
+        });
 
         setBundleProducts(validProducts);
 
@@ -174,17 +163,17 @@ export default function BundlePreviewModal({ bundle, isOpen, onClose, onProductP
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
-        <DialogHeader className="border-b pb-4">
-          <DialogTitle className="flex items-center gap-3 text-xl">
-            <Package className="w-6 h-6 text-blue-600" />
-            תצוגה מקדימה - {bundle.title}
+      <DialogContent className="w-[95vw] max-w-4xl h-[90vh] max-h-[90vh] sm:h-auto sm:max-h-[85vh] overflow-hidden mobile-safe-container flex flex-col">
+        <DialogHeader className="border-b pb-3 sm:pb-4 flex-shrink-0">
+          <DialogTitle className="flex items-center gap-2 sm:gap-3 text-base sm:text-xl mobile-safe-flex">
+            <Package className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 flex-shrink-0" />
+            <span className="mobile-truncate flex-1 min-w-0">תצוגה מקדימה - {bundle.title}</span>
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto min-h-0 mobile-safe-container">
           {loading ? (
-            <div className="flex items-center justify-center py-8">
+            <div className="flex items-center justify-center py-8 sm:py-12">
               <LudoraLoadingSpinner
                 message="טוען מוצרי קיט..."
                 status="loading"
@@ -193,43 +182,44 @@ export default function BundlePreviewModal({ bundle, isOpen, onClose, onProductP
               />
             </div>
           ) : error ? (
-            <div className="flex items-center justify-center py-8 text-center">
-              <div>
-                <div className="text-red-600 text-lg font-semibold mb-2">{error}</div>
-                <Button onClick={onClose} variant="outline">
+            <div className="flex items-center justify-center py-8 sm:py-12 text-center px-4">
+              <div className="mobile-safe-container">
+                <div className="text-red-600 text-base sm:text-lg font-semibold mb-3 sm:mb-4 mobile-safe-text">{error}</div>
+                <Button onClick={onClose} variant="outline" className="min-h-[44px] px-6">
                   סגור
                 </Button>
               </div>
             </div>
           ) : (
-            <div className="space-y-4 py-4">
-              <div className="text-sm text-gray-600 mb-4">
+            <div className="space-y-3 sm:space-y-4 py-3 sm:py-4 px-2 sm:px-0">
+              <div className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4 px-2 sm:px-0 mobile-safe-text">
                 הקיט כולל {bundleProducts.length} מוצרים. לחץ על "תצוגה מקדימה" כדי לראות תוכן מקדים של המוצרים הזמינים.
               </div>
 
-              <div className="grid gap-4">
+              <div className="grid gap-3 sm:gap-4 mobile-safe-grid">
                 {bundleProducts.map((product, index) => (
-                  <Card key={product.id || index} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <Card key={product.id || index} className="hover:shadow-md transition-shadow mobile-safe-card">
+                    <CardContent className="p-3 sm:p-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mobile-safe-container">
+                        {/* Mobile: Stack vertically, Desktop: Side by side */}
+                        <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0 mobile-safe-flex">
                           {/* Product Icon and Type */}
                           <div className="flex items-center gap-2 flex-shrink-0">
-                            <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
+                            <div className="w-9 h-9 sm:w-10 sm:h-10 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
                               {getProductIcon(product.product_type)}
                             </div>
-                            <Badge variant="outline" className="text-xs">
+                            <Badge variant="outline" className="text-xs whitespace-nowrap flex-shrink-0">
                               {getProductTypeName(product.product_type, 'singular')}
                             </Badge>
                           </div>
 
                           {/* Product Info */}
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-sm text-gray-900 truncate">
+                          <div className="flex-1 min-w-0 mobile-safe-text">
+                            <h3 className="font-semibold text-sm sm:text-base text-gray-900 mobile-truncate">
                               {product.title}
                             </h3>
                             {product.short_description && (
-                              <p className="text-xs text-gray-600 truncate mt-1">
+                              <p className="text-xs text-gray-600 mobile-line-clamp-2 mt-0.5 sm:mt-1">
                                 {product.short_description}
                               </p>
                             )}
@@ -237,16 +227,16 @@ export default function BundlePreviewModal({ bundle, isOpen, onClose, onProductP
                         </div>
 
                         {/* Action Buttons */}
-                        <div className="flex items-center gap-2 flex-shrink-0">
+                        <div className="flex items-center gap-2 flex-shrink-0 justify-end sm:justify-start mobile-safe-flex">
                           {/* Preview Button - only show if preview is available */}
                           {canPreview(product) && (
                             <Button
                               onClick={() => handleProductPreview(product)}
                               variant="outline"
                               size="sm"
-                              className="rounded-full px-3 sm:px-4 md:px-5 py-2.5 sm:py-3 md:py-3.5 flex-shrink-0 text-sm sm:text-base md:text-base border-blue-300 text-blue-700 hover:bg-blue-50 hover:border-blue-400 border-2 font-medium transition-all duration-200 hover:scale-[1.02] shadow-sm hover:shadow-md"
+                              className="min-h-[44px] rounded-full px-4 sm:px-5 flex-shrink-0 text-sm border-blue-300 text-blue-700 hover:bg-blue-50 hover:border-blue-400 border-2 font-medium transition-all duration-200 hover:scale-[1.02] shadow-sm hover:shadow-md"
                             >
-                              <Eye className="w-4 h-4 sm:w-5 sm:h-5 md:w-5 md:h-5 ml-1.5 sm:ml-2" />
+                              <Eye className="w-4 h-4 sm:w-5 sm:h-5 ml-1.5 sm:ml-2" />
                               <span className="hidden sm:inline">תצוגה מקדימה</span>
                               <span className="sm:hidden">תצוגה</span>
                             </Button>
@@ -257,10 +247,11 @@ export default function BundlePreviewModal({ bundle, isOpen, onClose, onProductP
                             onClick={() => handleViewProduct(product)}
                             variant="ghost"
                             size="sm"
-                            className="text-gray-600 hover:text-gray-900"
+                            className="min-h-[44px] text-gray-600 hover:text-gray-900 px-3 sm:px-4"
                           >
                             <ExternalLink className="w-4 h-4 ml-1" />
                             <span className="hidden sm:inline">פרטים</span>
+                            <span className="sm:hidden text-xs">עוד</span>
                           </Button>
                         </div>
                       </div>
@@ -273,8 +264,8 @@ export default function BundlePreviewModal({ bundle, isOpen, onClose, onProductP
         </div>
 
         {/* Close Button */}
-        <div className="border-t pt-4 flex justify-end">
-          <Button onClick={onClose} variant="outline">
+        <div className="border-t pt-3 sm:pt-4 flex justify-end flex-shrink-0">
+          <Button onClick={onClose} variant="outline" className="min-h-[44px] px-6">
             <X className="w-4 h-4 ml-2" />
             סגור
           </Button>

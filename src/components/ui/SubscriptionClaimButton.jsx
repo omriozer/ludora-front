@@ -1,22 +1,24 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import SubscriptionClaimModal from "@/components/subscription/SubscriptionClaimModal";
-import useSubscriptionState from "@/hooks/useSubscriptionState";
 import { useUser } from "@/contexts/UserContext";
-import { ludlog, luderror } from '@/lib/ludlog';
+import { useAccessState } from '@/contexts/AccessStateContext';
+import { ludlog } from '@/lib/ludlog';
+import { isBundle } from '@/lib/bundleUtils';
 import {
   Crown,
   Star,
   Infinity,
   Clock,
   Zap,
-  CheckCircle
+  CheckCircle,
+  Package
 } from "lucide-react";
 
 /**
  * Subscription Claim Button - Shows claim via subscription option when eligible
- * Integrates with the subscription allowance system and shows confirmation modal
+ * Uses server-provided access information instead of client-side eligibility checking
  */
 export default function SubscriptionClaimButton({
   product,
@@ -27,157 +29,103 @@ export default function SubscriptionClaimButton({
   variant = 'default' // 'default', 'secondary', 'compact'
 }) {
   const { currentUser } = useUser();
-  const { summary, loading: subscriptionLoading } = useSubscriptionState(currentUser);
+  const { getProduct, claimProduct } = useAccessState();
 
   const [showClaimModal, setShowClaimModal] = useState(false);
-  const [isEligible, setIsEligible] = useState(false);
-  const [allowanceInfo, setAllowanceInfo] = useState(null);
-  const [loading, setLoading] = useState(false);
 
-  // Check eligibility when component mounts or dependencies change
-  useEffect(() => {
-    if (currentUser && product && summary?.currentPlan) {
-      checkEligibility();
-    } else {
-      setIsEligible(false);
-    }
-  }, [currentUser, product, summary]);
-
-  /**
-   * Check if user is eligible to claim this product via subscription
-   */
-  const checkEligibility = async () => {
-    try {
-      setLoading(true);
-
-      ludlog.ui('Checking subscription claim eligibility', {
-        userId: currentUser.id,
-        productType: product.product_type,
-        productId: product.id
-      });
-
-      // Check if user has active subscription
-      if (!summary?.currentPlan || !summary?.isActive) {
-        setIsEligible(false);
-        return;
-      }
-
-      // Get current allowance status
-      const response = await fetch('/api/subscriptions/benefits/my-allowances', {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        ludlog.ui('Failed to fetch allowances, assuming not eligible');
-        setIsEligible(false);
-        return;
-      }
-
-      const allowanceData = await response.json();
-      const productTypeAllowance = allowanceData.allowances?.[product.product_type];
-
-      if (!productTypeAllowance) {
-        setIsEligible(false);
-        return;
-      }
-
-      // Check if user can claim (unlimited or has remaining claims)
-      const canClaim = productTypeAllowance.unlimited || (productTypeAllowance.remaining > 0);
-
-      setIsEligible(canClaim);
-      setAllowanceInfo(productTypeAllowance);
-
-      ludlog.ui('Subscription eligibility check completed', {
-        eligible: canClaim,
-        allowance: productTypeAllowance
-      });
-
-    } catch (error) {
-      luderror.ui('Error checking subscription eligibility:', error);
-      setIsEligible(false);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Get product with embedded access information from AccessStateContext
+  const productWithAccess = getProduct(product.id) || product;
+  const access = productWithAccess.access || {};
 
   /**
    * Handle successful claim
    */
-  const handleClaimSuccess = (claimResult) => {
+  const handleClaimSuccess = async (claimResult) => {
     ludlog.ui('Product claimed successfully via subscription', claimResult);
 
     if (onClaimSuccess) {
       onClaimSuccess(claimResult);
     }
 
-    // Refresh eligibility status
-    checkEligibility();
+    // Close modal - the AccessStateContext will handle updating the state
+    setShowClaimModal(false);
   };
 
   /**
-   * Get button text based on allowance status
+   * Handle claim button click
+   */
+  const handleClaimClick = async () => {
+    try {
+      setShowClaimModal(true);
+    } catch (error) {
+      ludlog.ui('Error opening claim modal:', error);
+    }
+  };
+
+  /**
+   * Get button text based on server-provided access info
    */
   const getButtonText = () => {
-    if (loading || subscriptionLoading) {
-      return 'בדיקה...';
+    if (isBundle(product)) {
+      if (variant === 'compact') {
+        return 'תבע קיט';
+      }
+      return 'תבע קיט באמצעות מנוי';
     }
 
-    if (!allowanceInfo) {
-      return 'תבע עם המנוי';
-    }
-
-    if (allowanceInfo.unlimited) {
+    const remaining = access.remainingAllowances;
+    if (access.allowanceType?.isLimited === false) {
       return variant === 'compact' ? 'תבע' : 'תבע באמצעות מנוי פרימיום';
     }
 
-    const remaining = allowanceInfo.remaining;
     if (variant === 'compact') {
-      return `תבע (${remaining} נותרו)`;
+      return `תבע (${remaining || 0} נותרו)`;
     }
 
     return remaining === 1
       ? 'תבע באמצעות מנוי (נותר 1)'
-      : `תבע באמצעות מנוי (${remaining} נותרו)`;
+      : `תבע באמצעות מנוי (${remaining || 0} נותרו)`;
   };
 
   /**
-   * Get icon based on allowance status
+   * Get icon based on access info
    */
   const getIcon = () => {
-    if (loading || subscriptionLoading) {
-      return Clock;
+    if (isBundle(product)) {
+      return Package;
     }
 
-    if (!allowanceInfo) {
-      return Crown;
-    }
-
-    if (allowanceInfo.unlimited) {
+    if (access.allowanceType?.isLimited === false) {
       return Star;
     }
 
-    return allowanceInfo.remaining > 0 ? Crown : Clock;
+    return (access.remainingAllowances || 0) > 0 ? Crown : Clock;
   };
 
   /**
    * Get button styling based on variant and allowance status
    */
   const getButtonStyling = () => {
-    if (!isEligible || loading) {
+    if (!access.canClaim) {
       return 'bg-gray-300 hover:bg-gray-400 text-gray-600 cursor-not-allowed';
     }
 
-    if (allowanceInfo?.unlimited) {
+    // Handle bundle products - use purple-indigo gradient for bundles
+    if (isBundle(product)) {
+      return variant === 'secondary'
+        ? 'bg-gradient-to-r from-purple-100 to-indigo-100 hover:from-purple-200 hover:to-indigo-200 text-purple-700 border border-purple-300'
+        : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl';
+    }
+
+    // Handle products with unlimited allowance
+    if (access.allowanceType?.isLimited === false) {
       return variant === 'secondary'
         ? 'bg-gradient-to-r from-purple-100 to-pink-100 hover:from-purple-200 hover:to-pink-200 text-purple-700 border border-purple-300'
         : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl';
     }
 
-    const remaining = allowanceInfo?.remaining || 0;
+    // Handle products with limited allowance
+    const remaining = access.remainingAllowances || 0;
     if (remaining <= 1) {
       return variant === 'secondary'
         ? 'bg-gradient-to-r from-orange-100 to-red-100 hover:from-orange-200 hover:to-red-200 text-orange-700 border border-orange-300'
@@ -189,8 +137,8 @@ export default function SubscriptionClaimButton({
       : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl';
   };
 
-  // Don't show button if not eligible
-  if (!isEligible && !loading) {
+  // Don't show button if user can't claim via subscription
+  if (!access.canClaim) {
     return null;
   }
 
@@ -201,11 +149,9 @@ export default function SubscriptionClaimButton({
       <Button
         onClick={(e) => {
           e.stopPropagation();
-          if (isEligible && !loading) {
-            setShowClaimModal(true);
-          }
+          handleClaimClick();
         }}
-        disabled={!isEligible || loading || subscriptionLoading}
+        disabled={!access.canClaim}
         className={`
           group relative overflow-hidden font-medium rounded-lg
           transform hover:scale-105 transition-all duration-300
@@ -220,7 +166,7 @@ export default function SubscriptionClaimButton({
             size === 'sm' ? 'w-4 h-4' : size === 'lg' ? 'w-6 h-6' : 'w-5 h-5'
           }`} />
           <span>{getButtonText()}</span>
-          {allowanceInfo?.unlimited && (
+          {access.allowanceType?.isLimited === false && (
             <Badge className="bg-white/20 text-current text-xs">
               <Infinity className="w-3 h-3 ml-1" />
               פרימיום
@@ -229,7 +175,7 @@ export default function SubscriptionClaimButton({
         </span>
 
         {/* Animated background effect */}
-        {isEligible && !loading && (
+        {access.canClaim && (
           <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
         )}
       </Button>

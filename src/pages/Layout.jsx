@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, Suspense } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useUser } from "@/contexts/UserContext";
 import { isStaff } from "@/lib/userUtils";
-import { SkipLink } from "@/components/ui/skip-link";
 import Footer from "../components/layout/Footer";
 import FloatingAdminMenu from "../components/FloatingAdminMenu";
 import SubscriptionModal from "../components/SubscriptionModal";
@@ -345,7 +344,6 @@ function LayoutContent({ children }) {
   return (
     <CartProvider>
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex">
-        <SkipLink />
 
 
         {/* Navigation */}

@@ -25,7 +25,7 @@ import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
 import TimerComponent from '@/components/ui/Timer';
 import ClassroomEffectMenu from '@/components/ui/ClassroomEffectMenu';
 import { getApiBase } from '@/utils/api.js';
-import { apiRequest } from '@/services/apiClient';
+import { apiRequest, apiDownload } from '@/services/apiClient';
 import { ludlog, luderror } from '@/lib/ludlog';
 import { useUser } from '@/contexts/UserContext';
 import '@/styles/presentation.css';
@@ -265,7 +265,6 @@ export default function LessonPlanPresentation() {
 		try {
 			let completedCount = 0;
 			const newBlobUrls = new Map();
-			const token = localStorage.getItem('token') || localStorage.getItem('authToken');
 
 			const preloadPromises = slidesToPreload.map(async (slide) => {
 				try {
@@ -279,20 +278,14 @@ export default function LessonPlanPresentation() {
 						return { slide, blobUrl: slide.url };
 					}
 
-					// Fetch slide with authentication for non-processed content
-					const response = await fetch(slide.url, {
-						method: 'GET',
-						headers: {
-							Authorization: `Bearer ${token}`,
-						},
-					});
-
-					if (!response.ok) {
-						throw new Error(`Failed to fetch slide: ${response.status}`);
+					// Extract API path from full URL for apiDownload
+					let apiPath = slide.url;
+					if (slide.url.startsWith(getApiBase())) {
+						apiPath = slide.url.substring(getApiBase().length);
 					}
 
-					// Convert to blob and create object URL
-					const blob = await response.blob();
+					// Use API client for authenticated download
+					const blob = await apiDownload(apiPath);
 					const blobUrl = URL.createObjectURL(blob);
 
 					// Store blob URL for instant access

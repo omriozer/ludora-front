@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { SubscriptionPlan, Settings } from "@/services/entities";
 import { useUser } from "@/contexts/UserContext";
 import { showConfirm } from '@/utils/messaging';
+import { getProductTypeName } from '@/config/productTypes';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,7 +30,9 @@ import {
   Copy, // Added Copy icon for duplicate functionality
   Power,
   FileText,
-  BookOpen
+  BookOpen,
+  Gamepad2,
+  Layers
 } from "lucide-react";
 
 export default function SubscriptionSettings() {
@@ -76,6 +79,15 @@ export default function SubscriptionSettings() {
         enabled: false,
         unlimited: false,
         monthly_limit: 15
+      },
+      classroom_management: {
+        enabled: false,
+        unlimited_classrooms: false,
+        max_classrooms: 3,
+        unlimited_total_students: false,
+        max_total_students: 100,
+        unlimited_students_per_classroom: false,
+        max_students_per_classroom: 30
       },
       reports_access: false
     },
@@ -186,6 +198,15 @@ export default function SubscriptionSettings() {
           unlimited: false,
           monthly_limit: 15
         },
+        classroom_management: {
+          enabled: false,
+          unlimited_classrooms: false,
+          max_classrooms: 3,
+          unlimited_total_students: false,
+          max_total_students: 100,
+          unlimited_students_per_classroom: false,
+          max_students_per_classroom: 30
+        },
         reports_access: false
       },
       sort_order: 0
@@ -243,6 +264,15 @@ export default function SubscriptionSettings() {
           unlimited: plan.benefits?.lesson_plans_access?.unlimited || false,
           monthly_limit: plan.benefits?.lesson_plans_access?.monthly_limit || 15
         },
+        classroom_management: {
+          enabled: plan.benefits?.classroom_management?.enabled || false,
+          unlimited_classrooms: plan.benefits?.classroom_management?.unlimited_classrooms || false,
+          max_classrooms: plan.benefits?.classroom_management?.max_classrooms || 3,
+          unlimited_total_students: plan.benefits?.classroom_management?.unlimited_total_students || false,
+          max_total_students: plan.benefits?.classroom_management?.max_total_students || 100,
+          unlimited_students_per_classroom: plan.benefits?.classroom_management?.unlimited_students_per_classroom || false,
+          max_students_per_classroom: plan.benefits?.classroom_management?.max_students_per_classroom || 30
+        },
         reports_access: plan.benefits?.reports_access || false
       },
       sort_order: plan.sort_order !== undefined ? plan.sort_order : 0
@@ -279,6 +309,15 @@ export default function SubscriptionSettings() {
           enabled: plan.benefits?.lesson_plans_access?.enabled || false,
           unlimited: plan.benefits?.lesson_plans_access?.unlimited || false,
           monthly_limit: plan.benefits?.lesson_plans_access?.monthly_limit || 15
+        },
+        classroom_management: {
+          enabled: plan.benefits?.classroom_management?.enabled || false,
+          unlimited_classrooms: plan.benefits?.classroom_management?.unlimited_classrooms || false,
+          max_classrooms: plan.benefits?.classroom_management?.max_classrooms || 3,
+          unlimited_total_students: plan.benefits?.classroom_management?.unlimited_total_students || false,
+          max_total_students: plan.benefits?.classroom_management?.max_total_students || 100,
+          unlimited_students_per_classroom: plan.benefits?.classroom_management?.unlimited_students_per_classroom || false,
+          max_students_per_classroom: plan.benefits?.classroom_management?.max_students_per_classroom || 30
         },
         reports_access: plan.benefits?.reports_access || false
       },
@@ -708,7 +747,7 @@ export default function SubscriptionSettings() {
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="font-medium text-green-900 flex items-center gap-2">
-                                  גישה למשחקים
+                                  {`גישה ל${getProductTypeName('game', 'plural')}`}
                                   {plan.benefits.games_access.unlimited && (
                                     <Infinity className="w-4 h-4 text-green-600" />
                                   )}
@@ -728,7 +767,7 @@ export default function SubscriptionSettings() {
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="font-medium text-gray-600">
-                                  גישה למשחקים
+                                  {`גישה ל${getProductTypeName('game', 'plural')}`}
                                 </div>
                                 <div className="text-sm text-gray-500 mt-1">
                                   לא כלול במנוי זה
@@ -745,7 +784,7 @@ export default function SubscriptionSettings() {
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="font-medium text-blue-900 flex items-center gap-2">
-                                  גישה לקבצים
+                                  {`גישה ל${getProductTypeName('file', 'plural')}`}
                                   {plan.benefits.files_access.unlimited && (
                                     <Infinity className="w-4 h-4 text-blue-600" />
                                   )}
@@ -765,7 +804,7 @@ export default function SubscriptionSettings() {
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="font-medium text-gray-600">
-                                  גישה לקבצים
+                                  {`גישה ל${getProductTypeName('file', 'plural')}`}
                                 </div>
                                 <div className="text-sm text-gray-500 mt-1">
                                   לא כלול במנוי זה
@@ -778,19 +817,19 @@ export default function SubscriptionSettings() {
                           {plan.benefits?.lesson_plans_access?.enabled ? (
                             <div className="flex items-start gap-3 p-3 bg-orange-50 rounded-xl border border-orange-100">
                               <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
-                                <BookOpen className="w-4 h-4 text-white" />
+                                <Layers className="w-4 h-4 text-white" />
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="font-medium text-orange-900 flex items-center gap-2">
-                                  גישה לתכניות לימוד
+                                  {`גישה ל${getProductTypeName('lesson_plan', 'plural')}`}
                                   {plan.benefits.lesson_plans_access.unlimited && (
                                     <Infinity className="w-4 h-4 text-orange-600" />
                                   )}
                                 </div>
                                 <div className="text-sm text-orange-700 mt-1">
                                   {plan.benefits.lesson_plans_access.unlimited ?
-                                    'גישה בלתי מוגבלת לתכניות לימוד' :
-                                    `עד ${plan.benefits.lesson_plans_access.monthly_limit} תכניות בחודש`
+                                    `גישה בלתי מוגבלת ל${getProductTypeName('lesson_plan', 'plural')}` :
+                                    `עד ${plan.benefits.lesson_plans_access.monthly_limit} ${getProductTypeName('lesson_plan', 'plural')} בחודש`
                                   }
                                 </div>
                               </div>
@@ -798,11 +837,49 @@ export default function SubscriptionSettings() {
                           ) : (
                             <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 opacity-50">
                               <div className="w-8 h-8 bg-gray-300 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
-                                <BookOpen className="w-4 h-4 text-white" />
+                                <Layers className="w-4 h-4 text-white" />
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="font-medium text-gray-600">
-                                  גישה לתכניות לימוד
+                                  {`גישה ל${getProductTypeName('lesson_plan', 'plural')}`}
+                                </div>
+                                <div className="text-sm text-gray-500 mt-1">
+                                  לא כלול במנוי זה
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Classroom Management */}
+                          {plan.benefits?.classroom_management?.enabled ? (
+                            <div className="flex items-start gap-3 p-3 bg-purple-50 rounded-xl border border-purple-100">
+                              <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <Users className="w-4 h-4 text-white" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="font-medium text-purple-900 flex items-center gap-2">
+                                  ניהול כיתות
+                                  {plan.benefits.classroom_management.unlimited_classrooms && (
+                                    <Infinity className="w-4 h-4 text-purple-600" />
+                                  )}
+                                </div>
+                                <div className="text-sm text-purple-700 mt-1">
+                                  {plan.benefits.classroom_management.unlimited_classrooms ?
+                                    'כיתות ללא הגבלה' :
+                                    `עד ${plan.benefits.classroom_management.max_classrooms} כיתות`}
+                                  {!plan.benefits.classroom_management.unlimited_total_students &&
+                                    ` • עד ${plan.benefits.classroom_management.max_total_students} תלמידים`}
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 opacity-50">
+                              <div className="w-8 h-8 bg-gray-300 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <Users className="w-4 h-4 text-white" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="font-medium text-gray-600">
+                                  ניהול כיתות
                                 </div>
                                 <div className="text-sm text-gray-500 mt-1">
                                   לא כלול במנוי זה
@@ -1115,7 +1192,7 @@ export default function SubscriptionSettings() {
                       <div className="flex items-center justify-between">
                         <Label className="flex items-center gap-2">
                           <Play className="w-4 h-4" />
-                          גישה למשחקים
+                          {`גישה ל${getProductTypeName('game', 'plural')}`}
                         </Label>
                         <Switch
                           checked={formData.benefits.games_access.enabled}
@@ -1154,7 +1231,7 @@ export default function SubscriptionSettings() {
                       <div className="flex items-center justify-between">
                         <Label className="flex items-center gap-2">
                           <FileText className="w-4 h-4" />
-                          גישה לקבצים
+                          {`גישה ל${getProductTypeName('file', 'plural')}`}
                         </Label>
                         <Switch
                           checked={formData.benefits.files_access.enabled}
@@ -1192,8 +1269,8 @@ export default function SubscriptionSettings() {
                     <div className="border rounded-lg p-4 space-y-3">
                       <div className="flex items-center justify-between">
                         <Label className="flex items-center gap-2">
-                          <BookOpen className="w-4 h-4" />
-                          גישה לתכניות לימוד
+                          <Layers className="w-4 h-4" />
+                          {`גישה ל${getProductTypeName('lesson_plan', 'plural')}`}
                         </Label>
                         <Switch
                           checked={formData.benefits.lesson_plans_access.enabled}
@@ -1213,7 +1290,7 @@ export default function SubscriptionSettings() {
 
                           {!formData.benefits.lesson_plans_access.unlimited && (
                             <div>
-                              <Label htmlFor="lesson_plans_monthly_limit">מגבלת תכניות לימוד חודשית</Label>
+                              <Label htmlFor="lesson_plans_monthly_limit">{`מגבלת ${getProductTypeName('lesson_plan', 'plural')} חודשית`}</Label>
                               <Input
                                 id="lesson_plans_monthly_limit"
                                 type="number"
@@ -1223,6 +1300,92 @@ export default function SubscriptionSettings() {
                               />
                             </div>
                           )}
+                        </>
+                      )}
+                    </div>
+
+                    {/* Classroom Management */}
+                    <div className="border rounded-lg p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label className="flex items-center gap-2">
+                          <Users className="w-4 h-4" />
+                          ניהול כיתות
+                        </Label>
+                        <Switch
+                          checked={formData.benefits.classroom_management.enabled}
+                          onCheckedChange={(checked) => updateFormField('benefits.classroom_management.enabled', checked)}
+                        />
+                      </div>
+
+                      {formData.benefits.classroom_management.enabled && (
+                        <>
+                          <div className="space-y-3">
+                            <div>
+                              <div className="flex items-center justify-between mb-2">
+                                <Label>כיתות ללא הגבלה</Label>
+                                <Switch
+                                  checked={formData.benefits.classroom_management.unlimited_classrooms}
+                                  onCheckedChange={(checked) => updateFormField('benefits.classroom_management.unlimited_classrooms', checked)}
+                                />
+                              </div>
+                              {!formData.benefits.classroom_management.unlimited_classrooms && (
+                                <div>
+                                  <Label htmlFor="max_classrooms">מספר כיתות מקסימלי</Label>
+                                  <Input
+                                    id="max_classrooms"
+                                    type="number"
+                                    min="1"
+                                    value={formData.benefits.classroom_management.max_classrooms}
+                                    onChange={(e) => updateFormField('benefits.classroom_management.max_classrooms', parseInt(e.target.value) || 3)}
+                                  />
+                                </div>
+                              )}
+                            </div>
+
+                            <div>
+                              <div className="flex items-center justify-between mb-2">
+                                <Label>תלמידים ללא הגבלה (סה"כ)</Label>
+                                <Switch
+                                  checked={formData.benefits.classroom_management.unlimited_total_students}
+                                  onCheckedChange={(checked) => updateFormField('benefits.classroom_management.unlimited_total_students', checked)}
+                                />
+                              </div>
+                              {!formData.benefits.classroom_management.unlimited_total_students && (
+                                <div>
+                                  <Label htmlFor="max_total_students">מספר תלמידים מקסימלי (סה"כ)</Label>
+                                  <Input
+                                    id="max_total_students"
+                                    type="number"
+                                    min="1"
+                                    value={formData.benefits.classroom_management.max_total_students}
+                                    onChange={(e) => updateFormField('benefits.classroom_management.max_total_students', parseInt(e.target.value) || 100)}
+                                  />
+                                </div>
+                              )}
+                            </div>
+
+                            <div>
+                              <div className="flex items-center justify-between mb-2">
+                                <Label>תלמידים ללא הגבלה לכיתה</Label>
+                                <Switch
+                                  checked={formData.benefits.classroom_management.unlimited_students_per_classroom}
+                                  onCheckedChange={(checked) => updateFormField('benefits.classroom_management.unlimited_students_per_classroom', checked)}
+                                />
+                              </div>
+                              {!formData.benefits.classroom_management.unlimited_students_per_classroom && (
+                                <div>
+                                  <Label htmlFor="max_students_per_classroom">מספר תלמידים מקסימלי לכיתה</Label>
+                                  <Input
+                                    id="max_students_per_classroom"
+                                    type="number"
+                                    min="1"
+                                    value={formData.benefits.classroom_management.max_students_per_classroom}
+                                    onChange={(e) => updateFormField('benefits.classroom_management.max_students_per_classroom', parseInt(e.target.value) || 30)}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </>
                       )}
                     </div>

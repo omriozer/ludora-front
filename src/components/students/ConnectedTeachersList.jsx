@@ -43,16 +43,12 @@ const ConnectedTeachersList = ({
   const getConnectedTeachers = () => {
     if (!currentPlayer) return [];
 
-    // TODO remove debug - temporary logging to understand data structure
-    console.log('🔍 ConnectedTeachersList - currentPlayer data:', {
       currentPlayer,
       teacher_id: currentPlayer.teacher_id,
       teacher: currentPlayer.teacher,
       teachers: currentPlayer.teachers
     });
 
-    // TODO remove debug - detailed teacher object inspection
-    if (currentPlayer.teacher) {
       console.log('🔍 Detailed teacher object analysis:', {
         teacher_keys: Object.keys(currentPlayer.teacher),
         teacher_values: currentPlayer.teacher,
@@ -149,8 +145,6 @@ const ConnectedTeachersList = ({
           const teacherName = teacher.full_name || teacher.name || `מורה #${index + 1}`;
           const hasValidCode = teacherCode && !teacher._missingInvitationCode;
 
-          // TODO remove debug
-          console.log('🎯 Teacher card data:', { teacherCode, teacherName, hasValidCode, teacher });
 
           return (
             <Card

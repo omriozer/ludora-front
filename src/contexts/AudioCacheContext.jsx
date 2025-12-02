@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
-import { getApiBase } from '@/utils/api.js';
+import { apiDownload } from '@/services/apiClient';
 import { ludlog, luderror } from '@/lib/ludlog';
 
 const AudioCacheContext = createContext();
@@ -71,33 +71,10 @@ export const AudioCacheProvider = ({ children }) => {
         // Set loading state
         setLoadingStates(prev => new Map(prev.set(audioFileId, true)));
 
-        // Get auth token
-        const token = localStorage.getItem('authToken');
-        if (!token) {
-          throw new Error('No authentication token available');
-        }
-
-        // Construct download URL with auth token
-        const downloadUrl = `${getApiBase()}/media/download/audiofile/${audioFileId}?authToken=${encodeURIComponent(token)}`;
-
         ludlog.media(`🎵 Downloading audio file: ${audioFileId}`);
 
-        // Fetch the audio file
-        const response = await fetch(downloadUrl);
-
-        if (!response.ok) {
-          if (response.status === 401) {
-            throw new Error('Authentication failed - please log in again');
-          } else if (response.status === 404) {
-            throw new Error('Audio file not found');
-          } else {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || `Download failed: ${response.status}`);
-          }
-        }
-
-        // Get the blob data
-        const blob = await response.blob();
+        // Use API client download method with proper authentication
+        const blob = await apiDownload(`/media/download/audiofile/${audioFileId}`);
 
         // Create blob URL
         const blobUrl = URL.createObjectURL(blob);

@@ -8,6 +8,9 @@ import { useToast } from "@/components/ui/use-toast";
 import LudoraLoadingSpinner from "@/components/ui/LudoraLoadingSpinner";
 import useSubscriptionState from "@/hooks/useSubscriptionState";
 import { ludlog, luderror } from '@/lib/ludlog';
+import { isBundle, getBundleComposition } from '@/lib/bundleUtils';
+import { checkSubscriptionEligibility } from '@/hooks/useProductAccess';
+import { apiRequest } from '@/services/apiClient';
 import {
   X,
   Crown,
@@ -44,10 +47,16 @@ export default function SubscriptionClaimModal({
   const [claimError, setClaimError] = useState(null);
   const [allowanceStatus, setAllowanceStatus] = useState(null);
   const [loadingAllowance, setLoadingAllowance] = useState(false);
+  const [needsConfirmation, setNeedsConfirmation] = useState(false);
+  const [confirmationData, setConfirmationData] = useState(null);
 
   // Load allowance status when modal opens
   useEffect(() => {
     if (isOpen && product && currentUser && summary?.currentPlan) {
+      // Reset confirmation state when modal opens
+      setNeedsConfirmation(false);
+      setConfirmationData(null);
+      setClaimError(null);
       loadAllowanceStatus();
     }
   }, [isOpen, product, currentUser, summary]);
@@ -67,19 +76,11 @@ export default function SubscriptionClaimModal({
       });
 
       // Call the subscription benefits API to get current allowances
-      const response = await fetch('/api/subscriptions/benefits/my-allowances', {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
+      const response = await apiRequest('/subscriptions/benefits/my-allowances');
 
-      if (!response.ok) {
-        throw new Error(`Failed to load allowance status: ${response.status} ${response.statusText}`);
-      }
-
-      const allowanceData = await response.json();
+      // Extract the actual allowance data from the API response
+      // Backend returns: { success: true, data: { subscription, monthYear, allowances } }
+      const allowanceData = response.data || response;
       setAllowanceStatus(allowanceData);
 
       ludlog.ui('Allowance status loaded successfully', allowanceData);
@@ -95,7 +96,7 @@ export default function SubscriptionClaimModal({
   /**
    * Handle claiming the product via subscription
    */
-  const handleClaimProduct = async () => {
+  const handleClaimProduct = async (skipConfirmation = false) => {
     try {
       setLoading(true);
       setClaimError(null);
@@ -104,43 +105,51 @@ export default function SubscriptionClaimModal({
         userId: currentUser.id,
         productType: product.product_type,
         productId: product.id,
-        productTitle: product.title
+        productTitle: product.title,
+        skipConfirmation
       });
 
       // Call the subscription claim API
-      const response = await fetch('/api/subscriptions/benefits/claim', {
+      const claimResult = await apiRequest('/subscriptions/benefits/claim', {
         method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify({
           productType: product.product_type,
-          productId: product.id
+          productId: product.id,
+          skipConfirmation
         })
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Claim failed: ${response.status} ${response.statusText}`);
+      ludlog.ui('Claim API response received', claimResult);
+
+      // Check if confirmation is needed
+      if (claimResult.needsConfirmation && !skipConfirmation) {
+        ludlog.ui('Confirmation required for product claim', claimResult);
+        setNeedsConfirmation(true);
+        setConfirmationData(claimResult);
+        return; // Don't close modal, wait for confirmation
       }
 
-      const claimResult = await response.json();
+      // Success - claimed successfully
+      if (claimResult.success !== false) {
+        ludlog.ui('Product claimed successfully', claimResult);
 
-      ludlog.ui('Product claimed successfully', claimResult);
+        // Show success message
+        toast({
+          variant: "default",
+          title: "נתבע בהצלחה באמצעות המנוי! 🎉",
+          description: `${product.title} נוסף לתוכן הזמין שלך באמצעות המנוי.`
+        });
 
-      // Show success message
-      toast({
-        variant: "default",
-        title: "נתבע בהצלחה באמצעות המנוי! 🎉",
-        description: `${product.title} נוסף לתוכן הזמין שלך באמצעות המנוי.`
-      });
+        // Close modal and trigger success callback
+        onClose();
 
-      // Close modal and trigger success callback
-      onClose();
-
-      if (onClaimSuccess) {
-        onClaimSuccess(claimResult);
+        if (onClaimSuccess) {
+          onClaimSuccess(claimResult);
+        }
+      } else {
+        // Handle other failure cases
+        const errorMessage = claimResult.error || claimResult.reason || 'Failed to claim product';
+        throw new Error(errorMessage);
       }
 
     } catch (error) {
@@ -158,6 +167,21 @@ export default function SubscriptionClaimModal({
   };
 
   /**
+   * Handle user confirmation for limited benefits
+   */
+  const handleConfirmClaim = async () => {
+    await handleClaimProduct(true); // Call with skipConfirmation = true
+  };
+
+  /**
+   * Handle canceling confirmation
+   */
+  const handleCancelConfirmation = () => {
+    setNeedsConfirmation(false);
+    setConfirmationData(null);
+  };
+
+  /**
    * Get the product type display name in Hebrew
    */
   const getProductTypeDisplayName = (productType) => {
@@ -170,13 +194,8 @@ export default function SubscriptionClaimModal({
   const canClaimProduct = () => {
     if (!allowanceStatus || !product) return false;
 
-    const productType = product.product_type;
-    const productAllowance = allowanceStatus.allowances?.[productType];
-
-    if (!productAllowance) return false;
-
-    // Check if unlimited or has remaining claims
-    return productAllowance.unlimited || (productAllowance.remaining > 0);
+    // Use centralized eligibility checking that handles both single products and bundles
+    return checkSubscriptionEligibility(product, allowanceStatus);
   };
 
   /**
@@ -185,6 +204,29 @@ export default function SubscriptionClaimModal({
   const getRestrictionMessage = () => {
     if (!allowanceStatus || !product) return null;
 
+    // Handle bundle products
+    if (isBundle(product)) {
+      const bundleComposition = getBundleComposition(product);
+      const insufficientTypes = [];
+
+      Object.entries(bundleComposition).forEach(([productType, requiredCount]) => {
+        const allowance = allowanceStatus.allowances?.[productType];
+
+        if (!allowance) {
+          insufficientTypes.push(`${getProductTypeDisplayName(productType)} לא כלול במנוי`);
+        } else if (!allowance.unlimited && allowance.remaining < requiredCount) {
+          insufficientTypes.push(`${getProductTypeDisplayName(productType)}: נדרשים ${requiredCount}, זמינים ${allowance.remaining}`);
+        }
+      });
+
+      if (insufficientTypes.length > 0) {
+        return `לא ניתן לתבוע קיט זה: ${insufficientTypes.join(', ')}`;
+      }
+
+      return null;
+    }
+
+    // Handle single products
     const productType = product.product_type;
     const productAllowance = allowanceStatus.allowances?.[productType];
 
@@ -193,7 +235,7 @@ export default function SubscriptionClaimModal({
     }
 
     if (!productAllowance.unlimited && productAllowance.remaining <= 0) {
-      return `הגעת למגבלה החודשית של ${productAllowance.monthly_limit} ${getProductTypeDisplayName(productType)} במנוי הנוכחי`;
+      return `הגעת למגבלה החודשית של ${productAllowance.allowed} ${getProductTypeDisplayName(productType)} במנוי הנוכחי`;
     }
 
     return null;
@@ -269,6 +311,78 @@ export default function SubscriptionClaimModal({
                   </p>
                 </CardContent>
               )}
+            </Card>
+          )}
+
+          {/* Bundle Breakdown (for bundle products) */}
+          {product && isBundle(product) && allowanceStatus && (
+            <Card className="border-2 border-purple-200 bg-purple-50/30">
+              <CardHeader>
+                <CardTitle className="text-lg text-purple-900 flex items-center gap-2">
+                  <Package className="w-5 h-5" />
+                  תוכן הקיט
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {(() => {
+                  const bundleComposition = getBundleComposition(product);
+                  const compositionEntries = Object.entries(bundleComposition);
+
+                  return compositionEntries.map(([productType, count]) => {
+                    const allowance = allowanceStatus.allowances?.[productType];
+                    const hasEnoughAllowance = allowance && (
+                      allowance.unlimited || allowance.remaining >= count
+                    );
+
+                    return (
+                      <div
+                        key={productType}
+                        className={`flex items-center justify-between p-3 rounded-lg border-2 ${
+                          hasEnoughAllowance
+                            ? 'bg-green-50 border-green-200'
+                            : 'bg-red-50 border-red-200'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                            hasEnoughAllowance ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+                          }`}>
+                            {count}
+                          </div>
+                          <span className={`font-medium ${
+                            hasEnoughAllowance ? 'text-green-900' : 'text-red-900'
+                          }`}>
+                            {getProductTypeDisplayName(productType)}
+                          </span>
+                        </div>
+
+                        <div className={`text-sm ${
+                          hasEnoughAllowance ? 'text-green-700' : 'text-red-700'
+                        }`}>
+                          {allowance ? (
+                            allowance.unlimited ? (
+                              <span className="flex items-center gap-1">
+                                <Infinity className="w-3 h-3" />
+                                בלתי מוגבל
+                              </span>
+                            ) : (
+                              `${allowance.remaining}/${allowance.allowed} זמין`
+                            )
+                          ) : (
+                            'לא זמין במנוי'
+                          )}
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+
+                <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <p className="text-blue-800 text-sm font-medium">
+                    💡 תביעת הקיט תצרוך {Object.values(getBundleComposition(product)).reduce((sum, count) => sum + count, 0)} יחידות מהמנוי שלך
+                  </p>
+                </div>
+              </CardContent>
             </Card>
           )}
 
@@ -376,7 +490,7 @@ export default function SubscriptionClaimModal({
                                     בלתי מוגבל
                                   </span>
                                 ) : (
-                                  `${allowance.remaining} מתוך ${allowance.monthly_limit} נותרו`
+                                  `${allowance.remaining} מתוך ${allowance.allowed} נותרו`
                                 )}
                               </p>
                             </div>
@@ -434,44 +548,92 @@ export default function SubscriptionClaimModal({
             </div>
           )}
 
-          {/* Action Buttons */}
-          <div className="flex gap-3 pt-6 border-t">
-            <Button
-              variant="outline"
-              onClick={onClose}
-              className="flex-1"
-              disabled={loading}
-            >
-              ביטול
-            </Button>
+          {/* Confirmation Dialog */}
+          {needsConfirmation && confirmationData && (
+            <Card className="border-orange-200 bg-orange-50">
+              <CardHeader>
+                <CardTitle className="text-lg text-orange-900 flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5" />
+                  אישור תביעה נדרש
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-orange-800">
+                  {confirmationData.message}
+                </p>
 
-            <Button
-              onClick={handleClaimProduct}
-              disabled={loading || !canClaimProduct() || loadingAllowance || subscriptionLoading}
-              className={`flex-1 ${
-                canClaimProduct()
-                  ? 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              }`}
-            >
-              {loading ? (
-                <div className="flex items-center gap-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  תובע...
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={handleCancelConfirmation}
+                    className="flex-1"
+                    disabled={loading}
+                  >
+                    ביטול
+                  </Button>
+
+                  <Button
+                    onClick={handleConfirmClaim}
+                    disabled={loading}
+                    className="flex-1 bg-orange-500 hover:bg-orange-600 text-white"
+                  >
+                    {loading ? (
+                      <div className="flex items-center gap-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        מתבע...
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <Check className="w-4 h-4" />
+                        אישור תביעה
+                      </div>
+                    )}
+                  </Button>
                 </div>
-              ) : canClaimProduct() ? (
-                <div className="flex items-center gap-2">
-                  <Star className="w-4 h-4" />
-                  תבע באמצעות המנוי
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4" />
-                  לא זמין לתביעה
-                </div>
-              )}
-            </Button>
-          </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Action Buttons - Hidden during confirmation */}
+          {!needsConfirmation && (
+            <div className="flex gap-3 pt-6 border-t">
+              <Button
+                variant="outline"
+                onClick={onClose}
+                className="flex-1"
+                disabled={loading}
+              >
+                ביטול
+              </Button>
+
+              <Button
+                onClick={() => handleClaimProduct(true)}
+                disabled={loading || !canClaimProduct() || loadingAllowance || subscriptionLoading}
+                className={`flex-1 ${
+                  canClaimProduct()
+                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
+              >
+                {loading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    תובע...
+                  </div>
+                ) : canClaimProduct() ? (
+                  <div className="flex items-center gap-2">
+                    <Star className="w-4 h-4" />
+                    תבע באמצעות המנוי
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4" />
+                    לא זמין לתביעה
+                  </div>
+                )}
+              </Button>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>,

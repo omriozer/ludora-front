@@ -15,6 +15,8 @@ import {
   Crown,
   CreditCard,
   Play,
+  FileText,
+  BookOpen,
   Users,
   BarChart3,
   Infinity,
@@ -978,6 +980,76 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
                                               plan.benefits?.games_access?.unlimited ?
                                                 `גישה בלתי מוגבלת לכל ה${getProductTypeName('game', 'plural')}` :
                                                 `עד ${plan.benefits?.games_access?.monthly_limit} ${getProductTypeName('game', 'plural')} בחודש` :
+                                              'לא כלול במנוי זה'
+                                            }
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      {/* Files Access */}
+                                      <div className={`flex items-start gap-3 p-3 rounded-xl transition-all ${
+                                        plan.benefits?.files_access?.enabled ?
+                                        isFree ? 'bg-blue-50 border border-blue-200' : 'bg-orange-50 border border-orange-100' :
+                                        'bg-gray-50 border border-gray-100 opacity-50'}`}>
+                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                                          plan.benefits?.files_access?.enabled ?
+                                          isFree ? 'bg-blue-500' : 'bg-orange-500' :
+                                          'bg-gray-300'}`}>
+                                          <FileText className="w-4 h-4 text-white" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <div className={`font-medium flex items-center gap-2 ${
+                                            plan.benefits?.files_access?.enabled ?
+                                            isFree ? 'text-blue-800' : 'text-orange-900' :
+                                            'text-gray-600'}`}>
+                                            {`גישה ל${getProductTypeName('file', 'plural')}`}
+                                            {plan.benefits?.files_access?.unlimited && (
+                                              <Infinity className={`w-4 h-4 mr-1 ${isFree ? 'text-blue-600' : 'text-orange-600'}`} />
+                                            )}
+                                          </div>
+                                          <div className={`text-sm mt-1 ${
+                                            plan.benefits?.files_access?.enabled ?
+                                            isFree ? 'text-blue-700' : 'text-orange-700' :
+                                            'text-gray-500'}`}>
+                                            {plan.benefits?.files_access?.enabled ?
+                                              plan.benefits?.files_access?.unlimited ?
+                                                `גישה בלתי מוגבלת לכל ה${getProductTypeName('file', 'plural')}` :
+                                                `עד ${plan.benefits?.files_access?.monthly_limit} ${getProductTypeName('file', 'plural')} בחודש` :
+                                              'לא כלול במנוי זה'
+                                            }
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      {/* Lesson Plans Access */}
+                                      <div className={`flex items-start gap-3 p-3 rounded-xl transition-all ${
+                                        plan.benefits?.lesson_plans_access?.enabled ?
+                                        isFree ? 'bg-blue-50 border border-blue-200' : 'bg-green-50 border border-green-100' :
+                                        'bg-gray-50 border border-gray-100 opacity-50'}`}>
+                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                                          plan.benefits?.lesson_plans_access?.enabled ?
+                                          isFree ? 'bg-blue-500' : 'bg-green-500' :
+                                          'bg-gray-300'}`}>
+                                          <BookOpen className="w-4 h-4 text-white" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <div className={`font-medium flex items-center gap-2 ${
+                                            plan.benefits?.lesson_plans_access?.enabled ?
+                                            isFree ? 'text-blue-800' : 'text-green-900' :
+                                            'text-gray-600'}`}>
+                                            {`גישה ל${getProductTypeName('lesson_plan', 'plural')}`}
+                                            {plan.benefits?.lesson_plans_access?.unlimited && (
+                                              <Infinity className={`w-4 h-4 mr-1 ${isFree ? 'text-blue-600' : 'text-green-600'}`} />
+                                            )}
+                                          </div>
+                                          <div className={`text-sm mt-1 ${
+                                            plan.benefits?.lesson_plans_access?.enabled ?
+                                            isFree ? 'text-blue-700' : 'text-green-700' :
+                                            'text-gray-500'}`}>
+                                            {plan.benefits?.lesson_plans_access?.enabled ?
+                                              plan.benefits?.lesson_plans_access?.unlimited ?
+                                                `גישה בלתי מוגבלת לכל ה${getProductTypeName('lesson_plan', 'plural')}` :
+                                                `עד ${plan.benefits?.lesson_plans_access?.monthly_limit} ${getProductTypeName('lesson_plan', 'plural')} בחודש` :
                                               'לא כלול במנוי זה'
                                             }
                                           </div>

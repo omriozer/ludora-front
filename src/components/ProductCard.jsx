@@ -47,7 +47,9 @@ export default function ProductCard({
   isExpanded = false,
   onToggleExpanded,
   onEdit,
-  showActionBar = true
+  showActionBar = true,
+  subscriptionEligibility = null,
+  onSubscriptionSuccess
 }) {
   const navigate = useNavigate();
   const { currentUser } = useUser();
@@ -79,6 +81,9 @@ export default function ProductCard({
   // Handle successful purchase for ProductActionBar
   const handlePurchaseSuccess = () => {
     // Purchase handled successfully
+    if (onSubscriptionSuccess) {
+      onSubscriptionSuccess();
+    }
   };
 
   // Handle successful subscription claim for ProductActionBar
@@ -89,6 +94,17 @@ export default function ProductCard({
       productType: product.product_type,
       claimResult
     });
+
+    // Call parent callback to refetch subscription data
+    if (onSubscriptionSuccess) {
+      onSubscriptionSuccess();
+    }
+  };
+
+  // Handle bundle access for ProductActionBar
+  const handleBundleAccess = (bundleProduct) => {
+    // For bundles, navigate to ProductDetails page which can show the bundle preview modal
+    navigate(`/product-details?product=${bundleProduct.id}`);
   };
 
   const handleDetailsClick = () => {
@@ -236,7 +252,7 @@ export default function ProductCard({
 
   return (
     <div
-      className="group transition-all duration-300 hover:scale-[1.02] break-inside-avoid mb-4 cursor-pointer"
+      className="group transition-all duration-300 hover:scale-[1.02] break-inside-avoid mb-3 md:mb-4 cursor-pointer mobile-safe-card"
       onMouseEnter={() => {
         !isMobile && setIsHovered(true);
       }}
@@ -262,7 +278,7 @@ export default function ProductCard({
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/10"></div>
 
         {/* Always Visible - Top Left: Details Button and Edit Button (for admins) */}
-        <div className="absolute top-4 left-4 z-50 flex gap-2">
+        <div className="absolute top-3 md:top-4 left-3 md:left-4 z-50 flex gap-1 md:gap-2">
           <Button
             variant="ghost"
             size="sm"
@@ -291,7 +307,7 @@ export default function ProductCard({
         </div>
 
         {/* Always Visible - Top Right: Price or Owned Indicator + Kit Badge */}
-        <div className="absolute top-4 right-4 z-30 flex flex-col items-end gap-2">
+        <div className="absolute top-3 md:top-4 right-3 md:right-4 z-30 flex flex-col items-end gap-1 md:gap-2">
           {/* Kit Badge for bundle products */}
           {isBundle(product) && (
             <KitBadge product={product} variant="default" size="sm" />
@@ -317,9 +333,9 @@ export default function ProductCard({
         </div>
 
         {/* Always Visible - Bottom: Name, Study Subject, and Tags */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 z-30">
+        <div className="absolute bottom-0 left-0 right-0 mobile-padding z-30">
           {/* Title */}
-          <h3 className="text-white text-lg font-bold leading-tight line-clamp-2 mb-2 drop-shadow-lg">
+          <h3 className="text-white text-base md:text-lg font-bold leading-tight line-clamp-2 mb-1.5 md:mb-2 drop-shadow-lg mobile-safe-text">
             {product.title}
           </h3>
 
@@ -357,8 +373,8 @@ export default function ProductCard({
         </div>
 
         {/* Enhanced Expanded Content - Appears on Hover (desktop) or Click (mobile) */}
-        <div className={`absolute inset-0 bg-gradient-to-b from-black/50 via-black/30 to-black/70 backdrop-blur-[2px] transition-all duration-500 z-40 ${(isHovered || isExpanded) ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-          <div className="h-full flex flex-col justify-between p-8">
+        <div className={`absolute inset-0 bg-gradient-to-b from-black/50 via-black/30 to-black/70 backdrop-blur-[2px] transition-all duration-500 z-40 mobile-safe-container ${(isHovered || isExpanded) ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+          <div className="h-full flex flex-col justify-between mobile-padding">
             {/* Top: Grades */}
             <div className="flex justify-end items-start">
               {/* Grades - Extended mode only */}
@@ -370,10 +386,10 @@ export default function ProductCard({
             </div>
 
             {/* Center: Enhanced Description */}
-            <div className="text-center flex-grow flex flex-col justify-center px-4">
+            <div className="text-center flex-grow flex flex-col justify-center mobile-padding-x">
               {/* Description */}
               {getTruncatedDescription() && (
-                <p className="text-white text-xl leading-relaxed font-light drop-shadow-2xl max-w-lg mx-auto">
+                <p className="text-white text-sm md:text-xl leading-relaxed font-light drop-shadow-2xl max-w-lg mx-auto mobile-safe-text">
                   {getTruncatedDescription()}
                 </p>
               )}
@@ -383,7 +399,8 @@ export default function ProductCard({
             {showActionBar && (
               <div className="flex justify-center">
                 <ProductActionBar
-                  product={{...product, purchase: purchase}}
+                  product={product}
+                  userPurchases={userPurchases}
                   size="default"
                   className="text-base font-semibold"
                   showCartButton={true}
@@ -392,6 +409,8 @@ export default function ProductCard({
                   onSubscriptionClaimSuccess={handleSubscriptionClaimSuccess}
                   onFileAccess={onFileAccess}
                   onPdfPreview={onPdfPreview}
+                  onBundleAccess={handleBundleAccess}
+                  subscriptionEligibility={subscriptionEligibility}
                 />
               </div>
             )}

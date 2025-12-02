@@ -25,9 +25,11 @@ import { getProductTypeName } from '@/config/productTypes';
  * @param {function} onLessonPlanAccess - Callback for lesson plan access
  * @param {function} onCourseAccess - Callback for course access
  * @param {function} onWorkshopAccess - Callback for workshop access
+ * @param {function} onBundleAccess - Callback for bundle access
  * @param {function} onPurchaseSuccess - Callback for successful purchase
  * @param {function} onSubscriptionClaimSuccess - Callback for successful subscription claim
  * @param {boolean} showSubscriptionClaim - Whether to show subscription claim option
+ * @param {Object|null} subscriptionEligibility - Pre-computed subscription eligibility data (pass from page level)
  */
 export default function ProductActionBar({
   product,
@@ -42,8 +44,10 @@ export default function ProductActionBar({
   onLessonPlanAccess,
   onCourseAccess,
   onWorkshopAccess,
+  onBundleAccess,
   onPurchaseSuccess,
-  onSubscriptionClaimSuccess
+  onSubscriptionClaimSuccess,
+  subscriptionEligibility = null
 }) {
   const navigate = useNavigate();
 
@@ -84,8 +88,13 @@ export default function ProductActionBar({
             <Button
               onClick={(e) => {
                 e.stopPropagation();
-                // For bundle products, navigate to the catalog filtered by the user's purchases to show their accessible products
-                navigate('/catalog?view=my-products');
+                // For bundle products, trigger bundle access callback to show bundle preview modal
+                if (onBundleAccess) {
+                  onBundleAccess(product);
+                } else {
+                  // Fallback: navigate to the catalog filtered by the user's purchases
+                  navigate('/catalog?view=my-products');
+                }
               }}
               className={`group relative overflow-hidden bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white font-bold rounded-full shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 border-2 border-purple-400/20 ${fullWidth ? 'w-full' : ''} ${className}`}
               size={size}
@@ -209,6 +218,7 @@ export default function ProductActionBar({
             fullWidth={!showCartButton}
             onSuccess={onPurchaseSuccess}
             variant="secondary"
+            subscriptionEligibility={subscriptionEligibility}
           />
         )}
       </div>
@@ -264,6 +274,7 @@ export default function ProductActionBar({
             size={size}
             fullWidth={false}
             onSuccess={onPurchaseSuccess}
+            subscriptionEligibility={subscriptionEligibility}
           />
           <AddToCartButton
             product={product}
@@ -284,6 +295,7 @@ export default function ProductActionBar({
           size={size}
           fullWidth={fullWidth}
           onSuccess={onPurchaseSuccess}
+          subscriptionEligibility={subscriptionEligibility}
         />
       </div>
     );

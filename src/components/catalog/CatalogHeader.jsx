@@ -43,12 +43,28 @@ export default function CatalogHeader({
     return 'linear-gradient(to right, #3B82F6, #2563EB)';
   };
   return (
-    <div className="mb-12">
-      {/* Title Row with Game Lobbies Button */}
-      <div className="relative flex items-center justify-center mb-6">
-        {/* Classroom Management Button - Only for educational activities catalog */}
+    <div className="mb-8 md:mb-12 mobile-safe-container">
+      {/* Mobile: Button Above Title */}
+      {typeConfig.key === 'game' && currentUser && (
+        <div className="block md:hidden mb-4 text-center">
+          <Button
+            onClick={() => navigate('/game-lobbies')}
+            className="bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-700 hover:to-emerald-700 text-white font-medium rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 px-4 py-2"
+            size="sm"
+          >
+            <span className="flex items-center justify-center gap-2">
+              <Users className="w-4 h-4" />
+              <span className="text-xs">נהל קבוצות תלמידים</span>
+            </span>
+          </Button>
+        </div>
+      )}
+
+      {/* Desktop: Title Row with Button on Side */}
+      <div className="relative flex items-center justify-center mb-4 md:mb-6">
+        {/* Classroom Management Button - Desktop Only */}
         {typeConfig.key === 'game' && currentUser && (
-          <div className="absolute left-0">
+          <div className="hidden md:block absolute left-0">
             <Button
               onClick={() => navigate('/game-lobbies')}
               className="bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-700 hover:to-emerald-700 text-white font-medium rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 px-6 py-2.5"
@@ -63,22 +79,22 @@ export default function CatalogHeader({
         )}
 
         {/* Title - Center */}
-        <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-indigo-900 bg-clip-text text-transparent">
+        <h1 className="text-2xl md:text-4xl lg:text-5xl xl:text-6xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-indigo-900 bg-clip-text text-transparent mobile-safe-text text-center">
           {config.title}
         </h1>
       </div>
 
       {/* Subtitle */}
-      <div className="text-center">
-        <p className="text-xl md:text-2xl text-gray-600 max-w-4xl mx-auto leading-relaxed mb-8">
+      <div className="text-center mobile-safe-container">
+        <p className="text-base md:text-xl lg:text-2xl text-gray-600 max-w-4xl mx-auto leading-relaxed mb-6 md:mb-8 mobile-safe-text mobile-padding-x">
           {config.subtitle}
         </p>
       </div>
 
       {/* Analytics Section (Games only) */}
       {config.showAnalytics && currentUser && userAnalytics && (
-        <div className="text-center mb-8">
-          <div className="bg-white/10 backdrop-blur-lg rounded-lg p-4 border border-white/20 max-w-md mx-auto">
+        <div className="text-center mb-6 md:mb-8 mobile-safe-container">
+          <div className="bg-white/10 backdrop-blur-lg rounded-lg mobile-padding border border-white/20 max-w-md mx-auto mobile-safe-card">
             <h4 className="text-sm font-semibold text-center mb-3 text-blue-700">
               <TrendingUp className="w-4 h-4 inline mr-1" />
               הסטטיסטיקות שלי
@@ -119,8 +135,8 @@ export default function CatalogHeader({
       )}
 
       {/* Product Count */}
-      <div className="text-center">
-        <Badge className="bg-white/80 text-gray-700 px-4 py-2 text-base font-semibold shadow-md">
+      <div className="text-center mobile-safe-container">
+        <Badge className="bg-white/80 text-gray-700 px-3 md:px-4 py-1.5 md:py-2 text-sm md:text-base font-semibold shadow-md mobile-safe-text">
           {productCount} {productCount === totalCount ? '' : `מתוך ${totalCount}`} {getProductTypeName(typeConfig.key, 'plural')}
         </Badge>
       </div>

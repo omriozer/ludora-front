@@ -134,10 +134,10 @@ export function UserProvider({ children }) {
         // Register for auth state changes
         authManager.addAuthListener(handleAuthStateChange);
 
-        // Initialize authentication with forceRefresh=true
-        // COOKIE PERSISTENCE FIX: Always force refresh on mount to ensure
-        // /players/me is called on every page load to recover auth from cookies
-        await authManager.initialize(true);
+        // PERFORMANCE OPTIMIZATION: Only force refresh on actual page reloads, not React navigation
+        // This prevents unnecessary API calls on every component mount while still recovering from cookies
+        const isPageReload = !authManager.isInitialized || performance.navigation?.type === 1; // 1 = reload
+        await authManager.initialize(isPageReload);
       } catch (error) {
         luderror.auth('[UserContext] AuthManager initialization failed:', error);
       }

@@ -120,11 +120,7 @@
 
 /* Responsive Grid Improvements */
 @media (max-width: 768px) {
-  .dashboard-grid {
-    grid-template-columns: 1fr;
-    gap: 1rem;
-  }
-
+  /* Remove grid-template-columns override to allow Tailwind responsive classes to work */
   .widget-container.edit-mode:hover {
     transform: none;
   }

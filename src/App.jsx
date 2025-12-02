@@ -2,6 +2,7 @@ import './App.css';
 import './styles/studentsGlobalStyles.css';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useEffect, Suspense, useState, useCallback } from 'react';
+import { apiRequestAnonymous } from '@/services/apiClient';
 // Core pages - loaded immediately for better UX
 import { Home, Dashboard, Registration, NotFound } from '@/pages/lazy.jsx';
 // Lazy-loaded pages
@@ -18,6 +19,7 @@ import OnboardingRedirect from '@/components/auth/OnboardingRedirect';
 import { ConfirmationProvider } from '@/components/ui/ConfirmationProvider';
 import { AuthErrorProvider } from '@/components/providers/AuthErrorProvider';
 import { AudioCacheProvider } from '@/contexts/AudioCacheContext';
+import { AccessStateProvider } from '@/contexts/AccessStateContext';
 import { PRODUCT_TYPES } from './config/productTypes';
 import OnboardingWizard from '@/components/onboarding/OnboardingWizard';
 import { showSuccess, showError } from '@/utils/messaging';
@@ -55,16 +57,11 @@ function StudentPortal() {
 			if (match) {
 				const userCode = match[1];
 				try {
-					const response = await fetch(`/api/games/teacher/${userCode}`);
-					if (response.ok) {
-						const data = await response.json();
-						setTeacherInfo({
-							name: data.teacher?.name || "המורה",
-							invitation_code: data.teacher?.invitation_code || userCode
-						});
-					} else {
-						setTeacherInfo(null);
-					}
+					const data = await apiRequestAnonymous(`/games/teacher/${userCode}`);
+					setTeacherInfo({
+						name: data.teacher?.name || "המורה",
+						invitation_code: data.teacher?.invitation_code || userCode
+					});
 				} catch (error) {
 					setTeacherInfo(null);
 				}
@@ -436,8 +433,10 @@ function App() {
 			<AudioCacheProvider>
 				<ConfirmationProvider>
 					<AuthErrorProvider>
-						<StudentPortal />
-						<EnhancedToaster />
+						<AccessStateProvider>
+							<StudentPortal />
+							<EnhancedToaster />
+						</AccessStateProvider>
 					</AuthErrorProvider>
 				</ConfirmationProvider>
 			</AudioCacheProvider>
@@ -449,7 +448,8 @@ function App() {
 		<AudioCacheProvider>
 			<ConfirmationProvider>
 				<AuthErrorProvider>
-					<Layout>
+					<AccessStateProvider>
+						<Layout>
 					<Routes>
 					<Route
 						path='/'
@@ -1151,6 +1151,7 @@ function App() {
 				</Routes>
 					<EnhancedToaster />
 					</Layout>
+					</AccessStateProvider>
 				</AuthErrorProvider>
 			</ConfirmationProvider>
 		</AudioCacheProvider>

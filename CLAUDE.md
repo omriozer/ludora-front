@@ -1196,6 +1196,144 @@ const { status, color } = getStudentAuthStatus(
 - [ ] Verify API integration works with real data
 - [ ] Check loading states and error handling
 - [ ] Test keyboard navigation and screen reader compatibility
+- [ ] **Verify mobile responsiveness** - No horizontal scroll, content fits viewport
 - [ ] Verify responsive design on mobile and desktop
 
 **Remember:** The frontend serves both teacher and student portals with completely different design systems. Always use the appropriate design tokens and ensure your components work correctly in their intended portal context.
+
+---
+
+## 13. MOBILE RESPONSIVENESS SYSTEM (Dec 2025)
+
+### Critical Mobile Protection Rules
+
+**🚨 CRITICAL: All pages and components MUST be mobile-responsive without horizontal scrolling.**
+
+Ludora implements a comprehensive mobile viewport protection system to prevent layout breakage on mobile devices. **See `/ludora-front/MOBILE_RESPONSIVE_GUIDE.md` for complete documentation.**
+
+### Quick Reference: Mobile-Safe Utilities
+
+```jsx
+// ✅ CORRECT: Page-level mobile protection
+<div className="min-h-screen mobile-no-scroll-x mobile-safe-container">
+  <div className="max-w-7xl mx-auto mobile-padding-x mobile-safe-container">
+    {/* Page content */}
+  </div>
+</div>
+
+// ✅ CORRECT: Mobile-safe flex container
+<div className="mobile-safe-flex items-center mobile-gap">
+  <div className="flex-1 min-w-0 mobile-safe-text">
+    <h1 className="mobile-truncate">{title}</h1>
+  </div>
+</div>
+
+// ✅ CORRECT: Mobile-safe grid container
+<div className="mobile-safe-grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 mobile-gap">
+  {items.map(item => (
+    <div key={item.id} className="mobile-safe-card mobile-padding">
+      <h3 className="mobile-truncate">{item.title}</h3>
+      <p className="mobile-safe-text">{item.description}</p>
+    </div>
+  ))}
+</div>
+```
+
+### Available Mobile Utilities
+
+| Utility Class | Purpose | Usage |
+|--------------|---------|-------|
+| `.mobile-safe-container` | Prevents viewport overflow | All page containers |
+| `.mobile-safe-flex` | Safe flex layouts | Flex containers with text |
+| `.mobile-safe-grid` | Safe grid layouts | Grid containers |
+| `.mobile-safe-text` | Prevents text overflow | Long text content |
+| `.mobile-safe-card` | Complete card protection | Card components |
+| `.mobile-truncate` | Single-line ellipsis | Titles and headers |
+| `.mobile-line-clamp-2/3` | Multi-line truncation | Descriptions |
+| `.mobile-no-scroll-x` | Prevent horizontal scroll | Page-level containers |
+| `.mobile-padding` | Responsive padding | Dynamic spacing |
+| `.mobile-gap` | Responsive gap | Flex/grid spacing |
+
+### Mobile Responsiveness Checklist
+
+For every new component/page:
+
+- [ ] **No horizontal scrollbar** at 320px width (iPhone SE)
+- [ ] **Text wraps properly** without overflowing containers
+- [ ] **Images scale** without distortion or overflow
+- [ ] **Buttons remain clickable** and don't overlap
+- [ ] **Flex/Grid layouts** collapse properly on mobile
+- [ ] **Headers truncate** long titles with ellipsis
+- [ ] **Cards stack** vertically on mobile
+- [ ] **Touch targets** are at least 44px × 44px
+
+### Testing Mobile Layouts
+
+**Browser DevTools Testing:**
+```bash
+# Chrome DevTools: Cmd+Option+I (Mac) / Ctrl+Shift+I (Windows)
+# Device Toolbar: Cmd+Shift+M (Mac) / Ctrl+Shift+M (Windows)
+
+# Test at these critical widths:
+- 320px (iPhone SE)
+- 375px (iPhone 12 Pro)
+- 390px (iPhone 12 Pro Max)
+- 414px (iPhone Plus)
+- 768px (iPad Portrait)
+- 1024px (iPad Landscape)
+```
+
+**Debug Overflow Issues:**
+```javascript
+// Run in browser console to find overflowing elements
+document.querySelectorAll('*').forEach(el => {
+  if (el.scrollWidth > el.clientWidth) {
+    console.log('Overflow detected:', el);
+    el.style.outline = '2px solid red';
+  }
+});
+```
+
+### Common Mobile Anti-Patterns
+
+```jsx
+// ❌ WRONG: Fixed width without max constraint
+<div className="w-[600px]">Content</div>
+
+// ✅ CORRECT: Responsive width with mobile protection
+<div className="w-full max-w-[600px] mobile-safe-container">Content</div>
+
+// ❌ WRONG: Flex without min-w-0
+<div className="flex">
+  <div className="flex-1">Long content</div>
+</div>
+
+// ✅ CORRECT: Mobile-safe flex with proper constraints
+<div className="mobile-safe-flex">
+  <div className="flex-1 min-w-0 mobile-safe-text">Long content</div>
+</div>
+
+// ❌ WRONG: Text without word-break
+<p className="whitespace-nowrap">{longText}</p>
+
+// ✅ CORRECT: Mobile-safe text with truncation
+<p className="mobile-truncate">{longText}</p>
+```
+
+### Global Mobile Safety Features
+
+The following elements have automatic mobile protection via global CSS:
+
+- **HTML/Body** - Prevent horizontal scroll
+- **Images** - Constrained to container width
+- **Videos** - Constrained to container width
+- **Tables** - Horizontal scroll on overflow
+- **Pre/Code blocks** - Scroll instead of overflow
+
+### Mobile Responsiveness Resources
+
+- **Complete Guide**: `/ludora-front/MOBILE_RESPONSIVE_GUIDE.md`
+- **Test Files**: ProductDetails.jsx, ProductPage.jsx (reference implementations)
+- **Global Styles**: `/src/index.css` (mobile utilities defined here)
+
+**Remember:** Mobile responsiveness is NOT optional. Every component MUST work on mobile devices without horizontal scrolling or layout breakage.

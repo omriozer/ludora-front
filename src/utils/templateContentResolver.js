@@ -3,7 +3,7 @@
  * Provides resolved template content that matches PDF output for visual editor
  */
 
-import { getApiBase } from '@/utils/api.js';
+import { apiRequest } from '@/services/apiClient';
 import { ludlog, luderror } from '@/lib/ludlog';
 
 /**
@@ -20,25 +20,9 @@ export async function fetchResolvedTemplateContent(fileId) {
   }
 
   try {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      luderror.auth('fetchResolvedTemplateContent: No authentication token available');
-      return null;
-    }
-
-    const response = await fetch(`${getApiBase()}/assets/template-preview/${fileId}`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+    const result = await apiRequest(`/assets/template-preview/${fileId}`, {
+      method: 'GET'
     });
-
-    if (!response.ok) {
-      return null;
-    }
-
-    const result = await response.json();
 
     if (!result.success) {
       luderror.api('fetchResolvedTemplateContent: API returned error', result);

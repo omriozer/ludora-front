@@ -1,13 +1,10 @@
-import { getApiBase } from '@/utils/api';
+import { apiRequest } from '@/services/apiClient';
 import { ludlog, luderror } from '@/lib/ludlog';
 
 /**
  * Coupon API client for frontend coupon operations
  */
 class CouponClient {
-  constructor() {
-    this.apiBase = getApiBase();
-  }
 
   /**
    * Apply a coupon code to cart items
@@ -22,17 +19,8 @@ class CouponClient {
     try {
       ludlog.payment('Applying coupon:', { data: { couponCode, userId, cartTotal } });
 
-      const token = localStorage.getItem('authToken');
-      if (!token) {
-        throw new Error('Authentication token not found');
-      }
-
-      const response = await fetch(`${this.apiBase}/functions/applyCoupon`, {
+      const data = await apiRequest('/functions/applyCoupon', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
         body: JSON.stringify({
           couponCode,
           userId,
@@ -40,12 +28,6 @@ class CouponClient {
           purchaseAmount: cartTotal
         }),
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to apply coupon');
-      }
 
       ludlog.api('Coupon applied successfully:', { data: data });
       return data;
@@ -68,29 +50,14 @@ class CouponClient {
     try {
       ludlog.payment('Getting applicable coupons for cart:', { data: { userId, cartTotal } });
 
-      const token = localStorage.getItem('authToken');
-      if (!token) {
-        throw new Error('Authentication token not found');
-      }
-
-      const response = await fetch(`${this.apiBase}/functions/getApplicableCoupons`, {
+      const data = await apiRequest('/functions/getApplicableCoupons', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
         body: JSON.stringify({
           userId,
           cartItems,
           cartTotal
         }),
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to get applicable coupons');
-      }
 
       ludlog.api('Applicable coupons retrieved:', { data: data });
       return data;
@@ -113,29 +80,14 @@ class CouponClient {
     try {
       ludlog.payment('Getting best coupon for cart:', { data: { userId, cartTotal } });
 
-      const token = localStorage.getItem('authToken');
-      if (!token) {
-        throw new Error('Authentication token not found');
-      }
-
-      const response = await fetch(`${this.apiBase}/functions/getBestCoupon`, {
+      const data = await apiRequest('/functions/getBestCoupon', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
         body: JSON.stringify({
           userId,
           cartItems,
           cartTotal
         }),
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to get best coupon');
-      }
 
       ludlog.api('Best coupon retrieved:', { data: data });
       return data;
@@ -159,17 +111,8 @@ class CouponClient {
     try {
       ludlog.payment('Validating coupon stacking:', { data: { couponCodes, userId, cartTotal } });
 
-      const token = localStorage.getItem('authToken');
-      if (!token) {
-        throw new Error('Authentication token not found');
-      }
-
-      const response = await fetch(`${this.apiBase}/functions/validateCouponStacking`, {
+      const data = await apiRequest('/functions/validateCouponStacking', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
         body: JSON.stringify({
           couponCodes,
           userId,
@@ -177,12 +120,6 @@ class CouponClient {
           cartTotal
         }),
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to validate coupon stacking');
-      }
 
       ludlog.api('Coupon stacking validated:', { data: data });
       return data;

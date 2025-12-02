@@ -568,6 +568,7 @@ export class SubscriptionBusinessLogic {
     return {
       currentPlan,
       hasActiveSubscription: !!currentSubscription,
+      activeSubscription: currentSubscription, // Add the actual subscription object with next_billing_date
       pendingSwitch,
       hasPendingSwitch: !!pendingSwitch,
       availablePlans: plans,

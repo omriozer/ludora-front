@@ -8,16 +8,13 @@ import { useLoginModal } from '@/hooks/useLoginModal';
 import { useCart } from '@/contexts/CartContext';
 import { getPurchaseActionText } from '@/hooks/useProductAccess';
 import { useUser } from '@/contexts/UserContext';
+import { useAccessState } from '@/contexts/AccessStateContext';
 import { isBundle } from '@/lib/bundleUtils';
-import {
-  showPurchaseSuccessToast,
-  showPurchaseErrorToast
-} from '@/utils/purchaseHelpers';
 import paymentClient from '@/services/paymentClient';
 import { toast } from '@/components/ui/use-toast';
 
 /**
- * Buy Product Button - Handles purchase initiation only
+ * Buy Product Button - Handles purchase initiation using server-provided access information
  * @param {Object} product - Product object
  * @param {string} className - Additional CSS classes
  * @param {string} size - Button size
@@ -36,9 +33,13 @@ export default function BuyProductButton({
   const { openLoginModal } = useLoginModal();
   const { addToCart, refreshCart } = useCart();
   const { currentUser, isAuthenticated } = useUser();
+  const { getProduct } = useAccessState();
 
-  // Parent ProductActionBar already determined canPurchase and renders this only when appropriate
-  // No need for additional access checks
+  // Get product with embedded access information from AccessStateContext
+  const productWithAccess = getProduct(product.id) || product;
+  const access = productWithAccess.access || {};
+
+  // Server already determined purchase permissions - no client-side checks needed
 
   const handlePurchase = async (e) => {
     e.stopPropagation(); // Prevent event bubbling to parent card
@@ -68,11 +69,11 @@ export default function BuyProductButton({
       const entityType = product.product_type || 'file';
       const entityId = product.entity_id || product.id;
 
-      // Create purchase using new API
+      // Create purchase using payment client
       const result = await paymentClient.createPurchase(entityType, entityId, {
         product_title: product.title,
-        product_price: product.price, // Add price to additional data
-        product_id: product.id, // Add product ID for backend reference
+        product_price: product.price,
+        product_id: product.id,
         source: 'BuyProductButton'
       });
 
@@ -83,7 +84,7 @@ export default function BuyProductButton({
 
         if (isCompleted || isFreeItem) {
           // Free item - completed immediately
-          refreshCart(); // Sync state to update ProductActionBar immediately
+          refreshCart();
 
           toast({
             title: "מוצר התקבל בהצלחה!",
@@ -97,16 +98,12 @@ export default function BuyProductButton({
 
           // Redirect based on product type
           if (entityType === 'file') {
-            // Use product ID for redirect, not entity ID
             navigate(`/product-details?product=${product.id}`);
-          } else {
-            // For other types, let the UI update naturally without reload
-            // Our event system will handle the UI updates
           }
         } else {
           // Paid item - added to cart
           addToCart();
-          refreshCart(); // Sync cart state to update ProductActionBar
+          refreshCart();
 
           toast({
             title: "נוסף לעגלה",
@@ -139,7 +136,7 @@ export default function BuyProductButton({
 
   const buttonText = isFree
     ? 'הוספה לספרייה'
-    : getPurchaseActionText('buy', productType, product);
+    : getPurchaseActionText('buy', productType, product, false);
 
   return (
     <Button

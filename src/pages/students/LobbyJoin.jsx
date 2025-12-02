@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
+import { apiRequestAnonymous } from '@/services/apiClient';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { GamepadIcon, PlayIcon, Home, Users, Clock, AlertCircle, CheckCircle, XCircle, Plus, AlertTriangle } from 'lucide-react';
@@ -129,11 +130,8 @@ const LobbyJoin = () => {
     const fetchLobbyData = async () => {
       try {
         setLoading(true);
-        const response = await fetch('/api/game-lobbies/join-by-code', {
+        const data = await apiRequestAnonymous('/game-lobbies/join-by-code', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
           body: JSON.stringify({
             lobby_code: code,
             participant: {
@@ -144,20 +142,6 @@ const LobbyJoin = () => {
           })
         });
 
-        if (!response.ok) {
-          if (response.status === 404) {
-            throw new Error('קוד הלובי לא נמצא או אינו תקין');
-          }
-          if (response.status === 403) {
-            throw new Error('הלובי נסגר או לא זמין יותר');
-          }
-          if (response.status === 409) {
-            throw new Error('הלובי מלא - נסה שוב מאוחר יותר');
-          }
-          throw new Error('שגיאה בטעינת נתוני הלובי');
-        }
-
-        const data = await response.json();
         setLobbyData(data);
 
         // Set default display name for authenticated users
@@ -181,11 +165,8 @@ const LobbyJoin = () => {
   // Enhanced function to refresh lobby data with join/leave animation tracking
   const refreshLobbyData = async () => {
     try {
-      const response = await fetch('/api/game-lobbies/join-by-code', {
+      const newData = await apiRequestAnonymous('/game-lobbies/join-by-code', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           lobby_code: code,
           participant: {
@@ -196,16 +177,12 @@ const LobbyJoin = () => {
         })
       });
 
-      if (response.ok) {
-        const newData = await response.json();
-
-        // Track player join/leave animations if we have previous data
-        if (lobbyData && lobbyData.sessions) {
-          trackPlayerChanges(lobbyData.sessions, newData.sessions || []);
-        }
-
-        setLobbyData(newData);
+      // Track player join/leave animations if we have previous data
+      if (lobbyData && lobbyData.sessions) {
+        trackPlayerChanges(lobbyData.sessions, newData.sessions || []);
       }
+
+      setLobbyData(newData);
     } catch (error) {
       // Don't update error state for Socket.IO refreshes - silent failure for real-time updates
     }
@@ -484,11 +461,8 @@ const LobbyJoin = () => {
     try {
       setJoining(true);
 
-      const response = await fetch(`/api/game-lobbies/${lobbyData.lobby.id}/join`, {
+      const joinResult = await apiRequestAnonymous(`/game-lobbies/${lobbyData.lobby.id}/join`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           participant: {
             display_name: finalDisplayName,
@@ -498,13 +472,6 @@ const LobbyJoin = () => {
           session_id: selectedSession?.id || null
         })
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'שגיאה בהצטרפות ללובי');
-      }
-
-      const joinResult = await response.json();
 
       // Redirect to play page with session info
       navigate(`/play/${joinResult.session.id}`, {
@@ -546,11 +513,8 @@ const LobbyJoin = () => {
     try {
       setCreatingSession(true);
 
-      const response = await fetch(`/api/game-lobbies/${lobbyData.lobby.id}/sessions/create-student`, {
+      const createResult = await apiRequestAnonymous(`/game-lobbies/${lobbyData.lobby.id}/sessions/create-student`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           participant: {
             display_name: finalDisplayName,
@@ -559,13 +523,6 @@ const LobbyJoin = () => {
           }
         })
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'שגיאה ביצירת חדר חדש');
-      }
-
-      const createResult = await response.json();
 
       // Redirect to play page with session info
       navigate(`/play/${createResult.session.id}`, {

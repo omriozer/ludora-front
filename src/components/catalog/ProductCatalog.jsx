@@ -15,6 +15,7 @@ import CatalogFilters from './CatalogFilters';
 import ProductGrid from './ProductGrid';
 import EmptyState from './EmptyState';
 import useProductCatalog from './hooks/useProductCatalog';
+import { useSubscriptionEligibility } from '@/hooks/useSubscriptionEligibility';
 
 // Helper function to convert Tailwind color format to CSS gradient (defined outside component)
 const getGradientStyle = (colorString) => {
@@ -99,6 +100,14 @@ export default function ProductCatalog({ productType: propProductType }) {
     loadData
   } = useProductCatalog(productType || 'game', filters, activeTab);
 
+  // Load subscription eligibility once at page level to prevent multiple API calls
+  const {
+    eligibilityData,
+    isLoading: isSubscriptionLoading,
+    hasEligibility,
+    refetch: refetchSubscriptionEligibility
+  } = useSubscriptionEligibility();
+
   // Now we can do conditional returns AFTER all hooks have been called
   if (!productType) {
     return <div>Error: Unknown product type</div>;
@@ -130,12 +139,12 @@ export default function ProductCatalog({ productType: propProductType }) {
     });
   };
 
-  // Loading state
-  if (isLoading) {
+  // Loading state - include subscription loading
+  if (isLoading || isSubscriptionLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-indigo-50/30 flex items-center justify-center">
         <LudoraLoadingSpinner
-          message={config.loadingMessage}
+          message={isSubscriptionLoading ? "טוען נתוני מנוי..." : config.loadingMessage}
           size="lg"
           theme="creative"
         />
@@ -167,10 +176,10 @@ export default function ProductCatalog({ productType: propProductType }) {
   // Render catalog
   return (
     <div
-      className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-indigo-50/30"
+      className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-indigo-50/30 mobile-no-scroll-x mobile-safe-container"
       dir="rtl"
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto mobile-padding-x py-4 md:py-8 mobile-safe-container">
         {/* Header with title, analytics (if applicable) */}
         <CatalogHeader
           config={config}
@@ -195,17 +204,17 @@ export default function ProductCatalog({ productType: propProductType }) {
 
         {/* Content with optional tabs */}
         {config.showTabs ? (
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-            <div className="flex justify-center">
-              <TabsList className="grid grid-cols-2 bg-white/80 backdrop-blur-xl rounded-2xl p-2 shadow-lg border border-white/20 h-16">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 md:space-y-8 mobile-safe-container">
+            <div className="flex justify-center mobile-safe-container">
+              <TabsList className="grid grid-cols-2 bg-white/80 backdrop-blur-xl rounded-xl md:rounded-2xl p-1.5 md:p-2 shadow-lg border border-white/20 h-12 md:h-16 w-full max-w-md mobile-safe-container">
                 {config.tabs.map((tab) => (
                   <TabsTrigger
                     key={tab.key}
                     value={tab.key}
-                    className="flex items-center gap-3 rounded-xl py-4 px-6 text-base font-bold data-[state=active]:bg-gradient-to-r data-[state=active]:shadow-lg transition-all duration-300"
+                    className="flex items-center mobile-gap rounded-lg md:rounded-xl py-2 md:py-4 px-3 md:px-6 text-sm md:text-base font-bold data-[state=active]:bg-gradient-to-r data-[state=active]:shadow-lg transition-all duration-300 mobile-safe-text"
                     style={getGradientStyle(typeConfig.color)}
                   >
-                    <span>{tab.label}</span>
+                    <span className="mobile-truncate">{tab.label}</span>
                   </TabsTrigger>
                 ))}
               </TabsList>
@@ -222,6 +231,8 @@ export default function ProductCatalog({ productType: propProductType }) {
                   settings={settings}
                   activeTab={activeTab}
                   onClearFilters={clearAllFilters}
+                  subscriptionEligibility={eligibilityData}
+                  onSubscriptionSuccess={refetchSubscriptionEligibility}
                 />
               </TabsContent>
             ))}
@@ -236,6 +247,8 @@ export default function ProductCatalog({ productType: propProductType }) {
             settings={settings}
             activeTab="all"
             onClearFilters={clearAllFilters}
+            subscriptionEligibility={eligibilityData}
+            onSubscriptionSuccess={refetchSubscriptionEligibility}
           />
         )}
       </div>
@@ -255,7 +268,9 @@ function CatalogContent({
   userPurchases,
   settings,
   activeTab,
-  onClearFilters
+  onClearFilters,
+  subscriptionEligibility,
+  onSubscriptionSuccess
 }) {
   if (products.length === 0) {
     return (
@@ -279,6 +294,8 @@ function CatalogContent({
         config={config}
         currentUser={currentUser}
         userPurchases={userPurchases}
+        subscriptionEligibility={subscriptionEligibility}
+        onSubscriptionSuccess={onSubscriptionSuccess}
       />
     </motion.div>
   );

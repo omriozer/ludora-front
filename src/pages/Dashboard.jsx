@@ -45,20 +45,20 @@ const WidgetPickerModal = ({ isOpen, onClose, availableWidgets, onAddWidget, onR
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-        <div className="p-6 border-b">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-gray-900">נהל ווידג'טים</h2>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 mobile-padding mobile-safe-container">
+      <div className="bg-white rounded-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto mobile-safe-container">
+        <div className="mobile-padding border-b mobile-safe-container">
+          <div className="mobile-safe-flex items-center justify-between mobile-gap">
+            <h2 className="text-lg md:text-xl font-bold text-gray-900 mobile-safe-text">נהל ווידג'טים</h2>
             <Button variant="ghost" size="sm" onClick={onClose}>
-              <X className="w-4 h-4" />
+              <X className="w-3 h-3 md:w-4 md:h-4" />
             </Button>
           </div>
-          <p className="text-gray-600 mt-2">הוסף או הסר ווידג'טים מהדאשבורד שלך</p>
+          <p className="text-gray-600 mt-2 text-sm md:text-base mobile-safe-text">הוסף או הסר ווידג'טים מהדאשבורד שלך</p>
         </div>
 
-        <div className="p-6">
-          <div className="grid gap-4">
+        <div className="mobile-padding mobile-safe-container">
+          <div className="mobile-safe-grid grid-cols-1 mobile-gap">
             {Object.values(availableWidgets).map((widget) => {
               const isAdded = isWidgetAdded(widget.id);
               const addedWidget = userWidgets.find(w => w.type === widget.id);
@@ -66,48 +66,52 @@ const WidgetPickerModal = ({ isOpen, onClose, availableWidgets, onAddWidget, onR
               return (
                 <div
                   key={widget.id}
-                  className={`border rounded-lg p-4 transition-colors ${
+                  className={`border rounded-lg mobile-padding transition-colors mobile-safe-card ${
                     isAdded
                       ? 'border-green-300 bg-green-50'
                       : 'border-gray-200 hover:border-blue-300'
                   }`}
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900 mb-1">{widget.name}</h3>
-                      <p className="text-sm text-gray-600 mb-3">{widget.description}</p>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                  <div className="mobile-safe-flex flex-col sm:flex-row sm:items-start sm:justify-between mobile-gap">
+                    <div className="flex-1 min-w-0 mobile-safe-container">
+                      <h3 className="font-semibold text-gray-900 mb-1 mobile-safe-text mobile-truncate">{widget.name}</h3>
+                      <p className="text-xs md:text-sm text-gray-600 mb-3 mobile-safe-text">{widget.description}</p>
+                      <div className="mobile-safe-flex items-center mobile-gap flex-wrap">
+                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded whitespace-nowrap">
                           {widget.category === 'purchases' ? 'רכישות' :
                            widget.category === 'tools' ? 'כלים' :
                            widget.category === 'classroom' ? 'כיתה' :
                            widget.category}
                         </span>
                         {isAdded && (
-                          <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                          <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded whitespace-nowrap">
                             ✓ נוסף
                           </span>
                         )}
                       </div>
                     </div>
-                    {isAdded ? (
-                      <Button
-                        onClick={() => onRemoveWidget(addedWidget.id)}
-                        variant="destructive"
-                        className="bg-red-600 hover:bg-red-700 text-white"
-                      >
-                        <Trash2 className="w-4 h-4 ml-2" />
-                        הסר
-                      </Button>
-                    ) : (
-                      <Button
-                        onClick={() => onAddWidget(widget.id)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white"
-                      >
-                        <Plus className="w-4 h-4 ml-2" />
-                        הוסף
-                      </Button>
-                    )}
+                    <div className="w-full sm:w-auto">
+                      {isAdded ? (
+                        <Button
+                          onClick={() => onRemoveWidget(addedWidget.id)}
+                          variant="destructive"
+                          className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white text-xs md:text-sm px-2 md:px-3"
+                          size="sm"
+                        >
+                          <Trash2 className="w-3 h-3 md:w-4 md:h-4 ml-1 md:ml-2" />
+                          הסר
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={() => onAddWidget(widget.id)}
+                          className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white text-xs md:text-sm px-2 md:px-3"
+                          size="sm"
+                        >
+                          <Plus className="w-3 h-3 md:w-4 md:h-4 ml-1 md:ml-2" />
+                          הוסף
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
@@ -273,25 +277,25 @@ const WidgetRenderer = ({ widget, isEditMode, onRemove, onMoveUp, onMoveDown, ca
 
   return (
     <div className={`
-      relative w-full h-full min-h-[280px]
+      relative w-full h-full min-h-[280px] mobile-safe-container
       ${isEditMode ? 'widget-edit-mode' : ''}
       widget-item transition-all duration-200 ease-in-out
       ${isEditMode ? 'hover:scale-[1.02] hover:shadow-xl hover:z-10' : ''}
     `}>
       {isEditMode && (
-        <div className="absolute top-3 left-3 z-20 flex items-center gap-2 bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200/50 p-2">
+        <div className="absolute top-2 md:top-3 left-2 md:left-3 z-20 mobile-safe-flex items-center mobile-gap bg-white/95 backdrop-blur-sm rounded-lg md:rounded-xl shadow-lg border border-gray-200/50 mobile-padding">
           {/* Drag Handle */}
           <div
             className="cursor-move p-1 text-gray-400 hover:text-gray-600 transition-colors drag-handle"
             title="גרור ווידג'ט"
             onMouseDown={(e) => e.stopPropagation()}
           >
-            <GripVertical className="w-4 h-4" />
+            <GripVertical className="w-3 h-3 md:w-4 md:h-4" />
           </div>
 
           {/* Size Controls */}
           {availableSizes.length > 1 && (
-            <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+            <div className="mobile-safe-flex items-center gap-0.5 md:gap-1 bg-gray-100 rounded-md md:rounded-lg p-0.5 md:p-1">
               {availableSizes.map((size) => {
                 const Icon = getSizeIcon(size);
                 return (
@@ -300,14 +304,14 @@ const WidgetRenderer = ({ widget, isEditMode, onRemove, onMoveUp, onMoveDown, ca
                     variant="ghost"
                     size="sm"
                     onClick={() => handleSizeChange(size)}
-                    className={`h-6 w-6 p-0 rounded ${
+                    className={`h-5 w-5 md:h-6 md:w-6 p-0 rounded ${
                       currentSize === size
                         ? 'bg-blue-500 text-white'
                         : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200'
                     }`}
                     title={getSizeLabel(size)}
                   >
-                    <Icon className="w-3 h-3" />
+                    <Icon className="w-2.5 h-2.5 md:w-3 md:h-3" />
                   </Button>
                 );
               })}
@@ -319,14 +323,14 @@ const WidgetRenderer = ({ widget, isEditMode, onRemove, onMoveUp, onMoveDown, ca
             variant="ghost"
             size="sm"
             onClick={() => setShowDeleteConfirm(true)}
-            className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg"
+            className="h-6 w-6 md:h-8 md:w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-md md:rounded-lg"
             title="הסר ווידג'ט"
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="w-3 h-3 md:w-4 md:h-4" />
           </Button>
 
-          {/* Size Indicator */}
-          <div className="text-xs text-gray-500 px-2 py-1 bg-gray-100 rounded-md">
+          {/* Size Indicator - Hidden on very small screens */}
+          <div className="hidden xs:block text-xs text-gray-500 px-1.5 md:px-2 py-0.5 md:py-1 bg-gray-100 rounded-md whitespace-nowrap">
             {getSizeLabel(currentSize)}
           </div>
         </div>
@@ -867,39 +871,41 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-indigo-50/50 py-6">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-indigo-50/50 mobile-padding-y mobile-no-scroll-x mobile-safe-container">
+      <div className="max-w-6xl mx-auto mobile-padding-x mobile-safe-container">
 
         {/* Header Section */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+        <div className="mobile-safe-flex flex-col sm:flex-row sm:items-center sm:justify-between mobile-gap mb-6 md:mb-8 mobile-no-scroll-x">
           {/* Welcome message */}
-          <div className="text-right">
-            <h1 className="text-2xl font-bold text-gray-900">
+          <div className="text-right mobile-safe-container flex-1 min-w-0">
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900 mobile-safe-text">
               שלום, {currentUser?.display_name || currentUser?.full_name} 👋
             </h1>
-            <p className="text-gray-600 mt-1">הדאשבורד האישי שלך</p>
+            <p className="text-sm md:text-base text-gray-600 mt-1 mobile-safe-text">הדאשבורד האישי שלך</p>
           </div>
 
           {/* Actions */}
-          <div className="flex items-center gap-2">
+          <div className="mobile-safe-flex items-center mobile-gap flex-shrink-0">
             {userWidgets.length > 0 && (
               <>
                 {!isEditMode ? (
                   <Button
                     variant="outline"
                     onClick={() => setIsEditMode(true)}
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-1 md:gap-2 text-xs md:text-sm px-2 md:px-3"
+                    size="sm"
                   >
-                    <Edit3 className="w-4 h-4" />
-                    עריכה
+                    <Edit3 className="w-3 h-3 md:w-4 md:h-4" />
+                    <span className="hidden sm:inline">עריכה</span>
                   </Button>
                 ) : (
                   <Button
                     onClick={handleSaveChanges}
-                    className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white"
+                    className="flex items-center gap-1 md:gap-2 bg-green-600 hover:bg-green-700 text-white text-xs md:text-sm px-2 md:px-3"
+                    size="sm"
                   >
-                    <Save className="w-4 h-4" />
-                    שמור
+                    <Save className="w-3 h-3 md:w-4 md:h-4" />
+                    <span className="hidden sm:inline">שמור</span>
                   </Button>
                 )}
               </>
@@ -907,10 +913,12 @@ export default function Dashboard() {
 
             <Button
               onClick={() => setShowWidgetPicker(true)}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+              className="flex items-center gap-1 md:gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs md:text-sm px-2 md:px-3"
+              size="sm"
             >
-              <Plus className="w-4 h-4" />
-              הוסף ווידג'ט
+              <Plus className="w-3 h-3 md:w-4 md:h-4" />
+              <span className="hidden xs:inline">הוסף ווידג'ט</span>
+              <span className="xs:hidden">הוסף</span>
             </Button>
           </div>
         </div>
@@ -918,35 +926,36 @@ export default function Dashboard() {
         {/* Dashboard Content */}
         {userWidgets.length === 0 ? (
           /* Empty State */
-          <div className="text-center py-12">
-            <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-12 shadow-xl border border-gray-200/50">
-              <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
-                <Settings className="w-12 h-12 text-white" />
+          <div className="text-center mobile-padding-y mobile-safe-container">
+            <div className="bg-white/90 backdrop-blur-sm rounded-2xl md:rounded-3xl mobile-padding md:p-12 shadow-xl border border-gray-200/50 mobile-safe-card">
+              <div className="w-16 h-16 md:w-24 md:h-24 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4 md:mb-6 shadow-lg">
+                <Settings className="w-8 h-8 md:w-12 md:h-12 text-white" />
               </div>
 
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">
+              <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-3 md:mb-4 mobile-safe-text">
                 התאם את הדאשבורד שלך
               </h2>
 
-              <p className="text-gray-600 text-lg leading-relaxed max-w-2xl mx-auto mb-8">
+              <p className="text-gray-600 text-sm md:text-lg leading-relaxed max-w-2xl mx-auto mb-6 md:mb-8 mobile-safe-text mobile-padding-x">
                 הוסף ווידג'טים כדי ליצור דאשבורד מותאם אישית עם כל המידע והכלים שאתה צריך.
-                <br />
+                <br className="hidden md:block" />
+                <span className="md:hidden"> </span>
                 התחל על ידי לחיצה על כפתור "הוסף ווידג'ט" למעלה.
               </p>
 
               <Button
                 onClick={() => setShowWidgetPicker(true)}
-                size="lg"
-                className="bg-blue-600 hover:bg-blue-700 text-white"
+                size="default"
+                className="bg-blue-600 hover:bg-blue-700 text-white text-sm md:text-base px-4 md:px-6 py-2 md:py-3"
               >
-                <Plus className="w-5 h-5 ml-2" />
+                <Plus className="w-4 h-4 md:w-5 md:h-5 ml-1 md:ml-2" />
                 הוסף ווידג'ט ראשון
               </Button>
             </div>
           </div>
         ) : (
           /* Modern Responsive Grid Layout */
-          <div className="dashboard-grid grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6 auto-rows-min">
+          <div className="dashboard-grid mobile-safe-grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 mobile-gap auto-rows-min mobile-safe-container">
             {userWidgets.map((widget, index) => (
               <div
                 key={widget.id}
