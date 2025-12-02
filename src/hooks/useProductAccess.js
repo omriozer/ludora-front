@@ -174,19 +174,10 @@ export const useProductAccess = (product, userPurchases = [], checkBackend = tru
 
       const productType = product.product_type || 'file';
 
-        productId: product.id,
-        productType,
-        entityId: product.entity_id
-      });
-
       setIsCheckingBackend(true);
       const accessResult = await checkBackendAccess(productType, product.entity_id);
       setBackendAccessState(accessResult);
       setIsCheckingBackend(false);
-
-        hasAccess: accessResult.hasAccess,
-        accessType: accessResult.accessType
-      });
     };
 
     performBackendCheck();
