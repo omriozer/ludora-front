@@ -57,23 +57,13 @@ const findUserPurchaseForProduct = (product, userPurchases = []) => {
  */
 const checkBackendAccess = async (productType, entityId) => {
   try {
-      productType,
-      entityId
-    });
-
     const accessResult = await apiRequest(
       `/access/check/${productType}/${entityId}`,
       { suppressUserErrors: true }
     );
 
-      hasAccess: accessResult.hasAccess,
-      accessType: accessResult.accessType,
-      reason: accessResult.reason
-    });
-
     return accessResult;
   } catch (error) {
-
     // If 401/403, user doesn't have access - return no access
     if (error.statusCode === 401 || error.statusCode === 403) {
       return { hasAccess: false, accessType: 'none', reason: 'authentication_required' };
@@ -91,15 +81,6 @@ const checkBackendAccess = async (productType, entityId) => {
  * @returns {boolean} Whether user can claim this product via subscription
  */
 export const checkSubscriptionEligibility = (product, allowanceData) => {
-    productId: product?.id,
-    productType: product?.product_type,
-    hasProduct: !!product,
-    hasAllowanceData: !!allowanceData,
-    hasAllowances: !!allowanceData?.allowances,
-    allowanceData: allowanceData,
-    allowanceStructure: allowanceData ? Object.keys(allowanceData) : null
-  });
-
   if (!product || !allowanceData?.allowances) {
     ludlog.ui('checkSubscriptionEligibility: Early return false', {
       reason: !product ? 'no product' : 'no allowanceData.allowances',
@@ -147,14 +128,6 @@ export const checkSubscriptionEligibility = (product, allowanceData) => {
   // Handle single products
   const productType = product.product_type;
   const allowance = allowanceData.allowances[productType];
-
-    productType: productType,
-    availableAllowanceTypes: Object.keys(allowanceData.allowances),
-    allowance: allowance,
-    hasAllowance: !!allowance,
-    isUnlimited: allowance?.unlimited,
-    remaining: allowance?.remaining
-  });
 
   if (!allowance) {
     ludlog.ui('checkSubscriptionEligibility: No allowance for product type', {
@@ -261,13 +234,6 @@ export const useProductAccess = (product, userPurchases = [], checkBackend = tru
     const hasPurchaseRecord = !!purchase; // ANY purchase record exists
     const canAddToCart = !isFree && !hasPurchaseRecord; // No add to cart if ANY purchase exists
     const canPurchase = !hasAccess && !isPurchased;
-
-      hasLocalAccess,
-      hasBackendAccess,
-      hasAccess,
-      accessType,
-      isCheckingBackend
-    });
 
     // Determine access action based on product type
     let accessAction = null;
