@@ -43,21 +43,6 @@ const ConnectedTeachersList = ({
   const getConnectedTeachers = () => {
     if (!currentPlayer) return [];
 
-      currentPlayer,
-      teacher_id: currentPlayer.teacher_id,
-      teacher: currentPlayer.teacher,
-      teachers: currentPlayer.teachers
-    });
-
-      console.log('🔍 Detailed teacher object analysis:', {
-        teacher_keys: Object.keys(currentPlayer.teacher),
-        teacher_values: currentPlayer.teacher,
-        has_invitation_code: 'invitation_code' in currentPlayer.teacher,
-        invitation_code_value: currentPlayer.teacher.invitation_code,
-        invitation_code_type: typeof currentPlayer.teacher.invitation_code
-      });
-    }
-
     // If explicit teachers array is provided, use it (future support for multiple teachers)
     if (teachers && teachers.length > 0) {
       console.log('📋 Using explicit teachers array:', teachers);
