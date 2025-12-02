@@ -45,22 +45,23 @@ export default function Footer({ isMaintenanceMode = false }) {
   // Student portal footer - compact design
   if (isStudent) {
     return (
-      <footer className="bg-gray-900 text-white mobile-padding-y mobile-safe-container" role="contentinfo">
-        <div className="max-w-6xl mx-auto mobile-padding-x mobile-safe-container">
-          {/* Mobile and Desktop Layout */}
-          <div className="mobile-safe-flex flex-col items-center mobile-gap">
-            {/* Logo and description - centered */}
-            <div className="mobile-safe-flex flex-col items-center mobile-gap text-center">
-              <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-                <LogoDisplay size="small" className="h-6 md:h-8 object-contain" />
+      <footer className="bg-gray-900 text-white py-4 md:py-6 mobile-safe-container" role="contentinfo">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 mobile-safe-container">
+          {/* Main content - more compact layout */}
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-6">
+
+            {/* Left: Logo and description */}
+            <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3 text-center md:text-right">
+              <Link to="/" className="flex items-center justify-center md:justify-start gap-2 hover:opacity-80 transition-opacity">
+                <LogoDisplay size="small" className="h-6 object-contain" />
+                <span className="text-xs md:text-sm font-medium mobile-safe-text">
+                  {settings?.site_description || 'בית ללמידה אחרת'}
+                </span>
               </Link>
-              <span className="text-xs md:text-sm font-medium mobile-safe-text">
-                {settings?.site_description || 'בית ללמידה אחרת'}
-              </span>
             </div>
 
-            {/* Links - centered */}
-            <div className="mobile-safe-flex items-center mobile-gap text-xs md:text-sm mobile-safe-container">
+            {/* Center: Links */}
+            <div className="flex items-center justify-center gap-3 text-xs md:text-sm mobile-safe-container">
               <Link to="/privacy" className="text-gray-400 hover:text-white transition-colors mobile-safe-text">
                 {footerTexts.privacy}
               </Link>
@@ -74,43 +75,29 @@ export default function Footer({ isMaintenanceMode = false }) {
               </Link>
             </div>
 
-            {/* Contact section - centered */}
-            <div className="text-center mobile-safe-container">
-              <p className="text-xs text-gray-400 mb-2 mobile-safe-text">{footerTexts.contactDescription}</p>
-              <div className="mobile-safe-flex flex-col items-center mobile-gap max-w-sm mx-auto">
-                <a
-                  href={getWhatsAppUrl(getContactPhone(settings), 'שלום, יש לי שאלה על לודורה')}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full max-w-xs"
-                >
-                  <Button size="sm" className="w-full bg-green-600 hover:bg-green-700 text-white border-0 px-2 md:px-3 py-1 text-xs mobile-safe-text">
-                    <WhatsAppIcon className="w-3 h-3 ml-1" />
-                    {footerTexts.whatsappMessage}
-                  </Button>
-                </a>
-                <a
-                  href={getEmailUrl(getContactEmail(settings), 'שאלה על לודורה', '')}
-                  className="w-full max-w-xs"
-                >
-                  <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700 text-white border-0 px-2 md:px-3 py-1 text-xs mobile-safe-text">
-                    <Mail className="w-3 h-3 ml-1" />
-                    {footerTexts.emailMessage}
-                  </Button>
-                </a>
-                {!isMaintenanceMode && (
-                  <Link to="/contact" className="w-full max-w-xs">
-                    <Button size="sm" variant="outline" className="w-full bg-transparent border-gray-400 text-gray-300 hover:bg-gray-800 hover:text-white px-2 md:px-3 py-1 text-xs mobile-safe-text">
-                      {footerTexts.sendMessage}
-                    </Button>
-                  </Link>
-                )}
-              </div>
+            {/* Right: Contact buttons - compact */}
+            <div className="flex flex-col sm:flex-row items-center gap-2 justify-center md:justify-end">
+              <a
+                href={getWhatsAppUrl(getContactPhone(settings), 'שלום, יש לי שאלה על לודורה')}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white border-0 px-3 py-1.5 text-xs">
+                  <WhatsAppIcon className="w-3 h-3 ml-1" />
+                  WhatsApp
+                </Button>
+              </a>
+              <a href={getEmailUrl(getContactEmail(settings), 'שאלה על לודורה', '')}>
+                <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-3 py-1.5 text-xs">
+                  <Mail className="w-3 h-3 ml-1" />
+                  מייל
+                </Button>
+              </a>
             </div>
           </div>
 
-          {/* Copyright - compact */}
-          <div className="border-t border-gray-800 mt-3 pt-3 text-center mobile-safe-container">
+          {/* Copyright - minimal spacing */}
+          <div className="border-t border-gray-800 mt-3 pt-2 text-center">
             <p className="text-xs text-gray-400 mobile-safe-text">{footerTexts.copyright}</p>
           </div>
         </div>
@@ -120,22 +107,23 @@ export default function Footer({ isMaintenanceMode = false }) {
 
   // Teacher portal footer - matching student portal compact design
   return (
-    <footer className="bg-gray-900 text-white mobile-padding-y mobile-safe-container" role="contentinfo">
-      <div className="max-w-6xl mx-auto mobile-padding-x mobile-safe-container">
-        {/* Mobile and Desktop Layout */}
-        <div className="mobile-safe-flex flex-col items-center mobile-gap">
-          {/* Logo and description - centered */}
-          <div className="mobile-safe-flex flex-col items-center mobile-gap text-center">
-            <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-              <LogoDisplay size="small" className="h-6 md:h-8 object-contain" />
+    <footer className="bg-gray-900 text-white py-4 md:py-6 mobile-safe-container" role="contentinfo">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 mobile-safe-container">
+        {/* Main content - more compact layout */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-6">
+
+          {/* Left: Logo and description */}
+          <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3 text-center md:text-right">
+            <Link to="/" className="flex items-center justify-center md:justify-start gap-2 hover:opacity-80 transition-opacity">
+              <LogoDisplay size="small" className="h-6 object-contain" />
+              <span className="text-xs md:text-sm font-medium mobile-safe-text">
+                {settings?.site_description || 'בית ללמידה אחרת'}
+              </span>
             </Link>
-            <span className="text-xs md:text-sm font-medium mobile-safe-text">
-              {settings?.site_description || 'בית ללמידה אחרת'}
-            </span>
           </div>
 
-          {/* Links - centered */}
-          <div className="mobile-safe-flex items-center mobile-gap text-xs md:text-sm mobile-safe-container">
+          {/* Center: Links */}
+          <div className="flex items-center justify-center gap-3 text-xs md:text-sm mobile-safe-container">
             <Link to="/privacy" className="text-gray-400 hover:text-white transition-colors mobile-safe-text">
               {footerTexts.privacy}
             </Link>
@@ -149,43 +137,36 @@ export default function Footer({ isMaintenanceMode = false }) {
             </Link>
           </div>
 
-          {/* Contact section - centered */}
-          <div className="text-center mobile-safe-container">
-            <p className="text-xs text-gray-400 mb-2 mobile-safe-text">{footerTexts.contactDescription}</p>
-            <div className="mobile-safe-flex flex-col items-center mobile-gap max-w-sm mx-auto">
-              <a
-                href={getWhatsAppUrl(getContactPhone(settings), 'שלום, יש לי שאלה על לודורה')}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full max-w-xs"
-              >
-                <Button size="sm" className="w-full bg-green-600 hover:bg-green-700 text-white border-0 px-2 md:px-3 py-1 text-xs mobile-safe-text">
-                  <WhatsAppIcon className="w-3 h-3 ml-1" />
-                  {footerTexts.whatsappMessage}
+          {/* Right: Contact buttons - compact */}
+          <div className="flex flex-col sm:flex-row items-center gap-2 justify-center md:justify-end">
+            <a
+              href={getWhatsAppUrl(getContactPhone(settings), 'שלום, יש לי שאלה על לודורה')}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white border-0 px-3 py-1.5 text-xs">
+                <WhatsAppIcon className="w-3 h-3 ml-1" />
+                WhatsApp
+              </Button>
+            </a>
+            <a href={getEmailUrl(getContactEmail(settings), 'שאלה על לודורה', '')}>
+              <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-3 py-1.5 text-xs">
+                <Mail className="w-3 h-3 ml-1" />
+                מייל
+              </Button>
+            </a>
+            {!isMaintenanceMode && (
+              <Link to="/contact">
+                <Button size="sm" variant="outline" className="bg-transparent border-gray-400 text-gray-300 hover:bg-gray-800 hover:text-white px-3 py-1.5 text-xs">
+                  {footerTexts.sendMessage}
                 </Button>
-              </a>
-              <a
-                href={getEmailUrl(getContactEmail(settings), 'שאלה על לודורה', '')}
-                className="w-full max-w-xs"
-              >
-                <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700 text-white border-0 px-2 md:px-3 py-1 text-xs mobile-safe-text">
-                  <Mail className="w-3 h-3 ml-1" />
-                  {footerTexts.emailMessage}
-                </Button>
-              </a>
-              {!isMaintenanceMode && (
-                <Link to="/contact" className="w-full max-w-xs">
-                  <Button size="sm" variant="outline" className="w-full bg-transparent border-gray-400 text-gray-300 hover:bg-gray-800 hover:text-white px-2 md:px-3 py-1 text-xs mobile-safe-text">
-                    {footerTexts.sendMessage}
-                  </Button>
-                </Link>
-              )}
-            </div>
+              </Link>
+            )}
           </div>
         </div>
 
-        {/* Copyright - compact */}
-        <div className="border-t border-gray-800 mt-3 pt-3 text-center mobile-safe-container">
+        {/* Copyright - minimal spacing */}
+        <div className="border-t border-gray-800 mt-3 pt-2 text-center">
           <p className="text-xs text-gray-400 mobile-safe-text">{footerTexts.copyright}</p>
         </div>
       </div>
