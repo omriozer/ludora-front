@@ -940,6 +940,16 @@ const LessonPlanProductSection = ({
           <div className="space-y-2">
             <Label className="text-sm font-medium">קבצים מקושרים:</Label>
             {files.map((fileConfig, index) => {
+              // Debug logging
+              ludlog.ui(`Rendering file config for ${fileConfig.filename}:`, {
+                data: {
+                  file_id: fileConfig.file_id,
+                  is_asset_only: fileConfig.is_asset_only,
+                  product_id: fileConfig.product_id,
+                  has_product_id: !!fileConfig.product_id
+                }
+              });
+
               return (
                 <div key={fileConfig.file_id} className="flex items-center justify-between p-2 bg-green-50 border border-green-200 rounded">
                   <div className="flex items-center gap-2">
@@ -963,18 +973,60 @@ const LessonPlanProductSection = ({
                   </div>
                   <div className="flex items-center gap-1">
                     {/* For linked File products, show navigation to product details page */}
-                    {!fileConfig.is_asset_only && fileConfig.product_id ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          navigate(`/product-details?product=${fileConfig.product_id}`);
-                        }}
-                        title="עבור לעמוד המוצר"
-                      >
-                        <FileText className="w-4 h-4" />
-                      </Button>
+                    {!fileConfig.is_asset_only ? (
+                      // This is a linked File product - show navigation button
+                      fileConfig.product_id ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            navigate(`/product-details?product=${fileConfig.product_id}`);
+                          }}
+                          title="עבור לעמוד המוצר"
+                          className="text-blue-600 hover:text-blue-700"
+                        >
+                          <FileText className="w-4 h-4" />
+                        </Button>
+                      ) : (
+                        // Fallback: product_id not available (legacy data), try to find product by file_id
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={async () => {
+                            try {
+                              // Attempt to find the product associated with this file
+                              const products = await Product.find({
+                                product_type: 'file',
+                                entity_id: fileConfig.file_id,
+                                limit: 1
+                              });
+
+                              if (products && products.length > 0) {
+                                navigate(`/product-details?product=${products[0].id}`);
+                              } else {
+                                toast({
+                                  title: "לא ניתן למצוא את המוצר",
+                                  description: "מוצר הקובץ אינו זמין",
+                                  variant: "destructive"
+                                });
+                              }
+                            } catch (error) {
+                              luderror.ui('Error finding file product:', error);
+                              toast({
+                                title: "שגיאה",
+                                description: "לא ניתן לטעון את פרטי המוצר",
+                                variant: "destructive"
+                              });
+                            }
+                          }}
+                          title="עבור לעמוד המוצר"
+                          className="text-blue-600 hover:text-blue-700"
+                        >
+                          <FileText className="w-4 h-4" />
+                        </Button>
+                      )
                     ) : (
                       /* For asset-only files, show download button */
                       <Button
