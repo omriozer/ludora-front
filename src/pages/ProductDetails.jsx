@@ -33,7 +33,8 @@ import {
   StickyNote,
   Volume2,
   PaperclipIcon,
-  Download
+  Download,
+  ExternalLink
 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
@@ -444,7 +445,7 @@ export default function ProductDetails() {
       setError("שגיאה בטעינת הנתונים");
     }
     setIsLoading(false);
-  }, [pdfViewerOpen, currentUser, bundlePreviewModalOpen]);
+  }, [pdfViewerOpen, currentUser, bundlePreviewModalOpen, window.location.search]);
 
   useEffect(() => {
     if (!userLoading) {
@@ -1511,42 +1512,61 @@ export default function ProductDetails() {
                                         </p>
                                       </div>
                                       {file.file_id && (
-                                        <Button
-                                          variant="outline"
-                                          size="sm"
-                                          onClick={async () => {
-                                            if (!hasAccess) {
-                                              // Show access denied message
-                                              alert('נדרשת רכישה כדי להוריד קובץ זה');
-                                              return;
-                                            }
+                                        <>
+                                          {/* For linked File products, show navigation button */}
+                                          {!file.is_asset_only && file.product_id ? (
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              onClick={() => {
+                                                navigate(`/product-details?product=${file.product_id}`);
+                                              }}
+                                              className="flex-shrink-0 bg-blue-600 hover:bg-blue-700 text-white border-blue-600 rounded-lg px-3 py-2 font-medium transition-all duration-200"
+                                              title="עבור לעמוד המוצר"
+                                            >
+                                              <ExternalLink className="w-4 h-4 ml-1" />
+                                              <span className="text-xs">צפה במוצר</span>
+                                            </Button>
+                                          ) : (
+                                            /* For asset-only files, show download button */
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              onClick={async () => {
+                                                if (!hasAccess) {
+                                                  // Show access denied message
+                                                  alert('נדרשת רכישה כדי להוריד קובץ זה');
+                                                  return;
+                                                }
 
-                                            try {
-                                              // Use apiDownload to get blob with auth headers
-                                              const blob = await apiDownload(`/assets/download/file/${file.file_id}`);
+                                                try {
+                                                  // Use apiDownload to get blob with auth headers
+                                                  const blob = await apiDownload(`/assets/download/file/${file.file_id}`);
 
-                                              // Create blob URL and trigger download
-                                              const blobUrl = URL.createObjectURL(blob);
-                                              const link = document.createElement('a');
-                                              link.href = blobUrl;
-                                              link.download = file.filename || 'download';
-                                              document.body.appendChild(link);
-                                              link.click();
-                                              document.body.removeChild(link);
+                                                  // Create blob URL and trigger download
+                                                  const blobUrl = URL.createObjectURL(blob);
+                                                  const link = document.createElement('a');
+                                                  link.href = blobUrl;
+                                                  link.download = file.filename || 'download';
+                                                  document.body.appendChild(link);
+                                                  link.click();
+                                                  document.body.removeChild(link);
 
-                                              // Clean up blob URL after a delay
-                                              setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
-                                            } catch (error) {
-                                              luderror.media('Error downloading asset file:', error);
-                                              alert('שגיאה בהורדת הקובץ');
-                                            }
-                                          }}
-                                          className={`flex-shrink-0 ${hasAccess ? 'bg-purple-600 hover:bg-purple-700 text-white border-purple-600' : 'bg-gray-100 text-gray-600 border-gray-300'} rounded-lg px-3 py-2 font-medium transition-all duration-200`}
-                                          title={hasAccess ? "הורד קובץ" : "נדרשת רכישה"}
-                                        >
-                                          <Download className="w-4 h-4 ml-1" />
-                                          <span className="text-xs">הורד</span>
-                                        </Button>
+                                                  // Clean up blob URL after a delay
+                                                  setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+                                                } catch (error) {
+                                                  luderror.media('Error downloading asset file:', error);
+                                                  alert('שגיאה בהורדת הקובץ');
+                                                }
+                                              }}
+                                              className={`flex-shrink-0 ${hasAccess ? 'bg-purple-600 hover:bg-purple-700 text-white border-purple-600' : 'bg-gray-100 text-gray-600 border-gray-300'} rounded-lg px-3 py-2 font-medium transition-all duration-200`}
+                                              title={hasAccess ? "הורד קובץ" : "נדרשת רכישה"}
+                                            >
+                                              <Download className="w-4 h-4 ml-1" />
+                                              <span className="text-xs">הורד</span>
+                                            </Button>
+                                          )}
+                                        </>
                                       )}
                                     </div>
                                   ))}
