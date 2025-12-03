@@ -38,6 +38,7 @@ export default function LessonPlanPresentation() {
 
 	// Presentation state
 	const [presentationData, setPresentationData] = useState(null);
+	const [productId, setProductId] = useState(null);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState(null);
 	const [hasAccess, setHasAccess] = useState(false);
@@ -206,6 +207,11 @@ export default function LessonPlanPresentation() {
 
 				if (lessonPlanResponse.success) {
 					lessonPlanData = lessonPlanResponse.lessonPlan;
+
+					// Extract productId from the lesson plan data
+					if (lessonPlanData.Product?.id) {
+						setProductId(lessonPlanData.Product.id);
+					}
 
 					// Extract audio files from lesson plan data if available
 					if (lessonPlanData.file_configs?.files) {
@@ -405,7 +411,12 @@ export default function LessonPlanPresentation() {
 		if (isFullscreen) {
 			exitFullscreen();
 		}
-		navigate(`/product-details?type=lesson_plan&id=${lessonPlanId}`);
+		// Navigate to product details using productId if available, fallback to lesson plan entity
+		if (productId) {
+			navigate(`/product-details?product=${productId}`);
+		} else {
+			navigate(`/product-details?type=lesson_plan&id=${lessonPlanId}`);
+		}
 	};
 
 	// Keyboard navigation
@@ -547,10 +558,16 @@ export default function LessonPlanPresentation() {
 					<h2 className='text-2xl font-bold text-white mb-4'>גישה נדרשת</h2>
 					<p className='text-gray-300 mb-6'>{error}</p>
 					<Button
-						onClick={() => navigate(`/product-details?type=lesson_plan&id=${lessonPlanId}`)}
+						onClick={() => {
+							if (productId) {
+								navigate(`/product-details?product=${productId}`);
+							} else {
+								navigate(`/product-details?type=lesson_plan&id=${lessonPlanId}`);
+							}
+						}}
 						className='bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-8 py-3'
 					>
-						חזור לעמוד המוצר
+						חזרה לעמוד המוצר
 					</Button>
 				</div>
 			</div>
@@ -567,7 +584,13 @@ export default function LessonPlanPresentation() {
 					<h2 className='text-2xl font-bold text-white mb-4'>שגיאה</h2>
 					<p className='text-gray-300 mb-6'>{error}</p>
 					<Button
-						onClick={() => navigate(`/product-details?type=lesson_plan&id=${lessonPlanId}`)}
+						onClick={() => {
+							if (productId) {
+								navigate(`/product-details?product=${productId}`);
+							} else {
+								navigate(`/product-details?type=lesson_plan&id=${lessonPlanId}`);
+							}
+						}}
 						className='bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-8 py-3'
 					>
 						חזור
@@ -583,7 +606,13 @@ export default function LessonPlanPresentation() {
 				<div className='text-center text-white'>
 					<h2 className='text-2xl font-bold mb-4'>אין קבצי פרזנטציה זמינים</h2>
 					<Button
-						onClick={() => navigate(`/product-details?type=lesson_plan&id=${lessonPlanId}`)}
+						onClick={() => {
+							if (productId) {
+								navigate(`/product-details?product=${productId}`);
+							} else {
+								navigate(`/product-details?type=lesson_plan&id=${lessonPlanId}`);
+							}
+						}}
 						className='bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-8 py-3'
 					>
 						חזור
@@ -666,7 +695,13 @@ export default function LessonPlanPresentation() {
 									</p>
 									{accessMode === 'preview' && (
 										<Button
-											onClick={() => navigate(`/product-details?type=lesson_plan&id=${lessonPlanId}`)}
+											onClick={() => {
+												if (productId) {
+													navigate(`/product-details?product=${productId}`);
+												} else {
+													navigate(`/product-details?type=lesson_plan&id=${lessonPlanId}`);
+												}
+											}}
 											className='bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-8 py-3'
 										>
 											קנה למשך גישה מלאה
