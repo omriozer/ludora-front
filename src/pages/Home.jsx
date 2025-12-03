@@ -1192,13 +1192,13 @@ export default function Home() {
                 currentUser ? (
                   "הגיע הזמן לשדרג את המערכת החינוכית שלכם עם פתרון מקיף ומתקדם"
                 ) : (
-                  "הצטרפו למאות בתי ספר שכבר נהנים מפלטפורמה מקיפה לחינוך דיגיטלי"
+                  "הצטרפו לבתי הספר שכבר נהנים מפלטפורמה מקיפה לחינוך דיגיטלי"
                 )
               ) : (
                 currentUser ? (
                   "הגיע הזמן לגלות תכנים חדשים ולשפר את חוויית ההוראה שלכם"
                 ) : (
-                  "הצטרפו לאלפי מורים שכבר נהנים מתכנים איכותיים ומותאמים אישית"
+                  "הצטרפו לקהילת המורים שכבר נהנים מתכנים איכותיים ומותאמים אישית"
                 )
               )}
             </p>
@@ -1279,7 +1279,7 @@ export default function Home() {
                 <div className="flex items-center justify-center gap-3 text-purple-100">
                   <CheckCircle className="w-6 h-6 text-green-400" />
                   <span className="text-lg">
-                    {isSchoolsMode ? "200+ מוסדות משתמשים" : "5,000+ מורים פעילים"}
+                    מאות תכנים לשימוש בכיתה
                   </span>
                 </div>
                 <div className="flex items-center justify-center gap-3 text-purple-100">
@@ -1289,7 +1289,7 @@ export default function Home() {
                 <div className="flex items-center justify-center gap-3 text-purple-100">
                   <CheckCircle className="w-6 h-6 text-green-400" />
                   <span className="text-lg">
-                    {isSchoolsMode ? "התקנה ותמיכה מלאה" : "התחלה מיידית"}
+                    {isSchoolsMode ? "התקנה ותמיכה מלאה" : "גישה מיידית"}
                   </span>
                 </div>
               </div>

@@ -76,7 +76,7 @@ export default function Footer({ isMaintenanceMode = false }) {
             </div>
 
             {/* Right: Contact buttons - compact */}
-            <div className="flex flex-col sm:flex-row items-center gap-2 justify-center md:justify-end">
+            <div className="flex flex-row items-center gap-2 justify-center md:justify-end">
               <a
                 href={getWhatsAppUrl(getContactPhone(settings), 'שלום, יש לי שאלה על לודורה')}
                 target="_blank"
@@ -138,7 +138,7 @@ export default function Footer({ isMaintenanceMode = false }) {
           </div>
 
           {/* Right: Contact buttons - compact */}
-          <div className="flex flex-col sm:flex-row items-center gap-2 justify-center md:justify-end">
+          <div className="flex flex-row items-center gap-2 justify-center md:justify-end">
             <a
               href={getWhatsAppUrl(getContactPhone(settings), 'שלום, יש לי שאלה על לודורה')}
               target="_blank"
