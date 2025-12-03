@@ -38,6 +38,8 @@ import EntitySelector from '@/components/ui/EntitySelector';
 import SVGSlideManager from '../SVGSlideManager';
 import AccessControlEditor from '@/components/admin/AccessControlEditor';
 import TemplateSelector from '@/components/product/TemplateSelector';
+import GetAccessButton from '@/components/ui/GetAccessButton';
+import { useAccessState } from '@/contexts/AccessStateContext';
 
 /**
  * LessonPlanProductSection - Handles lesson plan specific settings and file uploads
@@ -60,6 +62,7 @@ const LessonPlanProductSection = ({
 }) => {
   const navigate = useNavigate();
   const { handleAuthError } = useGlobalAuthErrorHandler();
+  const { getProduct } = useAccessState();
   const [uploadingFiles, setUploadingFiles] = useState({});
   const [lessonPlanFiles, setLessonPlanFiles] = useState({
     presentation: [],
@@ -939,56 +942,74 @@ const LessonPlanProductSection = ({
         {files.length > 0 && (
           <div className="space-y-2">
             <Label className="text-sm font-medium">קבצים מקושרים:</Label>
-            {files.map((fileConfig, index) => (
-              <div key={fileConfig.file_id} className="flex items-center justify-between p-2 bg-green-50 border border-green-200 rounded">
-                <div className="flex items-center gap-2">
-                  {fileConfig.is_asset_only ? (
-                    <FileText className="w-4 h-4 text-blue-600" title="נכס קובץ" />
-                  ) : (
-                    <Package className="w-4 h-4 text-green-600" title="מוצר קובץ" />
-                  )}
-                  <span className="text-sm font-medium">{fileConfig.filename}</span>
-                  <span className="text-xs text-gray-500">({fileConfig.file_type})</span>
-                  {/* Show slide count for PowerPoint files in opening and body sections */}
-                  {(fileRole === 'opening' || fileRole === 'body') && fileConfig.slide_count && (
-                    <span className="text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded flex items-center gap-1">
-                      <BookOpen className="w-3 h-3" />
-                      {fileConfig.slide_count} שקפים
-                    </span>
-                  )}
-                  {!fileConfig.is_asset_only && (
-                    <span className="text-xs bg-green-100 text-green-800 px-1 rounded">מוצר</span>
-                  )}
+            {files.map((fileConfig, index) => {
+              // For linked File products (not asset-only files), get the full product with access info
+              const linkedProduct = !fileConfig.is_asset_only && fileConfig.product_id
+                ? getProduct(fileConfig.product_id)
+                : null;
+
+              return (
+                <div key={fileConfig.file_id} className="flex items-center justify-between p-2 bg-green-50 border border-green-200 rounded">
+                  <div className="flex items-center gap-2">
+                    {fileConfig.is_asset_only ? (
+                      <FileText className="w-4 h-4 text-blue-600" title="נכס קובץ" />
+                    ) : (
+                      <Package className="w-4 h-4 text-green-600" title="מוצר קובץ" />
+                    )}
+                    <span className="text-sm font-medium">{fileConfig.filename}</span>
+                    <span className="text-xs text-gray-500">({fileConfig.file_type})</span>
+                    {/* Show slide count for PowerPoint files in opening and body sections */}
+                    {(fileRole === 'opening' || fileRole === 'body') && fileConfig.slide_count && (
+                      <span className="text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded flex items-center gap-1">
+                        <BookOpen className="w-3 h-3" />
+                        {fileConfig.slide_count} שקפים
+                      </span>
+                    )}
+                    {!fileConfig.is_asset_only && (
+                      <span className="text-xs bg-green-100 text-green-800 px-1 rounded">מוצר</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {/* For linked File products, show GetAccessButton with proper access logic */}
+                    {!fileConfig.is_asset_only && linkedProduct ? (
+                      <GetAccessButton
+                        product={linkedProduct}
+                        size="sm"
+                        className="px-2 py-1 text-xs"
+                        withCartButton={false}
+                      />
+                    ) : (
+                      /* For asset-only files, show download button */
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          // Download file - works for both File entities and File products
+                          const downloadUrl = `${getApiBase()}/assets/download/file/${fileConfig.file_id}`;
+                          window.open(downloadUrl, '_blank');
+                        }}
+                        title="הורד קובץ"
+                      >
+                        <Download className="w-4 h-4" />
+                      </Button>
+                    )}
+                    {/* Hide delete button for opening and body files in published lesson plan products */}
+                    {!(editingProduct?.is_published && (fileRole === 'opening' || fileRole === 'body')) && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeFile(fileConfig, fileRole)}
+                        title={fileConfig.is_asset_only ? "מחק קובץ" : "הסר קישור"}
+                      >
+                        <Trash2 className="w-4 h-4 text-red-500" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-1">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      // Download file - works for both File entities and File products
-                      const downloadUrl = `${getApiBase()}/assets/download/file/${fileConfig.file_id}`;
-                      window.open(downloadUrl, '_blank');
-                    }}
-                    title="הורד קובץ"
-                  >
-                    <Download className="w-4 h-4" />
-                  </Button>
-                  {/* Hide delete button for opening and body files in published lesson plan products */}
-                  {!(editingProduct?.is_published && (fileRole === 'opening' || fileRole === 'body')) && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeFile(fileConfig, fileRole)}
-                      title={fileConfig.is_asset_only ? "מחק קובץ" : "הסר קישור"}
-                    >
-                      <Trash2 className="w-4 h-4 text-red-500" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
