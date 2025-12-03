@@ -38,8 +38,6 @@ import EntitySelector from '@/components/ui/EntitySelector';
 import SVGSlideManager from '../SVGSlideManager';
 import AccessControlEditor from '@/components/admin/AccessControlEditor';
 import TemplateSelector from '@/components/product/TemplateSelector';
-import GetAccessButton from '@/components/ui/GetAccessButton';
-import { useAccessState } from '@/contexts/AccessStateContext';
 
 /**
  * LessonPlanProductSection - Handles lesson plan specific settings and file uploads
@@ -62,7 +60,6 @@ const LessonPlanProductSection = ({
 }) => {
   const navigate = useNavigate();
   const { handleAuthError } = useGlobalAuthErrorHandler();
-  const { getProduct } = useAccessState();
   const [uploadingFiles, setUploadingFiles] = useState({});
   const [lessonPlanFiles, setLessonPlanFiles] = useState({
     presentation: [],
@@ -943,11 +940,6 @@ const LessonPlanProductSection = ({
           <div className="space-y-2">
             <Label className="text-sm font-medium">קבצים מקושרים:</Label>
             {files.map((fileConfig, index) => {
-              // For linked File products (not asset-only files), get the full product with access info
-              const linkedProduct = !fileConfig.is_asset_only && fileConfig.product_id
-                ? getProduct(fileConfig.product_id)
-                : null;
-
               return (
                 <div key={fileConfig.file_id} className="flex items-center justify-between p-2 bg-green-50 border border-green-200 rounded">
                   <div className="flex items-center gap-2">
@@ -970,14 +962,19 @@ const LessonPlanProductSection = ({
                     )}
                   </div>
                   <div className="flex items-center gap-1">
-                    {/* For linked File products, show GetAccessButton with proper access logic */}
-                    {!fileConfig.is_asset_only && linkedProduct ? (
-                      <GetAccessButton
-                        product={linkedProduct}
+                    {/* For linked File products, show navigation to product details page */}
+                    {!fileConfig.is_asset_only && fileConfig.product_id ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
                         size="sm"
-                        className="px-2 py-1 text-xs"
-                        withCartButton={false}
-                      />
+                        onClick={() => {
+                          navigate(`/product-details?product=${fileConfig.product_id}`);
+                        }}
+                        title="עבור לעמוד המוצר"
+                      >
+                        <FileText className="w-4 h-4" />
+                      </Button>
                     ) : (
                       /* For asset-only files, show download button */
                       <Button
