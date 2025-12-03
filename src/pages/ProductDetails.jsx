@@ -32,7 +32,8 @@ import {
   FolderOpen,
   StickyNote,
   Volume2,
-  PaperclipIcon
+  PaperclipIcon,
+  Download
 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
@@ -1186,7 +1187,7 @@ export default function ProductDetails() {
                     )}
 
                     {/* Access Duration */}
-                    {(item.access_days !== undefined && item.access_days !== null) || item.access_days === null ? (
+                    {item.access_days !== undefined && item.access_days !== null && (
                       <div className="flex items-center gap-3 p-4 sm:p-6 bg-green-50 rounded-xl sm:rounded-2xl overflow-hidden">
                         <div className="w-12 h-12 sm:w-14 sm:h-14 bg-green-100 rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0">
                           <Clock className="w-6 h-6 sm:w-7 sm:h-7 text-green-600" />
@@ -1198,7 +1199,7 @@ export default function ProductDetails() {
                           </p>
                         </div>
                       </div>
-                    ) : null}
+                    )}
 
                     {/* Last Updated */}
                     {item.updated_at && (
@@ -1489,25 +1490,61 @@ export default function ProductDetails() {
 
                           {/* Asset Files */}
                           {filesSummary.assets && filesSummary.assets.length > 0 && (
-                            <div className="flex items-center gap-3 p-4 sm:p-6 bg-purple-50 rounded-xl sm:rounded-2xl overflow-hidden">
-                              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-purple-100 rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0">
-                                <PaperclipIcon className="w-6 h-6 sm:w-7 sm:h-7 text-purple-600" />
+                            <div className="bg-purple-50 rounded-xl sm:rounded-2xl p-4 sm:p-6 overflow-hidden">
+                              <div className="flex items-center gap-3 mb-3">
+                                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-purple-100 rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0">
+                                  <PaperclipIcon className="w-6 h-6 sm:w-7 sm:h-7 text-purple-600" />
+                                </div>
+                                <div className="text-right min-w-0 flex-1">
+                                  <p className="text-xs sm:text-sm text-gray-600 font-medium">{getFileRoleDisplayName('assets')}</p>
+                                  <p className="font-bold text-gray-900 text-sm sm:text-lg break-words">
+                                    {filesSummary.assets.length} קבצי עזר
+                                  </p>
+                                </div>
                               </div>
-                              <div className="text-right min-w-0 flex-1">
-                                <p className="text-xs sm:text-sm text-gray-600 font-medium">{getFileRoleDisplayName('assets')}</p>
-                                <p className="font-bold text-gray-900 text-sm sm:text-lg break-words">
-                                  {filesSummary.assets.length} קבצי עזר
-                                </p>
-                                {filesSummary.assets.length <= 3 && (
-                                  <div className="space-y-1 mt-1">
-                                    {filesSummary.assets.map((file, index) => (
-                                      <p key={index} className="text-xs sm:text-sm text-gray-600 break-words">
-                                        {file.filename}
-                                      </p>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
+                              {filesSummary.assets.length <= 3 && (
+                                <div className="space-y-2 mt-3">
+                                  {filesSummary.assets.map((file, index) => (
+                                    <div key={index} className="flex items-center justify-between gap-3 p-3 bg-white rounded-lg border border-purple-200">
+                                      <div className="text-right min-w-0 flex-1">
+                                        <p className="text-xs sm:text-sm text-gray-800 font-medium break-words">
+                                          {file.filename}
+                                        </p>
+                                      </div>
+                                      {hasAccess && file.file_id && (
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={async () => {
+                                            try {
+                                              // Use apiDownload to get blob with auth headers
+                                              const blob = await apiDownload(`/assets/download/file/${file.file_id}`);
+
+                                              // Create blob URL and trigger download
+                                              const blobUrl = URL.createObjectURL(blob);
+                                              const link = document.createElement('a');
+                                              link.href = blobUrl;
+                                              link.download = file.filename || 'download';
+                                              document.body.appendChild(link);
+                                              link.click();
+                                              document.body.removeChild(link);
+
+                                              // Clean up blob URL after a delay
+                                              setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+                                            } catch (error) {
+                                              luderror.media('Error downloading asset file:', error);
+                                            }
+                                          }}
+                                          className="flex-shrink-0 text-purple-600 hover:text-purple-700 hover:bg-purple-100"
+                                          title="הורד קובץ"
+                                        >
+                                          <Download className="w-4 h-4" />
+                                        </Button>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           )}
 
