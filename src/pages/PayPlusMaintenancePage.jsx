@@ -117,6 +117,42 @@ export default function PayPlusMaintenancePage() {
     }
   };
 
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('he-IL', {
+      style: 'currency',
+      currency: 'ILS'
+    }).format(amount);
+  };
+
+  const formatDate = (dateString) => {
+    // PayPlus returns dates in DD/MM/YYYY format
+    const [day, month, year] = dateString.split('/');
+    const date = new Date(`${year}-${month}-${day}`);
+    return date.toLocaleDateString('he-IL');
+  };
+
+  const getRecurringTypeText = (type) => {
+    switch (type) {
+      case 'monthly':
+        return 'חודשי';
+      case 'daily':
+        return 'יומי';
+      case 'weekly':
+        return 'שבועי';
+      case 'yearly':
+        return 'שנתי';
+      default:
+        return type;
+    }
+  };
+
+  const getSubscriptionPlanText = (extraInfo) => {
+    if (!extraInfo) return '-';
+    if (extraInfo.includes('מנוי פרימיום')) return 'מנוי פרימיום';
+    if (extraInfo.length > 30) return extraInfo.substring(0, 30) + '...';
+    return extraInfo;
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
       {/* Header */}
@@ -329,7 +365,7 @@ export default function PayPlusMaintenancePage() {
         </div>
       )}
 
-      {/* Raw Data Results */}
+      {/* Subscription Data Table */}
       {rawData && (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
           <div className="p-6 border-b border-gray-200">
@@ -337,7 +373,7 @@ export default function PayPlusMaintenancePage() {
               <div>
                 <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                   <Database className="w-5 h-5 text-blue-600" />
-                  נתונים גולמיים מ-PayPlus
+                  מנויים מ-PayPlus
                 </h3>
                 <p className="text-gray-600">
                   נמצאו {rawData.total_subscriptions} מנויים • נטענו ב-{new Date(rawData.retrieved_at).toLocaleString('he-IL')}
@@ -357,10 +393,108 @@ export default function PayPlusMaintenancePage() {
             </div>
           </div>
           <div className="p-6">
-            <div className="bg-gray-50 rounded-lg p-4 max-h-96 overflow-auto">
-              <pre className="text-sm text-gray-700 font-mono whitespace-pre-wrap">
-                {JSON.stringify(rawData.subscriptions, null, 2)}
-              </pre>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      מנוי
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      לקוח
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      סכום
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      סוג
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      תאריך יצירה
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      סטטוס
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      תוכנית
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {rawData.subscriptions && rawData.subscriptions.map((subscription, index) => (
+                    <tr key={subscription.uid} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                        <div className="font-mono text-blue-600">{subscription.number}</div>
+                        <div className="text-xs text-gray-500">{subscription.uid.split('-')[0]}...</div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-right">
+                        <div className="font-medium text-gray-900">
+                          {subscription.customer_name === 'General Customer - לקוח כללי'
+                            ? 'לקוח כללי'
+                            : subscription.customer_name
+                          }
+                        </div>
+                        <div className="text-gray-500">{subscription.customer_email}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                        <span className="font-medium text-gray-900">
+                          {formatCurrency(subscription.each_payment_amount)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          subscription.recurring_type === 'monthly'
+                            ? 'bg-blue-100 text-blue-800'
+                            : subscription.recurring_type === 'daily'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {getRecurringTypeText(subscription.recurring_type)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                        {formatDate(subscription.created_at)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          subscription.valid
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {subscription.valid ? 'פעיל' : 'לא פעיל'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900 text-right">
+                        {getSubscriptionPlanText(subscription.extra_info)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Summary Stats */}
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-blue-50 rounded-lg p-4">
+                <h4 className="text-sm font-medium text-blue-900">סה"כ מנויים</h4>
+                <p className="text-2xl font-bold text-blue-600">{rawData.total_subscriptions}</p>
+              </div>
+              <div className="bg-green-50 rounded-lg p-4">
+                <h4 className="text-sm font-medium text-green-900">מנויים פעילים</h4>
+                <p className="text-2xl font-bold text-green-600">
+                  {rawData.subscriptions ? rawData.subscriptions.filter(s => s.valid).length : 0}
+                </p>
+              </div>
+              <div className="bg-amber-50 rounded-lg p-4">
+                <h4 className="text-sm font-medium text-amber-900">הכנסות צפויות (חודש)</h4>
+                <p className="text-2xl font-bold text-amber-600">
+                  {rawData.subscriptions ? formatCurrency(
+                    rawData.subscriptions
+                      .filter(s => s.valid && s.recurring_type === 'monthly')
+                      .reduce((sum, s) => sum + parseFloat(s.each_payment_amount), 0)
+                  ) : formatCurrency(0)}
+                </p>
+              </div>
             </div>
           </div>
         </div>
