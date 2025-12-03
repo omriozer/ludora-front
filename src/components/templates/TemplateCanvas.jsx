@@ -321,6 +321,11 @@ const TemplateCanvas = ({
       return;
     }
 
+    // Check if the individual element is locked
+    if (elementInfo.element.locked) {
+      return; // Prevent dragging locked elements
+    }
+
     // Check if element is in a locked group
     const elementGroup = getElementGroup(elementKey);
     if (elementGroup && isGroupLocked(elementGroup.id)) {
@@ -651,11 +656,13 @@ const TemplateCanvas = ({
 
   // Unified element rendering function - handles any element type
   const renderElementByType = (elementType, element, elementKey, isFocused, isDraggingThis) => {
+    const isLocked = element.locked;
     const commonClasses = `absolute pointer-events-auto select-none transition-all duration-200 group ${
-      isDraggingThis ? 'cursor-grabbing scale-105 z-50' : 'cursor-grab hover:scale-105'
+      isDraggingThis ? 'cursor-grabbing scale-105 z-50' :
+      isLocked ? 'cursor-not-allowed opacity-75' : 'cursor-grab hover:scale-105'
     } ${isFocused ? 'ring-4 ring-blue-400 ring-opacity-75 rounded-lg' : ''} ${
       element.groupId ? 'ring-2 ring-purple-300' : ''
-    }`;
+    } ${isLocked ? 'ring-2 ring-red-300' : ''}`;
 
     const commonStyle = {
       left: `${element.position.x}%`,

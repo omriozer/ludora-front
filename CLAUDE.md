@@ -1203,7 +1203,157 @@ const { status, color } = getStudentAuthStatus(
 
 ---
 
-## 13. MOBILE RESPONSIVENESS SYSTEM (Dec 2025)
+## 13. VISUAL TEMPLATE EDITOR SYSTEM (Dec 2025)
+
+### Template Element Lock Functionality
+
+**NEW: Complete lock/unlock functionality for template elements in the visual template editor.**
+
+The visual template editor now includes comprehensive lock functionality that allows users to lock elements to prevent accidental modifications during template design.
+
+### Lock Feature Overview
+
+**Key Components:**
+- **FloatingSettingsMenu**: Lock toggle button in the header
+- **TemplateCanvas**: Drag prevention and visual feedback for locked elements
+- **VisualTemplateEditor**: Handler functions for lock state management
+
+### Implementation Details
+
+#### Lock UI in FloatingSettingsMenu
+```jsx
+// Lock toggle button - always available for any element
+<Button
+  onClick={() => onLockToggle?.(selectedItem)}
+  variant="outline"
+  size="sm"
+  className={`p-1 h-8 w-8 ${
+    itemConfig.locked
+      ? 'text-red-600 hover:bg-red-50 bg-red-50'
+      : 'text-gray-600 hover:bg-gray-50'
+  }`}
+  title={itemConfig.locked ? "בטל נעילה" : "נעל אלמנט"}
+>
+  {itemConfig.locked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
+</Button>
+```
+
+**Visual States:**
+- **Unlocked**: Gray unlock icon with gray hover
+- **Locked**: Red lock icon with red background
+- **Hebrew tooltips**: "נעל אלמנט" / "בטל נעילה"
+
+#### Drag Prevention in TemplateCanvas
+```javascript
+const handleMouseDown = (elementKey, event) => {
+  // Find the element
+  const elementInfo = findElement(elementKey);
+  if (!elementInfo) return;
+
+  // Check if the individual element is locked
+  if (elementInfo.element.locked) {
+    return; // Prevent dragging locked elements
+  }
+
+  // Check if element is in a locked group
+  const elementGroup = getElementGroup(elementKey);
+  if (elementGroup && isGroupLocked(elementGroup.id)) {
+    return; // Prevent dragging locked groups
+  }
+
+  // Continue with normal drag behavior if not locked
+  setIsDragging(elementKey);
+  // ...
+};
+```
+
+#### Visual Feedback for Locked Elements
+```jsx
+const renderElementByType = (elementType, element, elementKey, isFocused, isDraggingThis) => {
+  const isLocked = element.locked;
+  const commonClasses = `absolute pointer-events-auto select-none transition-all duration-200 group ${
+    isDraggingThis ? 'cursor-grabbing scale-105 z-50' :
+    isLocked ? 'cursor-not-allowed opacity-75' : 'cursor-grab hover:scale-105'
+  } ${isFocused ? 'ring-4 ring-blue-400 ring-opacity-75 rounded-lg' : ''} ${
+    element.groupId ? 'ring-2 ring-purple-300' : ''
+  } ${isLocked ? 'ring-2 ring-red-300' : ''}`;
+  // ...
+};
+```
+
+**Lock Visual Indicators:**
+- **Red ring**: 2px red border around locked elements
+- **Reduced opacity**: 75% opacity for locked elements
+- **Cursor change**: `cursor-not-allowed` instead of `cursor-grab`
+- **No hover scaling**: Locked elements don't scale on hover
+
+#### Lock State Management in VisualTemplateEditor
+```javascript
+const handleLockToggle = (elementKey) => {
+  const elementInfo = findElementForUpdate(elementKey);
+  if (!elementInfo) return;
+
+  const { elementType, index } = elementInfo;
+
+  const newConfig = {
+    ...templateConfig,
+    elements: {
+      ...templateConfig.elements,
+      [elementType]: templateConfig.elements[elementType].map((item, idx) =>
+        idx === index ? { ...item, locked: !item.locked } : item
+      )
+    }
+  };
+
+  setTemplateConfig(newConfig);
+};
+```
+
+### Lock Functionality Features
+
+**Individual Element Locking:**
+- Lock/unlock individual elements via FloatingSettingsMenu button
+- Locked state persists in element's `locked` property
+- Works with all element types (text, logo, shapes, etc.)
+
+**Group Lock Support:**
+- Groups can be locked/unlocked as a unit
+- All elements in a locked group are prevented from dragging
+- Group lock state checked via `isGroupLocked()` function
+
+**Integration Points:**
+- **Undo/Redo System**: Lock state changes are tracked in undo history
+- **Template Saving**: Lock state is preserved when saving templates
+- **Unified Structure**: Works with both legacy and unified template structures
+
+### User Experience
+
+**Lock Workflow:**
+1. Select an element by clicking on it
+2. Click the lock/unlock button in FloatingSettingsMenu
+3. Element shows visual lock indicators (red ring, reduced opacity)
+4. Locked element cannot be dragged until unlocked
+5. Lock state persists through save/load cycles
+
+**Visual Feedback:**
+- Immediate visual changes when locking/unlocking
+- Clear differentiation between locked and unlocked states
+- Cursor changes provide additional feedback
+
+### Technical Considerations
+
+**Performance:**
+- Lock checks are lightweight and don't impact drag performance
+- Visual updates use CSS transitions for smooth state changes
+
+**Compatibility:**
+- Works with all element types in the template editor
+- Supports both individual and group locking
+- Compatible with existing undo/redo system
+
+---
+
+## 14. MOBILE RESPONSIVENESS SYSTEM (Dec 2025)
 
 ### Critical Mobile Protection Rules
 

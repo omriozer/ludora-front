@@ -686,49 +686,66 @@ const VisualTemplateEditor = ({
     }
   };
 
-  const updateConfig = (section, field, value) => {
+  // Helper function to find element in both unified and legacy structures
+  const findElementForUpdate = (elementKey) => {
+    if (!templateConfig?.elements || !elementKey) return null;
+
+    // UNIFIED STRUCTURE: search in element arrays
+    for (const [elementType, elementArray] of Object.entries(templateConfig.elements)) {
+      if (Array.isArray(elementArray)) {
+        for (let index = 0; index < elementArray.length; index++) {
+          const element = elementArray[index];
+          const currentElementKey = element.id || `${elementType}_${index}`;
+          if (currentElementKey === elementKey) {
+            return { element, elementType, index };
+          }
+        }
+      }
+    }
+
+    return null;
+  };
+
+  const updateConfig = (elementKey, field, value) => {
+    const elementInfo = findElementForUpdate(elementKey);
+    if (!elementInfo) return;
+
+    const { elementType, index } = elementInfo;
+
     const newConfig = {
       ...templateConfig,
-      [section]: {
-        ...templateConfig[section],
-        [field]: value
+      elements: {
+        ...templateConfig.elements,
+        [elementType]: templateConfig.elements[elementType].map((item, idx) =>
+          idx === index ? { ...item, [field]: value } : item
+        )
       }
     };
+
     setTemplateConfig(newConfig);
   };
 
-  const updateStyle = (section, styleField, value) => {
-    let newConfig;
+  const updateStyle = (elementKey, styleField, value) => {
+    const elementInfo = findElementForUpdate(elementKey);
+    if (!elementInfo) return;
 
-    // Check if it's a custom element or built-in element
-    if (templateConfig.customElements?.[section]) {
-      // Handle custom elements
-      newConfig = {
-        ...templateConfig,
-        customElements: {
-          ...templateConfig.customElements,
-          [section]: {
-            ...templateConfig.customElements[section],
+    const { elementType, index } = elementInfo;
+
+    const newConfig = {
+      ...templateConfig,
+      elements: {
+        ...templateConfig.elements,
+        [elementType]: templateConfig.elements[elementType].map((item, idx) =>
+          idx === index ? {
+            ...item,
             style: {
-              ...templateConfig.customElements[section].style,
+              ...item.style,
               [styleField]: value
             }
-          }
-        }
-      };
-    } else {
-      // Handle built-in elements (logo, text, url)
-      newConfig = {
-        ...templateConfig,
-        [section]: {
-          ...templateConfig[section],
-          style: {
-            ...templateConfig[section].style,
-            [styleField]: value
-          }
-        }
-      };
-    }
+          } : item
+        )
+      }
+    };
 
     setTemplateConfig(newConfig);
   };
@@ -751,74 +768,52 @@ const VisualTemplateEditor = ({
   };
 
   const handleCenterX = (elementKey) => {
-    let newConfig;
+    const elementInfo = findElementForUpdate(elementKey);
+    if (!elementInfo) return;
 
-    // Check if it's a custom element or built-in element
-    if (templateConfig.customElements?.[elementKey]) {
-      // Handle custom elements
-      newConfig = {
-        ...templateConfig,
-        customElements: {
-          ...templateConfig.customElements,
-          [elementKey]: {
-            ...templateConfig.customElements[elementKey],
+    const { elementType, index } = elementInfo;
+
+    const newConfig = {
+      ...templateConfig,
+      elements: {
+        ...templateConfig.elements,
+        [elementType]: templateConfig.elements[elementType].map((item, idx) =>
+          idx === index ? {
+            ...item,
             position: {
-              ...templateConfig.customElements[elementKey].position,
+              ...item.position,
               x: 50
             }
-          }
-        }
-      };
-    } else {
-      // Handle built-in elements (logo, text, url)
-      newConfig = {
-        ...templateConfig,
-        [elementKey]: {
-          ...templateConfig[elementKey],
-          position: {
-            ...templateConfig[elementKey].position,
-            x: 50
-          }
-        }
-      };
-    }
+          } : item
+        )
+      }
+    };
 
     setTemplateConfig(newConfig);
     // Reduced logging: ludlog.ui(`✨ Centered ${elementKey} on X axis to 50%`);
   };
 
   const handleCenterY = (elementKey) => {
-    let newConfig;
+    const elementInfo = findElementForUpdate(elementKey);
+    if (!elementInfo) return;
 
-    // Check if it's a custom element or built-in element
-    if (templateConfig.customElements?.[elementKey]) {
-      // Handle custom elements
-      newConfig = {
-        ...templateConfig,
-        customElements: {
-          ...templateConfig.customElements,
-          [elementKey]: {
-            ...templateConfig.customElements[elementKey],
+    const { elementType, index } = elementInfo;
+
+    const newConfig = {
+      ...templateConfig,
+      elements: {
+        ...templateConfig.elements,
+        [elementType]: templateConfig.elements[elementType].map((item, idx) =>
+          idx === index ? {
+            ...item,
             position: {
-              ...templateConfig.customElements[elementKey].position,
+              ...item.position,
               y: 50
             }
-          }
-        }
-      };
-    } else {
-      // Handle built-in elements (logo, text, url)
-      newConfig = {
-        ...templateConfig,
-        [elementKey]: {
-          ...templateConfig[elementKey],
-          position: {
-            ...templateConfig[elementKey].position,
-            y: 50
-          }
-        }
-      };
-    }
+          } : item
+        )
+      }
+    };
 
     setTemplateConfig(newConfig);
     // Reduced logging: ludlog.ui(`✨ Centered ${elementKey} on Y axis to 50%`);
@@ -1028,128 +1023,122 @@ const VisualTemplateEditor = ({
   };
 
   const handleDeleteElement = (elementId) => {
-    if (templateConfig.customElements?.[elementId]?.deletable) {
-      const newConfig = {
-        ...templateConfig,
-        customElements: {
-          ...templateConfig.customElements
-        }
-      };
-      delete newConfig.customElements[elementId];
+    const elementInfo = findElementForUpdate(elementId);
+    if (!elementInfo) return;
 
-      setTemplateConfig(newConfig);
-      setSelectedItem(null);
-      setFocusedItem(null);
-      // Reduced logging: ludlog.ui(`🗑️ Deleted custom element:`, { data: elementId });
-    }
+    const { elementType, index } = elementInfo;
+
+    // Check if element is deletable
+    if (!templateConfig.elements[elementType][index]?.deletable) return;
+
+    const newConfig = {
+      ...templateConfig,
+      elements: {
+        ...templateConfig.elements,
+        [elementType]: templateConfig.elements[elementType].filter((_, idx) => idx !== index)
+      }
+    };
+
+    setTemplateConfig(newConfig);
+    setSelectedItem(null);
+    setFocusedItem(null);
+    // Reduced logging: ludlog.ui(`🗑️ Deleted element:`, { data: elementId });
   };
 
   // Enhanced UI Handler Functions
   const handleToggleVisibility = (elementKey) => {
-    let newConfig;
+    const elementInfo = findElementForUpdate(elementKey);
+    if (!elementInfo) return;
 
-    if (templateConfig.customElements?.[elementKey]) {
-      newConfig = {
-        ...templateConfig,
-        customElements: {
-          ...templateConfig.customElements,
-          [elementKey]: {
-            ...templateConfig.customElements[elementKey],
-            visible: !templateConfig.customElements[elementKey].visible
-          }
-        }
-      };
-    } else {
-      newConfig = {
-        ...templateConfig,
-        [elementKey]: {
-          ...templateConfig[elementKey],
-          visible: !templateConfig[elementKey].visible
-        }
-      };
-    }
+    const { elementType, index } = elementInfo;
+
+    const newConfig = {
+      ...templateConfig,
+      elements: {
+        ...templateConfig.elements,
+        [elementType]: templateConfig.elements[elementType].map((item, idx) =>
+          idx === index ? { ...item, visible: !item.visible } : item
+        )
+      }
+    };
 
     setTemplateConfig(newConfig);
     // Reduced logging: ludlog.ui(`👁️ Toggled visibility for ${elementKey}`);
   };
 
   const handleLockToggle = (elementKey) => {
-    let newConfig;
+    const elementInfo = findElementForUpdate(elementKey);
+    if (!elementInfo) return;
 
-    if (templateConfig.customElements?.[elementKey]) {
-      newConfig = {
-        ...templateConfig,
-        customElements: {
-          ...templateConfig.customElements,
-          [elementKey]: {
-            ...templateConfig.customElements[elementKey],
-            locked: !templateConfig.customElements[elementKey].locked
-          }
-        }
-      };
-    } else {
-      newConfig = {
-        ...templateConfig,
-        [elementKey]: {
-          ...templateConfig[elementKey],
-          locked: !templateConfig[elementKey].locked
-        }
-      };
-    }
+    const { elementType, index } = elementInfo;
+
+    const newConfig = {
+      ...templateConfig,
+      elements: {
+        ...templateConfig.elements,
+        [elementType]: templateConfig.elements[elementType].map((item, idx) =>
+          idx === index ? { ...item, locked: !item.locked } : item
+        )
+      }
+    };
 
     setTemplateConfig(newConfig);
     // Reduced logging: ludlog.ui(`🔒 Toggled lock for ${elementKey}`);
   };
 
   const handleDuplicate = (elementKey) => {
-    const sourceElement = templateConfig.customElements?.[elementKey] || templateConfig[elementKey];
-    if (!sourceElement) return;
-
-    if (templateConfig.customElements?.[elementKey]) {
-      // Duplicate custom element
-      const newElementId = `${elementKey}_copy_${Date.now()}`;
-      const newConfig = {
-        ...templateConfig,
-        customElements: {
-          ...templateConfig.customElements,
-          [newElementId]: {
-            ...sourceElement,
-            id: newElementId,
-            position: {
-              x: sourceElement.position.x + 10,
-              y: sourceElement.position.y + 10
-            }
-          }
-        }
-      };
-      setTemplateConfig(newConfig);
-      // Reduced logging: ludlog.ui(`📄 Duplicated custom element ${elementKey} as ${newElementId}`);
-    } else if (templateConfig[elementKey]) {
-      // Duplicate built-in element as custom element
-      const newElementId = `${elementKey}_copy_${Date.now()}`;
-      const duplicatedElement = {
-        ...sourceElement,
-        id: newElementId,
-        type: elementKey, // Set the type to match the original element key
-        deletable: true, // Custom copies are deletable
-        position: {
-          x: sourceElement.position.x + 10,
-          y: sourceElement.position.y + 10
-        }
-      };
-
-      const newConfig = {
-        ...templateConfig,
-        customElements: {
-          ...templateConfig.customElements,
-          [newElementId]: duplicatedElement
-        }
-      };
-      setTemplateConfig(newConfig);
-      ludlog.ui(`📄 Duplicated built-in element ${elementKey} as custom element ${newElementId}`);
-    } else {
+    const elementInfo = findElementForUpdate(elementKey);
+    if (!elementInfo) {
       ludlog.ui(`⚠️ Cannot duplicate element: ${elementKey} - element not found`);
+      return;
     }
+
+    const { elementType } = elementInfo;
+    const sourceElement = elementInfo.element;
+    const newElementId = `${elementKey}_copy_${Date.now()}`;
+
+    // Deep clone the source element to preserve all nested properties including styles
+    const deepCloneElement = (element) => {
+      const cloned = { ...element };
+
+      // Deep clone style object if it exists
+      if (element.style) {
+        cloned.style = { ...element.style };
+
+        // Deep clone nested objects within style
+        if (element.style.shadow) {
+          cloned.style.shadow = { ...element.style.shadow };
+        }
+      }
+
+      // Deep clone position if it exists
+      if (element.position) {
+        cloned.position = { ...element.position };
+      }
+
+      return cloned;
+    };
+
+    const duplicatedElement = deepCloneElement(sourceElement);
+    duplicatedElement.id = newElementId;
+    duplicatedElement.deletable = true; // Duplicated elements are always deletable
+
+    // Update position with offset
+    duplicatedElement.position = {
+      x: (sourceElement.position?.x || 0) + 10,
+      y: (sourceElement.position?.y || 0) + 10
+    };
+
+    const newConfig = {
+      ...templateConfig,
+      elements: {
+        ...templateConfig.elements,
+        [elementType]: [...templateConfig.elements[elementType], duplicatedElement]
+      }
+    };
+
+    setTemplateConfig(newConfig);
+    ludlog.ui(`📄 Duplicated element ${elementKey} as ${newElementId} with styles preserved`);
   };
 
   // Group Management Handlers
@@ -2291,6 +2280,8 @@ const VisualTemplateEditor = ({
             userRole={userRole}
             onClose={handleMenuClose}
             onDeleteElement={handleDeleteElement}
+            onDuplicateElement={handleDuplicate}
+            onLockToggle={handleLockToggle}
             templateType={templateType}
           />
         </div>

@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { X, Crown, Trash2, RotateCw, EyeOff, Eye, Type, Palette, Move, Sparkles, FileText } from 'lucide-react';
+import { X, Crown, Trash2, Copy, RotateCw, EyeOff, Eye, Type, Palette, Move, Sparkles, FileText, Lock, Unlock } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -15,7 +15,9 @@ const FloatingSettingsMenu = ({
   onStyleChange,
   userRole,
   onClose,
-  onDeleteElement
+  onDeleteElement,
+  onDuplicateElement,
+  onLockToggle
 }) => {
   // ALL hooks must be called before any conditional returns
   const [isDragging, setIsDragging] = useState(false);
@@ -66,12 +68,44 @@ const FloatingSettingsMenu = ({
     }
   }, [isDragging, dragStart]);
 
-  // Early return AFTER all hooks
-  const itemConfig = templateConfig[selectedItem] || templateConfig.customElements?.[selectedItem];
-  if (!selectedItem || !itemConfig) return null;
+  // Helper function to find element in both unified and legacy structures
+  const findElement = (elementKey) => {
+    if (!templateConfig || !elementKey) return null;
 
+    const hasUnifiedStructure = templateConfig?.elements;
+
+    if (hasUnifiedStructure) {
+      // NEW UNIFIED STRUCTURE: search in element arrays
+      for (const [elementType, elementArray] of Object.entries(templateConfig.elements)) {
+        if (Array.isArray(elementArray)) {
+          for (let index = 0; index < elementArray.length; index++) {
+            const element = elementArray[index];
+            const currentElementKey = element.id || `${elementType}_${index}`;
+            if (currentElementKey === elementKey) {
+              return { element, elementType, index, isCustom: true };
+            }
+          }
+        }
+      }
+    } else {
+      // LEGACY STRUCTURE: search in customElements and direct properties
+      if (templateConfig.customElements?.[elementKey]) {
+        return { element: templateConfig.customElements[elementKey], isCustom: true };
+      } else if (templateConfig[elementKey]) {
+        return { element: templateConfig[elementKey], isCustom: false };
+      }
+    }
+
+    return null;
+  };
+
+  // Early return AFTER all hooks
+  const elementInfo = findElement(selectedItem);
+  if (!selectedItem || !elementInfo) return null;
+
+  const itemConfig = elementInfo.element;
   const isAdmin = userRole === 'admin' || userRole === 'sysadmin';
-  const isCustomElement = templateConfig.customElements?.[selectedItem];
+  const isCustomElement = elementInfo.isCustom;
 
   // Determine element capabilities
   const elementCapabilities = {
@@ -626,6 +660,30 @@ const FloatingSettingsMenu = ({
           {isAdmin && <Crown className="w-4 h-4 text-amber-500" />}
         </div>
         <div className="flex items-center gap-2">
+          {/* Lock toggle button - always available for any element */}
+          <Button
+            onClick={() => onLockToggle?.(selectedItem)}
+            variant="outline"
+            size="sm"
+            className={`p-1 h-8 w-8 ${
+              itemConfig.locked
+                ? 'text-red-600 hover:bg-red-50 bg-red-50'
+                : 'text-gray-600 hover:bg-gray-50'
+            }`}
+            title={itemConfig.locked ? "בטל נעילה" : "נעל אלמנט"}
+          >
+            {itemConfig.locked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
+          </Button>
+          {/* Duplicate button - always available for any element */}
+          <Button
+            onClick={() => onDuplicateElement?.(selectedItem)}
+            variant="outline"
+            size="sm"
+            className="p-1 h-8 w-8 text-blue-600 hover:bg-blue-50"
+            title="שכפל אלמנט"
+          >
+            <Copy className="w-4 h-4" />
+          </Button>
           {isCustomElement && itemConfig.deletable && (
             <Button
               onClick={() => onDeleteElement?.(selectedItem)}
