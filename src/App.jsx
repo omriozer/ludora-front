@@ -33,6 +33,7 @@ import StudentLoginModal from '@/components/auth/StudentLoginModal';
 import { useLoginModal, LoginModalProvider } from '@/hooks/useLoginModal';
 import { canBypassMaintenance } from '@/utils/adminCheck';
 import { SYSTEM_KEYS, getSetting } from '@/constants/settings';
+import UserWayWidget from '@/components/accessibility/UserWayWidget';
 
 // Suspense fallback component
 const SuspenseLoader = () => (
@@ -386,6 +387,9 @@ function StudentPortal() {
 					message={modalMessage}
 				/>
 			)}
+
+			{/* UserWay Accessibility Widget */}
+			<UserWayWidget />
 		</div>
 	);
 }

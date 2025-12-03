@@ -18,6 +18,7 @@ import { useLoginModal } from "@/hooks/useLoginModal";
 import { CartProvider } from "@/contexts/CartContext";
 import LudoraLoadingSpinner from "@/components/ui/LudoraLoadingSpinner";
 import { canBypassMaintenance } from "@/utils/adminCheck";
+import UserWayWidget from "@/components/accessibility/UserWayWidget";
 
 function LayoutContent({ children }) {
   const location = useLocation();
@@ -444,6 +445,9 @@ function LayoutContent({ children }) {
             message={modalMessage}
           />
         )}
+
+        {/* UserWay Accessibility Widget */}
+        <UserWayWidget />
       </div>
     </CartProvider>
   );

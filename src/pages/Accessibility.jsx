@@ -37,6 +37,14 @@ export default function Accessibility() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="bg-blue-50 p-4 rounded-lg mb-4">
+                <h3 className="font-semibold mb-2 text-blue-800">כלי נגישות אינטראקטיבי</h3>
+                <p className="text-blue-700 text-sm">
+                  האתר כולל כלי נגישות מתקדם של UserWay המאפשר התאמה אישית של הצפייה:
+                  שינוי גודל טקסט, התאמת ניגודיות, שיפור ניווט במקלדת ועוד.
+                  הכלי מופיע כאייקון צף בכל עמודי האתר.
+                </p>
+              </div>
               <div className="grid md:grid-cols-2 gap-6">
                 <div>
                   <h3 className="font-semibold mb-3 flex items-center gap-2">
