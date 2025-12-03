@@ -1511,11 +1511,17 @@ export default function ProductDetails() {
                                           {file.filename}
                                         </p>
                                       </div>
-                                      {hasAccess && file.file_id && (
+                                      {file.file_id && (
                                         <Button
-                                          variant="ghost"
+                                          variant="outline"
                                           size="sm"
                                           onClick={async () => {
+                                            if (!hasAccess) {
+                                              // Show access denied message
+                                              alert('נדרשת רכישה כדי להוריד קובץ זה');
+                                              return;
+                                            }
+
                                             try {
                                               // Use apiDownload to get blob with auth headers
                                               const blob = await apiDownload(`/assets/download/file/${file.file_id}`);
@@ -1533,12 +1539,14 @@ export default function ProductDetails() {
                                               setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
                                             } catch (error) {
                                               luderror.media('Error downloading asset file:', error);
+                                              alert('שגיאה בהורדת הקובץ');
                                             }
                                           }}
-                                          className="flex-shrink-0 text-purple-600 hover:text-purple-700 hover:bg-purple-100"
-                                          title="הורד קובץ"
+                                          className={`flex-shrink-0 ${hasAccess ? 'bg-purple-600 hover:bg-purple-700 text-white border-purple-600' : 'bg-gray-100 text-gray-600 border-gray-300'} rounded-lg px-3 py-2 font-medium transition-all duration-200`}
+                                          title={hasAccess ? "הורד קובץ" : "נדרשת רכישה"}
                                         >
-                                          <Download className="w-4 h-4" />
+                                          <Download className="w-4 h-4 ml-1" />
+                                          <span className="text-xs">הורד</span>
                                         </Button>
                                       )}
                                     </div>

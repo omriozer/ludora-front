@@ -345,7 +345,7 @@ const PublicNav = ({ currentUser, handleLogout, handleLogin, settings }) => {
                   title="עגלת קניות"
                 >
                   <ShoppingCart className="w-6 h-6 text-gray-700" />
-                  {cartCount > 0 && (
+                  {(cartCount && cartCount > 0) && (
                     <div className="absolute -top-1 -left-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold shadow-lg">
                       {cartCount > 99 ? '99+' : cartCount}
                     </div>
@@ -516,7 +516,7 @@ const PublicNav = ({ currentUser, handleLogout, handleLogin, settings }) => {
               >
                 <ShoppingCart className="w-5 h-5 text-blue-600" />
                 {!isCollapsed && <span className="text-blue-600">עגלת קניות</span>}
-                {cartCount > 0 && (
+                {(cartCount && cartCount > 0) && (
                   <div className={`absolute bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold shadow-lg ${
                     isCollapsed ? '-top-1 -left-1 w-5 h-5' : '-top-1 left-2 w-5 h-5'
                   }`}>
