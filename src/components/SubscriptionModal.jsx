@@ -1317,7 +1317,6 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
                     message="טוען דף תשלום..."
                     status="loading"
                     size="lg"
-                    theme="neon"
                     showParticles={true}
                   />
                 </div>

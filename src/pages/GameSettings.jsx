@@ -351,7 +351,6 @@ export default function GameSettings() {
 					message='טוען הגדרות משחק...'
 					status='loading'
 					size='lg'
-					theme='arcade'
 				/>
 			</div>
 		);
@@ -441,7 +440,6 @@ export default function GameSettings() {
 								message='מעדכן הגדרות משחק...'
 								status='loading'
 								size='md'
-								theme='arcade'
 							/>
 						</div>
 					) : shouldShowSelector ? (

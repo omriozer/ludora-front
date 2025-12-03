@@ -845,7 +845,6 @@ export default function UsersPage() {
 				<LudoraLoadingSpinner
 					message="טוען נתונים..."
 					size="lg"
-					theme="science"
 				/>
 			</div>
 		);

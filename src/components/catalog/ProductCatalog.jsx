@@ -146,7 +146,6 @@ export default function ProductCatalog({ productType: propProductType }) {
         <LudoraLoadingSpinner
           message={isSubscriptionLoading ? "טוען נתוני מנוי..." : config.loadingMessage}
           size="lg"
-          theme="creative"
         />
       </div>
     );

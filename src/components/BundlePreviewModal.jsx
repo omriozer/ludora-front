@@ -178,7 +178,6 @@ export default function BundlePreviewModal({ bundle, isOpen, onClose, onProductP
                 message="טוען מוצרי קיט..."
                 status="loading"
                 size="lg"
-                theme="space"
               />
             </div>
           ) : error ? (

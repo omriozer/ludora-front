@@ -151,7 +151,6 @@ export default function BuyProductButton({
             message="מעבד..."
             status="loading"
             size="sm"
-            theme="neon"
             showParticles={false}
           />
         ) : (

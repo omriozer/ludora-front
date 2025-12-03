@@ -218,7 +218,6 @@ export default function GetAccessButton({
             message="מעבד..."
             status="loading"
             size="sm"
-            theme="neon"
             showParticles={false}
           />
         ) : (

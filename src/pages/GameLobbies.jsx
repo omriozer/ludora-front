@@ -80,8 +80,6 @@ export default function GameLobbies() {
         <LudoraLoadingSpinner
           message={`טוען ${getProductTypeName('game', 'plural')}...`}
           size="lg"
-          theme="light"
-          showLogo={true}
         />
       </div>
     );
@@ -250,8 +248,6 @@ function MainLobbyView({ userGames, loading }) {
         <LudoraLoadingSpinner
           message={`טוען ${getProductTypeName('game', 'plural')}...`}
           size="lg"
-          theme="light"
-          showLogo={true}
         />
       </div>
     );

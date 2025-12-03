@@ -260,8 +260,6 @@ function LayoutContent({ children }) {
           <LudoraLoadingSpinner
             message="בודק הרשאות..."
             size="lg"
-            theme="educational"
-            showLogo={true}
           />
         </div>
       );
@@ -315,8 +313,6 @@ function LayoutContent({ children }) {
         <LudoraLoadingSpinner
           message="טוען את המערכת..."
           size="lg"
-          theme="educational"
-          showLogo={true}
         />
       </div>
     );
@@ -330,8 +326,6 @@ function LayoutContent({ children }) {
           <LudoraLoadingSpinner
             message="טוען עמוד..."
             size="lg"
-            theme="educational"
-            showLogo={true}
           />
         </div>
       }>
@@ -372,7 +366,6 @@ function LayoutContent({ children }) {
                 <LudoraLoadingSpinner
                   message="טוען עמוד..."
                   size="md"
-                  theme="educational"
                 />
               </div>
             }>

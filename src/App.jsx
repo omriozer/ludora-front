@@ -221,8 +221,6 @@ function StudentPortal() {
 				<LudoraLoadingSpinner
 					message="טוען את המערכת..."
 					size="lg"
-					theme="educational"
-					showLogo={true}
 				/>
 			</div>
 		);
@@ -241,8 +239,6 @@ function StudentPortal() {
 					<LudoraLoadingSpinner
 						message="בודק הרשאות..."
 						size="lg"
-						theme="educational"
-						showLogo={true}
 					/>
 				</div>
 			);

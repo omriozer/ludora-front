@@ -400,7 +400,6 @@ export default function Emails() {
                 <Label>תוכן המייל</Label>
                 <div className="min-h-[400px]">
                   <ReactQuill 
-                    theme="snow" 
                     value={content} 
                     onChange={setContent} 
                     className="bg-white"

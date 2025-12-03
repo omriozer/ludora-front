@@ -561,7 +561,6 @@ export default function ProductDetails() {
           message={detailsTexts.loading}
           status="loading"
           size="lg"
-          theme="space"
         />
       </div>
     );

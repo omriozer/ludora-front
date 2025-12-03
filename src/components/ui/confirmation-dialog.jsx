@@ -69,7 +69,6 @@ export default function ConfirmationDialog({
               message={loadingMessage}
               status="loading"
               size="md"
-              theme="educational"
               showParticles={true}
             />
           </div>
@@ -87,7 +86,6 @@ export default function ConfirmationDialog({
               message={successMessage || "הפעולה הושלמה בהצלחה"}
               status="success"
               size="md"
-              theme="educational"
               showParticles={true}
               onAnimationComplete={onClose}
             />
@@ -106,7 +104,6 @@ export default function ConfirmationDialog({
               message={errorMessage || "אירעה שגיאה"}
               status="error"
               size="md"
-              theme="educational"
               showParticles={true}
               onAnimationComplete={onClose}
             />

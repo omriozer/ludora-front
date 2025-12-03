@@ -125,7 +125,6 @@ export default function AddToCartButton({
             message=""
             status="loading"
             size="sm"
-            theme="neon"
             showParticles={false}
           />
         ) : (

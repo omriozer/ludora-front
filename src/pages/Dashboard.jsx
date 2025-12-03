@@ -863,8 +863,6 @@ export default function Dashboard() {
         <LudoraLoadingSpinner
           message="טוען דאשבורד..."
           size="lg"
-          theme="educational"
-          showLogo={true}
         />
       </div>
     );

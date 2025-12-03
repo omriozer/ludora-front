@@ -528,7 +528,6 @@ export default function LessonPlanPresentation() {
 						message={isPreloadingWindow ? 'מכין שקפים לצפייה מיידית...' : 'טוען פרזנטציה...'}
 						status='loading'
 						size='lg'
-						theme='dark'
 					/>
 
 					{/* Progress Bar */}
@@ -635,7 +634,6 @@ export default function LessonPlanPresentation() {
 							message={isRenderingSlides ? 'עיבוד קבצי פרזנטציה...' : 'טוען פרזנטציה...'}
 							status='loading'
 							size='lg'
-							theme='dark'
 						/>
 					</div>
 				)}

@@ -359,7 +359,6 @@ export default function Checkout() {
           message="טוען עגלת קניות..."
           status="loading"
           size="lg"
-          theme="neon"
         />
       </div>
     );
@@ -655,7 +654,6 @@ export default function Checkout() {
                         message={checkoutTexts.processing}
                         status="loading"
                         size="sm"
-                        theme="neon"
                         showParticles={false}
                       />
                     ) : (

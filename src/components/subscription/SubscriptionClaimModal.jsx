@@ -393,7 +393,6 @@ export default function SubscriptionClaimModal({
                 message="טוען נתוני מנוי..."
                 status="loading"
                 size="md"
-                theme="neon"
                 showParticles={false}
               />
             </div>

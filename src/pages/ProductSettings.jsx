@@ -184,7 +184,6 @@ export default function ProductSettings() {
           message="טוען הגדרות מוצרים..."
           status="loading"
           size="lg"
-          theme="space"
         />
       </div>
     );
@@ -504,7 +503,6 @@ export default function ProductSettings() {
                 message="שומר הגדרות..."
                 status={saveStatus === "saving" ? "loading" : saveStatus}
                 size="md"
-                theme="arcade"
                 onAnimationComplete={() => {
                   if (saveStatus !== "saving") {
                     setSaveStatus("idle");
