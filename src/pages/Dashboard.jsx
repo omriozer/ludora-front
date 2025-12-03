@@ -4,7 +4,7 @@ import { getApiBase } from "@/utils/api.js";
 import { apiRequest } from "@/services/apiClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { NAVIGATION_KEYS, getSetting } from '@/constants/settings';
+import { NAVIGATION_KEYS, SYSTEM_KEYS, getSetting } from '@/constants/settings';
 import {
   Crown,
   Gift,
@@ -410,8 +410,9 @@ export default function Dashboard() {
           };
         }
 
-        // Add Subscription Status widget if it doesn't exist in the API
-        if (!widgets['subscription-status']) {
+        // Add Subscription Status widget if it doesn't exist in the API and subscription system is enabled
+        const isSubscriptionSystemEnabled = getSetting(globalSettings, SYSTEM_KEYS.SUBSCRIPTION_SYSTEM_ENABLED, false);
+        if (!widgets['subscription-status'] && isSubscriptionSystemEnabled) {
           widgets['subscription-status'] = {
             id: 'subscription-status',
             name: 'סטטוס מנוי',
@@ -433,7 +434,7 @@ export default function Dashboard() {
       luderror.validation('[Dashboard] Error loading available widgets:', error);
 
       // Fallback: provide basic widgets if API fails
-      setAvailableWidgets({
+      const fallbackWidgets = {
         'lesson-mode': {
           id: 'lesson-mode',
           name: 'מצב שיעור',
@@ -475,66 +476,22 @@ export default function Dashboard() {
           name: 'שיתוף המשחקים',
           description: 'שתף את קטלוג המשחקים שלך עם תלמידים',
           category: 'classroom'
-        },
-        'subscription-status': {
+        }
+      };
+
+      // Add subscription widget only if subscription system is enabled
+      const isSubscriptionSystemEnabled = getSetting(globalSettings, SYSTEM_KEYS.SUBSCRIPTION_SYSTEM_ENABLED, false);
+      if (isSubscriptionSystemEnabled) {
+        fallbackWidgets['subscription-status'] = {
           id: 'subscription-status',
           name: 'סטטוס מנוי',
           description: 'עקוב אחרי השימוש שלך בגבולות המנוי החודשיים',
           category: 'subscriptions'
-        }
-      });
+        };
+      }
 
       // Filter fallback widgets as well
-      const filteredFallbackWidgets = filterWidgetsByVisibility({
-        'lesson-mode': {
-          id: 'lesson-mode',
-          name: 'מצב שיעור',
-          description: 'כלים למצב מצגת עם טיימר ואפקטים',
-          category: 'classroom'
-        },
-        'dice-roller': {
-          id: 'dice-roller',
-          name: 'קוביות',
-          description: 'זריקת קוביות אקראיות לפעילויות',
-          category: 'tools'
-        },
-        'color-wheel': {
-          id: 'color-wheel',
-          name: 'גלגל צבעים',
-          description: 'בחירת צבע אקראי מגלגל מסתובב',
-          category: 'tools'
-        },
-        'table-display': {
-          id: 'table-display',
-          name: 'הצגת טבלה',
-          description: 'טבלה לארגון מידע עם יכולות CSV',
-          category: 'tools'
-        },
-        'my-products': {
-          id: 'my-products',
-          name: 'המוצרים שלי',
-          description: 'גישה מהירה למוצרים שרכשת ללא פרטי רכישה',
-          category: 'purchases'
-        },
-        'purchase-history': {
-          id: 'purchase-history',
-          name: 'היסטוריית רכישות',
-          description: 'צפייה מפורטת בהיסטוריית הרכישות שלך',
-          category: 'purchases'
-        },
-        'game-sharing': {
-          id: 'game-sharing',
-          name: 'שיתוף המשחקים',
-          description: 'שתף את קטלוג המשחקים שלך עם תלמידים',
-          category: 'classroom'
-        },
-        'subscription-status': {
-          id: 'subscription-status',
-          name: 'סטטוס מנוי',
-          description: 'עקוב אחרי השימוש שלך בגבולות המנוי החודשיים',
-          category: 'subscriptions'
-        }
-      });
+      const filteredFallbackWidgets = filterWidgetsByVisibility(fallbackWidgets);
       setAvailableWidgets(filteredFallbackWidgets);
 
       toast({
@@ -563,6 +520,11 @@ export default function Dashboard() {
           if (widget.type === 'game-sharing') {
             const gamesVisibility = getSetting(globalSettings, NAVIGATION_KEYS.NAV_GAMES_VISIBILITY, 'public');
             return canUserSeeNavItem(gamesVisibility);
+          }
+
+          // Check if subscription widget should be visible
+          if (widget.type === 'subscription-status') {
+            return getSetting(globalSettings, SYSTEM_KEYS.SUBSCRIPTION_SYSTEM_ENABLED, false);
           }
 
           // For other widget types, allow them (can add more checks later)

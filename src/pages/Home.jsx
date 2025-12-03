@@ -1284,7 +1284,7 @@ export default function Home() {
                 </div>
                 <div className="flex items-center justify-center gap-3 text-purple-100">
                   <CheckCircle className="w-6 h-6 text-green-400" />
-                  <span className="text-lg">תמיכה בעברית 24/7</span>
+                  <span className="text-lg">תוכן מותאם לתוכנית הלימודים</span>
                 </div>
                 <div className="flex items-center justify-center gap-3 text-purple-100">
                   <CheckCircle className="w-6 h-6 text-green-400" />
