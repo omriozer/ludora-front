@@ -137,11 +137,9 @@ export const useProductForm = (editingProduct = null, currentUser = null) => {
   const [saveAndContinue, setSaveAndContinue] = useState(false);
 
   // Update form data when editingProduct changes (only for existing products)
-  // CRITICAL: Only depend on editingProduct?.id to prevent infinite re-renders
-  // The getInitialFormData callback reference changes on every render due to its dependencies,
-  // which would cause this effect to run constantly and overwrite user input.
-  // By depending only on the product ID, we ensure this effect only runs when
-  // switching between products or loading a product for the first time.
+  // CRITICAL: We need to react to both ID changes and data loading
+  // Use JSON.stringify to detect when the product data has been fully loaded
+  // This ensures form gets populated with short_description and other fields
   useEffect(() => {
     // Only run this effect when editing an existing product, not for new product creation
     if (editingProduct?.id) {
@@ -150,7 +148,7 @@ export const useProductForm = (editingProduct = null, currentUser = null) => {
       setInitialFormData(newInitialData);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editingProduct?.id]); // ✅ Only re-run when product ID actually changes
+  }, [editingProduct?.id, editingProduct?.short_description, editingProduct?.title]); // ✅ Re-run when key fields are loaded
 
   // Helper function to update form data with proper nested object merging
   const updateFormData = useCallback((updates) => {
