@@ -718,7 +718,7 @@ export default function ProductDetails() {
 
         {/* Hero Section */}
         <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl shadow-blue-500/10 overflow-hidden mb-8 mobile-safe-card">
-          {(item.image_url && item.image_url !== '') ? (
+          {getProductImageUrl(item) ? (
             <div className="mobile-safe-flex flex-col">
               {/* Image Section - Full Width on Top */}
               <div className="relative w-full">
