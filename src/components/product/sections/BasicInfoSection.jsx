@@ -195,7 +195,10 @@ export const BasicInfoSection = ({
 
           {/* Short Description */}
           <div>
-            <Label className="text-sm font-medium">תיאור קצר</Label>
+            <Label className="text-sm font-medium">
+              תיאור קצר
+              <span className="text-red-500 mr-1">*</span>
+            </Label>
             <Textarea
               value={formData.short_description || ''}
               onChange={(e) => updateFormData({ short_description: e.target.value })}
@@ -222,6 +225,7 @@ export const BasicInfoSection = ({
               onChange={(htmlContent) => updateFormData({ description: htmlContent })}
               placeholder="תיאור מפורט של המוצר שיופיע בדף המוצר - הוסף עיצוב טקסט, צבעים, רשימות ועוד"
               error={!isFieldValid('description')}
+              required={true}
               minHeight="180px"
               className={`mt-1 ${!isFieldValid('description') ? 'border-red-500' : ''}`}
             />
