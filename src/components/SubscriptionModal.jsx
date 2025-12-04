@@ -59,6 +59,10 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
   const [selectedPlanForPayment, setSelectedPlanForPayment] = useState(null);
   const [isIframeLoading, setIsIframeLoading] = useState(true);
 
+  // Progressive loading states for better UX
+  const [loadingStage, setLoadingStage] = useState('idle'); // 'validating', 'creating_payment', 'loading_page'
+  const [loadingProgress, setLoadingProgress] = useState(0);
+
   // Pending plan switch management
   const [showPendingSwitchDialog, setShowPendingSwitchDialog] = useState(false);
   const [showReplacePendingDialog, setShowReplacePendingDialog] = useState(false);
@@ -317,21 +321,34 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
 
 
   /**
-   * Simplified plan selection handler using business logic service
+   * Simplified plan selection handler using business logic service with progressive loading
    */
   const handleSelectPlan = async (plan) => {
     try {
       ludlog.ui('Plan selected:', { data: plan.name });
 
+      // Reset loading states
+      setLoadingStage('idle');
+      setLoadingProgress(0);
+
+      // Stage 1: Validation
+      setLoadingStage('validating');
+      setLoadingProgress(20);
+
       // Evaluate the plan selection using business logic
       const decision = evaluatePlanSelection(plan);
 
       if (!decision) {
+        setLoadingStage('idle');
+        setLoadingProgress(0);
         return; // Error already handled in evaluatePlanSelection
       }
 
       // Show message for blocked actions
       if (!decision.canProceed) {
+        setLoadingStage('idle');
+        setLoadingProgress(0);
+
         if (decision.reason === 'pending_switch') {
           setShowPendingSwitchDialog(true);
           return;
@@ -356,6 +373,8 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
 
       // Handle replace pending scenario - ask for confirmation
       if (decision.actionType === SubscriptionBusinessLogic.ACTION_TYPES.REPLACE_PENDING) {
+        setLoadingStage('idle');
+        setLoadingProgress(0);
         setReplacePendingDecision(decision);
         setShowReplacePendingDialog(true);
         return; // Wait for user confirmation
@@ -363,33 +382,60 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
 
       // Handle cancel pending downgrade scenario - ask for confirmation
       if (decision.actionType === SubscriptionBusinessLogic.ACTION_TYPES.CANCEL_PENDING_DOWNGRADE) {
+        setLoadingStage('idle');
+        setLoadingProgress(0);
         setCancelPendingDowngradeDecision(decision);
         setShowCancelPendingDowngradeDialog(true);
         return; // Wait for user confirmation
       }
+
+      // Stage 2: Creating payment
+      setLoadingStage('creating_payment');
+      setLoadingProgress(50);
 
       // Execute the subscription action
       const result = await executeSubscriptionAction(decision);
 
       if (result?.success) {
         if (result.requiresPayment) {
+          // Stage 3: Loading payment page
+          setLoadingStage('loading_page');
+          setLoadingProgress(80);
+
           // Handle payment redirect - open payment modal
           setSelectedPlanForPayment(plan);
           setPaymentUrl(result.paymentUrl);
           setIsIframeLoading(true);
           setShowPaymentModal(true);
+
+          // Complete progress when modal opens
+          setLoadingProgress(100);
+
+          // Reset loading states after modal is opened
+          setTimeout(() => {
+            setLoadingStage('idle');
+            setLoadingProgress(0);
+          }, 500);
         } else {
           // Direct change completed - refresh and close
+          setLoadingProgress(100);
+
           if (onSubscriptionChange) {
             setTimeout(() => {
               onSubscriptionChange(currentUser);
               onClose();
+              setLoadingStage('idle');
+              setLoadingProgress(0);
             }, 1000);
           }
         }
       }
 
     } catch (error) {
+      // Reset loading states on error
+      setLoadingStage('idle');
+      setLoadingProgress(0);
+
       luderror.ui('Error in plan selection:', error);
       toast({
         variant: "destructive",
@@ -1310,14 +1356,20 @@ export default function SubscriptionModal({ isOpen, onClose, currentUser, onSubs
               </Button>
             </div>
             <div className="flex-1 relative">
-              {/* Loading Spinner Overlay */}
-              {isIframeLoading && (
+              {/* Loading Spinner Overlay with Progressive States */}
+              {(isIframeLoading || loadingStage !== 'idle') && (
                 <div className="absolute inset-0 bg-white flex items-center justify-center z-10">
                   <LudoraLoadingSpinner
-                    message="טוען דף תשלום..."
+                    message={
+                      loadingStage === 'validating' ? 'בודק תוקף המנוי...' :
+                      loadingStage === 'creating_payment' ? 'יוצר דף תשלום מאובטח...' :
+                      loadingStage === 'loading_page' ? 'טוען דף תשלום...' :
+                      'טוען דף תשלום...'
+                    }
                     status="loading"
                     size="lg"
                     showParticles={true}
+                    progress={loadingProgress}
                   />
                 </div>
               )}
