@@ -89,6 +89,10 @@ export const useProductFormValidation = (editingProduct, formData, uploadedFileI
       errors.title = 'כותרת המוצר חובה';
     }
 
+    if (!formData.short_description?.trim()) {
+      errors.short_description = 'תיאור קצר חובה';
+    }
+
     if (!formData.description?.trim()) {
       errors.description = 'תיאור המוצר חובה';
     }
