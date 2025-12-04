@@ -22,6 +22,7 @@ import ProductActionBar from "@/components/ui/ProductActionBar";
 import { getSubjectColors } from "@/config/subjectColors";
 import { getToolCategoryLabel } from "@/config/toolCategories";
 import { useProductAccess } from "@/hooks/useProductAccess";
+import { extractPlainText } from "@/components/ui/SafeHtmlRenderer";
 
 // Product type icons mapping
 const PRODUCT_TYPE_ICONS = {
@@ -244,11 +245,21 @@ export default function ProductItemDisplay({
     return '';
   };
 
-  // Get truncated description
+  // Get truncated description - prioritize short_description, then extract plain text from description
   const getTruncatedDescription = () => {
-    const desc = product.short_description || product.description || '';
+    // Prefer short_description as it's designed to be brief
+    if (product.short_description && product.short_description.trim()) {
+      return product.short_description;
+    }
+
+    // For description, extract plain text first, then truncate
+    const desc = product.description || '';
+    if (!desc.trim()) return '';
+
+    // Extract plain text from HTML content
+    const plainText = extractPlainText(desc);
     const maxLength = size === 'sm' ? 80 : size === 'md' ? 120 : 160;
-    return desc.length > maxLength ? desc.substring(0, maxLength) + '...' : desc;
+    return plainText.length > maxLength ? plainText.substring(0, maxLength) + '...' : plainText;
   };
 
 

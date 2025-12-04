@@ -22,6 +22,7 @@ import { useProductAccess } from "@/hooks/useProductAccess";
 import { ludlog } from '@/lib/ludlog';
 import KitBadge from "@/components/ui/KitBadge";
 import { isBundle } from "@/lib/bundleUtils";
+import { SafeHtmlRenderer, extractPlainText, hasRichContent } from "@/components/ui/SafeHtmlRenderer";
 
 // Hebrew grade names constant
 export const HEBREW_GRADES = {
@@ -238,10 +239,35 @@ export default function ProductCard({
     return '';
   };
 
-  // Get truncated description
-  const getTruncatedDescription = () => {
-    const desc = product.short_description || product.description || '';
-    return desc.length > 120 ? desc.substring(0, 120) + '...' : desc;
+  // Get description content - prioritize short_description, then use description
+  const getDescriptionContent = () => {
+    // Prefer short_description as it's designed to be brief
+    if (product.short_description && product.short_description.trim()) {
+      return {
+        content: product.short_description,
+        isRichText: false
+      };
+    }
+
+    // Use description field
+    const desc = product.description || '';
+    if (!desc.trim()) return null;
+
+    // Check if description contains rich text formatting
+    const isRich = hasRichContent(desc);
+    if (isRich) {
+      return {
+        content: desc,
+        isRichText: true
+      };
+    } else {
+      // Plain text description - truncate if needed
+      const truncated = desc.length > 120 ? desc.substring(0, 120) + '...' : desc;
+      return {
+        content: truncated,
+        isRichText: false
+      };
+    }
   };
 
   // Memoize expensive calculations to prevent infinite re-renders
@@ -388,11 +414,28 @@ export default function ProductCard({
             {/* Center: Enhanced Description */}
             <div className="text-center flex-grow flex flex-col justify-center mobile-padding-x">
               {/* Description */}
-              {getTruncatedDescription() && (
-                <p className="text-white text-sm md:text-xl leading-relaxed font-light drop-shadow-2xl max-w-lg mx-auto mobile-safe-text">
-                  {getTruncatedDescription()}
-                </p>
-              )}
+              {(() => {
+                const descContent = getDescriptionContent();
+                if (!descContent) return null;
+
+                if (descContent.isRichText) {
+                  // Render rich text with SafeHtmlRenderer and CSS line-clamp for truncation
+                  return (
+                    <SafeHtmlRenderer
+                      htmlContent={descContent.content}
+                      className="text-white text-sm md:text-xl leading-relaxed font-light drop-shadow-2xl max-w-lg mx-auto mobile-safe-text line-clamp-3"
+                      fallbackText=""
+                    />
+                  );
+                } else {
+                  // Render plain text
+                  return (
+                    <div className="text-white text-sm md:text-xl leading-relaxed font-light drop-shadow-2xl max-w-lg mx-auto mobile-safe-text">
+                      {descContent.content}
+                    </div>
+                  );
+                }
+              })()}
             </div>
 
             {/* Bottom: Action Buttons */}

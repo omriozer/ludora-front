@@ -1,0 +1,223 @@
+/* Rich Text Editor Styles */
+
+/* Main editor container */
+.rich-text-editor-container {
+  direction: rtl;
+  font-family: inherit;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  transition: border-color 0.2s ease-in-out;
+}
+
+.rich-text-editor-container:focus-within {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 1px #3b82f6;
+}
+
+/* Quill toolbar styling */
+.ql-toolbar {
+  border: none !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  background-color: #f8fafc;
+  direction: ltr; /* Toolbar should be LTR for icons */
+  padding: 8px 12px;
+}
+
+.ql-toolbar .ql-formats {
+  margin-left: 15px;
+}
+
+.ql-toolbar button {
+  padding: 4px 6px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.ql-toolbar button:hover {
+  background-color: #e2e8f0;
+}
+
+.ql-toolbar button.ql-active {
+  background-color: #3b82f6;
+  color: white;
+}
+
+/* Quill editor content area */
+.ql-container {
+  border: none !important;
+  direction: rtl;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.ql-editor {
+  min-height: 150px;
+  padding: 16px;
+  direction: rtl;
+  text-align: right;
+  font-family: inherit;
+  color: #374151;
+}
+
+.ql-editor.ql-blank::before {
+  color: #9ca3af;
+  direction: rtl;
+  text-align: right;
+  font-style: normal;
+  left: auto;
+  right: 16px;
+}
+
+/* Rich text content display styles */
+.rich-text-content {
+  line-height: 1.6;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Line clamp utilities for rich text content */
+.rich-text-content.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.rich-text-content.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.rich-text-content.line-clamp-4 {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.rich-text-content h1,
+.rich-text-content h2,
+.rich-text-content h3 {
+  font-weight: bold;
+  margin-bottom: 0.5em;
+  margin-top: 0.5em;
+}
+
+.rich-text-content h1 {
+  font-size: 1.5em;
+}
+
+.rich-text-content h2 {
+  font-size: 1.3em;
+}
+
+.rich-text-content h3 {
+  font-size: 1.1em;
+}
+
+.rich-text-content strong,
+.rich-text-content b {
+  font-weight: bold;
+}
+
+.rich-text-content em,
+.rich-text-content i {
+  font-style: italic;
+}
+
+.rich-text-content u {
+  text-decoration: underline;
+}
+
+.rich-text-content ul,
+.rich-text-content ol {
+  margin: 0.5em 0;
+  padding-right: 1.5em;
+}
+
+.rich-text-content ul li {
+  list-style-type: disc;
+  margin-bottom: 0.25em;
+}
+
+.rich-text-content ol li {
+  list-style-type: decimal;
+  margin-bottom: 0.25em;
+}
+
+.rich-text-content a {
+  color: #3b82f6;
+  text-decoration: underline;
+}
+
+.rich-text-content a:hover {
+  color: #1d4ed8;
+}
+
+.rich-text-content p {
+  margin-bottom: 0.5em;
+}
+
+.rich-text-content blockquote {
+  border-right: 4px solid #e2e8f0;
+  padding-right: 1em;
+  margin: 1em 0;
+  color: #6b7280;
+  font-style: italic;
+}
+
+/* Error state styling */
+.rich-text-editor-container.border-red-500 {
+  border-color: #ef4444 !important;
+}
+
+.rich-text-editor-container.border-red-500:focus-within {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 1px #ef4444 !important;
+}
+
+/* Responsive design */
+@media (max-width: 640px) {
+  .ql-toolbar {
+    padding: 6px 8px;
+  }
+
+  .ql-toolbar .ql-formats {
+    margin-left: 10px;
+  }
+
+  .ql-editor {
+    padding: 12px;
+    min-height: 120px;
+    font-size: 14px;
+  }
+
+  .ql-editor.ql-blank::before {
+    right: 12px;
+  }
+}
+
+/* Dark mode support (if implemented later) */
+@media (prefers-color-scheme: dark) {
+  .ql-toolbar {
+    background-color: #1f2937;
+    border-bottom-color: #374151 !important;
+  }
+
+  .ql-toolbar button:hover {
+    background-color: #374151;
+  }
+
+  .ql-editor {
+    background-color: #111827;
+    color: #e5e7eb;
+  }
+
+  .rich-text-editor-container {
+    border-color: #374151;
+    background-color: #111827;
+  }
+}

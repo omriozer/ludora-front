@@ -25,6 +25,7 @@ import {
   Infinity
 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { SafeHtmlRenderer } from "@/components/ui/SafeHtmlRenderer";
 
 /**
  * Subscription Claim Modal - Allows users to claim products using their subscription allowance
@@ -306,9 +307,11 @@ export default function SubscriptionClaimModal({
 
               {product.description && (
                 <CardContent className="pt-0">
-                  <p className="text-blue-800 text-sm leading-relaxed">
-                    {product.description}
-                  </p>
+                  <SafeHtmlRenderer
+                    htmlContent={product.description}
+                    className="text-blue-800 text-sm leading-relaxed"
+                    fallbackText="אין תיאור זמין למוצר זה"
+                  />
                 </CardContent>
               )}
             </Card>

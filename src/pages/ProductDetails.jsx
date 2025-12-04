@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { SafeHtmlRenderer } from "@/components/ui/SafeHtmlRenderer";
 import { ludlog, luderror } from '@/lib/ludlog';
 import KitBadge from "@/components/ui/KitBadge";
 import { isBundle, getBundleComposition, getBundleCompositionLabel } from "@/lib/bundleUtils";
@@ -807,9 +808,11 @@ export default function ProductDetails() {
                 )}
 
                 {item.description && (
-                  <p className="text-base sm:text-lg text-gray-700 mb-6 sm:mb-8 leading-relaxed text-right mobile-safe-text">
-                    {item.description}
-                  </p>
+                  <SafeHtmlRenderer
+                    htmlContent={item.description}
+                    className="text-base sm:text-lg text-gray-700 mb-6 sm:mb-8 leading-relaxed text-right mobile-safe-text"
+                    fallbackText="אין תיאור זמין למוצר זה"
+                  />
                 )}
 
                 {/* Action Buttons */}
@@ -900,9 +903,11 @@ export default function ProductDetails() {
                   </p>
                 )}
                 {item.description && (
-                  <p className="text-base sm:text-lg md:text-xl text-gray-700 leading-relaxed mb-6 sm:mb-8 max-w-3xl mx-auto mobile-safe-text">
-                    {item.description}
-                  </p>
+                  <SafeHtmlRenderer
+                    htmlContent={item.description}
+                    className="text-base sm:text-lg md:text-xl text-gray-700 leading-relaxed mb-6 sm:mb-8 max-w-3xl mx-auto mobile-safe-text"
+                    fallbackText="אין תיאור זמין למוצר זה"
+                  />
                 )}
 
                 {/* Action Buttons */}

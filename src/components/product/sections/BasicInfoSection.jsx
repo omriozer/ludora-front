@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/ui/RichTextEditor';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Info, Plus, X, AlertCircle } from 'lucide-react';
@@ -215,17 +216,21 @@ export const BasicInfoSection = ({
 
           {/* Full Description */}
           <div>
-            <Label className="text-sm font-medium">תיאור מפורט</Label>
-            <Textarea
+            <RichTextEditor
+              label="תיאור מפורט"
               value={formData.description || ''}
-              onChange={(e) => updateFormData({ description: e.target.value })}
-              placeholder="תיאור מפורט של המוצר שיופיע בדף המוצר"
-              rows={4}
+              onChange={(htmlContent) => updateFormData({ description: htmlContent })}
+              placeholder="תיאור מפורט של המוצר שיופיע בדף המוצר - הוסף עיצוב טקסט, צבעים, רשימות ועוד"
+              error={!isFieldValid('description')}
+              minHeight="180px"
               className={`mt-1 ${!isFieldValid('description') ? 'border-red-500' : ''}`}
             />
             {!isFieldValid('description') && (
               <p className="text-sm text-red-600 mt-1">{getFieldError('description')}</p>
             )}
+            <p className="text-xs text-gray-500 mt-1">
+              השתמש בכלי העיצוב להדגשת טקסט, שינוי צבעים, הוספת רשימות וקישורים
+            </p>
           </div>
 
           {/* Pricing */}

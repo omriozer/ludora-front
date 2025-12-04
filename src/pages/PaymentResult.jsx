@@ -116,6 +116,18 @@ export default function PaymentResult() {
 
   const handleAutoRedirect = async () => {
     try {
+      // PRIORITY FIX: For subscription purchases, redirect to account page
+      if (itemType === 'subscription') {
+        navigate('/account?tab=subscription');
+        return;
+      }
+
+      // PRIORITY FIX: For game purchases, redirect to games page
+      if (itemType === 'game' || item?.product_type === 'game') {
+        navigate('/games');
+        return;
+      }
+
       // Check if this is part of a multi-product transaction
       if (purchase?.transaction_id) {
         // Find all purchases with the same transaction_id
@@ -130,12 +142,12 @@ export default function PaymentResult() {
         }
       }
 
-      // Single product - redirect to product details page
-      const redirectProductId = productId || purchase.product_id;
+      // PRIORITY FIX: Single product - redirect to PRODUCT DETAILS page (not account)
+      const redirectProductId = productId || purchase?.purchasable_id || purchase?.product_id;
       if (redirectProductId) {
         navigate(getProductDetailsUrl(redirectProductId));
       } else {
-        // Fallback to account page if no product ID found
+        // Fallback to account page only if no product ID found
         navigate('/account');
       }
     } catch (err) {
@@ -783,17 +795,17 @@ export default function PaymentResult() {
 
     const buttons = [];
 
-    // Add "View Product Details" button first for all product types
-    const viewProductId = productId || purchase.product_id;
+    // PRIORITY FIX: Add prominent "Go to Product" button first for all product types
+    const viewProductId = productId || purchase?.purchasable_id || purchase?.product_id;
     if (viewProductId) {
       buttons.push(
         <Button
           key="view-product"
           onClick={() => navigate(getProductDetailsUrl(viewProductId))}
-          className="w-full bg-blue-600 hover:bg-blue-700"
+          className="w-full bg-emerald-600 hover:bg-emerald-700 text-lg py-6"
         >
-          <FileText className="w-4 h-4 ml-2" />
-          צפה בפרטי המוצר
+          <FileText className="w-5 h-5 ml-2" />
+          מעבר למוצר שרכשתי
         </Button>
       );
     }
@@ -946,7 +958,10 @@ export default function PaymentResult() {
             {autoRedirectSeconds > 0 && status === 'success' && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
                 <p className="text-blue-800 text-sm">
-                  עובר לעמוד המוצר בעוד {autoRedirectSeconds} שניות...
+                  {itemType === 'subscription' ? 'עובר לניהול המינוי' :
+                   itemType === 'game' ? 'עובר לדף המשחקים' :
+                   isMultiProduct ? 'עובר לעמוד החשבון' :
+                   'עובר לעמוד המוצר'} בעוד {autoRedirectSeconds} שניות...
                 </p>
                 <Button
                   onClick={() => setAutoRedirectSeconds(null)}
