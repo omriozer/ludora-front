@@ -208,8 +208,28 @@ export default function ProductPage() {
           setEditingProduct(product);
         } catch (error) {
           luderror.validation('Failed to load product:', error);
-          showMessage('error', 'שגיאה בטעינת המוצר');
-          navigate('/products');
+
+          // If this is right after product creation, don't redirect immediately
+          // Give the user a chance to retry or see what happened
+          if (window.location.pathname.includes('/edit/')) {
+            showMessage('error', 'שגיאה בטעינת המוצר. ננסה שוב...');
+
+            // Try loading again after a short delay
+            setTimeout(async () => {
+              try {
+                const retryProduct = await ProductAPI.findById(productId);
+                setEditingProduct(retryProduct);
+                showMessage('success', 'המוצר נטען בהצלחה');
+              } catch (retryError) {
+                luderror.validation('Retry failed to load product:', retryError);
+                showMessage('error', 'שגיאה בטעינת המוצר. אנא רענן את הדף או חזור לרשימת המוצרים');
+                setTimeout(() => navigate('/products'), 3000);
+              }
+            }, 1000);
+          } else {
+            showMessage('error', 'שגיאה בטעינת המוצר');
+            navigate('/products');
+          }
           return;
         }
       }
@@ -313,7 +333,10 @@ export default function ProductPage() {
         if (result.id) {
           setEditingProduct({ ...result, content_topic_id: content_topic_id || null });
           // Use navigate replace to update URL and trigger React Router to re-parse params
-          navigate(`/products/edit/${result.id}`, { replace: true });
+          // Add a small delay to ensure the product is fully saved before navigation
+          setTimeout(() => {
+            navigate(`/products/edit/${result.id}`, { replace: true });
+          }, 100);
         }
 
         showMessage('success', continueEditing ?
