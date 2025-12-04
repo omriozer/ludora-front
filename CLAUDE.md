@@ -1353,7 +1353,255 @@ const handleLockToggle = (elementKey) => {
 
 ---
 
-## 14. MOBILE RESPONSIVENESS SYSTEM (Dec 2025)
+## 14. RICH TEXT EDITOR SYSTEM (Dec 2025)
+
+### Core Components
+
+**RichTextEditor Component**
+```jsx
+import RichTextEditor from '@/components/RichTextEditor';
+
+// Usage in forms
+<RichTextEditor
+  value={formData.description}
+  onChange={(value) => updateFormData({ description: value })}
+  placeholder="תאר את המוצר שלך..."
+  className="min-h-[200px]"
+  showCharCount={true}
+  maxLength={2000}
+/>
+```
+
+**SafeHtmlRenderer Component**
+```jsx
+import SafeHtmlRenderer from '@/components/SafeHtmlRenderer';
+
+// Display rich content safely
+<SafeHtmlRenderer
+  content={product.description}
+  className="prose prose-lg"
+/>
+```
+
+### Implementation Patterns
+
+#### Editor Configuration
+```javascript
+// React Quill toolbar configuration
+const modules = {
+  toolbar: [
+    [{ 'header': [1, 2, 3, false] }],
+    ['bold', 'italic', 'underline', 'strike'],
+    [{ 'color': [] }, { 'background': [] }],
+    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+    ['blockquote', 'code-block'],
+    ['link'],
+    ['clean']
+  ]
+};
+
+// Hebrew RTL support
+const formats = ['header', 'bold', 'italic', 'underline', 'strike',
+                 'color', 'background', 'list', 'bullet', 'blockquote',
+                 'code-block', 'link', 'direction', 'align'];
+```
+
+#### Security Configuration
+```javascript
+// DOMPurify sanitization
+const sanitizeConfig = {
+  ALLOWED_TAGS: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'br',
+                 'strong', 'b', 'em', 'i', 'u', 's', 'strike',
+                 'ol', 'ul', 'li', 'a', 'span', 'blockquote',
+                 'pre', 'code', 'div'],
+  ALLOWED_ATTR: ['href', 'target', 'style', 'class', 'dir'],
+  ALLOWED_STYLE_PROPS: ['color', 'background-color', 'text-align',
+                        'direction', 'font-size', 'font-family'],
+  FORBID_SCRIPT: true,
+  FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'form'],
+  SAFE_FOR_JQUERY: false
+};
+```
+
+### Content Detection Patterns
+
+```javascript
+// Smart content type detection
+const isRichText = (content) => {
+  if (!content) return false;
+
+  // Check for HTML tags
+  if (/<[^>]+>/.test(content)) return true;
+
+  // Check for HTML entities
+  if (/&[a-zA-Z]+;/.test(content)) return true;
+
+  // Check for encoded HTML
+  if (/&lt;|&gt;/.test(content)) return true;
+
+  return false;
+};
+
+// Line break preservation for plain text
+const preserveLineBreaks = (text) => {
+  return text.replace(/\n/g, '<br />');
+};
+```
+
+### Integration Examples
+
+#### Product Creation Form
+```jsx
+// BasicInfoSection.jsx
+<div className="form-group">
+  <label>תיאור המוצר</label>
+  <RichTextEditor
+    value={formData.description}
+    onChange={(value) => updateFormData({ description: value })}
+    placeholder="הוסף תיאור מפורט למוצר שלך..."
+    className="min-h-[200px]"
+    showCharCount={true}
+    maxLength={2000}
+  />
+  {errors.description && (
+    <span className="error-message">{errors.description}</span>
+  )}
+</div>
+```
+
+#### Product Display
+```jsx
+// ProductDetails.jsx
+<div className="product-description">
+  <h3>תיאור המוצר</h3>
+  <SafeHtmlRenderer
+    content={product.description}
+    className="prose prose-lg max-w-none"
+  />
+</div>
+```
+
+#### Card Display with Truncation
+```jsx
+// ProductCard.jsx
+<div className="card-description">
+  <SafeHtmlRenderer
+    content={product.description}
+    className="line-clamp-3"
+    stripHtml={false}  // Keep formatting in preview
+  />
+</div>
+```
+
+### Styling Guidelines
+
+**Rich Text Editor Styles** (`richTextEditor.css`):
+```css
+/* Editor container */
+.rich-text-editor {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.375rem;
+  overflow: hidden;
+}
+
+/* Quill editor overrides */
+.ql-container {
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+/* RTL support */
+.ql-editor[dir="rtl"] {
+  text-align: right;
+  direction: rtl;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .ql-toolbar {
+    flex-wrap: wrap;
+  }
+}
+```
+
+**Content Display Styles**:
+```css
+/* Prose styling for rendered content */
+.prose h1 { font-size: 2em; margin: 0.67em 0; }
+.prose h2 { font-size: 1.5em; margin: 0.75em 0; }
+.prose h3 { font-size: 1.17em; margin: 0.83em 0; }
+.prose ul, .prose ol { padding-right: 2em; }
+.prose li { margin: 0.5em 0; }
+.prose blockquote {
+  border-right: 4px solid #e5e7eb;
+  padding-right: 1em;
+  margin: 1em 0;
+}
+```
+
+### Migration Strategy
+
+**For existing plain text descriptions:**
+1. SafeHtmlRenderer automatically detects plain text
+2. Preserves line breaks by converting `\n` to `<br>`
+3. No data migration required - backward compatible
+4. Users can optionally update to rich text when editing
+
+### Best Practices
+
+**DO:**
+- ✅ Use RichTextEditor for all long-form text input
+- ✅ Always render user content through SafeHtmlRenderer
+- ✅ Preserve Hebrew RTL formatting
+- ✅ Show character count for limited fields
+- ✅ Test content display on mobile devices
+
+**DON'T:**
+- ❌ Render HTML without SafeHtmlRenderer
+- ❌ Use innerHTML or dangerouslySetInnerHTML directly
+- ❌ Allow unlimited content length
+- ❌ Mix rich text and markdown in same field
+- ❌ Forget to import richTextEditor.css
+
+### Accessibility Considerations
+
+```jsx
+// Proper ARIA labels
+<div role="textbox" aria-multiline="true" aria-label="Product description">
+  <RichTextEditor {...props} />
+</div>
+
+// Keyboard navigation support
+// React Quill handles Tab, Shift+Tab, arrow keys natively
+
+// Screen reader announcements
+<span className="sr-only" aria-live="polite">
+  {charCount}/{maxLength} characters
+</span>
+```
+
+### Testing Patterns
+
+```javascript
+// Test rich text input
+cy.get('.ql-editor')
+  .type('This is **bold** text')
+  .should('contain.html', '<strong>bold</strong>');
+
+// Test XSS protection
+const maliciousContent = '<script>alert("XSS")</script>';
+cy.get('.safe-html-renderer')
+  .should('not.contain', '<script>');
+
+// Test RTL support
+cy.get('.ql-editor')
+  .should('have.attr', 'dir', 'rtl')
+  .type('טקסט בעברית');
+```
+
+---
+
+## 15. MOBILE RESPONSIVENESS SYSTEM (Dec 2025)
 
 ### Critical Mobile Protection Rules
 
