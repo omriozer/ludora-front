@@ -27,7 +27,7 @@ import {
 
 export default function PortalsSettings() {
   const navigate = useNavigate();
-  const { currentUser, settings, isLoading: userLoading } = useUser();
+  const { currentUser, settings, isLoading: userLoading, refreshSettings } = useUser();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState(null);
@@ -101,7 +101,9 @@ export default function PortalsSettings() {
       }
 
       showMessage('success', 'הגדרות הפורטלים נשמרו בהצלחה');
-      await loadData(); // Reload to get updated data
+      // Refresh UserContext settings cache with latest values from API
+      await refreshSettings();
+      await loadData(); // Reload form with refreshed data
     } catch (error) {
       luderror.validation('Error saving portals settings:', error);
       showMessage('error', 'שגיאה בשמירת ההגדרות');

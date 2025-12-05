@@ -159,7 +159,7 @@ export default function useProductCatalog(productType, filters, activeTab) {
         }
       }
 
-      // 5. Load products based on user status and product type
+      // 5. Load products based on user status and product type using enriched endpoint
       const ProductService = await getProductService();
       // Use polymorphic structure for product IDs like other components
       const purchasedProductIds = purchasesData.map(p => p.purchasable_id || p.product_id);
@@ -167,8 +167,8 @@ export default function useProductCatalog(productType, filters, activeTab) {
       if (currentUser) {
         // User is logged in, check for purchases and admin status
         try {
-          // Load all products of this type
-          const allProducts = await ProductService.filter({ product_type: productType });
+          // Load all products of this type with access control enrichment
+          const allProducts = await ProductService.listEnriched({ product_type: productType });
 
           // Filter products: show if published, OR if purchased by the current user, OR if user is admin
           productsData = allProducts.filter(product =>
@@ -180,79 +180,43 @@ export default function useProductCatalog(productType, filters, activeTab) {
           luderror.ui(`Error loading ${productType} products for logged-in user:`, null, { context: productError });
           // Fallback: show only published products for non-admins, all for admins
           if (currentUser.role === 'admin' || currentUser.role === 'sysadmin') {
-            productsData = await ProductService.filter({ product_type: productType });
+            productsData = await ProductService.listEnriched({ product_type: productType });
           } else {
-            productsData = await ProductService.filter({
+            productsData = await ProductService.listEnriched({
               product_type: productType,
               is_published: true
             });
           }
         }
       } else {
-        // Not logged in - only show published products
-        productsData = await ProductService.filter({
+        // Not logged in - only show published products with access control enrichment
+        productsData = await ProductService.listEnriched({
           product_type: productType,
           is_published: true
         });
       }
 
-      // 6. Enhance products with entity data and creator display names
-      const productsWithEntityData = await Promise.all(
-        productsData.map(async (product) => {
-          let enhancedProduct = { ...product };
+      // 6. Enhance products with creator display names (entity data already included from enriched endpoint)
+      const productsWithCreatorNames = productsData.map((product) => {
+        // Add creator display name
+        const creator = usersData.find(u => u.email === product.created_by);
+        return {
+          ...product,
+          created_by_display_name: creator?.display_name || creator?.full_name
+        };
+      });
 
-          try {
-            // Get entity data for this product if entity_id exists
-            if (product.entity_id) {
-              const EntityService = await getEntityService(productType);
-              const entityData = await EntityService.findById(product.entity_id);
-
-              if (entityData) {
-                // Merge entity data with product data
-                enhancedProduct = {
-                  ...enhancedProduct,
-                  ...entityData,
-                  // Preserve Product model fields
-                  id: product.id,
-                  product_type: product.product_type,
-                  entity_id: product.entity_id,
-                  title: product.title,
-                  description: product.description,
-                  short_description: product.short_description,
-                  price: product.price,
-                  is_published: product.is_published,
-                  is_featured: product.is_featured,
-                  featured: product.featured,
-                  created_by: product.created_by,
-                  created_date: product.created_date,
-                  updated_date: product.updated_date
-                };
-              }
-            }
-          } catch (entityError) {
-            luderror.ui(`Error loading entity data for product ${product.id}:`, entityError);
-            // Continue without entity data
-          }
-
-          // Add creator display name
-          const creator = usersData.find(u => u.email === enhancedProduct.created_by);
-          enhancedProduct.created_by_display_name = creator?.display_name || creator?.full_name;
-
-          return enhancedProduct;
-        })
-      );
-
-      setProducts(productsWithEntityData);
+      setProducts(productsWithCreatorNames);
 
       // 7. Extract categories for filtering
       const uniqueCategories = [...new Set(
-        productsWithEntityData
+        productsWithCreatorNames
           .map(product => product.category)
           .filter(Boolean)
       )].map(name => ({ name, id: name }));
       setCategories(uniqueCategories);
 
-      ludlog.ui(`✅ Loaded ${productsWithEntityData.length} ${getProductTypeName(productType, 'plural')} products`);
+      ludlog.ui(`✅ Loaded ${productsWithCreatorNames.length} ${getProductTypeName(productType, 'plural')} products`);
 
     } catch (globalError) {
       luderror.ui(`Critical error loading ${productType} catalog:`, null, { context: globalError });

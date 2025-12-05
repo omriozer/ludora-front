@@ -489,6 +489,25 @@ export const Notification = new EntityAPI('notification');
 
 // New dedicated entity types
 export const Product = new EntityAPI('product');
+
+// Add enriched product list method that includes access control information
+Product.listEnriched = async function(query = {}) {
+  const searchParams = new URLSearchParams();
+
+  // Handle query parameters properly, including arrays
+  for (const [key, value] of Object.entries(query)) {
+    if (Array.isArray(value)) {
+      value.forEach(item => searchParams.append(key, item));
+    } else {
+      searchParams.set(key, value);
+    }
+  }
+
+  const queryString = searchParams.toString();
+  const endpoint = queryString ? `/entities/products/list?${queryString}` : '/entities/products/list';
+  return apiRequest(endpoint);
+};
+
 export const Workshop = new EntityAPI('workshop');
 export const Course = new EntityAPI('course');
 export const File = new EntityAPI('file');

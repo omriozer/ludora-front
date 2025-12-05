@@ -36,8 +36,8 @@ const TeacherCatalogContent = () => {
   // Socket.IO integration for real-time lobby updates
   const { connected: isSocketConnected, onLobbyUpdate } = useSocket();
 
-  // Get current player information
-  const { currentPlayer, isPlayerAuthenticated, refreshUser, isLoading } = useUser();
+  // Get current player and user information for authentication
+  const { currentPlayer, isPlayerAuthenticated, currentUser, isAuthenticated, refreshUser, isLoading } = useUser();
 
   // State for teacher connection validation
   const [showTeacherRequired, setShowTeacherRequired] = useState(false);
@@ -53,9 +53,18 @@ const TeacherCatalogContent = () => {
     // Wait for auth to load and catalog to load
     if (isLoading || loading) return;
 
-    // Only check for authenticated players after catalog is loaded
-    if (isPlayerAuthenticated && currentPlayer && catalog) {
-      const hasTeacherConnection = currentPlayer.teacher_id || currentPlayer.teacher;
+    // Check for students after catalog is loaded
+    const isStudent = (
+      (isPlayerAuthenticated && currentPlayer) ||
+      (isAuthenticated && currentUser && currentUser.user_type === 'student')
+    );
+
+    if (isStudent && catalog) {
+      // Check teacher connection for both auth types
+      const hasTeacherConnection = (
+        (currentPlayer && (currentPlayer.teacher_id || currentPlayer.teacher)) ||
+        (currentUser && currentUser.teacher_id)
+      );
 
       // Only show "teacher required" if:
       // - No teacher connection AND
@@ -68,7 +77,7 @@ const TeacherCatalogContent = () => {
         setShowTeacherRequired(false);
       }
     }
-  }, [isPlayerAuthenticated, currentPlayer, isLoading, loading, catalog, showTeacherAssignment, teacherAssignmentData]);
+  }, [isPlayerAuthenticated, currentPlayer, isAuthenticated, currentUser, isLoading, loading, catalog, showTeacherAssignment, teacherAssignmentData]);
 
   // Redirect countdown when teacher connection is missing
   useEffect(() => {
@@ -113,9 +122,16 @@ const TeacherCatalogContent = () => {
 
         setCatalog(catalogData);
 
-        // Check for teacher assignment (anonymous players only)
-        if (isPlayerAuthenticated && currentPlayer && !currentPlayer.teacher_id) {
-          // This is an anonymous player without a teacher - show assignment dialog
+        // Check for teacher assignment (students without teacher connection)
+        const shouldShowTeacherAssignment = (
+          // Anonymous players without teacher
+          (isPlayerAuthenticated && currentPlayer && !currentPlayer.teacher_id) ||
+          // Firebase students without teacher (via user_type)
+          (isAuthenticated && currentUser && currentUser.user_type === 'student' && !currentUser.teacher_id)
+        );
+
+        if (shouldShowTeacherAssignment) {
+          // This is a student without a teacher connection - show assignment dialog
           setTeacherAssignmentData({
             teacher: catalogData.teacher,
             teacher_id: teacher?.id
@@ -180,7 +196,7 @@ const TeacherCatalogContent = () => {
     if (userCode) {
       fetchTeacherCatalog();
     }
-  }, [userCode, isPlayerAuthenticated, currentPlayer]);
+  }, [userCode, isPlayerAuthenticated, currentPlayer, isAuthenticated, currentUser]);
 
   // Initialize Socket.IO connection for real-time updates
   useEffect(() => {

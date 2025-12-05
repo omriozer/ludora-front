@@ -34,6 +34,7 @@ import { useLoginModal, LoginModalProvider } from '@/hooks/useLoginModal';
 import { canBypassMaintenance } from '@/utils/adminCheck';
 import { SYSTEM_KEYS, getSetting } from '@/constants/settings';
 import UserWayWidget from '@/components/accessibility/UserWayWidget';
+import ConsentEnforcement from '@/components/consent/ConsentEnforcement';
 
 // Suspense fallback component
 const SuspenseLoader = () => (
@@ -279,7 +280,8 @@ function StudentPortal() {
 
 			{/* Main Content Area - with responsive margin for sidebar */}
 			<main className="flex-1 flex flex-col transition-all duration-300" style={{ marginRight: 'var(--student-nav-width, 0px)' }}>
-				<Routes>
+				<ConsentEnforcement>
+					<Routes>
 					{/* Student Home */}
 					<Route
 						path='/'
@@ -374,6 +376,7 @@ function StudentPortal() {
 						}
 					/>
 				</Routes>
+			</ConsentEnforcement>
 			</main>
 
 			{/* Footer */}
@@ -543,6 +546,18 @@ function App() {
 								<OnboardingRedirect>
 									<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.PROTECTED}>
 										<LazyPages.MyAccount />
+									</AuthAwareSuspense>
+								</OnboardingRedirect>
+							</ConditionalRoute>
+						}
+					/>
+					<Route
+						path='/payments'
+						element={
+							<ConditionalRoute visibilityField='nav_account_visibility'>
+								<OnboardingRedirect>
+									<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.PROTECTED}>
+										<LazyPages.PaymentsPage />
 									</AuthAwareSuspense>
 								</OnboardingRedirect>
 							</ConditionalRoute>

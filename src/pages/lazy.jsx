@@ -16,6 +16,7 @@ export const ParentConsent = lazy(() => import('./ParentConsent'));
 
 // User account and profile pages
 export const MyAccount = lazy(() => import('./MyAccount'));
+export const PaymentsPage = lazy(() => import('./PaymentsPage'));
 export const PaymentResult = lazy(() => import('./PaymentResult'));
 export const Purchases = lazy(() => import('./Purchases'));
 export const StudentInvitations = lazy(() => import('./StudentInvitations'));

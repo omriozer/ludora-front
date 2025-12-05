@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Eye, Download } from 'lucide-react';
 import { apiDownload } from '@/services/apiClient';
 
 /**
@@ -95,12 +94,7 @@ export default function FileAccessButton({
       size={size}
     >
       <span className="relative z-10 flex items-center justify-center gap-2 sm:gap-3">
-        {isPdf ? (
-          <Eye className="w-5 h-5 sm:w-6 sm:h-6 group-hover:scale-110 transition-transform duration-300" />
-        ) : (
-          <Download className="w-5 h-5 sm:w-6 sm:h-6 group-hover:scale-110 transition-transform duration-300" />
-        )}
-        <span>צפיה בקובץ</span>
+        <span>{isPdf ? 'צפיה בקובץ' : 'הורדת קובץ'}</span>
       </span>
       <div className="absolute inset-0 bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
       <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 animate-pulse"></div>

@@ -274,7 +274,6 @@ const MyAccount = () => {
     try {
       const texts = {
         title: "החשבון שלי",
-        subtitle: "נהלי את ההרשמות והגישה להקלטות שלך",
         personalInfo: "פרטים אישיים",
         fullName: "שם מלא",
         email: "אימייל",
@@ -428,13 +427,12 @@ const MyAccount = () => {
       <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
         {/* Header - Mobile Optimized */}
         <div className="text-center mb-4 sm:mb-6 lg:mb-10">
-          <div className="flex flex-col items-center justify-center gap-2 mb-3 sm:mb-4">
+          <div className="flex items-center justify-center gap-3 sm:gap-4 mb-3 sm:mb-4">
             <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg">
               <UserIcon className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-white" />
             </div>
-            <h1 className="text-xl sm:text-2xl lg:text-4xl font-bold text-gray-900 px-2">{accountTexts.title}</h1>
+            <h1 className="text-xl sm:text-2xl lg:text-4xl font-bold text-gray-900">{accountTexts.title}</h1>
           </div>
-          <p className="text-base sm:text-lg lg:text-xl text-gray-600 px-3 sm:px-4 lg:px-0">{accountTexts.subtitle}</p>
         </div>
 
 
@@ -465,12 +463,38 @@ const MyAccount = () => {
           </div>
         )}
 
-        <div className="grid gap-3 sm:gap-4 lg:gap-6 xl:gap-8 md:grid-cols-3">
-          {/* Left Column - Personal Info & Subscription - Full width on mobile, stacked */}
-          <div className="md:col-span-1 space-y-3 sm:space-y-4 lg:space-y-6 xl:space-y-8">
+        {/* Calculate which sections to show */}
+        {(() => {
+          const showPersonalInfo = true; // Always shown
+          const showGameSharing = currentUser?.user_type === 'teacher' && settings[NAVIGATION_KEYS.NAV_GAMES_VISIBILITY] === NAV_VISIBILITY_OPTIONS.PUBLIC;
+          const showSubscription = settings?.subscription_system_enabled && currentUser;
 
-            {/* Personal Information Card - Mobile First */}
-            <Card className="shadow-lg sm:shadow-xl border-0 bg-white/80 backdrop-blur-sm rounded-lg sm:rounded-xl lg:rounded-2xl overflow-hidden mx-1 sm:mx-0">
+          const sectionsToShow = [
+            showPersonalInfo && 'personal',
+            showGameSharing && 'gameSharing',
+            showSubscription && 'subscription'
+          ].filter(Boolean);
+
+          const sectionCount = sectionsToShow.length;
+
+          // Determine responsive grid classes based on section count
+          let gridClasses;
+          if (sectionCount === 1) {
+            gridClasses = 'grid-cols-1';
+          } else if (sectionCount === 2) {
+            gridClasses = 'grid-cols-1 lg:grid-cols-2';
+          } else {
+            gridClasses = 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3';
+          }
+
+          return (
+            <>
+              {/* Top Section - Personal Details, Game Sharing, Subscription */}
+              <div className={`grid gap-3 sm:gap-4 lg:gap-6 xl:gap-8 ${gridClasses} mb-6 sm:mb-8`}>
+
+                {/* Personal Information Card */}
+                {showPersonalInfo && (
+                  <Card className="shadow-lg sm:shadow-xl border-0 bg-white/80 backdrop-blur-sm rounded-lg sm:rounded-xl lg:rounded-2xl overflow-hidden mx-1 sm:mx-0">
               <CardHeader className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-3 sm:p-4 lg:p-6">
                 <CardTitle className="flex flex-col xs:flex-row items-start xs:items-center justify-between gap-2 sm:gap-3">
                   <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
@@ -681,9 +705,10 @@ const MyAccount = () => {
                 )}
               </CardContent>
             </Card>
+                )}
 
             {/* Teacher Invitation Code Card - Only for teachers */}
-            {currentUser?.user_type === 'teacher' && settings[NAVIGATION_KEYS.NAV_GAMES_VISIBILITY] === NAV_VISIBILITY_OPTIONS.PUBLIC &&(
+            {showGameSharing && (
               <Card className="shadow-lg sm:shadow-xl border-0 bg-white/80 backdrop-blur-sm rounded-lg sm:rounded-xl lg:rounded-2xl overflow-hidden mx-1 sm:mx-0">
                 <CardHeader className="bg-gradient-to-r from-teal-500 to-blue-600 text-white p-3 sm:p-4 lg:p-6">
                   <CardTitle className="flex items-center gap-2 sm:gap-3">
@@ -698,35 +723,35 @@ const MyAccount = () => {
                     <>
                       {/* Code Display */}
                       <div className="text-center">
-                        <div className="text-sm font-medium text-gray-700 mb-2">קוד המורה שלך:</div>
-                        <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800 font-mono bg-gradient-to-r from-teal-50 to-blue-50 px-4 py-3 rounded-xl shadow-lg border border-teal-200 mb-4">
+                        <div className="text-sm sm:text-base lg:text-lg xl:text-xl font-medium text-gray-700 mb-3 lg:mb-4 xl:mb-6">קוד המורה שלך:</div>
+                        <div className="text-xl sm:text-2xl lg:text-4xl xl:text-5xl font-bold text-gray-800 font-mono bg-gradient-to-r from-teal-50 to-blue-50 px-4 lg:px-8 xl:px-12 py-3 lg:py-6 xl:py-8 rounded-xl lg:rounded-2xl xl:rounded-3xl shadow-lg border border-teal-200 mb-4 lg:mb-8 xl:mb-10">
                           {invitationCode}
                         </div>
 
                         {/* URL Display */}
-                        <div className="text-center mb-4">
-                          <div className="text-xs text-gray-500 mb-1">כתובת הקטלוג:</div>
-                          <div className="text-sm text-blue-600 font-medium bg-blue-50 px-3 py-2 rounded-lg border border-blue-200 break-all">
+                        <div className="text-center mb-4 lg:mb-8 xl:mb-10">
+                          <div className="text-xs sm:text-sm lg:text-base xl:text-lg text-gray-500 mb-2 lg:mb-3 xl:mb-4">כתובת הקטלוג:</div>
+                          <div className="text-sm sm:text-base lg:text-lg xl:text-xl text-blue-600 font-medium bg-blue-50 px-3 lg:px-6 xl:px-8 py-2 lg:py-4 xl:py-5 rounded-lg lg:rounded-xl xl:rounded-2xl border border-blue-200 break-all">
                             {urls.portal.student.portal(invitationCode).replace(/^https?:\/\//, '')}
                           </div>
                         </div>
                       </div>
 
                       {/* Action Buttons */}
-                      <div className="grid grid-cols-2 gap-2 mb-4">
+                      <div className="grid grid-cols-2 gap-2 lg:gap-4 xl:gap-6 mb-4 lg:mb-8 xl:mb-10">
                         <Button
                           onClick={() => setShowQRModal(true)}
-                          className="bg-teal-500 hover:bg-teal-600 text-white text-sm py-2 rounded-lg shadow-lg"
+                          className="bg-teal-500 hover:bg-teal-600 text-white text-sm lg:text-base xl:text-lg py-2 lg:py-4 xl:py-5 rounded-lg lg:rounded-xl xl:rounded-2xl shadow-lg"
                         >
-                          <QrCode className="w-4 h-4 mr-1" />
+                          <QrCode className="w-4 h-4 lg:w-5 lg:h-5 xl:w-6 xl:h-6 mr-1 lg:mr-2 xl:mr-3" />
                           QR
                         </Button>
                         <Button
                           onClick={copyInviteUrlToClipboard}
                           variant="outline"
-                          className="border-2 border-blue-200 hover:bg-blue-50 text-blue-700 text-sm py-2 rounded-lg"
+                          className="border-2 border-blue-200 hover:bg-blue-50 text-blue-700 text-sm lg:text-base xl:text-lg py-2 lg:py-4 xl:py-5 rounded-lg lg:rounded-xl xl:rounded-2xl"
                         >
-                          <Copy className="w-4 h-4 mr-1" />
+                          <Copy className="w-4 h-4 lg:w-5 lg:h-5 xl:w-6 xl:h-6 mr-1 lg:mr-2 xl:mr-3" />
                           העתק
                         </Button>
                       </div>
@@ -736,12 +761,12 @@ const MyAccount = () => {
                         onClick={generateInvitationCode}
                         disabled={loadingInviteCode}
                         variant="outline"
-                        className="w-full border-2 border-orange-200 hover:bg-orange-50 text-orange-700 text-sm py-2 rounded-lg"
+                        className="w-full border-2 border-orange-200 hover:bg-orange-50 text-orange-700 text-sm lg:text-base xl:text-lg py-2 lg:py-4 xl:py-5 rounded-lg lg:rounded-xl xl:rounded-2xl"
                       >
                         {loadingInviteCode ? (
                           <div className="animate-spin rounded-full h-4 w-4 border-2 border-orange-600 border-t-transparent mr-1" />
                         ) : (
-                          <RefreshCw className="w-4 h-4 mr-1" />
+                          <RefreshCw className="w-4 h-4 lg:w-5 lg:h-5 xl:w-6 xl:h-6 mr-1 lg:mr-2 xl:mr-3" />
                         )}
                         קוד חדש
                       </Button>
@@ -795,7 +820,7 @@ const MyAccount = () => {
             )}
 
             {/* Subscription Section - COMPLETELY HIDDEN when subscription system is disabled */}
-            {settings?.subscription_system_enabled && currentUser && (
+            {showSubscription && (
               <Card className="bg-white border-none shadow-lg sm:shadow-xl rounded-lg sm:rounded-xl lg:rounded-2xl mx-1 sm:mx-0">
                 <CardHeader className="p-3 sm:p-4 lg:p-6">
                   <CardTitle className="flex items-center gap-2 sm:gap-3">
@@ -1123,18 +1148,22 @@ const MyAccount = () => {
                 </CardContent>
               </Card>
             )}
-          </div>
 
-          {/* Right Column - Purchase History - Full Width on Mobile */}
-          <div className="md:col-span-2">
-            <PurchaseHistory
-              user={currentUser}
-              title={accountTexts.purchaseHistory}
-              showHeader={true}
-              className=""
-            />
-          </div>
-        </div>
+              </div>
+
+              {/* Purchase History Section - Bottom, Full Width */}
+              <div className="w-full">
+                <PurchaseHistory
+                  user={currentUser}
+                  title={accountTexts.purchaseHistory}
+                  showHeader={true}
+                  className=""
+                />
+              </div>
+
+            </>
+          );
+        })()}
 
         {/* QR Code Modal for Invitation Code */}
         {showQRModal && (
