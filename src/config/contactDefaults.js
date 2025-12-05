@@ -32,7 +32,19 @@ export const getContactPhone = (settings) => {
 
 // Generate WhatsApp and email URLs
 export const getWhatsAppUrl = (phone, message = '') => {
-  const cleanPhone = phone.replace(/[\s\-\(\)\+]/g, '');
+  // Clean phone number by removing formatting characters
+  let cleanPhone = phone.replace(/[\s\-\(\)\+]/g, '');
+
+  // If phone starts with 0, remove it (Israeli local format)
+  if (cleanPhone.startsWith('0')) {
+    cleanPhone = cleanPhone.substring(1);
+  }
+
+  // Add Israel country code if not already present
+  if (!cleanPhone.startsWith('972')) {
+    cleanPhone = '972' + cleanPhone;
+  }
+
   const encodedMessage = encodeURIComponent(message);
   return `https://wa.me/${cleanPhone}${message ? `?text=${encodedMessage}` : ''}`;
 };

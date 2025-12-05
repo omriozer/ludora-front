@@ -57,7 +57,7 @@ const ItemButtons = ({
     // First section: Built-in elements in requested order
     logo: {
       name: 'לוגו',
-      icon: <LogoDisplay size="small" alt="לוגו" className="w-4 h-4" />,
+      icon: <LogoDisplay alt="לוגו" className="w-4 h-4" />,
       color: 'border-purple-300 bg-purple-50 hover:bg-purple-100',
       isBuiltIn: true
     },

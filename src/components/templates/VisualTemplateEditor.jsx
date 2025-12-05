@@ -897,7 +897,8 @@ const VisualTemplateEditor = ({
       case 'logo':
         return {
           ...baseConfig,
-          // Logo uses static file, no URL needed
+          // Logo uses current SVG file to prevent fallback to "LOGO" text
+          url: '/logo.svg',
           style: {
             size: 80,
             opacity: 100,
@@ -1678,16 +1679,14 @@ const VisualTemplateEditor = ({
         };
       }
 
-      // Remove any logo URLs from custom elements - logos should only use static files
+      // Ensure logo elements use the current logo.svg file
       if (newConfig.customElements) {
         Object.keys(newConfig.customElements).forEach(elementId => {
           const element = newConfig.customElements[elementId];
           if (element.type === 'logo' || element.type === 'watermark-logo') {
-            // Remove URL property - logo elements should only use static files
-            if (element.url) {
-              delete element.url;
-              ludlog.media(`🔧 Removed logo URL from custom element ${elementId} - using static file only`);
-            }
+            // Set logo URL to current SVG file to prevent "LOGO" fallback
+            element.url = '/logo.svg';
+            ludlog.media(`🔧 Set logo URL for custom element ${elementId} to use /logo.svg`);
           }
         });
       }

@@ -20,8 +20,8 @@ const LogoDisplay = ({
 
   // Determine which logo path to use based on size prop (served from public folder)
   const logoPath = size === "small"
-    ? "/logo_sm.png"
-    : "/logo.png";
+    ? "/logo_sm.svg"
+    : "/logo.svg";
 
   // Always try to show image first - prioritize settings logo, then static logo
   const imageSrc = getSetting(settings, BRANDING_KEYS.LOGO_URL) || logoPath;

@@ -393,12 +393,12 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-white">
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-purple-600 via-pink-700 to-indigo-800 text-white pt-4 md:pt-8 pb-16 md:pb-24 overflow-hidden">
+      <section className="relative bg-gradient-to-br from-blue-500 via-purple-600 to-teal-600 text-white pt-4 md:pt-8 pb-16 md:pb-24 overflow-hidden">
         {/* Background decorations */}
         <div className="absolute inset-0">
-          <div className="absolute top-20 right-20 w-72 h-72 bg-white/10 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-20 left-20 w-96 h-96 bg-gradient-to-br from-yellow-400/20 to-pink-500/20 rounded-full blur-3xl"></div>
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-cyan-400/10 rounded-full blur-3xl"></div>
+          <div className="absolute top-20 right-20 w-72 h-72 bg-gradient-to-br from-green-400/15 to-emerald-400/15 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-20 left-20 w-96 h-96 bg-gradient-to-br from-orange-400/20 to-red-400/20 rounded-full blur-3xl"></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-br from-blue-400/15 to-cyan-400/15 rounded-full blur-3xl"></div>
         </div>
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -410,7 +410,7 @@ export default function Home() {
               </div>
 
               <h1 className="text-5xl md:text-7xl font-bold leading-tight">
-                <LogoDisplay className="h-64 md:h-80 object-contain mx-auto lg:mx-0 mb-2 max-w-full" />
+                <LogoDisplay className="h-32 md:h-40 object-contain mx-auto lg:mx-0 mb-2 max-w-full" />
                 <span className="block text-3xl md:text-4xl mt-2 text-purple-100">
                   {currentTexts.title}
                 </span>
@@ -444,7 +444,7 @@ export default function Home() {
               <div className="relative">
                 <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/20 to-pink-400/20 rounded-3xl blur-2xl transform rotate-6"></div>
                 <img
-                  src="https://images.unsplash.com/photo-1596495578065-6e0763fa1178?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
+                  src="/home.png"
                   alt="תכנים חינוכיים"
                   className="relative z-10 w-full max-w-lg h-96 object-cover rounded-3xl shadow-2xl transform -rotate-2 hover:rotate-0 transition-transform duration-700"
                 />
@@ -456,10 +456,10 @@ export default function Home() {
 
       {/* Dynamic Product Showcase Section */}
       {availableProducts.length > 0 && (
-        <section className="py-16 md:py-24 bg-gradient-to-br from-purple-50 via-pink-50 to-cyan-50">
+        <section className="py-16 md:py-24 bg-gradient-to-br from-blue-50 via-green-50 to-teal-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-16 md:mb-20">
-              <div className="inline-flex items-center gap-2 bg-purple-100 text-purple-800 rounded-full px-4 py-2 text-sm font-medium mb-4">
+              <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-800 rounded-full px-4 py-2 text-sm font-medium mb-4">
                 <TrendingUp className="w-4 h-4" />
                 התכנים שלנו
               </div>
@@ -1154,12 +1154,12 @@ export default function Home() {
       )}
 
       {/* Dynamic CTA Section */}
-      <section className="py-16 md:py-24 bg-gradient-to-br from-purple-600 via-pink-700 to-indigo-800 text-white relative overflow-hidden">
+      <section className="py-16 md:py-24 bg-gradient-to-br from-blue-500 via-purple-600 to-teal-600 text-white relative overflow-hidden">
         {/* Background decorations */}
         <div className="absolute inset-0">
-          <div className="absolute top-20 right-20 w-72 h-72 bg-white/10 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-20 left-20 w-96 h-96 bg-gradient-to-br from-yellow-400/20 to-pink-500/20 rounded-full blur-3xl"></div>
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-cyan-400/10 rounded-full blur-3xl"></div>
+          <div className="absolute top-20 right-20 w-72 h-72 bg-gradient-to-br from-green-400/15 to-emerald-400/15 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-20 left-20 w-96 h-96 bg-gradient-to-br from-orange-400/20 to-red-400/20 rounded-full blur-3xl"></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-br from-blue-400/15 to-cyan-400/15 rounded-full blur-3xl"></div>
         </div>
 
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">

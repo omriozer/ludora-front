@@ -323,7 +323,7 @@ export const QR_PRESETS = {
     height: 300,
     type: "canvas",
     data: "",
-    image: "/src/assets/images/logo.png", // Will use the logo
+    image: "/logo.svg", // Will use the logo
     margin: 0, // Remove default margin for maximum QR code size
     qrOptions: {
       typeNumber: 0,

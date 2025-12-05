@@ -685,7 +685,6 @@ const TemplateCanvas = ({
             onMouseDown={(e) => handleMouseDown(elementKey, e)}
           >
             <LogoDisplay
-              size="small"
               alt={elementType === 'watermark-logo' ? 'Watermark Logo' : 'Logo'}
               style={{
                 width: `${element.style?.size || 60}px`,
