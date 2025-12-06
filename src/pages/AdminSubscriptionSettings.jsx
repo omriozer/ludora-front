@@ -433,6 +433,8 @@ export default function SubscriptionSettings() {
 
   const getBillingPeriodText = (billingPeriod) => {
     switch (billingPeriod) {
+      case 'daily':
+        return 'יומי';
       case 'monthly':
         return 'חודשי';
       case 'yearly':
@@ -1060,6 +1062,9 @@ export default function SubscriptionSettings() {
                           onChange={(e) => setFormData({...formData, billing_period: e.target.value})}
                           className="w-full rounded-lg border border-gray-300 px-3 py-2"
                         >
+                          {import.meta.env.MODE !== 'production' && (
+                            <option value="daily">יומי</option>
+                          )}
                           <option value="monthly">חודשי</option>
                           <option value="yearly">שנתי</option>
                         </select>
