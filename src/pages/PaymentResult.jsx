@@ -266,7 +266,7 @@ export default function PaymentResult() {
                   // Set up subscription-specific display
                   setPurchase({
                     id: subscriptionData.id,
-                    payment_amount: subscriptionData.monthly_price,
+                    payment_amount: subscriptionData.billing_price,
                     payment_status: subscriptionData.status,
                     transaction_id: transactionData.id,
                     metadata: {
