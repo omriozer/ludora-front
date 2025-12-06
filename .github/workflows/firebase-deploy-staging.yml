@@ -106,7 +106,7 @@ jobs:
       - name: Build application
         run: |
           echo "Building application for staging..."
-          yarn build:staging
+          yarn build
           echo "✅ Build completed successfully!"
           echo "Build output:"
           ls -la dist/

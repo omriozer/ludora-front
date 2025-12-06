@@ -543,6 +543,9 @@ export default function FloatingAdminMenu({ currentUser }) {
               <p className="text-xs md:text-sm text-gray-500 text-center">
                 מרכז הניהול מיועד למנהלי המערכת בלבד • גרסה {APP_VERSION}
               </p>
+              <p className="text-xs text-gray-400 text-center mt-1">
+                Environment: {import.meta.env.MODE || 'unknown'} • API: {import.meta.env.VITE_API_BASE || 'default'}
+              </p>
             </div>
           </div>
         </div>

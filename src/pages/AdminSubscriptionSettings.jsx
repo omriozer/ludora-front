@@ -1062,9 +1062,7 @@ export default function SubscriptionSettings() {
                           onChange={(e) => setFormData({...formData, billing_period: e.target.value})}
                           className="w-full rounded-lg border border-gray-300 px-3 py-2"
                         >
-                          {(import.meta.env.MODE === 'development' || import.meta.env.MODE === 'staging') && (
-                            <option value="daily">יומי</option>
-                          )}
+                          <option value="daily">יומי</option>
                           <option value="monthly">חודשי</option>
                           <option value="yearly">שנתי</option>
                         </select>
