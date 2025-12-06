@@ -110,6 +110,15 @@
   font-display: swap;
 }
 
+/* Atma Font Declarations - Ludora brand logo font */
+@font-face {
+  font-family: 'Atma-SemiBold';
+  src: url('/fonts/branding/logo/Atma-SemiBold.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* Hebrew Text Utility Class */
 .hebrew-text {
   font-family: 'NotoSansHebrew', 'Arial Unicode MS', 'Segoe UI', Arial, sans-serif;

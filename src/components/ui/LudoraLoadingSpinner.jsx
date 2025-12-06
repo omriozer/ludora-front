@@ -33,14 +33,14 @@ const educationalTheme = {
   accent: '#8b5cf6'
 };
 
-// LUDORA letters matching the actual logo colors
+// Ludora letters matching the actual logo colors
 const ludoraLetters = [
   { letter: 'L', colors: ['#00C2C7', '#00A8B5', '#008E9B'] },
-  { letter: 'U', colors: ['#00C2C7', '#00A8B5', '#008E9B'] },
-  { letter: 'D', colors: ['#FFD700', '#FFC107', '#FF8F00'] },
-  { letter: 'O', colors: ['#FF8C00', '#FF7043', '#F4511E'] },
-  { letter: 'R', colors: ['#FF4B6E', '#F06292', '#E91E63'] },
-  { letter: 'A', colors: ['#FF4B6E', '#F06292', '#E91E63'] }
+  { letter: 'u', colors: ['#00C2C7', '#00A8B5', '#008E9B'] },
+  { letter: 'd', colors: ['#FFD700', '#FFC107', '#FF8F00'] },
+  { letter: 'o', colors: ['#FF8C00', '#FF7043', '#F4511E'] },
+  { letter: 'r', colors: ['#FF4B6E', '#F06292', '#E91E63'] },
+  { letter: 'a', colors: ['#FF4B6E', '#F06292', '#E91E63'] }
 ];
 
 const LudoraLoadingSpinner = ({
@@ -108,8 +108,8 @@ const LudoraLoadingSpinner = ({
         className="relative select-none"
         style={{
           fontSize: config.fontSize,
-          fontWeight: '900',
-          fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, sans-serif'
+          fontWeight: '600',
+          fontFamily: 'Atma-SemiBold, system-ui, -apple-system, BlinkMacSystemFont, sans-serif'
         }}
         initial={{ y: 0, scale: 1 }}
         animate={{
