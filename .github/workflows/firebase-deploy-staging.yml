@@ -85,8 +85,8 @@ jobs:
       - name: Setup dynamic environment variables
         run: |
           echo "Setting up dynamic environment variables for staging..."
-          echo "🔧 Creating .env.production file for staging deployment from GitHub Secrets..."
-          cat > .env.production << EOF
+          echo "🔧 Creating .env.staging.local file for staging deployment from GitHub Secrets..."
+          cat > .env.staging.local << EOF
           # Generated .env file for staging environment
           # Generated at: $(date -u +"%Y-%m-%dT%H:%M:%S.%3NZ")
 
@@ -101,12 +101,12 @@ jobs:
           EOF
           echo "✅ Dynamic environment file created for staging deployment"
           echo "📄 Environment file contents (sensitive values hidden):"
-          cat .env.production | sed 's/=.*/=***/' | head -10
+          cat .env.staging.local | sed 's/=.*/=***/' | head -10
 
       - name: Build application
         run: |
           echo "Building application for staging..."
-          yarn build
+          yarn build:staging
           echo "✅ Build completed successfully!"
           echo "Build output:"
           ls -la dist/
