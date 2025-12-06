@@ -32,6 +32,7 @@ import {
 import PurchaseHistory from "@/components/PurchaseHistory";
 import { useSubscriptionState } from "@/hooks/useSubscriptionState";
 import SubscriptionBusinessLogic from "@/services/SubscriptionBusinessLogic";
+import SubscriptionModal from "@/components/SubscriptionModal";
 import { ludlog, luderror } from '@/lib/ludlog';
 import { toast } from '@/components/ui/use-toast';
 import { urls } from '@/config/urls';
@@ -90,6 +91,9 @@ const MyAccount = () => {
   const [loadingInviteCode, setLoadingInviteCode] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
   const [qrContainer, setQrContainer] = useState(null);
+
+  // Subscription modal state
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
 
   const [accountTexts, setAccountTexts] = useState({});
 
@@ -407,6 +411,11 @@ const MyAccount = () => {
       };
     });
   }, []);
+
+  // Handle subscription change
+  const handleSubscriptionChange = useCallback(() => {
+    subscriptionState.refreshData();
+  }, [subscriptionState]);
 
 
 
@@ -1131,7 +1140,15 @@ const MyAccount = () => {
                   ) : null}
 
                   <Button
-                    onClick={() => navigate('/subscriptions')}
+                    onClick={() => {
+                      if (subscriptionState.summary?.hasActiveSubscription) {
+                        // User has active subscription → navigate to subscriptions page for management
+                        navigate('/subscriptions');
+                      } else {
+                        // User doesn't have active subscription → open modal directly
+                        setShowSubscriptionModal(true);
+                      }
+                    }}
                     disabled={subscriptionState.loading}
                     className={`w-full py-3 rounded-xl text-base sm:text-lg font-semibold transition-all ${
                       subscriptionState.loading
@@ -1224,6 +1241,17 @@ const MyAccount = () => {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Subscription Modal */}
+        {settings?.subscription_system_enabled && (
+          <SubscriptionModal
+            isOpen={showSubscriptionModal}
+            onClose={() => setShowSubscriptionModal(false)}
+            currentUser={currentUser}
+            onSubscriptionChange={handleSubscriptionChange}
+            isAutoOpened={false}
+          />
         )}
 
       </div>
