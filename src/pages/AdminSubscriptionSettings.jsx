@@ -140,7 +140,6 @@ export default function SubscriptionSettings() {
       // Refresh settings immediately to update UI without reload
       await refreshSettings();
     } catch (error) {
-      console.error('Error updating subscription system setting:', error);
       luderror.payment("Error updating subscription system setting:", error);
       showMessage('error', 'שגיאה בעדכון הגדרת תוכנית המנויים');
     }
@@ -719,7 +718,7 @@ export default function SubscriptionSettings() {
                             </div>
                           )}
                           <div className="text-gray-500 text-sm mt-1">
-                            ל{getBillingPeriodText(plan.billing_period).replace('י', '')}
+                         בחיוב {getBillingPeriodText(plan.billing_period)}
                           </div>
 
                           {/* Discount validity */}

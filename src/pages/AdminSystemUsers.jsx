@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Users, Search, Crown, User as UserIcon, Mail, Calendar, AlertTriangle, CheckCircle } from "lucide-react";
+import AdminSubscriptionModal from "@/components/AdminSubscriptionModal";
 
 export default function AdminSystemUsers() {
   const navigate = useNavigate();
@@ -19,6 +20,10 @@ export default function AdminSystemUsers() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [message, setMessage] = useState(null);
+
+  // Subscription modal state
+  const [subscriptionModalOpen, setSubscriptionModalOpen] = useState(false);
+  const [selectedUserForSubscription, setSelectedUserForSubscription] = useState(null);
 
   useEffect(() => {
     if (!userLoading && currentUser) {
@@ -67,19 +72,29 @@ export default function AdminSystemUsers() {
       // Save current admin session
       localStorage.setItem('impersonating_admin_id', currentUser.id);
       localStorage.setItem('impersonating_user_id', targetUserId);
-      
+
       setMessage({ type: 'success', text: 'מתחבר כמשתמש...' });
-      
+
       // Reload the page to apply impersonation
       setTimeout(() => {
         window.location.reload();
       }, 1000);
-      
+
     } catch (error) {
       console.error('Error setting up impersonation:', error);
       setMessage({ type: 'error', text: 'שגיאה בהתחברות כמשתמש' });
       setTimeout(() => setMessage(null), 3000);
     }
+  };
+
+  const handleManageSubscription = (user) => {
+    setSelectedUserForSubscription(user);
+    setSubscriptionModalOpen(true);
+  };
+
+  const showMessageHelper = (type, text) => {
+    setMessage({ type, text });
+    setTimeout(() => setMessage(null), 3000);
   };
 
   const filteredUsers = users.filter(user => {
@@ -191,6 +206,17 @@ export default function AdminSystemUsers() {
                           </div>
                           
                           <div className="flex items-center gap-2">
+                            {/* Subscription Management Button */}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleManageSubscription(user)}
+                              className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
+                            >
+                              <Crown className="w-4 h-4 ml-2" />
+                              מנוי
+                            </Button>
+
                             {/* Role Change Dropdown */}
                             {user.id !== currentUser.id && (
                               <Select
@@ -206,7 +232,7 @@ export default function AdminSystemUsers() {
                                 </SelectContent>
                               </Select>
                             )}
-                            
+
                             {user.role !== 'admin' && user.id !== currentUser.id && (
                               <Button
                                 variant="outline"
@@ -236,6 +262,19 @@ export default function AdminSystemUsers() {
           </div>
         </main>
       </div>
+
+      {/* Admin Subscription Management Modal */}
+      {selectedUserForSubscription && (
+        <AdminSubscriptionModal
+          user={selectedUserForSubscription}
+          isOpen={subscriptionModalOpen}
+          onClose={() => {
+            setSubscriptionModalOpen(false);
+            setSelectedUserForSubscription(null);
+          }}
+          showMessage={showMessageHelper}
+        />
+      )}
     </div>
   );
 }
