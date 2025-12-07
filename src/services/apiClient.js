@@ -504,7 +504,7 @@ Product.listEnriched = async function(query = {}) {
   }
 
   const queryString = searchParams.toString();
-  const endpoint = queryString ? `/entities/products/list?${queryString}` : '/entities/products/list';
+  const endpoint = queryString ? `/entities/product?${queryString}` : '/entities/products/list';
   return apiRequest(endpoint);
 };
 

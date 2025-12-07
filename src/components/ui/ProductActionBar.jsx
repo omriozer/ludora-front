@@ -61,10 +61,12 @@ export default function ProductActionBar({
     productType
   } = useProductAccess(product, userPurchases);
 
-
+  // Check if embedded access information is available (from AccessControlIntegrator)
+  const hasEmbeddedAccess = product?.access?.hasAccess;
+  const canClaimViaSubscription = product?.access?.canClaim || false;
 
   // If user has access, show the appropriate access button
-  if (hasAccess) {
+  if (hasAccess || hasEmbeddedAccess) {
     switch (productType) {
       case 'file':
         // Handle bundle files specially - show bundle navigation instead of file access
@@ -190,7 +192,8 @@ export default function ProductActionBar({
   }
 
   // If user doesn't have access, check for subscription claim option
-  if (!hasAccess && showSubscriptionClaim) {
+  // CRITICAL: Check both hook result AND embedded access.canClaim from AccessControlIntegrator
+  if ((!hasAccess && !hasEmbeddedAccess) && (showSubscriptionClaim && canClaimViaSubscription)) {
     return (
       <div className={`flex items-center gap-2 ${fullWidth ? 'w-full' : ''}`}>
         <SubscriptionClaimButton
