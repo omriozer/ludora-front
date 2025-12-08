@@ -33,11 +33,6 @@ export const PRODUCT_TYPES = {
       loadingMessage: 'טוען הדרכות...',
       filters: ['search', 'category', 'publishStatus'],
       cardLayout: 'detailed',
-      showTabs: true,
-      tabs: [
-        { key: 'upcoming', label: 'הדרכות אונליין', icon: 'Calendar' },
-        { key: 'past', label: 'הדרכות מוקלטות', icon: 'Video' }
-      ],
       actions: {
         primary: 'הירשמו עכשיו',
         secondary: 'צפייה בפרטים',
@@ -67,7 +62,6 @@ export const PRODUCT_TYPES = {
       loadingMessage: 'טוען קורסים...',
       filters: ['search', 'category', 'skillLevel'],
       cardLayout: 'detailed',
-      showTabs: false,
       actions: {
         primary: 'התחל קורס',
         secondary: 'פרטים נוספים',
@@ -97,7 +91,6 @@ export const PRODUCT_TYPES = {
       loadingMessage: 'טוען קבצים...',
       filters: ['search', 'category', 'grade', 'subject', 'audience', 'sort'],
       cardLayout: 'detailed',
-      showTabs: false,
       actions: {
         primary: 'הורדה',
         secondary: 'פרטים נוספים',
@@ -127,7 +120,6 @@ export const PRODUCT_TYPES = {
       loadingMessage: 'טוען כלים...',
       filters: ['search', 'category', 'sort'],
       cardLayout: 'detailed',
-      showTabs: false,
       actions: {
         primary: 'השתמש בכלי',
         secondary: 'פרטים נוספים',
@@ -157,7 +149,6 @@ export const PRODUCT_TYPES = {
       loadingMessage: 'טוען משחקים...',
       filters: ['search', 'subject', 'gameType', 'price'],
       cardLayout: 'compact',
-      showTabs: false,
       showAnalytics: true,
       actions: {
         primary: 'שחק עכשיו',
@@ -188,7 +179,6 @@ export const PRODUCT_TYPES = {
       loadingMessage: 'טוען מערכי שיעור...',
       filters: ['search', 'context', 'subject', 'grade', 'price'],
       cardLayout: 'detailed',
-      showTabs: false,
       actions: {
         primary: 'רכישה',
         secondary: 'פרטים נוספים',

@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { Purchase, Workshop, Course, File, Tool, SubscriptionPlan, Product } from "@/services/entities";
+import { useState, useEffect, useCallback } from "react";
+import { Purchase, SubscriptionPlan, Product } from "@/services/entities";
 import { getProductTypeName } from "@/config/productTypes";
 import { useUser } from "@/contexts/UserContext";
 
@@ -9,27 +9,22 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  Calendar,
   CreditCard,
   ShoppingBag,
   ArrowUpDown,
-  ExternalLink,
   ArrowRight
 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
-import ProductActionBar from "@/components/ui/ProductActionBar";
-import { useProductActions } from "@/hooks/useProductActions";
-import PdfViewer from "@/components/pdf/PdfViewer";
 import { ludlog, luderror } from '@/lib/ludlog';
 import { useNavigate } from "react-router-dom";
 
 // Global cache for purchases data per user
-let purchasesCache = new Map(); // Map: userId -> { purchases, timestamp }
+const purchasesCache = new Map(); // Map: userId -> { purchases, timestamp }
 const PURCHASES_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-// Global cache for entity data to prevent duplicate API calls
-let entitiesCache = new Map(); // Map: "type:id" -> { entity, timestamp }
+// Global cache for product data to prevent duplicate API calls
+const entitiesCache = new Map(); // Map: "type:id" -> { entity, timestamp }
 const ENTITIES_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 const PaymentsPage = () => {
@@ -46,21 +41,10 @@ const PaymentsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // PDF viewer state
-  const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
-  const [selectedFile, setSelectedFile] = useState(null);
 
-  // Product actions hook
-  const {
-    handleFileAccess: defaultHandleFileAccess,
-    handlePdfPreview: defaultHandlePdfPreview,
-    handleCourseAccess: defaultHandleCourseAccess,
-    handleWorkshopAccess: defaultHandleWorkshopAccess,
-    handleViewDetails: defaultHandleViewDetails
-  } = useProductActions();
-
-  // Helper function to load entity by type and id with caching
-  const loadEntityById = async (type, id) => {
+  // Helper function to load product by purchasable type and id with caching
+  // CRITICAL: Uses Product API which includes AccessControlIntegrator for consistent access state
+  const loadProductById = async (type, id) => {
     try {
       const cacheKey = `${type}:${id}`;
       const now = Date.now();
@@ -68,65 +52,62 @@ const PaymentsPage = () => {
       const isCacheValid = cachedEntry && (now - cachedEntry.timestamp < ENTITIES_CACHE_DURATION);
 
       if (isCacheValid) {
-        ludlog.ui('✅ Using cached entity data:', { data: cacheKey });
+        ludlog.ui('✅ Using cached product data:', { data: cacheKey });
         return cachedEntry.entity;
       }
 
-      ludlog.api('🔄 Loading entity from API (cache miss/expired);:', cacheKey);
+      ludlog.api('🔄 Loading product from API (cache miss/expired):', cacheKey);
 
-      let entity;
-      switch (type) {
-        case 'workshop':
-          const workshops = await Workshop.filter({ id });
-          entity = workshops.length > 0 ? workshops[0] : null;
-          break;
-        case 'course':
-          const courses = await Course.filter({ id });
-          entity = courses.length > 0 ? courses[0] : null;
-          break;
-        case 'file':
-          const files = await File.filter({ id });
-          entity = files.length > 0 ? files[0] : null;
-          break;
-        case 'tool':
-          const tools = await Tool.filter({ id });
-          entity = tools.length > 0 ? tools[0] : null;
-          break;
-        case 'subscription':
-          const subscriptionPlans = await SubscriptionPlan.filter({ id });
-          entity = subscriptionPlans.length > 0 ? subscriptionPlans[0] : null;
-          break;
-        default:
-          entity = null;
-      }
+      let product = null;
 
-      // Fallback: Try loading from Product table if entity not found and it's not a subscription
-      if (!entity && type !== 'subscription') {
-        ludlog.api(`🔄 Fallback: Loading from Product table for ${type}:${id}`);
-        try {
-          const products = await Product.filter({ entity_id: id, product_type: type });
-          if (products.length > 0) {
-            entity = products[0];
-            ludlog.api(`✅ Found product via fallback:`, { title: entity.title, type: entity.product_type });
+      // For subscription plans, use direct SubscriptionPlan API
+      if (type === 'subscription') {
+        const subscriptionPlans = await SubscriptionPlan.filter({ id });
+        product = subscriptionPlans.length > 0 ? subscriptionPlans[0] : null;
+      } else {
+        // For all product types, use Product API which includes AccessControlIntegrator
+        // This ensures we get access information embedded in the product
+        const products = await Product.filter({
+          entity_id: id,
+          product_type: type
+        });
+
+        if (products.length > 0) {
+          product = products[0];
+          ludlog.api(`✅ Found product with access info:`, {
+            title: product.title,
+            type: product.product_type,
+            hasAccessField: !!product.access,
+            hasAccess: product.access?.hasAccess
+          });
+        } else {
+          // Try loading by product ID (for legacy purchases)
+          const productsById = await Product.filter({ id });
+          if (productsById.length > 0) {
+            product = productsById[0];
+            ludlog.api(`✅ Found product by ID:`, {
+              title: product.title,
+              type: product.product_type,
+              hasAccessField: !!product.access,
+              hasAccess: product.access?.hasAccess
+            });
           }
-        } catch (fallbackError) {
-          ludlog.api(`❌ Fallback failed:`, fallbackError);
         }
       }
 
-      // Add entity type for UI rendering
-      if (entity) {
-        entity.entity_type = type;
+      // Add entity type for UI rendering compatibility
+      if (product) {
+        product.entity_type = type;
 
-        // Cache the entity
+        // Cache the product
         entitiesCache.set(cacheKey, {
-          entity,
+          entity: product,
           timestamp: now
         });
-        ludlog.ui('✅ Entity data cached:', { data: cacheKey });
+        ludlog.ui('✅ Product data cached:', { data: cacheKey });
       }
 
-      return entity;
+      return product;
     } catch (error) {
       luderror.ui(`Error loading ${type} ${id}:`, error);
       return null;
@@ -138,7 +119,7 @@ const PaymentsPage = () => {
 
     setIsLoading(true);
     try {
-      ludlog.payment('[PaymentsPage] Loading purchases for user:', { data: currentUser.id });
+      ludlog.payment('[PaymentsPage] Loading PAID transactions for user:', { data: currentUser.id });
 
       // Check if we have cached purchases data for this user
       const userId = currentUser.id;
@@ -165,66 +146,44 @@ const PaymentsPage = () => {
         });
         ludlog.payment('✅ PaymentsPage purchases data cached for user', { data: userId });
       }
-      setPurchases(userPurchases);
 
-      // Load entities for the purchases (handle both new polymorphic and legacy structures)
-      const entitiesData = await Promise.all(
-        userPurchases.map(async purchase => {
+      // FILTER: Only show PAID transactions (non-free)
+      const paidTransactions = userPurchases.filter(purchase => {
+        const amount = purchase.payment_amount || 0;
+        const status = purchase.payment_status;
+        const isPaid = ['paid', 'completed', 'success'].includes(status);
+        const isNonFree = amount > 0;
+        return isPaid && isNonFree;
+      });
+
+      ludlog.payment(`[PaymentsPage] Filtered to ${paidTransactions.length} paid transactions from ${userPurchases.length} total purchases`);
+      setPurchases(paidTransactions);
+
+      // For payments page, we just need basic product info for display - no access control needed
+      const productsData = await Promise.all(
+        paidTransactions.map(async purchase => {
           try {
-            ludlog.payment(`[PaymentsPage] Loading entity for purchase ${purchase.id}:`, {
-              purchasable_type: purchase.purchasable_type,
-              purchasable_id: purchase.purchasable_id,
-              product_id: purchase.product_id
-            });
-
             // Try new polymorphic structure first
             if (purchase.purchasable_type && purchase.purchasable_id) {
-              let entity = await loadEntityById(purchase.purchasable_type, purchase.purchasable_id);
-
-              // Additional fallback: If entity not found and it's not a subscription, try loading as Product ID
-              if (!entity && purchase.purchasable_type !== 'subscription') {
-                ludlog.payment(`[PaymentsPage] Trying direct Product lookup for ${purchase.purchasable_id}`);
-                try {
-                  const products = await Product.filter({ id: purchase.purchasable_id });
-                  if (products.length > 0) {
-                    entity = products[0];
-                    ludlog.payment(`[PaymentsPage] Found via Product ID lookup:`, { title: entity.title, type: entity.product_type });
-                  }
-                } catch (productError) {
-                  ludlog.payment(`[PaymentsPage] Product ID lookup failed:`, productError);
-                }
-              }
-
-              ludlog.payment(`[PaymentsPage] Final entity result:`, {
-                type: purchase.purchasable_type,
-                id: purchase.purchasable_id,
-                title: entity?.title || entity?.name,
-                found: !!entity,
-                entity
-              });
-              return entity;
+              const product = await loadProductById(purchase.purchasable_type, purchase.purchasable_id);
+              return product;
             }
-            // Fall back to legacy product_id (assume workshop for backwards compatibility)
+            // Fall back to legacy product_id
             else if (purchase.product_id) {
-              const entity = await loadEntityById('workshop', purchase.product_id);
-              ludlog.payment(`[PaymentsPage] Loaded legacy entity:`, {
-                id: purchase.product_id,
-                title: entity?.title || entity?.name,
-                entity
-              });
-              return entity;
+              const product = await loadProductById('workshop', purchase.product_id);
+              return product;
             }
             return null;
           } catch (error) {
-            luderror.payment(`Error loading entity for purchase ${purchase.id}:`, error);
+            luderror.payment(`Error loading product for purchase ${purchase.id}:`, error);
             return null;
           }
         })
       );
 
-      const validEntities = entitiesData.filter(Boolean);
-      ludlog.payment(`[PaymentsPage] Loaded ${validEntities.length} entities out of ${userPurchases.length} purchases`);
-      setProducts(validEntities);
+      const validProducts = productsData.filter(Boolean);
+      ludlog.payment(`[PaymentsPage] Loaded ${validProducts.length} products for display`);
+      setProducts(validProducts);
     } catch (error) {
       luderror.payment("Error loading purchases:", error);
     } finally {
@@ -267,7 +226,7 @@ const PaymentsPage = () => {
           aValue = a.payment_amount || 0;
           bValue = b.payment_amount || 0;
           break;
-        case 'product_name':
+        case 'product_name': {
           const entityIdA = a.purchasable_id || a.product_id;
           const entityIdB = b.purchasable_id || b.product_id;
           const productA = products.find(p => p.id === entityIdA);
@@ -275,6 +234,7 @@ const PaymentsPage = () => {
           aValue = productA?.title || '';
           bValue = productB?.title || '';
           break;
+        }
         case 'payment_status':
           aValue = a.payment_status || '';
           bValue = b.payment_status || '';
@@ -317,32 +277,6 @@ const PaymentsPage = () => {
     }
   };
 
-  // Enhanced product access handlers that work with PDF viewer
-  const handleFileAccessWithModal = async (file) => {
-    setSelectedFile(file);
-    await defaultHandleFileAccess(file, { setPdfViewerOpen });
-  };
-
-  const handlePdfPreviewWithModal = (file) => {
-    setSelectedFile(file);
-    defaultHandlePdfPreview({ setPdfViewerOpen });
-  };
-
-  // Helper function to build product object with purchase info for ProductActionBar
-  const buildProductForActionBar = (purchase) => {
-    const entityId = purchase.purchasable_id || purchase.product_id;
-    const product = products.find(p => p.id === entityId);
-    if (!product) return null;
-
-    return {
-      ...product,
-      purchase: {
-        ...purchase,
-        payment_status: purchase.payment_status,
-        access_expires_at: purchase.access_expires_at
-      }
-    };
-  };
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -533,33 +467,7 @@ const PaymentsPage = () => {
                         </div>
                       </div>
 
-                      {/* Actions */}
-                      {product && !isSubscription && (
-                        <div className="flex gap-3">
-                          {(purchase.payment_status === 'paid' || purchase.payment_status === 'completed' || purchase.payment_status === 'success') && (
-                            <ProductActionBar
-                              product={buildProductForActionBar(purchase)}
-                              className="flex-1"
-                              size="default"
-                              fullWidth={false}
-                              showCartButton={false}
-                              onFileAccess={handleFileAccessWithModal}
-                              onPdfPreview={handlePdfPreviewWithModal}
-                              onCourseAccess={defaultHandleCourseAccess}
-                              onWorkshopAccess={defaultHandleWorkshopAccess}
-                            />
-                          )}
-                          <Button
-                            size="default"
-                            variant="outline"
-                            onClick={() => defaultHandleViewDetails(product)}
-                            className="border-gray-200 text-gray-700 hover:bg-gray-50 h-10 px-4"
-                          >
-                            <ExternalLink className="w-4 h-4 ml-2" />
-                            פרטים
-                          </Button>
-                        </div>
-                      )}
+                      {/* Transaction completed - no actions needed for payments page */}
                     </div>
                   );
                 })}
@@ -687,34 +595,8 @@ const PaymentsPage = () => {
 
                           {/* Actions */}
                           <div className="col-span-2">
-                            {product && !isSubscription ? (
-                              <div className="flex items-center gap-2">
-                                {(purchase.payment_status === 'paid' || purchase.payment_status === 'completed' || purchase.payment_status === 'success') && (
-                                  <ProductActionBar
-                                    product={buildProductForActionBar(purchase)}
-                                    className="text-xs"
-                                    size="sm"
-                                    fullWidth={false}
-                                    showCartButton={false}
-                                    onFileAccess={handleFileAccessWithModal}
-                                    onPdfPreview={handlePdfPreviewWithModal}
-                                    onCourseAccess={defaultHandleCourseAccess}
-                                    onWorkshopAccess={defaultHandleWorkshopAccess}
-                                  />
-                                )}
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => defaultHandleViewDetails(product)}
-                                  className="text-xs border-gray-200 text-gray-700 hover:bg-gray-50 px-3 py-1.5"
-                                >
-                                  <ExternalLink className="w-3 h-3 ml-1" />
-                                  פרטים
-                                </Button>
-                              </div>
-                            ) : (
-                              <span className="text-xs text-gray-400">לא זמין</span>
-                            )}
+                            {/* Transaction completed - no actions needed for payments page */}
+                            <span className="text-xs text-gray-400">הושלם</span>
                           </div>
                         </div>
                       );
@@ -745,17 +627,6 @@ const PaymentsPage = () => {
         </div>
       </div>
 
-      {/* PDF Viewer Modal */}
-      {pdfViewerOpen && selectedFile && (
-        <PdfViewer
-          file={selectedFile}
-          isOpen={pdfViewerOpen}
-          onClose={() => {
-            setPdfViewerOpen(false);
-            setSelectedFile(null);
-          }}
-        />
-      )}
     </>
   );
 };

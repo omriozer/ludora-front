@@ -155,7 +155,6 @@ export default function BuyProductButton({
           />
         ) : (
           <>
-            <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6 group-hover:rotate-12 transition-transform duration-300" />
             <span>{buttonText}</span>
           </>
         )}

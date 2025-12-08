@@ -53,8 +53,8 @@ export default function Footer({ isMaintenanceMode = false }) {
             {/* Left: Logo and description */}
             <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3 text-center md:text-right">
               <Link to="/" className="flex items-center justify-center md:justify-start gap-2 hover:opacity-80 transition-opacity">
-                <div className="bg-white rounded-lg p-1.5 flex items-center justify-center">
-                  <LogoDisplay size="small" className="h-6 object-contain" />
+                <div className="flex items-center justify-center">
+                  <LogoDisplay size="small" className="h-6 object-contain logo-with-glow" />
                 </div>
                 <span className="text-xs md:text-sm font-medium mobile-safe-text whitespace-nowrap">
                   {settings?.site_description || 'בית ללמידה אחרת'}
@@ -117,8 +117,8 @@ export default function Footer({ isMaintenanceMode = false }) {
           {/* Left: Logo and description */}
           <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3 text-center md:text-right">
             <Link to="/" className="flex items-center justify-center md:justify-start gap-2 hover:opacity-80 transition-opacity">
-              <div className="bg-white rounded-lg p-1.5 flex items-center justify-center">
-                <LogoDisplay size="small" className="h-6 object-contain" />
+              <div className="flex items-center justify-center">
+                <LogoDisplay size="small" className="h-6 object-contain logo-with-glow" />
               </div>
               <span className="text-xs md:text-sm font-medium mobile-safe-text whitespace-nowrap">
                 {settings?.site_description || 'בית ללמידה אחרת'}

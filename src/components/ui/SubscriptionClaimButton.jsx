@@ -153,7 +153,7 @@ export default function SubscriptionClaimButton({
         }}
         disabled={!access.canClaim}
         className={`
-          group relative overflow-hidden font-medium rounded-lg
+          group relative overflow-hidden font-medium rounded-full
           transform hover:scale-105 transition-all duration-300
           ${getButtonStyling()}
           ${fullWidth ? 'w-full' : ''}

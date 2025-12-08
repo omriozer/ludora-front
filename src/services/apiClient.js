@@ -504,7 +504,8 @@ Product.listEnriched = async function(query = {}) {
   }
 
   const queryString = searchParams.toString();
-  const endpoint = queryString ? `/entities/product?${queryString}` : '/entities/products/list';
+  // ALWAYS use the products/list endpoint - it has AccessControlIntegrator enrichment
+  const endpoint = queryString ? `/entities/products/list?${queryString}` : '/entities/products/list';
   return apiRequest(endpoint);
 };
 

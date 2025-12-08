@@ -8,8 +8,6 @@ import ProductImage from "@/components/ui/ProductImage";
 import {
   Eye,
   CheckCircle,
-  ShoppingCart,
-  Plus,
   Edit
 } from "lucide-react";
 import PriceDisplayTag from "@/components/ui/PriceDisplayTag";
@@ -18,11 +16,12 @@ import { getSubjectColors } from "@/config/subjectColors";
 import { getToolCategoryLabel } from "@/config/toolCategories";
 import { isAdmin } from "@/lib/userUtils";
 import { useUser } from "@/contexts/UserContext";
-import { useProductAccess } from "@/hooks/useProductAccess";
 import { ludlog } from '@/lib/ludlog';
 import KitBadge from "@/components/ui/KitBadge";
+import DraftBadgeDisplay from "@/components/ui/DraftBadgeDisplay";
 import { isBundle } from "@/lib/bundleUtils";
-import { SafeHtmlRenderer, extractPlainText, hasRichContent } from "@/components/ui/SafeHtmlRenderer";
+import { isDraft } from "@/lib/productAccessUtils";
+import { SafeHtmlRenderer, hasRichContent } from "@/components/ui/SafeHtmlRenderer";
 
 // Hebrew grade names constant
 export const HEBREW_GRADES = {
@@ -42,7 +41,7 @@ export const HEBREW_GRADES = {
 
 export default function ProductCard({
   product,
-  userPurchases = [],
+  _userPurchases = [], // Legacy parameter - no longer used (AccessControlIntegrator provides access info)
   onFileAccess,
   onPdfPreview,
   isExpanded = false,
@@ -57,8 +56,14 @@ export default function ProductCard({
   const [isHovered, setIsHovered] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
-  // Use centralized product access logic
-  const { hasAccess, isInCart, purchase } = useProductAccess(product, userPurchases);
+  // SINGLE SOURCE OF TRUTH: Use only AccessControlIntegrator embedded access info
+  const access = product?.access || {};
+  const hasAccess = access.hasAccess || false;
+
+  // ADMIN-ONLY VISIBILITY: Hide unpublished products from non-admins
+  if (isDraft(product) && !isAdmin(currentUser)) {
+    return null;
+  }
 
   // Detect if device is mobile/touch with improved logic
   useEffect(() => {
@@ -130,74 +135,6 @@ export default function ProductCard({
     } else {
       // On desktop: go to details page
       handleDetailsClick();
-    }
-  };
-
-
-  // Smart context display per product type
-  const getSmartContext = () => {
-    switch (product.product_type) {
-      case 'file':
-        const fileType = product.file_type || 'קובץ';
-        const subject = product.type_attributes?.subject;
-        const gradeRange = formatGradeRange(
-          product.type_attributes?.grade_min,
-          product.type_attributes?.grade_max
-        );
-
-        const fileParts = [fileType.toUpperCase()];
-        if (subject) fileParts.push(subject);
-        if (gradeRange) fileParts.push(gradeRange);
-
-        return fileParts.join(' • ');
-
-      case 'game':
-        const gameType = product.type_attributes?.game_type;
-        const minAge = product.type_attributes?.min_age;
-        const maxAge = product.type_attributes?.max_age;
-
-        const gameParts = [];
-        if (minAge && maxAge) {
-          gameParts.push(`גילאי ${minAge}-${maxAge}`);
-        } else if (minAge) {
-          gameParts.push(`מגיל ${minAge}`);
-        }
-        if (gameType) gameParts.push(gameType);
-
-        return gameParts.join(' • ') || 'משחק חינוכי';
-
-      case 'course':
-        const modules = product.course?.course_modules?.length || product.course_modules?.length || 0;
-        const skillLevel = product.type_attributes?.skill_level;
-
-        const courseParts = [];
-        if (modules > 0) courseParts.push(`${modules} מודולים`);
-        if (skillLevel) courseParts.push(`רמת ${skillLevel === 'beginner' ? 'מתחילים' : skillLevel === 'intermediate' ? 'בינוני' : 'מתקדמים'}`);
-
-        return courseParts.join(' • ') || 'קורס מקוון';
-
-      case 'workshop':
-        const workshopType = product.type_attributes?.workshop_type;
-        const duration = product.type_attributes?.duration_minutes;
-
-        const workshopParts = [];
-        if (workshopType) {
-          workshopParts.push(workshopType === 'live' ? 'הדרכה חיה' : workshopType === 'recorded' ? 'הקלטה' : 'הדרכה');
-        }
-        if (duration) workshopParts.push(`${duration} דקות`);
-
-        return workshopParts.join(' • ') || 'הדרכה מקצועית';
-
-      case 'tool':
-        return 'כלי דיגיטלי';
-
-      case 'bundle':
-        // Import bundle utils to get composition text
-        const { getBundleCompositionText } = require('@/lib/bundleUtils');
-        return getBundleCompositionText(product);
-
-      default:
-        return '';
     }
   };
 
@@ -332,8 +269,11 @@ export default function ProductCard({
           )}
         </div>
 
-        {/* Always Visible - Top Right: Price or Owned Indicator + Kit Badge */}
+        {/* Always Visible - Top Right: Price or Owned Indicator + Draft Badge + Kit Badge */}
         <div className="absolute top-3 md:top-4 right-3 md:right-4 z-30 flex flex-col items-end gap-1 md:gap-2">
+          {/* Draft Badge for unpublished products (admin only) */}
+          <DraftBadgeDisplay product={product} user={currentUser} variant="default" size="sm" />
+
           {/* Kit Badge for bundle products */}
           {isBundle(product) && (
             <KitBadge product={product} variant="default" size="sm" />
@@ -443,7 +383,6 @@ export default function ProductCard({
               <div className="flex justify-center">
                 <ProductActionBar
                   product={product}
-                  userPurchases={userPurchases}
                   size="default"
                   className="text-base font-semibold"
                   showCartButton={true}

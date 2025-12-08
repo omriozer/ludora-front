@@ -31,7 +31,7 @@ export const clearPurchasesCache = (userId = null) => {
  * Handles data loading, filtering, and state management for all product types
  * (games, files, workshops, courses, tools)
  */
-export default function useProductCatalog(productType, filters, activeTab) {
+export default function useProductCatalog(productType, filters) {
   // Get user and settings from UserContext instead of loading independently
   const { currentUser, settings: globalSettings, isLoading: isLoadingUser } = useUser();
 
@@ -228,20 +228,10 @@ export default function useProductCatalog(productType, filters, activeTab) {
     }
   }, [productType, getProductService, getEntityService, currentUser]);
 
-  // Filter products based on current filters and active tab
+  // Filter products based on current filters
   useEffect(() => {
     let filtered = [...products];
 
-    // Apply tab filtering first
-    if (activeTab === 'my' && currentUser) {
-      // Use polymorphic structure for purchased IDs like other components
-      const purchasedIds = userPurchases.map(p => p.purchasable_id || p.product_id);
-      filtered = filtered.filter(product => purchasedIds.includes(product.id));
-    } else if (activeTab === 'free') {
-      filtered = filtered.filter(product => product.price === 0);
-    } else if (activeTab === 'featured') {
-      filtered = filtered.filter(product => product.featured || product.is_featured);
-    }
 
     // Apply search filter
     if (filters.search) {
@@ -342,7 +332,7 @@ export default function useProductCatalog(productType, filters, activeTab) {
     }
 
     setFilteredProducts(filtered);
-  }, [products, filters, activeTab, currentUser, userPurchases, productType]);
+  }, [products, filters, currentUser, userPurchases, productType]);
 
   // Load data on mount and when dependencies change (but only after UserContext is loaded)
   useEffect(() => {

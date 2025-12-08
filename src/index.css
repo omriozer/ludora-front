@@ -309,6 +309,11 @@ button:focus-visible {
   .mobile-gap {
     gap: clamp(0.5rem, 2vw, 1.5rem);
   }
+
+  /* Logo with shadow effect like visual template editor */
+  .logo-with-glow {
+    filter: drop-shadow(0px 0px 3px rgba(255, 255, 255, 0.8));
+  }
 }
 
 /* =============================================================================

@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { SafeHtmlRenderer } from "@/components/ui/SafeHtmlRenderer";
 import { ludlog, luderror } from '@/lib/ludlog';
 import KitBadge from "@/components/ui/KitBadge";
+import DraftBadgeDisplay from "@/components/ui/DraftBadgeDisplay";
 import { isBundle, getBundleComposition, getBundleCompositionLabel } from "@/lib/bundleUtils";
 import {
   Calendar,
@@ -46,6 +47,8 @@ import { getMarketingVideoUrl, getProductImageUrl } from '@/utils/videoUtils.js'
 import { getProductTypeName, formatGradeRange } from "@/config/productTypes";
 import ProductAccessStatus from "@/components/ui/ProductAccessStatus";
 import { hasActiveAccess } from "@/utils/productAccessUtils";
+import { isDraft } from "@/lib/productAccessUtils";
+import { isAdmin } from "@/lib/userUtils";
 import { purchaseUtils } from "@/utils/api.js";
 import PriceDisplayTag from "@/components/ui/PriceDisplayTag";
 import ProductActionBar from "@/components/ui/ProductActionBar";
@@ -596,7 +599,29 @@ export default function ProductDetails() {
             <AlertCircle className="w-10 h-10 text-red-600" />
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-4">{detailsTexts.notFound}</h2>
-          <Button 
+          <Button
+            onClick={() => window.history.back()}
+            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-full px-8 py-3"
+          >
+            <ArrowLeft className="w-5 h-5 ml-2" />
+            חזור
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // ADMIN-ONLY VISIBILITY: Hide unpublished products from non-admins
+  if (isDraft(item) && !isAdmin(currentUser)) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50 mobile-safe-flex items-center justify-center mobile-padding mobile-safe-container">
+        <div className="text-center max-w-md">
+          <div className="w-20 h-20 bg-red-100 rounded-full mobile-safe-flex items-center justify-center mx-auto mb-6">
+            <AlertCircle className="w-10 h-10 text-red-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">מוצר לא נמצא</h2>
+          <p className="text-gray-600 mb-6">מוצר זה אינו זמין לצפיה</p>
+          <Button
             onClick={() => window.history.back()}
             className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-full px-8 py-3"
           >
@@ -730,6 +755,11 @@ export default function ProductDetails() {
                   />
                 </div>
 
+                {/* Draft Badge for unpublished products (admin only) */}
+                <div className="absolute top-4 sm:top-6 left-4 sm:left-6 z-10">
+                  <DraftBadgeDisplay product={item} user={currentUser} variant="default" size="lg" />
+                </div>
+
                 {/* Product Type Badge / Kit Badge */}
                 <div className="absolute top-4 sm:top-6 right-4 sm:right-6">
                   {isBundle(item) ? (
@@ -751,7 +781,7 @@ export default function ProductDetails() {
 
                 {/* Category Badge */}
                 {item.category && (
-                  <div className="absolute top-4 sm:top-6 left-4 sm:left-6">
+                  <div className="absolute top-16 sm:top-20 left-4 sm:left-6">
                     <Badge variant="outline" className="bg-white/95 border-0 font-medium px-3 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base rounded-full shadow-lg">
                       {item.category}
                     </Badge>
@@ -835,7 +865,12 @@ export default function ProductDetails() {
               </div>
             </div>
           ) : (
-            <div className="mobile-padding mobile-safe-container">
+            <div className="mobile-padding mobile-safe-container relative">
+              {/* Draft Badge for unpublished products (admin only) - No Image Layout */}
+              <div className="absolute top-4 left-4 z-10">
+                <DraftBadgeDisplay product={item} user={currentUser} variant="default" size="lg" />
+              </div>
+
               {/* Header without image */}
               <div className="text-center mobile-safe-container">
                 <div className="mobile-safe-flex flex-wrap items-center mobile-gap mb-4 sm:mb-6 justify-center">

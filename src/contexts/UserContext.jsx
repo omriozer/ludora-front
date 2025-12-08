@@ -6,6 +6,24 @@ import { SETTINGS_RETRY_INTERVALS, SYSTEM_KEYS, getSetting, validateSettings } f
 import { useAuthErrorHandler } from '@/hooks/useAuthErrorHandler';
 import authManager from '@/services/AuthManager';
 
+// OPENAPI MIGRATION: Import TypeScript AuthManager for gradual migration
+import authManagerTS from '@/services/AuthManager.ts';
+
+// OPENAPI MIGRATION: Feature flag to enable TypeScript AuthManager
+// Set VITE_USE_TS_AUTH_MANAGER=true in .env.local to enable TypeScript AuthManager
+const useTypeScriptAuthManager = import.meta.env.VITE_USE_TS_AUTH_MANAGER === 'true';
+
+// Select AuthManager instance based on feature flag
+const activeAuthManager = useTypeScriptAuthManager ? authManagerTS : authManager;
+
+// Log which AuthManager is being used
+if (import.meta.env.DEV) {
+  ludlog.auth(`[UserContext] Using ${useTypeScriptAuthManager ? 'TypeScript' : 'JavaScript'} AuthManager`, {
+    flag: useTypeScriptAuthManager,
+    env: import.meta.env.VITE_USE_TS_AUTH_MANAGER
+  });
+}
+
 const UserContext = createContext(null);
 
 export function useUser() {
@@ -103,7 +121,7 @@ export function UserProvider({ children }) {
   // Silent retry function for settings
   const retryLoadSettings = useCallback(async () => {
     try {
-      await authManager.initialize();
+      await activeAuthManager.initialize();
     } catch (error) {
       // Silent retry failed - will retry again on next interval
     }
@@ -132,14 +150,14 @@ export function UserProvider({ children }) {
     const initAuth = async () => {
       try {
         // Register for auth state changes
-        authManager.addAuthListener(handleAuthStateChange);
+        activeAuthManager.addAuthListener(handleAuthStateChange);
 
         // PERFORMANCE OPTIMIZATION: Only force refresh on actual page reloads, not React navigation
         // This prevents unnecessary API calls on every component mount while still recovering from cookies
-        const isPageReload = !authManager.isInitialized || performance.navigation?.type === 1; // 1 = reload
-        await authManager.initialize(isPageReload);
+        const isPageReload = !activeAuthManager.isInitialized || performance.navigation?.type === 1; // 1 = reload
+        await activeAuthManager.initialize(isPageReload);
       } catch (error) {
-        luderror.auth('[UserContext] AuthManager initialization failed:', error);
+        luderror.auth('[UserContext] ActiveAuthManager initialization failed:', error);
       }
     };
 
@@ -147,7 +165,7 @@ export function UserProvider({ children }) {
 
     // Cleanup listener on unmount
     return () => {
-      authManager.removeAuthListener(handleAuthStateChange);
+      activeAuthManager.removeAuthListener(handleAuthStateChange);
       stopSettingsRetry();
     };
   }, [handleAuthStateChange, stopSettingsRetry]);
@@ -164,7 +182,7 @@ export function UserProvider({ children }) {
 
   // Delegate to AuthManager for onboarding check
   const needsOnboarding = useCallback((user) => {
-    return authManager.needsOnboarding(user || authState.user);
+    return activeAuthManager.needsOnboarding(user || authState.user);
   }, [authState.user]);
 
   const checkUserSubscription = useCallback(async (user) => {
@@ -219,7 +237,10 @@ export function UserProvider({ children }) {
 
   const login = useCallback(async (userData) => {
     try {
-      const result = await authManager.loginFirebase(userData);
+      // Note: TypeScript AuthManager expects idToken string, JavaScript expects userData object
+      const result = useTypeScriptAuthManager
+        ? await activeAuthManager.loginFirebase(userData.idToken || userData)
+        : await activeAuthManager.loginFirebase(userData);
 
       // Show success message
       toast({
@@ -245,7 +266,7 @@ export function UserProvider({ children }) {
 
   const playerLogin = useCallback(async (privacyCode) => {
     try {
-      const result = await authManager.loginPlayer(privacyCode);
+      const result = await activeAuthManager.loginPlayer(privacyCode);
 
       // Show success message
       toast({
@@ -290,7 +311,7 @@ export function UserProvider({ children }) {
 
   const logout = useCallback(async () => {
     try {
-      await authManager.logout();
+      await activeAuthManager.logout();
 
       // Show success message
       toast({
@@ -312,7 +333,7 @@ export function UserProvider({ children }) {
 
   const playerLogout = useCallback(async () => {
     try {
-      await authManager.logout();
+      await activeAuthManager.logout();
 
       // Show success message
       toast({
@@ -333,7 +354,7 @@ export function UserProvider({ children }) {
   }, []);
 
   const clearAuth = useCallback(() => {
-    authManager.reset();
+    activeAuthManager.reset();
 
     // Clear any Firebase session data that might be persisting
     try {
@@ -351,12 +372,12 @@ export function UserProvider({ children }) {
   }, []);
 
   const clearPlayerAuth = useCallback(() => {
-    authManager.reset();
+    activeAuthManager.reset();
   }, []);
 
   const updateLastActivity = useCallback(() => {
     // Delegate to AuthManager
-    authManager.updateLastActivity();
+    activeAuthManager.updateLastActivity();
   }, []);
 
   const updateUser = useCallback((updatedUserData) => {
@@ -393,7 +414,7 @@ export function UserProvider({ children }) {
   }, [authState.authType, authState.player]);
 
   const getCurrentEntity = useCallback(() => {
-    return authManager.getCurrentEntity() || { type: null, entity: null };
+    return activeAuthManager.getCurrentEntity() || { type: null, entity: null };
   }, []);
 
   const hasAnyAuthentication = useCallback(() => {
@@ -406,12 +427,12 @@ export function UserProvider({ children }) {
 
   // Refresh user authentication state (for use after login/logout events)
   const refreshUser = useCallback(async () => {
-    await authManager.initialize();
+    await activeAuthManager.initialize();
   }, []);
 
   // Force refresh settings (for use after settings updates)
   const refreshSettings = useCallback(async () => {
-    await authManager.initialize(true); // Force refresh to reload settings
+    await activeAuthManager.initialize(true); // Force refresh to reload settings
   }, []);
 
   // CENTRALIZED ROLE CHECKING FUNCTIONS

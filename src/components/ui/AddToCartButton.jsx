@@ -1,14 +1,13 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus, CheckCircle, ShoppingCart } from 'lucide-react';
-import { ludlog, luderror } from '@/lib/ludlog';
+import { ShoppingCart } from 'lucide-react';
+import { luderror } from '@/lib/ludlog';
 import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
 import { useLoginModal } from '@/hooks/useLoginModal';
 import { useCart } from '@/contexts/CartContext';
 import { useUser } from '@/contexts/UserContext';
 import paymentClient from '@/services/paymentClient';
 import { toast } from '@/components/ui/use-toast';
-import { isBundle, getBundleItems } from '@/lib/bundleUtils';
 
 /**
  * Add to Cart Button - Handles adding items to cart only
@@ -130,7 +129,6 @@ export default function AddToCartButton({
         ) : (
           <>
             <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 group-hover:scale-110 transition-transform duration-300" />
-            <Plus className="w-3 h-3 sm:w-4 sm:h-4 group-hover:rotate-180 transition-transform duration-300" />
           </>
         )}
       </span>
