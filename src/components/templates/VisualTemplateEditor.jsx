@@ -680,10 +680,6 @@ const VisualTemplateEditor = ({
 
   const handleConfigChange = (newConfig, metadata) => {
     setTemplateConfig(newConfig);
-
-    // DEBUG: Log scaling metadata for coordinate verification
-    if (metadata) {
-    }
   };
 
   // Helper function to find element in both unified and legacy structures
