@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { CheckCircle, XCircle, Sparkles } from "lucide-react";
 
 // Configuration for different sizes
@@ -36,7 +36,7 @@ const educationalTheme = {
 // Ludora letters matching the actual logo colors
 const ludoraLetters = [
   { letter: 'L', colors: ['#00C2C7', '#00A8B5', '#008E9B'] },
-  { letter: 'u', colors: ['#00C2C7', '#00A8B5', '#008E9B'] },
+  { letter: 'logo', colors: ['#00C2C7', '#00A8B5', '#008E9B'] }, // SVG logo replaces 'u'
   { letter: 'd', colors: ['#FFD700', '#FFC107', '#FF8F00'] },
   { letter: 'o', colors: ['#FF8C00', '#FF7043', '#F4511E'] },
   { letter: 'r', colors: ['#FF4B6E', '#F06292', '#E91E63'] },
@@ -51,7 +51,6 @@ const LudoraLoadingSpinner = ({
   onAnimationComplete
 }) => {
   const [activeLetter, setActiveLetter] = useState(0);
-  const [animationPhase, setAnimationPhase] = useState('entering');
 
   const config = sizeConfig[size] || sizeConfig.md;
 
@@ -67,10 +66,7 @@ const LudoraLoadingSpinner = ({
 
   // Handle status changes and animation completion
   useEffect(() => {
-    if (status === "loading") {
-      setAnimationPhase('loading');
-    } else {
-      setAnimationPhase('completing');
+    if (status !== "loading") {
       const timer = setTimeout(() => {
         onAnimationComplete?.();
       }, 2000);
@@ -100,9 +96,119 @@ const LudoraLoadingSpinner = ({
     }
   };
 
-  const LetterComponent = ({ letterData, index, isActive }) => {
+  const LetterComponent = ({ letterData, isActive }) => {
     const [color1, color2, color3] = letterData.colors;
+    const isLogo = letterData.letter === 'logo';
 
+    // Calculate logo size based on config fontSize
+    const getLogoSize = () => {
+      const fontSizeNum = parseFloat(config.fontSize);
+      return `${fontSizeNum * 0.8}rem`; // Logo is slightly smaller than text
+    };
+
+    if (isLogo) {
+      return (
+        <motion.div
+          className="relative select-none flex items-center justify-center"
+          style={{
+            width: getLogoSize(),
+            height: getLogoSize(),
+          }}
+          initial={{ y: 0, scale: 1 }}
+          animate={{
+            y: isActive ? [-10, -20, -10, 0] : 0,
+            scale: isActive ? [1, 1.1, 1.05, 1] : 1,
+            rotateY: isActive ? [0, 10, -10, 0] : 0,
+          }}
+          transition={{
+            duration: isActive ? 1.2 : 0.3,
+            ease: isActive ? [0.4, 0, 0.2, 1] : "easeOut"
+          }}
+        >
+          {/* Logo glow/shadow */}
+          <motion.div
+            className="absolute inset-0 blur-lg"
+            animate={{
+              scale: isActive ? [1, 1.3, 1] : 1,
+              opacity: isActive ? [0.6, 0.9, 0.6] : 0.4
+            }}
+            transition={{
+              duration: 1.2,
+              repeat: isActive ? Infinity : 0,
+              ease: "easeInOut"
+            }}
+          >
+            <img
+              src="/logo_sm.svg"
+              alt="Ludora Logo"
+              className="w-full h-full"
+              style={{
+                filter: `drop-shadow(0 0 20px ${color2})`
+              }}
+            />
+          </motion.div>
+
+          {/* Main logo */}
+          <motion.div
+            className="relative z-10 w-full h-full"
+            animate={{
+              filter: isActive
+                ? [
+                    `drop-shadow(0 0 20px ${color2})`,
+                    `drop-shadow(0 0 30px ${color1})`,
+                    `drop-shadow(0 0 20px ${color2})`
+                  ]
+                : 'drop-shadow(0 2px 10px rgba(0,0,0,0.2))'
+            }}
+            transition={{
+              duration: 1.2,
+              repeat: isActive ? Infinity : 0,
+              ease: "easeInOut"
+            }}
+          >
+            <img
+              src="/logo_sm.svg"
+              alt="Ludora Logo"
+              className="w-full h-full"
+            />
+          </motion.div>
+
+          {/* Sparkle particles for active logo */}
+          {isActive && showParticles && (
+            <>
+              {[...Array(4)].map((_, i) => (
+                <motion.div
+                  key={`sparkle-${i}`}
+                  className="absolute w-1.5 h-1.5"
+                  style={{
+                    left: '50%',
+                    top: '50%',
+                    backgroundColor: color2
+                  }}
+                  animate={{
+                    x: Math.cos(i * 90 * Math.PI / 180) * (30 + i * 5),
+                    y: Math.sin(i * 90 * Math.PI / 180) * (30 + i * 5),
+                    scale: [0, 1, 0],
+                    opacity: [0, 1, 0],
+                    rotate: [0, 360]
+                  }}
+                  transition={{
+                    duration: 2,
+                    delay: i * 0.1,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }}
+                >
+                  <Sparkles className="w-full h-full" />
+                </motion.div>
+              ))}
+            </>
+          )}
+        </motion.div>
+      );
+    }
+
+    // Original letter rendering for non-logo letters
     return (
       <motion.div
         className="relative select-none"
@@ -258,7 +364,6 @@ const LudoraLoadingSpinner = ({
             <LetterComponent
               key={letterData.letter}
               letterData={letterData}
-              index={index}
               isActive={isActive}
             />
           );
