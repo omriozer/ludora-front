@@ -27,6 +27,11 @@ export default function UserWayWidget() {
     // Get this from UserWay dashboard after signup
     script.setAttribute('data-account', 'YOUR_ACCOUNT_ID');
 
+    // Position the widget in the top middle (position 8)
+    // Available positions: 1=top right, 2=middle right, 3=bottom right,
+    // 4=bottom middle, 5=bottom left, 6=middle left, 7=top left, 8=top middle
+    script.setAttribute('data-position', '8');
+
     // Handle script loading errors
     script.onerror = () => {
       console.error('UserWay accessibility widget failed to load');
