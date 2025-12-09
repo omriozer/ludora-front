@@ -131,11 +131,11 @@ export default function LessonPlanPresentation() {
 			}
 
 			// Parse selective access information from response
-			const slideAccess = slidesData.data.slideAccess || {};
-			const hasFullAccess = slideAccess.hasFullAccess || false;
-			const allowPreview = slideAccess.allowPreview || false;
-			const userAccessibleSlides = slideAccess.accessibleSlides || [];
-			const userRestrictedSlides = slideAccess.restrictedSlides || [];
+			const slideAccess = slidesData.data.access_info || {};
+			const hasFullAccess = slideAccess.has_full_access || false;
+			const allowPreview = slideAccess.preview_allowed || false;
+			const userAccessibleSlides = slideAccess.accessible_slides || [];
+			const userRestrictedSlides = slideAccess.restricted_slides || [];
 
 			// Determine access mode
 			let userAccessMode = 'full';
@@ -201,7 +201,7 @@ export default function LessonPlanPresentation() {
 
 			// Try to get lesson plan metadata from lesson plan entity API
 			try {
-				const lessonPlanResponse = await apiRequest(`/entities/lessonplan/${lessonPlanId}`, {
+				const lessonPlanResponse = await apiRequest(`/entities/lesson_plan/${lessonPlanId}`, {
 					method: 'GET',
 				});
 

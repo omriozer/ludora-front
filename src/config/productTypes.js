@@ -81,7 +81,7 @@ export const PRODUCT_TYPES = {
     bgColor: 'bg-purple-50',
     borderColor: 'border-purple-200',
     gradient: "from-emerald-400 via-teal-500 to-cyan-600",
-    fallbackImageUrl: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400&h=250&fit=crop&q=60",
+    fallbackImageUrl: "/files_placeholder.png",
     catalog: {
       title: 'קבצים',
       subtitle: 'כלים דיגיטליים, תבניות ומשאבים מוכנים להורדה שיעזרו לכם ליצור חוויות למידה מהנות',
@@ -139,7 +139,7 @@ export const PRODUCT_TYPES = {
     bgColor: 'bg-pink-50',
     borderColor: 'border-pink-200',
     gradient: "from-purple-500 via-pink-500 to-red-500",
-    fallbackImageUrl: "https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?w=400&h=250&fit=crop&q=60",
+    fallbackImageUrl: "/games_placeholder.png",
     catalog: {
       title: 'קטלוג המשחקים',
       subtitle: 'משחקים חינוכיים אינטראקטיביים לכל הגילאים',
@@ -169,7 +169,7 @@ export const PRODUCT_TYPES = {
     bgColor: 'bg-indigo-50',
     borderColor: 'border-indigo-200',
     gradient: "from-indigo-400 via-blue-500 to-cyan-600",
-    fallbackImageUrl: "https://images.unsplash.com/photo-1427504494785-3a9ca7044f45?w=400&h=250&fit=crop&q=60",
+    fallbackImageUrl: "/lessonplan_placeholder.png",
     catalog: {
       title: 'קטלוג מערכי שיעור',
       subtitle: 'מערכי שיעור מוכנים עם מצגות, אודיו ונכסים לחוויית הוראה שלמה',

@@ -307,6 +307,69 @@ export default function Home() {
   const { currentUser, settings, isLoading } = useUser();
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
 
+  // Hero image rotation system
+  const getAvailableHeroImages = () => {
+    const defaultImages = [
+      {
+        src: "/home.png",
+        alt: "תכנים חינוכיים",
+        id: "home"
+      }
+    ];
+
+    const conditionalImages = [
+      {
+        src: "/games_placeholder.png",
+        alt: "משחקים חינוכיים",
+        id: "games",
+        condition: () => {
+          const gamesVisibility = settings?.nav_games_visibility || 'public';
+          return gamesVisibility === 'public';
+        }
+      },
+      {
+        src: "/lessonplan_placeholder.png",
+        alt: "תכניות שיעור",
+        id: "lesson_plans",
+        condition: () => {
+          const lessonPlansVisibility = settings?.nav_lesson_plans_visibility || 'public';
+          return lessonPlansVisibility === 'public';
+        }
+      }
+    ];
+
+    // Build available images array
+    const availableImages = [...defaultImages];
+
+    // Only add conditional images if settings are loaded
+    if (settings) {
+      conditionalImages.forEach(image => {
+        if (image.condition()) {
+          availableImages.push(image);
+        }
+      });
+    }
+
+    return availableImages;
+  };
+
+  // State for selected hero image (randomizes when settings are loaded)
+  const [selectedHeroImage, setSelectedHeroImage] = useState({
+    src: "/home.png",
+    alt: "תכנים חינוכיים",
+    id: "home"
+  });
+
+  // Update selected image when settings are loaded
+  React.useEffect(() => {
+    if (settings) {
+      const availableImages = getAvailableHeroImages();
+      const randomIndex = Math.floor(Math.random() * availableImages.length);
+      const selected = availableImages[randomIndex] || { src: "/home.png", alt: "תכנים חינוכיים", id: "home" };
+      setSelectedHeroImage(selected);
+    }
+  }, [settings]);
+
   // Determine if we're in schools mode
   const isSchoolsMode = settings?.schools_system_enabled || false;
   const isActualAdmin = currentUser?.role === 'admin' && !currentUser?._isImpersonated;
@@ -443,11 +506,16 @@ export default function Home() {
             <div className="hidden lg:flex justify-center">
               <div className="relative">
                 <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/20 to-pink-400/20 rounded-3xl blur-2xl transform rotate-6"></div>
-                <img
-                  src="/home.png"
-                  alt="תכנים חינוכיים"
-                  className="relative z-10 w-full max-w-lg h-96 object-cover rounded-3xl shadow-2xl transform -rotate-2 hover:rotate-0 transition-transform duration-700"
-                />
+                {/* Fixed aspect ratio container for consistent hero image sizing */}
+                <div className="relative z-10 w-full max-w-lg rounded-3xl shadow-2xl transform -rotate-2 hover:rotate-0 transition-transform duration-700 overflow-hidden">
+                  <div className="aspect-[4/3]">
+                    <img
+                      src={selectedHeroImage.src}
+                      alt={selectedHeroImage.alt}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>

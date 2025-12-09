@@ -19,6 +19,7 @@ import {
  * @param {string} layout - Layout style: 'grid' | 'list' (default: 'grid')
  * @param {string} size - Size variant: 'sm' | 'md' | 'lg' (default: 'md')
  * @param {boolean} adminOverride - If true, admin users see all types regardless of visibility (default: false)
+ * @param {string} mode - Action mode: 'create' | 'select' (default: 'create')
  */
 export default function ProductTypeSelector({
   includeAllTypes = false,
@@ -26,7 +27,8 @@ export default function ProductTypeSelector({
   selectedType = null,
   layout = 'grid',
   size = 'md',
-  adminOverride = false
+  adminOverride = false,
+  mode = 'create'
 }) {
   const { currentUser, settings: userSettings } = useUser();
   const [visibleTypes, setVisibleTypes] = useState([]);
@@ -198,6 +200,14 @@ export default function ProductTypeSelector({
 
   const config = sizeConfig[size];
 
+  // Helper function to get action text based on mode
+  const getActionText = (typeString, isBundle = false) => {
+    if (mode === 'select') {
+      return isBundle ? `בחר קיט ${typeString}` : `בחר ${typeString}`;
+    }
+    return isBundle ? `צור קיט ${typeString}` : `צור ${typeString}`;
+  };
+
   if (loading) {
     return (
       <div className="text-center py-8">
@@ -272,7 +282,7 @@ export default function ProductTypeSelector({
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
-                    צור {type.singular}
+                    {getActionText(type.singular)}
                   </button>
 
                   {/* Bundle Option */}
@@ -286,7 +296,7 @@ export default function ProductTypeSelector({
                       }`}
                     >
                       <Package className="w-3 h-3" />
-                      קיט
+                      {getActionText(type.plural, true)}
                     </button>
                   )}
                 </div>
@@ -354,7 +364,7 @@ export default function ProductTypeSelector({
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
-                  צור {type.singular}
+                  {getActionText(type.singular)}
                 </button>
 
                 {/* Bundle Option */}
@@ -368,7 +378,7 @@ export default function ProductTypeSelector({
                     }`}
                   >
                     <Package className="w-4 h-4" />
-                    צור קיט {type.plural}
+                    {getActionText(type.plural, true)}
                   </button>
                 )}
               </div>

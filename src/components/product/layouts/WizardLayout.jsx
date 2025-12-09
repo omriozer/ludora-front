@@ -223,11 +223,8 @@ export const WizardLayout = ({
 
       await onSave(formData, continueEditing);
 
-      if (!continueEditing) {
-        onClose();
-      } else {
-        showMessage('success', 'המוצר נשמר בהצלחה! ניתן להמשיך לערוך');
-      }
+      // Note: Modal stays open after saving - only close button closes the modal
+      showMessage('success', 'המוצר נשמר בהצלחה! ניתן להמשיך לערוך');
     } catch (error) {
       showMessage('error', error.message || 'אירעה שגיאה בשמירת המוצר');
     } finally {
@@ -530,7 +527,7 @@ export const WizardLayout = ({
                 className="flex items-center gap-2"
               >
                 <X className="w-4 h-4" />
-                ביטול
+                סגירה
               </Button>
 
               {/* For new products, only show Save and Continue */}

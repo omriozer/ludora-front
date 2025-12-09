@@ -122,13 +122,25 @@ const VisualTemplateEditor = ({
       // Reduced logging: ludlog.ui('🚀 Starting to preload all slides...', { data: slides.length, 'slides' });
       const slideBlobs = {};
 
-      // Download all slides in parallel
-      const downloadPromises = slides.map(async (slide, index) => {
+      // Process all slides in parallel
+      const processPromises = slides.map(async (slide, index) => {
         try {
-          const slideBlob = await apiDownload(`/assets/download/lesson-plan-slide/${entityId}/${slide.id}`);
-          const blobUrl = URL.createObjectURL(slideBlob);
+          let blobUrl;
+
+          // Check if slide has content from preview endpoint (preferred method)
+          if (slide.content && slide.content.trim()) {
+            // Create blob URL from SVG content directly (no download needed)
+            const blob = new Blob([slide.content], { type: 'image/svg+xml' });
+            blobUrl = URL.createObjectURL(blob);
+            // Reduced logging: ludlog.ui(`✅ Preloaded slide ${index + 1}/${slides.length} from content:`, { data: slide.id });
+          } else {
+            // Fallback: download individual slide file (should rarely happen)
+            const slideBlob = await apiDownload(`/assets/download/lesson-plan-slide/${entityId}/${slide.id}`);
+            blobUrl = URL.createObjectURL(slideBlob);
+            // Reduced logging: ludlog.ui(`✅ Preloaded slide ${index + 1}/${slides.length} from download:`, { data: slide.id });
+          }
+
           slideBlobs[index] = blobUrl;
-          // Reduced logging: ludlog.ui(`✅ Preloaded slide ${index + 1}/${slides.length}:`, { data: slide.id });
           return { index, blobUrl };
         } catch (error) {
           luderror.ui(`❌ Failed to preload slide ${index}:`, error);
@@ -136,7 +148,7 @@ const VisualTemplateEditor = ({
         }
       });
 
-      await Promise.all(downloadPromises);
+      await Promise.all(processPromises);
       setPreloadedSlides(slideBlobs);
       ludlog.ui('🎉 All slides preloaded successfully!', { data: { count: Object.keys(slideBlobs).length, status: 'slidesCached' } });
 
@@ -177,11 +189,22 @@ const VisualTemplateEditor = ({
         return;
       }
 
-      // If not cached, download it (fallback - should rarely happen)
-      // Reduced logging: ludlog.api('📥 Slide not in cache, { data: downloading:', `/assets/download/lesson-plan-slide/${entityId}/${slide.id}` });
-      const slideBlob = await apiDownload(`/assets/download/lesson-plan-slide/${entityId}/${slide.id}`);
-      const blobUrl = URL.createObjectURL(slideBlob);
-      // Reduced logging: ludlog.ui('🎯 SVG slide blob URL created for slide', { data: slideIndex, ':', blobUrl });
+      // If not cached, create blob URL from slide content or download as fallback
+      let blobUrl;
+
+      // Check if slide has content from preview endpoint (preferred method)
+      if (slide.content && slide.content.trim()) {
+        // Create blob URL from SVG content directly (no download needed)
+        const blob = new Blob([slide.content], { type: 'image/svg+xml' });
+        blobUrl = URL.createObjectURL(blob);
+        // Reduced logging: ludlog.ui('🎯 SVG slide blob URL created from content for slide', { data: slideIndex, ':', blobUrl });
+      } else {
+        // Fallback: download individual slide file (should rarely happen)
+        // Reduced logging: ludlog.api('📥 Slide not in cache, { data: downloading:', `/assets/download/lesson-plan-slide/${entityId}/${slide.id}` });
+        const slideBlob = await apiDownload(`/assets/download/lesson-plan-slide/${entityId}/${slide.id}`);
+        blobUrl = URL.createObjectURL(slideBlob);
+        // Reduced logging: ludlog.ui('🎯 SVG slide blob URL created from download for slide', { data: slideIndex, ':', blobUrl });
+      }
 
       // Clean up previous blob URL
       if (pdfBlobUrl && pdfBlobUrl.startsWith('blob:')) {
@@ -418,7 +441,7 @@ const VisualTemplateEditor = ({
           } else {
             // File editing mode - load existing template configuration
             if (propInitialTemplateConfig && Object.keys(propInitialTemplateConfig).length > 0) {
-              // SIMPLIFIED: Only unified structure is supported - no legacy conversion needed
+              // Using unified template configuration
               finalConfig = propInitialTemplateConfig;
               ludlog.ui('✅ Using unified template configuration');
               setLoadedBrandingSettings(propInitialTemplateConfig);
@@ -570,7 +593,7 @@ const VisualTemplateEditor = ({
               ludlog.api('Fetching SVG slides from LessonPlan API for preview:', { data: fileEntityId });
 
               // Fetch SVG slides for LessonPlan
-              const slidesResponse = await apiRequest(`/svg-slides/${fileEntityId}`);
+              const slidesResponse = await apiRequest(`/svg-slides/${fileEntityId}/preview`);
 
               if (slidesResponse.success && slidesResponse.data.slides && slidesResponse.data.slides.length > 0) {
                 const slides = slidesResponse.data.slides;
@@ -682,7 +705,7 @@ const VisualTemplateEditor = ({
     setTemplateConfig(newConfig);
   };
 
-  // Helper function to find element in both unified and legacy structures
+  // Helper function to find element in unified structure
   const findElementForUpdate = (elementKey) => {
     if (!templateConfig?.elements || !elementKey) return null;
 
@@ -816,7 +839,7 @@ const VisualTemplateEditor = ({
   };
 
   const handleAddElement = (elementType) => {
-    // Support both unified and legacy structures
+    // Support unified structure
     const hasUnifiedStructure = templateConfig?.elements;
 
     if (hasUnifiedStructure) {
@@ -856,7 +879,7 @@ const VisualTemplateEditor = ({
         setTemplateConfig(newConfig);
         setSelectedItem(elementType);
         setFocusedItem(elementType);
-        ludlog.ui(`✨ Added new built-in ${elementType} element to legacy structure`);
+        ludlog.ui(`✨ Added new built-in ${elementType} element`);
       } else {
         // Handle custom elements - add to customElements
         const timestamp = Date.now();
@@ -875,7 +898,7 @@ const VisualTemplateEditor = ({
         setTemplateConfig(newConfig);
         setSelectedItem(elementId);
         setFocusedItem(elementId);
-        ludlog.ui(`✨ Added new custom ${elementType} element to legacy structure:`, { data: elementId });
+        ludlog.ui(`✨ Added new custom ${elementType} element:`, { data: elementId });
       }
     }
   };
@@ -1449,7 +1472,7 @@ const VisualTemplateEditor = ({
           });
         }
 
-        // Check custom elements (legacy format)
+        // Check custom elements
         if (fixedConfig.customElements) {
           Object.entries(fixedConfig.customElements).forEach(([elementId, element]) => {
             if (!element.type || typeof element.type !== 'string') {

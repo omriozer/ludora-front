@@ -5,8 +5,10 @@ import { useUser } from "@/contexts/UserContext";
 import { deleteFile } from "@/services/apiClient";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import KitBadge from "@/components/ui/KitBadge";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useConfirmation } from '@/components/ui/ConfirmationProvider';
 import {
   Plus,
@@ -21,12 +23,13 @@ import {
   Image,
   Video,
   AlignLeft,
-  RefreshCw
+  RefreshCw,
+  MessageSquare,
+  Eye
 } from "lucide-react";
 import { getProductTypeName, PRODUCT_TYPES } from '@/config/productTypes';
 import { formatPriceSimple } from '@/lib/utils';
 import FeatureFlagService from '@/services/FeatureFlagService';
-import { getProductTypeIconByType } from '@/lib/layoutUtils';
 import { toast } from '@/components/ui/use-toast';
 import { usePaymentPageStatusCheck } from '@/hooks/usePaymentPageStatusCheck';
 import { useSubscriptionPaymentStatusCheck } from '@/hooks/useSubscriptionPaymentStatusCheck';
@@ -155,7 +158,7 @@ export default function Products() {
 
         // Fetch all products from the unified Product table with joined entity data
         const [allProductsData, categoriesData] = await Promise.all([
-          Product.find(productsQuery),
+          Product.listEnriched(productsQuery),
           Category.find({}, "name")
         ]);
 
@@ -372,63 +375,161 @@ export default function Products() {
     return products.filter(product => product.product_type === selectedTab);
   };
 
-
-  const getProductTypeLabel = (type) => {
-    return getProductTypeName(type, 'singular') || 'מוצר';
-  };
-
-  const getProductTypeIcon = (type) => {
-    return getProductTypeIconByType(settings, type);
-  };
-
-  const getProductTypeBadgeColor = (type) => {
-    switch (type) {
-      case 'workshop':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'course':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'file':
-        return 'bg-purple-100 text-purple-800 border-purple-200';
-      case 'tool':
-        return 'bg-orange-100 text-orange-800 border-orange-200';
-      case 'game':
-        return 'bg-pink-100 text-pink-800 border-pink-200';
-      case 'lesson_plan':
-        return 'bg-indigo-100 text-indigo-800 border-indigo-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
   const getDataIndicators = (product) => {
     const hasDescription = product.description && product.description.trim().length > 0;
     const hasLongDescription = product.description && product.description.trim().length > 100;
 
-    // Use standardized has_image field only (legacy compatibility removed after cleanup)
+    // Use standardized has_image field (from Product table)
     const hasImage = product.has_image === true;
 
+    // Marketing video check (from Product table)
     const hasVideo = (product.marketing_video_type && product.marketing_video_id && product.marketing_video_id.trim().length > 0) ||
                      (product.video_file_url && product.video_file_url.trim().length > 0);
 
+    // Product type checks
+    const isFileProduct = product.product_type === 'file';
+    const isLessonPlanProduct = product.product_type === 'lesson_plan';
+    const supportsPreview = isFileProduct || isLessonPlanProduct;
+
+    // Preview functionality - different field names per product type
+    const hasPreview = (isFileProduct && product.allow_preview === true) ||
+                       (isLessonPlanProduct && product.allow_slide_preview === true);
+
+    // Branding - same field name for both types
+    const hasBranding = supportsPreview && (product.add_branding === true);
+
+    // Content validation - check for actual uploaded content
+    const hasFileContent = isFileProduct && product.file_name && product.file_name.trim().length > 0;
+    const hasLessonPlanContent = isLessonPlanProduct &&
+      product.file_configs &&
+      Array.isArray(product.file_configs) &&
+      product.file_configs.some(config =>
+        config.file_role === 'presentation' &&
+        config.file_path &&
+        config.file_path.toLowerCase().endsWith('.svg')
+      );
+
     return (
-      <div className="flex items-center justify-center gap-1">
-        <FileType
-          className={`w-3.5 h-3.5 ${hasDescription ? 'text-green-600' : 'text-gray-300'}`}
-          title={hasDescription ? 'יש תיאור' : 'אין תיאור'}
-        />
-        <AlignLeft
-          className={`w-3.5 h-3.5 ${hasLongDescription ? 'text-blue-600' : 'text-gray-300'}`}
-          title={hasLongDescription ? 'יש תיאור מפורט' : 'אין תיאור מפורט'}
-        />
-        <Image
-          className={`w-3.5 h-3.5 ${hasImage ? 'text-purple-600' : 'text-gray-300'}`}
-          title={hasImage ? 'יש תמונה' : 'אין תמונה'}
-        />
-        <Video
-          className={`w-3.5 h-3.5 ${hasVideo ? 'text-red-600' : 'text-gray-300'}`}
-          title={hasVideo ? 'יש סרטון' : 'אין סרטון'}
-        />
-      </div>
+      <TooltipProvider>
+        <div className="flex items-center justify-center gap-1">
+          {/* Standard indicators for all products */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <MessageSquare
+                className={`w-3.5 h-3.5 cursor-help ${hasDescription ? 'text-green-600' : 'text-gray-300'}`}
+              />
+            </TooltipTrigger>
+            <TooltipContent side="top" className="bg-gray-800 text-white border-gray-600">
+              <p className="text-xs font-medium" dir="rtl">
+                {hasDescription ? 'יש תיאור למוצר' : 'אין תיאור למוצר'}
+              </p>
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <AlignLeft
+                className={`w-3.5 h-3.5 cursor-help ${hasLongDescription ? 'text-blue-600' : 'text-gray-300'}`}
+              />
+            </TooltipTrigger>
+            <TooltipContent side="top" className="bg-gray-800 text-white border-gray-600">
+              <p className="text-xs font-medium" dir="rtl">
+                {hasLongDescription ? 'יש תיאור מפורט (מעל 100 תווים)' : 'אין תיאור מפורט'}
+              </p>
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Image
+                className={`w-3.5 h-3.5 cursor-help ${hasImage ? 'text-purple-600' : 'text-gray-300'}`}
+              />
+            </TooltipTrigger>
+            <TooltipContent side="top" className="bg-gray-800 text-white border-gray-600">
+              <p className="text-xs font-medium" dir="rtl">
+                {hasImage ? 'יש תמונה למוצר' : 'אין תמונה למוצר'}
+              </p>
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Video
+                className={`w-3.5 h-3.5 cursor-help ${hasVideo ? 'text-red-600' : 'text-gray-300'}`}
+              />
+            </TooltipTrigger>
+            <TooltipContent side="top" className="bg-gray-800 text-white border-gray-600">
+              <p className="text-xs font-medium" dir="rtl">
+                {hasVideo ? 'יש סרטון שיווקי למוצר' : 'אין סרטון שיווקי למוצר'}
+              </p>
+            </TooltipContent>
+          </Tooltip>
+
+          {/* Preview indicators (only for files and lesson plans) */}
+          {supportsPreview && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Eye
+                  className={`w-3.5 h-3.5 cursor-help ${hasPreview ? 'text-cyan-600' : 'text-gray-300'}`}
+                />
+              </TooltipTrigger>
+              <TooltipContent side="top" className="bg-gray-800 text-white border-gray-600">
+                <p className="text-xs font-medium" dir="rtl">
+                  {hasPreview ? 'מאפשר תצוגה מקדימה' : 'לא מאפשר תצוגה מקדימה'}
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          )}
+
+          {supportsPreview && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <img
+                  src="/logo_sm.svg"
+                  alt="Branding"
+                  className={`w-3.5 h-3.5 cursor-help ${hasBranding ? 'opacity-100' : 'opacity-30 grayscale'}`}
+                />
+              </TooltipTrigger>
+              <TooltipContent side="top" className="bg-gray-800 text-white border-gray-600">
+                <p className="text-xs font-medium" dir="rtl">
+                  {hasBranding ? 'התצוגה המקדימה כולל מיתוג' : 'התצוגה המקדימה ללא מיתוג'}
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          )}
+
+          {/* Conditional content indicators (at the end) */}
+          {isFileProduct && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <FileType
+                  className={`w-3.5 h-3.5 cursor-help ${hasFileContent ? 'text-orange-600' : 'text-gray-300'}`}
+                />
+              </TooltipTrigger>
+              <TooltipContent side="top" className="bg-gray-800 text-white border-gray-600">
+                <p className="text-xs font-medium" dir="rtl">
+                  {hasFileContent ? 'יש קובץ מועלה' : 'אין קובץ מועלה'}
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          )}
+
+          {isLessonPlanProduct && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <FileType
+                  className={`w-3.5 h-3.5 cursor-help ${hasLessonPlanContent ? 'text-orange-600' : 'text-gray-300'}`}
+                />
+              </TooltipTrigger>
+              <TooltipContent side="top" className="bg-gray-800 text-white border-gray-600">
+                <p className="text-xs font-medium" dir="rtl">
+                  {hasLessonPlanContent ? 'יש מצגת SVG' : 'אין מצגת SVG'}
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          )}
+        </div>
+      </TooltipProvider>
     );
   };
 
@@ -587,9 +688,12 @@ export default function Products() {
                         {/* Card Header */}
                         <div className="flex justify-between items-start mb-3">
                           <div className="flex-1">
-                            <h3 className="font-bold text-slate-900 text-lg leading-tight mb-2" dir="rtl">
-                              {product.title}
-                            </h3>
+                            <div className="flex items-center gap-2 mb-2" dir="rtl">
+                              <h3 className="font-bold text-slate-900 text-lg leading-tight text-right flex-1">
+                                {product.title}
+                              </h3>
+                              <KitBadge product={product} variant="compact" size="sm" />
+                            </div>
                             {product.short_description && (
                               <p className="text-sm text-slate-600 mb-3" dir="rtl">
                                 {product.short_description}
@@ -718,13 +822,12 @@ export default function Products() {
                   <div className="bg-gradient-to-l from-slate-50 to-white px-4 py-4 border-b border-slate-200/60 backdrop-blur-sm">
                     <div className="grid grid-cols-12 gap-2 items-center text-sm font-bold text-slate-700">
                       <div className="col-span-1 text-center">פעולות</div>
-                      <div className="col-span-1 text-center">נתונים</div>
+                      <div className="col-span-2 text-center">נתונים</div>
                       <div className={`${isAdmin && showAllContent ? 'col-span-1' : 'col-span-1'} text-center`}>מחיר</div>
                       {isAdmin && showAllContent && (
                         <div className="col-span-1 text-center">יוצר</div>
                       )}
                       <div className="col-span-1 text-center">קטגוריה</div>
-                      <div className="col-span-1 text-center">סוג</div>
                       <div className="col-span-1 text-center">סטטוס</div>
                       <div className={`${isAdmin && showAllContent ? 'col-span-5' : 'col-span-6'} text-right`}>כותרת</div>
                     </div>
@@ -763,7 +866,7 @@ export default function Products() {
                         </div>
 
                         {/* Data Indicators */}
-                        <div className="col-span-1 text-center">
+                        <div className="col-span-2 text-center">
                           {getDataIndicators(product)}
                         </div>
 
@@ -806,21 +909,6 @@ export default function Products() {
                           )}
                         </div>
 
-                        {/* File Type */}
-                        <div className="col-span-1 text-center">
-                          {product.product_type === 'file' && product.file_type ? (
-                            <Badge variant="outline" className="font-medium uppercase bg-purple-50 text-purple-700 border-purple-200">
-                              {product.file_type}
-                            </Badge>
-                          ) : product.product_type !== 'file' ? (
-                            <Badge className={getProductTypeBadgeColor(product.product_type) + " font-medium"}>
-                              {getProductTypeLabel(product.product_type)}
-                            </Badge>
-                          ) : (
-                            <span className="text-slate-400 text-sm">-</span>
-                          )}
-                        </div>
-
                         {/* Status */}
                         <div className="col-span-1 text-center">
                           <Badge
@@ -834,9 +922,12 @@ export default function Products() {
                         {/* Title */}
                         <div className={`${isAdmin && showAllContent ? 'col-span-5' : 'col-span-6'} text-right`}>
                           <div className="text-right">
-                            <h3 className="font-bold text-slate-900 text-base leading-tight mb-1">
-                              {product.title}
-                            </h3>
+                            <div className="flex items-center gap-2 mb-1" dir="rtl">
+                              <h3 className="font-bold text-slate-900 text-base leading-tight text-right flex-1">
+                                {product.title}
+                              </h3>
+                              <KitBadge product={product} variant="default" size="sm" />
+                            </div>
                             {product.short_description && (
                               <p className="text-sm text-slate-600 line-clamp-1 mb-2">
                                 {product.short_description}

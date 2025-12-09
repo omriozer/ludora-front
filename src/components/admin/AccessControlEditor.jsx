@@ -281,7 +281,7 @@ const AccessControlEditor = ({
 
   const hasChanges = Object.keys(changes).length > 0;
   const isFile = entityType === 'file';
-  const isLessonPlan = entityType === 'lessonplan';
+  const isLessonPlan = entityType === 'lesson_plan';
 
   return (
     <Card className={`${className}`}>

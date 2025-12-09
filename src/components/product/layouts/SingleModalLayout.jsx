@@ -5,6 +5,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Save, X, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
 import { getProductTypeName } from '@/config/productTypes';
+import { luderror } from '@/lib/ludlog';
 
 /**
  * SingleModalLayout - Renders all sections in a single scrollable modal
@@ -53,11 +54,9 @@ export const SingleModalLayout = ({
       // Call the onSave prop with form data
       await onSave(formData, continueEditing);
 
-      if (!continueEditing) {
-        onClose();
-      }
+      // Note: Modal stays open after saving - only close button closes the modal
     } catch (error) {
-      console.error('Save error:', error);
+      luderror.ui('Save error:', error);
       showMessage('error', error.message || 'אירעה שגיאה בשמירת המוצר');
     } finally {
       setIsSaving(false);
@@ -155,7 +154,7 @@ export const SingleModalLayout = ({
                 className="w-full sm:w-auto"
               >
                 <X className="w-4 h-4 ml-2" />
-                ביטול
+                סגירה
               </Button>
 
               <Button

@@ -160,6 +160,7 @@ export default function ProductPage() {
                 product.watermark_template_id = lessonPlan.watermark_template_id;
                 product.watermark_settings = lessonPlan.watermark_settings;
                 product.allow_slide_preview = lessonPlan.allow_slide_preview;
+                product.add_branding = lessonPlan.add_branding;
                 product.accessible_slides = lessonPlan.accessible_slides;
               }
             } catch (error) {
@@ -181,6 +182,7 @@ export default function ProductPage() {
                 product.watermark_settings = file.watermark_settings;
                 product.accessible_pages = file.accessible_pages;
                 product.allow_preview = file.allow_preview;
+                product.add_branding = file.add_branding;
                 product.footer_settings = file.footer_settings;
               }
             } catch (error) {
@@ -385,9 +387,7 @@ export default function ProductPage() {
 
       resetChanges();
 
-      if (!continueEditing) {
-        setTimeout(() => navigate('/products'), 1500);
-      }
+      // Note: Removed auto-navigation - only close button should navigate away
 
       return result;
     } catch (error) {
@@ -423,6 +423,9 @@ export default function ProductPage() {
       }
       if (formData.allow_preview !== undefined) {
         fileSpecificFields.allow_preview = formData.allow_preview;
+      }
+      if (formData.add_branding !== undefined) {
+        fileSpecificFields.add_branding = formData.add_branding;
       }
 
       // Only make API call if there are File-specific fields to update
@@ -476,6 +479,9 @@ export default function ProductPage() {
       }
       if (formData.allow_slide_preview !== undefined) {
         lessonPlanSpecificFields.allow_slide_preview = formData.allow_slide_preview;
+      }
+      if (formData.add_branding !== undefined) {
+        lessonPlanSpecificFields.add_branding = formData.add_branding;
       }
       if (formData.accessible_slides !== undefined) {
         lessonPlanSpecificFields.accessible_slides = formData.accessible_slides;

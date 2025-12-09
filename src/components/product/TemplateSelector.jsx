@@ -124,7 +124,7 @@ const TemplateSelector = ({
       // Make API call to update the entity immediately
       const endpoint = entityType === 'file'
         ? `/entities/file/${entityId}`
-        : `/entities/lessonplan/${entityId}`;
+        : `/entities/lesson_plan/${entityId}`;
 
       await apiRequest(endpoint, {
         method: 'PUT',

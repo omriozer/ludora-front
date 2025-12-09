@@ -1323,7 +1323,7 @@ const LessonPlanProductSection = ({
           {/* Access Control Editor - Always visible when preview is enabled */}
           <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
             <AccessControlEditor
-              entityType="lessonplan"
+              entityType="lesson_plan"
               entityId={editingProduct?.entity_id}
               currentUser={currentUser} // Pass current user for email template resolution
               fileEntity={{
@@ -1351,7 +1351,7 @@ const LessonPlanProductSection = ({
 
           {/* Branding Template */}
           <TemplateSelector
-            entityType="lessonplan"
+            entityType="lesson_plan"
             entityId={editingProduct?.entity_id}
             templateType="branding"
             targetFormat="svg-lessonplan"

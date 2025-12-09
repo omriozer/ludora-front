@@ -51,8 +51,15 @@ export default function ProductImage({
 
     // Try to get the product's custom image first
     const productImageUrl = getProductImageUrl(product);
-    setCurrentImageUrl(productImageUrl);
-  }, [product.id, product.product_type]);
+
+    // If no product image, use fallback immediately
+    if (!productImageUrl) {
+      const fallbackImageUrl = productTypeConfig?.fallbackImageUrl;
+      setCurrentImageUrl(fallbackImageUrl);
+    } else {
+      setCurrentImageUrl(productImageUrl);
+    }
+  }, [product.id, product.product_type, productTypeConfig]);
 
   // Handle primary image load error
   const handleImageError = () => {

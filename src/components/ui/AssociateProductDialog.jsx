@@ -175,7 +175,10 @@ export default function AssociateProductDialog({
     }
 
     // Apply game type filter (games only)
-    if (filters.gameType && filters.gameType !== 'all' && selectedProductType === 'game') {
+    const isBundleType = selectedProductType.includes(':bundle');
+    const baseProductType = isBundleType ? selectedProductType.split(':')[0] : selectedProductType;
+
+    if (filters.gameType && filters.gameType !== 'all' && baseProductType === 'game') {
       filtered = filtered.filter(product =>
         product.game_type === filters.gameType ||
         product.type_attributes?.game_type === filters.gameType
@@ -243,12 +246,22 @@ export default function AssociateProductDialog({
     setProductLoading(true);
     try {
       let productsData;
+      const isBundleType = selectedProductType.includes(':bundle');
+      const baseProductType = isBundleType ? selectedProductType.split(':')[0] : selectedProductType;
+
       if (selectedProductType === 'all') {
         // Load all products
         productsData = await Product.find();
       } else {
-        // Load products of specific type
-        productsData = await Product.find({ product_type: selectedProductType });
+        // Load products of specific type (base type for bundles)
+        productsData = await Product.find({ product_type: baseProductType });
+      }
+
+      // Filter for bundles if bundle type was selected
+      if (isBundleType) {
+        productsData = productsData.filter(product =>
+          product.type_attributes && product.type_attributes.is_bundle === true
+        );
       }
 
       setProducts(productsData);
@@ -274,6 +287,7 @@ export default function AssociateProductDialog({
   };
 
   const handleProductTypeSelect = (type) => {
+    // Store the full type selection (including :bundle suffix if present)
     setSelectedProductType(type);
     setStep(2);
   };
@@ -351,15 +365,26 @@ export default function AssociateProductDialog({
       return ['search', 'category', 'grade', 'subject', 'price', 'sort'];
     }
 
-    const catalogConfig = getCatalogConfig(selectedProductType);
+    // For bundle types, use the base product type for filter configuration
+    const isBundleType = selectedProductType.includes(':bundle');
+    const baseProductType = isBundleType ? selectedProductType.split(':')[0] : selectedProductType;
+
+    const catalogConfig = getCatalogConfig(baseProductType);
     return catalogConfig?.filters || ['search'];
   };
 
   // Render individual filter components (based on CatalogFilters.jsx)
   const renderFilter = (filterType) => {
-    const typeConfig = selectedProductType === 'all'
-      ? { key: 'all' }
-      : PRODUCT_TYPES[selectedProductType];
+    let typeConfig;
+    const isBundleType = selectedProductType.includes(':bundle');
+    const baseProductType = isBundleType ? selectedProductType.split(':')[0] : selectedProductType;
+
+    if (selectedProductType === 'all') {
+      typeConfig = { key: 'all' };
+    } else {
+      // Use base product type for filter configuration (even for bundles)
+      typeConfig = PRODUCT_TYPES[baseProductType] || { key: baseProductType };
+    }
 
     switch (filterType) {
       case 'search':
@@ -574,7 +599,8 @@ export default function AssociateProductDialog({
                 <SelectItem value="updated_at">עודכנו לאחרונה</SelectItem>
                 <SelectItem value="title">שם</SelectItem>
                 <SelectItem value="price">מחיר</SelectItem>
-                {typeConfig.key === 'file' && (
+                {(typeConfig.key === 'file' ||
+                  (isBundleType && baseProductType === 'file')) && (
                   <SelectItem value="downloads_count">הורדות</SelectItem>
                 )}
               </SelectContent>
@@ -603,16 +629,29 @@ export default function AssociateProductDialog({
           selectedType={selectedProductType}
           layout="grid"
           size="md"
-          adminOverride={true}
+          adminOverride={false}
+          mode="select"
         />
       </div>
     );
   };
 
   const renderProductSelection = () => {
-    const selectedTypeConfig = selectedProductType === 'all'
-      ? { singular: 'כל הסוגים', plural: 'כל המוצרים' }
-      : PRODUCT_TYPES[selectedProductType];
+    let selectedTypeConfig;
+    const isBundleType = selectedProductType.includes(':bundle');
+    const baseProductType = isBundleType ? selectedProductType.split(':')[0] : selectedProductType;
+
+    if (selectedProductType === 'all') {
+      selectedTypeConfig = { singular: 'כל הסוגים', plural: 'כל המוצרים' };
+    } else if (isBundleType) {
+      const baseConfig = PRODUCT_TYPES[baseProductType];
+      selectedTypeConfig = {
+        singular: `קיט ${baseConfig?.plural || 'מוצרים'}`,
+        plural: `קיטי ${baseConfig?.plural || 'מוצרים'}`
+      };
+    } else {
+      selectedTypeConfig = PRODUCT_TYPES[selectedProductType] || { singular: 'מוצר', plural: 'מוצרים' };
+    }
 
     return (
       <div className="space-y-4">
@@ -708,7 +747,16 @@ export default function AssociateProductDialog({
       <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col" dir="rtl">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>
-            {step === 1 ? 'קשר מוצר לנושא לימוד' : `בחר ${PRODUCT_TYPES[selectedProductType]?.singular.toLowerCase() || 'מוצר'}`}
+            {step === 1 ? 'קשר מוצר לנושא לימוד' : (() => {
+              const isBundleType = selectedProductType.includes(':bundle');
+              const baseProductType = isBundleType ? selectedProductType.split(':')[0] : selectedProductType;
+
+              if (isBundleType) {
+                const baseConfig = PRODUCT_TYPES[baseProductType];
+                return `בחר קיט ${baseConfig?.plural || 'מוצרים'}`;
+              }
+              return `בחר ${PRODUCT_TYPES[selectedProductType]?.singular.toLowerCase() || 'מוצר'}`;
+            })()}
           </DialogTitle>
         </DialogHeader>
 
