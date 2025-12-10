@@ -9,7 +9,7 @@ let usersCacheTimestamp = null;
 const USERS_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 // Global cache for purchases data per user to prevent repeated API calls
-let purchasesCache = new Map(); // Map: userId -> { purchases, timestamp }
+const purchasesCache = new Map(); // Map: userId -> { purchases, timestamp }
 const PURCHASES_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes (same as users cache)
 
 // Helper functions to manage caches

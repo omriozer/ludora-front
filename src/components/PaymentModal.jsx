@@ -106,7 +106,7 @@ export default function PaymentModal({ product, user, settings, isTestMode = (co
 
       // First, check if there's an existing cart purchase for this product
       const cartPurchases = await getCartPurchases(user.id);
-      let existingCartPurchase = cartPurchases.find(p =>
+      const existingCartPurchase = cartPurchases.find(p =>
         p.purchasable_type === product.product_type &&
         p.purchasable_id === (product.entity_id || product.id)
       );

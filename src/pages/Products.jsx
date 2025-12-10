@@ -6,6 +6,7 @@ import { deleteFile } from "@/services/apiClient";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import KitBadge from "@/components/ui/KitBadge";
+import CurriculumLinkButton from "@/components/ui/CurriculumLinkButton";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -709,6 +710,13 @@ export default function Products() {
                             >
                               <Edit className="w-4 h-4" />
                             </Button>
+                            <CurriculumLinkButton
+                              product={product}
+                              variant="table"
+                              size="sm"
+                              className="h-9 w-9 p-0 rounded-lg"
+                              onLinksUpdated={loadData}
+                            />
                             <Button
                               variant="ghost"
                               size="sm"
@@ -854,6 +862,13 @@ export default function Products() {
                             >
                               <Edit className="w-4 h-4" />
                             </Button>
+                            <CurriculumLinkButton
+                              product={product}
+                              variant="table"
+                              size="sm"
+                              className="h-8 w-8 p-0 rounded-lg transition-colors"
+                              onLinksUpdated={loadData}
+                            />
                             <Button
                               variant="ghost"
                               size="sm"

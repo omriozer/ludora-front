@@ -15,11 +15,13 @@ import {
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import couponClient from '@/services/couponClient';
+import { removeCoupon } from '@/services/apiClient';
 import { ludlog, luderror } from '@/lib/ludlog';
 
 /**
  * CouponInput Component
  * Handles coupon code input, validation, and management in checkout
+ * Relies on server-side state only - no localStorage persistence
  */
 export default function CouponInput({
   cartItems = [],
@@ -37,6 +39,16 @@ export default function CouponInput({
   const [suggestedCoupons, setSuggestedCoupons] = useState([]);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [showSuggestionsPanel, setShowSuggestionsPanel] = useState(false);
+  // One-time cleanup of old localStorage coupon data
+  useEffect(() => {
+    if (userId) {
+      const oldStorageKey = `ludora_applied_coupons_${userId}`;
+      if (localStorage.getItem(oldStorageKey)) {
+        localStorage.removeItem(oldStorageKey);
+        ludlog.ui('Cleaned up old localStorage coupon data', { userId });
+      }
+    }
+  }, [userId]);
 
   // Load suggested coupons when component mounts or cart changes
   useEffect(() => {
@@ -107,18 +119,30 @@ export default function CouponInput({
         cartTotal
       });
 
-      if (response.success && response.data) {
+      if (response.success) {
+        // Transform backend response to frontend format
+        const transformedData = {
+          ...response,
+          discountAmount: response.discount.amount,
+          discountType: response.coupon.discount_type,
+          discountValue: response.coupon.discount_value,
+          code: response.coupon.code
+        };
+
         // Call parent callback with coupon data
-        onCouponApplied(response.data);
+        onCouponApplied(transformedData);
 
         // Clear input and close suggestions
         setCouponCode('');
         setShowSuggestionsPanel(false);
 
-        // Show success message
+        // Show success message with free checkout info if applicable
+        const isFreeCheckout = response.free_checkout || response.totals?.final_amount === 0;
         toast({
-          title: "קופון הוחל בהצלחה!",
-          description: `חסכתם ₪${response.data.discountAmount.toFixed(2)}`,
+          title: isFreeCheckout ? "🎉 הזמנה חינמית!" : "קופון הוחל בהצלחה!",
+          description: isFreeCheckout
+            ? `כל הפריטים נוספו לספרייה שלכם בחינם!`
+            : `חסכתם ₪${response.discount.amount.toFixed(2)}`,
           variant: "default"
         });
 
@@ -148,28 +172,43 @@ export default function CouponInput({
   /**
    * Remove an applied coupon
    */
-  const handleRemoveCoupon = (couponToRemove) => {
+  const handleRemoveCoupon = async (couponToRemove) => {
     try {
-      onCouponRemoved(couponToRemove);
+      setIsValidating(true);
 
-      toast({
-        title: "קופון הוסר",
-        description: `קופון ${couponToRemove.code} הוסר מההזמנה`,
-        variant: "default"
+      // Call API to remove coupon from server-side Purchase records
+      const response = await removeCoupon({
+        couponCode: couponToRemove.code,
+        userId
       });
 
-      // Reload suggestions as this coupon is now available again
-      if (showSuggestions) {
-        loadSuggestedCoupons();
+      if (response.success) {
+        // Only update frontend state if server removal succeeded
+        onCouponRemoved(couponToRemove);
+
+        toast({
+          title: "קופון הוסר",
+          description: `קופון ${couponToRemove.code} הוסר מההזמנה`,
+          variant: "default"
+        });
+
+        // Reload suggestions as this coupon is now available again
+        if (showSuggestions) {
+          loadSuggestedCoupons();
+        }
+      } else {
+        throw new Error(response.message || 'שגיאה בהסרת הקופון');
       }
 
     } catch (error) {
       luderror.ui('Error removing coupon:', error);
       toast({
         title: "שגיאה בהסרת קופון",
-        description: 'נסו שוב מאוחר יותר',
+        description: error.message || 'נסו שוב מאוחר יותר',
         variant: "destructive"
       });
+    } finally {
+      setIsValidating(false);
     }
   };
 
@@ -272,10 +311,14 @@ export default function CouponInput({
                     variant="ghost"
                     size="sm"
                     onClick={() => handleRemoveCoupon(coupon)}
-                    disabled={disabled}
+                    disabled={disabled || isValidating}
                     className="text-green-700 hover:text-red-600 hover:bg-red-50"
                   >
-                    <X className="h-4 w-4" />
+                    {isValidating ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <X className="h-4 w-4" />
+                    )}
                   </Button>
                 </div>
               ))}

@@ -1174,7 +1174,7 @@ const VisualTemplateEditor = ({
     };
 
     // Update elements to belong to this group
-    let newConfig = { ...templateConfig };
+    const newConfig = { ...templateConfig };
 
     elementIds.forEach(elementId => {
       if (newConfig.customElements?.[elementId]) {
@@ -1209,7 +1209,7 @@ const VisualTemplateEditor = ({
 
   const handleGroupDelete = (groupId) => {
     // Remove group reference from all elements
-    let newConfig = { ...templateConfig };
+    const newConfig = { ...templateConfig };
 
     Object.keys(newConfig.customElements || {}).forEach(elementId => {
       if (newConfig.customElements[elementId].groupId === groupId) {
@@ -1236,7 +1236,7 @@ const VisualTemplateEditor = ({
     const groupElements = getGroupElements(groupId);
     const allVisible = groupElements.every(([, element]) => element.visible !== false);
 
-    let newConfig = { ...templateConfig };
+    const newConfig = { ...templateConfig };
 
     groupElements.forEach(([elementId]) => {
       if (newConfig.customElements?.[elementId]) {
@@ -1254,7 +1254,7 @@ const VisualTemplateEditor = ({
     const groupElements = getGroupElements(groupId);
     const allLocked = groupElements.every(([, element]) => element.locked);
 
-    let newConfig = { ...templateConfig };
+    const newConfig = { ...templateConfig };
 
     groupElements.forEach(([elementId]) => {
       if (newConfig.customElements?.[elementId]) {
@@ -1278,7 +1278,7 @@ const VisualTemplateEditor = ({
       created: Date.now()
     };
 
-    let newConfig = { ...templateConfig };
+    const newConfig = { ...templateConfig };
 
     groupElements.forEach(([elementId, element]) => {
       if (newConfig.customElements?.[elementId]) {
@@ -1301,7 +1301,7 @@ const VisualTemplateEditor = ({
   };
 
   const handleElementAddToGroup = (elementId, groupId) => {
-    let newConfig = { ...templateConfig };
+    const newConfig = { ...templateConfig };
 
     if (newConfig.customElements?.[elementId]) {
       newConfig.customElements[elementId].groupId = groupId;
@@ -1314,7 +1314,7 @@ const VisualTemplateEditor = ({
   };
 
   const handleElementRemoveFromGroup = (elementId, groupId) => {
-    let newConfig = { ...templateConfig };
+    const newConfig = { ...templateConfig };
 
     if (newConfig.customElements?.[elementId]) {
       delete newConfig.customElements[elementId].groupId;
@@ -1411,7 +1411,7 @@ const VisualTemplateEditor = ({
           });
           const leftmostX = Math.min(...positions);
 
-          let newConfig = { ...templateConfig };
+          const newConfig = { ...templateConfig };
           if (newConfig.customElements?.[elementId]) {
             newConfig.customElements[elementId].position.x = leftmostX;
           } else if (newConfig[elementId]) {
@@ -1429,7 +1429,7 @@ const VisualTemplateEditor = ({
           });
           const topmostY = Math.min(...positions);
 
-          let newConfig = { ...templateConfig };
+          const newConfig = { ...templateConfig };
           if (newConfig.customElements?.[elementId]) {
             newConfig.customElements[elementId].position.y = topmostY;
           } else if (newConfig[elementId]) {

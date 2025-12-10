@@ -19,6 +19,7 @@ import { CartProvider } from "@/contexts/CartContext";
 import LudoraLoadingSpinner from "@/components/ui/LudoraLoadingSpinner";
 import { canBypassMaintenance } from "@/utils/adminCheck";
 import UserWayWidget from "@/components/accessibility/UserWayWidget";
+import { luderror } from "@/lib/ludlog";
 
 function LayoutContent({ children }) {
   const location = useLocation();
@@ -26,7 +27,7 @@ function LayoutContent({ children }) {
   const { showLoginModal, openLoginModal, closeLoginModal, executeCallback, modalMessage } = useLoginModal();
 
   // Use UserContext instead of local state
-  const { currentUser, settings, isLoading, isAuthenticated, settingsLoading, settingsLoadFailed, login, logout } = useUser();
+  const { currentUser, settings, isLoading, settingsLoading, settingsLoadFailed, login, logout } = useUser();
 
   // Track screen size for responsive layout
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
@@ -64,7 +65,7 @@ function LayoutContent({ children }) {
           const canBypass = await canBypassMaintenance(currentUser);
           setCanAdminBypass(canBypass);
         } catch (error) {
-          
+          luderror(error)
           setCanAdminBypass(false);
         } finally {
           setIsCheckingAdminBypass(false);

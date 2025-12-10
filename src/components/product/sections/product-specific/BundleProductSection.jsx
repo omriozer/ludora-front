@@ -83,7 +83,7 @@ export default function BundleProductSection({
       // Fetch all products of the selected type
       ludlog.ui('Bundle search filters:', filters);
       const response = await Product.find(filters);
-      let allResults = response.results || response || [];
+      const allResults = response.results || response || [];
 
       // Apply frontend search filtering (like AssociateProductDialog pattern)
       let results = allResults;

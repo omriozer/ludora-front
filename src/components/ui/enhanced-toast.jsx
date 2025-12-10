@@ -17,17 +17,17 @@ const toastPositionVariants = {
   'bottom-right': 'fixed bottom-4 right-4 z-[100] flex flex-col-reverse gap-2 max-w-[420px]'
 };
 
-// Toast variants with colors and styles
+// Toast variants with enhanced colors and styles for better readability
 const toastVariants = cva(
-  "group pointer-events-auto relative flex w-full items-center space-x-2 space-x-reverse overflow-hidden rounded-lg border p-4 pl-12 shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=open]:fade-in-0 data-[state=open]:slide-in-from-top-2 data-[state=open]:sm:slide-in-from-bottom-2 data-[state=closed]:slide-out-to-right-full",
+  "group pointer-events-auto relative flex w-full items-center space-x-2 space-x-reverse overflow-hidden rounded-lg border-2 p-4 pl-12 shadow-xl transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=open]:fade-in-0 data-[state=open]:slide-in-from-top-2 data-[state=open]:sm:slide-in-from-bottom-2 data-[state=closed]:slide-out-to-right-full",
   {
     variants: {
       variant: {
-        default: "bg-background text-foreground border-border",
-        success: "bg-green-50 text-green-900 border-green-200 dark:bg-green-950 dark:text-green-50 dark:border-green-800",
-        error: "bg-red-50 text-red-900 border-red-200 dark:bg-red-950 dark:text-red-50 dark:border-red-800",
-        warning: "bg-orange-50 text-orange-900 border-orange-200 dark:bg-orange-950 dark:text-orange-50 dark:border-orange-800",
-        info: "bg-blue-50 text-blue-900 border-blue-200 dark:bg-blue-950 dark:text-blue-50 dark:border-blue-800",
+        default: "bg-white text-gray-900 border-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600",
+        success: "bg-green-100 text-green-950 border-green-500 dark:bg-green-900 dark:text-green-50 dark:border-green-400",
+        error: "bg-red-100 text-red-950 border-red-500 dark:bg-red-900 dark:text-red-50 dark:border-red-400",
+        warning: "bg-amber-100 text-amber-950 border-amber-500 dark:bg-amber-900 dark:text-amber-50 dark:border-amber-400",
+        info: "bg-blue-100 text-blue-950 border-blue-500 dark:bg-blue-900 dark:text-blue-50 dark:border-blue-400",
       },
     },
     defaultVariants: {
@@ -36,7 +36,7 @@ const toastVariants = cva(
   }
 );
 
-// Icon mapping for variants
+// Icon mapping for variants with colors
 const variantIcons = {
   success: CheckCircle,
   error: AlertCircle,
@@ -45,8 +45,18 @@ const variantIcons = {
   default: null
 };
 
+// Icon color classes for each variant
+const variantIconColors = {
+  success: "text-green-700 dark:text-green-300",
+  error: "text-red-700 dark:text-red-300",
+  warning: "text-amber-700 dark:text-amber-300",
+  info: "text-blue-700 dark:text-blue-300",
+  default: "text-gray-700 dark:text-gray-300"
+};
+
 const Toast = React.forwardRef(({ className, variant, ...props }, ref) => {
   const IconComponent = variantIcons[variant];
+  const iconColorClass = variantIconColors[variant] || variantIconColors.default;
 
   return (
     <div
@@ -57,7 +67,7 @@ const Toast = React.forwardRef(({ className, variant, ...props }, ref) => {
     >
       {IconComponent && (
         <div className="flex-shrink-0 ml-3">
-          <IconComponent className="h-5 w-5" />
+          <IconComponent className={cn("h-5 w-5", iconColorClass)} />
         </div>
       )}
       <div className="flex-1">
@@ -78,7 +88,7 @@ const ToastClose = React.forwardRef(({ className, onClick, ...props }, ref) => (
       onClick?.(e);
     }}
     className={cn(
-      "absolute left-2 top-2 z-10 rounded-md p-1 text-foreground/70 opacity-100 transition-all hover:text-foreground hover:bg-background/80 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+      "absolute left-2 top-2 z-10 rounded-md p-1.5 bg-white/80 dark:bg-gray-700/80 text-gray-700 dark:text-gray-200 opacity-100 transition-all hover:bg-white dark:hover:bg-gray-600 hover:text-gray-900 dark:hover:text-white focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 shadow-sm",
       className
     )}
     aria-label="סגור הודעה"
@@ -92,7 +102,7 @@ ToastClose.displayName = "ToastClose";
 const ToastTitle = React.forwardRef(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("text-sm font-semibold leading-none tracking-tight", className)}
+    className={cn("text-sm font-bold leading-none tracking-tight", className)}
     {...props}
   />
 ));
@@ -101,7 +111,7 @@ ToastTitle.displayName = "ToastTitle";
 const ToastDescription = React.forwardRef(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("text-sm opacity-90 mt-1", className)}
+    className={cn("text-sm opacity-95 mt-1.5 leading-relaxed", className)}
     {...props}
   />
 ));

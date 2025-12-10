@@ -1046,17 +1046,6 @@ const MyAccount = () => {
                                 : 'text-gray-600'
                             }`}>
                               {subscriptionState.summary?.hasActiveSubscription ? 'פעיל' : 'חינם'}
-                              {console.log('')}
-                              {console.log('')}
-                              {console.log('')}
-                              {console.log('')}
-                              {console.log('')}
-                              {console.log('subscriptionState: ', subscriptionState)}
-                              {console.log('')}
-                              {console.log('')}
-                              {console.log('')}
-                              {console.log('')}
-                              {console.log('')}
                             </div>
                           </div>
 

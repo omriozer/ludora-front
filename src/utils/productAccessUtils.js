@@ -38,7 +38,7 @@ export const getProductAccessStatus = (userPurchase) => {
     accessUntil: "גישה עד"
   };
 
-  let statusText = texts.owned;
+  const statusText = texts.owned;
   let statusDetail = null;
 
   if (!userPurchase.access_expires_at) {

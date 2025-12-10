@@ -36,7 +36,7 @@ function canUserSeeItem(visibility, currentUser, isActualAdmin, isContentCreator
 // Utility: get navigation items
 function getNavigationItems({ currentUser, settings, isActualAdmin, isContentCreator }) {
   const navOrder = getSetting(settings, NAVIGATION_KEYS.NAV_ORDER, Object.keys(NAV_ITEMS));
-  let navItems = [];
+  const navItems = [];
   navOrder.forEach((itemType) => {
     const navItemConfig = getNavItemConfig(itemType);
     if (!navItemConfig) return;

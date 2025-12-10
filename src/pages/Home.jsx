@@ -102,7 +102,7 @@ function getNavigationItems({ currentUser, settings, isActualAdmin, isContentCre
   if (!settings) return [];
 
   const navOrder = settings?.nav_order || Object.keys(NAV_ITEMS);
-  let navItems = [];
+  const navItems = [];
 
   navOrder.forEach((itemType) => {
     const navItemConfig = NAV_ITEMS[itemType];

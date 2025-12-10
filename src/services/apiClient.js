@@ -2,9 +2,10 @@
 // REST API client for Ludora API server
 
 import { getApiBase } from '@/utils/api.js';
-import { luderror } from '@/lib/ludlog';
+import { ludlog, luderror } from '@/lib/ludlog';
 import { showError } from '@/utils/messaging';
 import { ApiError } from '@/utils/ApiError.js';
+
 
 
 // Use centralized API base configuration - dynamically evaluated
@@ -933,6 +934,13 @@ export const ProductAPI = {
 
 export async function applyCoupon(data) {
   return apiRequest('/functions/applyCoupon', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  });
+}
+
+export async function removeCoupon(data) {
+  return apiRequest('/functions/removeCoupon', {
     method: 'POST',
     body: JSON.stringify(data)
   });

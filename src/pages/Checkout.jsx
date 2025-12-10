@@ -27,6 +27,7 @@ import { getProductTypeName } from "@/config/productTypes";
 import {
   getCartAndPendingPurchases,
   calculateTotalPrice,
+  calculateOriginalTotalPrice,
   showPurchaseErrorToast,
   findProductForEntity
 } from "@/utils/purchaseHelpers";
@@ -52,7 +53,7 @@ export default function Checkout() {
   const [error, setError] = useState(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
-  // Coupon management
+  // Coupon management - derived from Purchase data
   const [appliedCoupons, setAppliedCoupons] = useState([]);
 
   // Pricing breakdown
@@ -91,6 +92,11 @@ export default function Checkout() {
       // Reload checkout data when payments are processed or abandoned
       if (update.type === 'reverted_to_cart' || update.type === 'continue_polling') {
         loadCheckoutData();
+      }
+
+      // Clear applied coupons when payment is completed successfully
+      if (update.type === 'payment_completed' || update.type === 'free_checkout_completed') {
+        clearAppliedCoupons();
       }
     }
   });
@@ -160,9 +166,13 @@ export default function Checkout() {
       // Load Product data for each cart item
       await loadCartItemProducts(cartPurchases);
 
+      // Extract applied coupons from Purchase data (server-side source of truth)
+      const extractedCoupons = extractAppliedCouponsFromPurchases(cartPurchases);
+      setAppliedCoupons(extractedCoupons);
+
       // Calculate pricing (only count 'cart' status items for checkout)
       const cartOnlyItems = cartPurchases.filter(item => item.payment_status === 'cart');
-      calculatePricing(cartOnlyItems);
+      calculatePricing(cartOnlyItems, extractedCoupons);
 
     } catch (err) {
       luderror.payment('Error loading checkout data:', err);
@@ -174,7 +184,11 @@ export default function Checkout() {
 
   // Calculate pricing breakdown with applied coupons
   const calculatePricing = (purchases, coupons = appliedCoupons) => {
-    const subtotal = calculateTotalPrice(purchases);
+    // Use original prices for subtotal when coupons are applied (prevents double-discount bug)
+    const hasCoupons = coupons && coupons.length > 0;
+    const subtotal = hasCoupons
+      ? calculateOriginalTotalPrice(purchases) // Original prices before any discounts
+      : calculateTotalPrice(purchases);        // Current prices (no coupons applied)
 
     // Calculate total discounts from applied coupons
     const discounts = coupons.reduce((total, coupon) => {
@@ -198,6 +212,38 @@ export default function Checkout() {
       loadCheckoutData();
     }
   }, [loadCheckoutData, userLoading, currentUser]);
+
+  // Helper function to clear applied coupons
+  const clearAppliedCoupons = () => {
+    setAppliedCoupons([]);
+  };
+
+  // Extract applied coupon information from Purchase records (server-side source of truth)
+  const extractAppliedCouponsFromPurchases = (purchases) => {
+    const couponsMap = new Map();
+
+    purchases.forEach(purchase => {
+      if (purchase.coupon_code) {
+        // Use coupon code as key to avoid duplicates (same coupon applied to multiple items)
+        if (!couponsMap.has(purchase.coupon_code)) {
+          const couponData = {
+            code: purchase.coupon_code,
+            discountAmount: 0, // Will accumulate from all purchases
+            discountType: purchase.metadata?.coupon_discount_type || 'fixed',
+            discountValue: purchase.metadata?.coupon_discount_value || 0,
+            id: purchase.metadata?.coupon_id || purchase.coupon_code
+          };
+          couponsMap.set(purchase.coupon_code, couponData);
+        }
+
+        // Accumulate total discount amount across all purchases for this coupon
+        const existingCoupon = couponsMap.get(purchase.coupon_code);
+        existingCoupon.discountAmount += parseFloat(purchase.discount_amount || 0);
+      }
+    });
+
+    return Array.from(couponsMap.values());
+  };
 
 
   // Remove item from cart
@@ -240,24 +286,21 @@ export default function Checkout() {
     }
   };
 
-  // Handle coupon application
-  const handleCouponApplied = (couponData) => {
+  // Handle coupon application - reload data from server after successful application
+  const handleCouponApplied = async (couponData) => {
     try {
-      const newCoupon = {
-        code: couponData.couponCode,
-        id: couponData.couponId,
-        discountAmount: couponData.discountAmount,
-        discountType: couponData.discountType,
-        priority: couponData.priority,
-        finalAmount: couponData.finalAmount
-      };
+      // Coupon has been applied to Purchase records on server - reload checkout data
+      await loadCheckoutData();
 
-      const updatedCoupons = [...appliedCoupons, newCoupon];
-      setAppliedCoupons(updatedCoupons);
-
-      // Recalculate pricing with new coupon (only cart items)
-      const cartOnlyItems = cartItems.filter(item => item.payment_status === 'cart');
-      calculatePricing(cartOnlyItems, updatedCoupons);
+      // Show success message
+      const isFreeCheckout = couponData.finalAmount === 0;
+      toast({
+        title: isFreeCheckout ? "🎉 הזמנה חינמית!" : "קופון הוחל בהצלחה!",
+        description: isFreeCheckout
+          ? `כל הפריטים נוספו לספרייה שלכם בחינם!`
+          : `חסכתם ₪${couponData.discountAmount.toFixed(2)}`,
+        variant: "default"
+      });
 
     } catch (error) {
       luderror.payment('Error handling coupon application:', error);
@@ -265,16 +308,18 @@ export default function Checkout() {
     }
   };
 
-  // Handle coupon removal
-  const handleCouponRemoved = (couponToRemove) => {
+  // Handle coupon removal - make API call to remove from Purchase records
+  const handleCouponRemoved = async (couponToRemove) => {
     try {
-      const updatedCoupons = appliedCoupons.filter(
-        coupon => coupon.code !== couponToRemove.code
-      );
-      setAppliedCoupons(updatedCoupons);
+      // TODO: Implement API endpoint to remove coupon from Purchase records
+      // For now, just reload data (coupon removal via CouponInput component)
+      await loadCheckoutData();
 
-      // Recalculate pricing without removed coupon
-      calculatePricing(cartItems, updatedCoupons);
+      toast({
+        title: "קופון הוסר",
+        description: `קופון ${couponToRemove.code} הוסר מההזמנה`,
+        variant: "default"
+      });
 
     } catch (error) {
       luderror.payment('Error handling coupon removal:', error);

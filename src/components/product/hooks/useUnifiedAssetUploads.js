@@ -360,7 +360,7 @@ export const useUnifiedAssetUploads = (editingProduct = null) => {
 
       // Build endpoint using calculated mapping
       let endpoint;
-      let updateData = {};
+      const updateData = {};
 
       switch (fileType) {
         case 'image':
@@ -509,7 +509,7 @@ export const useUnifiedAssetUploads = (editingProduct = null) => {
 
       // Build endpoint using calculated mapping
       let endpoint;
-      let updateData = {};
+      const updateData = {};
 
       switch (fileType) {
         case 'image':

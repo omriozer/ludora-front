@@ -179,7 +179,7 @@ exit 0
 function findGitDir() {
   // First, check if we're in the ludora-front subdirectory
   // The git directory should be in the parent (ludora) directory
-  let searchDir = ROOT_DIR;
+  const searchDir = ROOT_DIR;
 
   // Look for .git in current directory or parent
   const gitPathCurrent = path.join(searchDir, '.git');

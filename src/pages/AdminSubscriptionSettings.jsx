@@ -382,7 +382,7 @@ export default function SubscriptionSettings() {
     if (field.includes('.')) {
       const parts = field.split('.');
       setFormData(prev => {
-        let newFormData = { ...prev };
+        const newFormData = { ...prev };
         let current = newFormData;
         for (let i = 0; i < parts.length - 1; i++) {
           const part = parts[i];

@@ -345,6 +345,19 @@ export function calculateTotalPrice(purchases) {
 }
 
 /**
+ * Calculate original total price (before any coupons) for display purposes
+ * @param {array} purchases - Array of purchase records
+ * @returns {number} Original total price
+ */
+export function calculateOriginalTotalPrice(purchases) {
+  return purchases.reduce((total, purchase) => {
+    // Use original_price if available (when coupons are applied), otherwise use payment_amount
+    const originalPrice = purchase.original_price || purchase.payment_amount;
+    return total + (parseFloat(originalPrice) || 0);
+  }, 0);
+}
+
+/**
  * Check if user has existing purchase for a specific product
  * @param {string} userId - User ID
  * @param {string} entityType - Type of entity (file, workshop, course, tool, game)

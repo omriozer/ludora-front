@@ -121,7 +121,7 @@ export const useProductUploads = (editingProduct = null) => {
       setUploadProgressValue(uploadKey, 0);
 
       let endpoint = '';
-      let updateData = {};
+      const updateData = {};
 
       // Determine endpoint and update data based on file type
       switch (fileType) {
@@ -302,7 +302,7 @@ export const useProductUploads = (editingProduct = null) => {
       setIsDeletingFile(true);
 
       let endpoint = '';
-      let updateData = {};
+      const updateData = {};
 
       switch (fileType) {
         case 'image':

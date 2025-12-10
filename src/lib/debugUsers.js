@@ -26,7 +26,7 @@ function loadDebugUsers() {
 }
 
 // Current debug users list
-let DEBUG_USERS = loadDebugUsers();
+const DEBUG_USERS = loadDebugUsers();
 
 // Current user ID (set by auth system)
 let currentUserId = null;

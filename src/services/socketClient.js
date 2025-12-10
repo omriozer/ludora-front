@@ -148,7 +148,7 @@ class SocketClient {
         // Get base API URL and construct proper Socket.IO URL
         const apiBase = getApiBase();
         let socketUrl;
-        let socketOptions = {
+        const socketOptions = {
           transports: ['websocket', 'polling'], // Support both transports
           timeout: 10000, // Increased timeout for better connection reliability
           reconnection: true,
