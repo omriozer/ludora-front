@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
+import { ludlog, luderror } from '@/lib/ludlog';
 
 export default function NotificationBell({ currentUser }) {
   const navigate = useNavigate();
@@ -64,7 +65,7 @@ export default function NotificationBell({ currentUser }) {
       setNotifications(validNotifications);
       setUnreadCount(validNotifications.filter(n => !n.is_read).length);
     } catch (error) {
-      console.error("Error loading notifications:", error);
+      luderror.ui("Error loading notifications:", error);
       setHasError(true);
       setNotificationEntityAvailable(false); // If there's an error, assume entity might not be fully functional or accessible
       // Don't throw error, just set empty state
@@ -89,10 +90,8 @@ export default function NotificationBell({ currentUser }) {
         setNotificationEntityAvailable(false);
       }
     } catch (error) {
-      // This is expected when notification entity is not available - use clog for debugging
-import { ludlog, luderror } from '@/lib/ludlog';
-        ludlog.ui('Notification entity not available:', { data: error });
-      });
+      // This is expected when notification entity is not available - use ludlog for debugging
+      ludlog.ui('Notification entity not available:', error);
       setNotificationEntityAvailable(false);
       setHasError(true);
     }
@@ -152,7 +151,7 @@ import { ludlog, luderror } from '@/lib/ludlog';
       await Notification.update(notificationId, { is_read: true });
       loadNotifications(); // Refresh notifications
     } catch (error) {
-      console.error("Error marking notification as read:", error);
+      luderror.ui("Error marking notification as read:", error);
     }
   };
 
@@ -167,7 +166,7 @@ import { ludlog, luderror } from '@/lib/ludlog';
       );
       loadNotifications();
     } catch (error) {
-      console.error("Error marking all notifications as read:", error);
+      luderror.ui("Error marking all notifications as read:", error);
     }
   };
 
@@ -179,7 +178,7 @@ import { ludlog, luderror } from '@/lib/ludlog';
       await Notification.delete(notificationId);
       loadNotifications();
     } catch (error) {
-      console.error("Error deleting notification:", error);
+      luderror.ui("Error deleting notification:", error);
     }
   };
 

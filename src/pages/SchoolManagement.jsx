@@ -26,6 +26,7 @@ import {
   Loader2
 } from "lucide-react";
 import SchoolModal from "../components/schools/SchoolModal";
+import { luderror } from "@/lib/ludlog";
 
 export default function SchoolManagement() {
   const navigate = useNavigate();
@@ -60,7 +61,7 @@ export default function SchoolManagement() {
 
       setSchools(schoolsData);
     } catch (error) {
-      console.error('Error loading data:', error);
+      luderror.generic('Error loading data:', error);
       showMessage('error', 'שגיאה בטעינת הנתונים');
     }
     setIsLoading(false);
@@ -105,7 +106,7 @@ export default function SchoolManagement() {
       setEditingSchool(null);
       loadData();
     } catch (error) {
-      console.error('Error saving school:', error);
+      luderror.generic('Error saving school:', error);
       if (error.message?.includes('unique') || error.message?.includes('duplicate')) {
         if (error.message?.includes('institution_symbol')) {
           showMessage('error', 'סמל המוסד כבר קיים במערכת');
@@ -133,7 +134,7 @@ export default function SchoolManagement() {
       showMessage('success', 'מוסד החינוך נמחק בהצלחה');
       loadData();
     } catch (error) {
-      console.error('Error deleting school:', error);
+      luderror.generic('Error deleting school:', error);
       showMessage('error', 'שגיאה במחיקת מוסד החינוך');
     }
   };
@@ -378,7 +379,7 @@ export default function SchoolManagement() {
       }
 
     } catch (error) {
-      console.error('Error importing schools:', error);
+      luderror.generic('Error importing schools:', error);
       showMessage('error', `שגיאה בייבוא הקובץ: ${error.message}`);
     } finally {
       setIsImporting(false);

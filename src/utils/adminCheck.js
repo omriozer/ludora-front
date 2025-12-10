@@ -2,6 +2,8 @@
  * Utility functions for checking admin status across portals during maintenance mode
  */
 
+import { luderror } from '@/lib/ludlog';
+
 /**
  * Check if there are admin-level access tokens in either portal
  * This helps with maintenance mode bypass when admin is logged into one portal but not the other
@@ -40,7 +42,7 @@ export async function quickAdminCheck() {
     return user && user.role === 'admin' && !user._isImpersonated;
   } catch (error) {
     // If API call fails, don't bypass maintenance mode
-    console.warn('Quick admin check failed:', error);
+    luderror.auth('Quick admin check failed:', error);
   }
 
   return false;
@@ -86,13 +88,13 @@ const ANONYMOUS_ADMIN_TOKEN_KEY = 'ludora_anonymous_admin_token';
 export function storeAnonymousAdminToken(token) {
   try {
     if (!token || typeof token !== 'string') {
-      console.warn('Invalid token provided to storeAnonymousAdminToken');
+      luderror.auth('Invalid token provided to storeAnonymousAdminToken');
       return false;
     }
     localStorage.setItem(ANONYMOUS_ADMIN_TOKEN_KEY, token);
     return true;
   } catch (error) {
-    console.warn('Failed to store anonymous admin token:', error);
+    luderror.auth('Failed to store anonymous admin token:', error);
     return false;
   }
 }
@@ -105,7 +107,7 @@ export function getAnonymousAdminToken() {
   try {
     return localStorage.getItem(ANONYMOUS_ADMIN_TOKEN_KEY);
   } catch (error) {
-    console.warn('Failed to get anonymous admin token:', error);
+    luderror.auth('Failed to get anonymous admin token:', error);
     return null;
   }
 }
@@ -118,7 +120,7 @@ export function clearAnonymousAdminToken() {
     localStorage.removeItem(ANONYMOUS_ADMIN_TOKEN_KEY);
     return true;
   } catch (error) {
-    console.warn('Failed to clear anonymous admin token:', error);
+    luderror.auth('Failed to clear anonymous admin token:', error);
     return false;
   }
 }
@@ -167,12 +169,12 @@ export function isAnonymousAdmin() {
 
       return true;
     } catch (decodeError) {
-      console.warn('Failed to decode anonymous admin token:', decodeError);
+      luderror.auth('Failed to decode anonymous admin token:', decodeError);
       clearAnonymousAdminToken(); // Invalid token
       return false;
     }
   } catch (error) {
-    console.warn('Error checking anonymous admin status:', error);
+    luderror.auth('Error checking anonymous admin status:', error);
     return false;
   }
 }
@@ -206,7 +208,7 @@ export async function validateAdminPassword(password) {
 
     return result;
   } catch (error) {
-    console.warn('Admin password validation failed:', error);
+    luderror.auth('Admin password validation failed:', error);
     throw error;
   }
 }
@@ -243,7 +245,7 @@ export function getAnonymousAdminExpiry() {
 
     return null;
   } catch (error) {
-    console.warn('Failed to get anonymous admin expiry:', error);
+    luderror.auth('Failed to get anonymous admin expiry:', error);
     return null;
   }
 }

@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Users, Search, Crown, User as UserIcon, Mail, Calendar, AlertTriangle, CheckCircle } from "lucide-react";
 import AdminSubscriptionModal from "@/components/AdminSubscriptionModal";
+import { luderror } from "@/lib/ludlog";
 
 export default function AdminSystemUsers() {
   const navigate = useNavigate();
@@ -50,7 +51,7 @@ export default function AdminSystemUsers() {
       const allUsers = await User.list('-created_date');
       setUsers(allUsers);
     } catch (error) {
-      console.error('Error loading users:', error);
+      luderror.generic('Error loading users:', error);
       setMessage({ type: 'error', text: 'שגיאה בטעינת המשתמשים' });
     }
   };
@@ -61,7 +62,7 @@ export default function AdminSystemUsers() {
       setMessage({ type: 'success', text: 'תפקיד המשתמש עודכן בהצלחה' });
       loadUsers();
     } catch (error) {
-      console.error('Error updating user role:', error);
+      luderror.generic('Error updating user role:', error);
       setMessage({ type: 'error', text: 'שגיאה בעדכון תפקיד המשתמש' });
     }
     setTimeout(() => setMessage(null), 3000);
@@ -81,7 +82,7 @@ export default function AdminSystemUsers() {
       }, 1000);
 
     } catch (error) {
-      console.error('Error setting up impersonation:', error);
+      luderror.auth('Error setting up impersonation:', error);
       setMessage({ type: 'error', text: 'שגיאה בהתחברות כמשתמש' });
       setTimeout(() => setMessage(null), 3000);
     }

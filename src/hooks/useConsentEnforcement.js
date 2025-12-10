@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useUser } from '@/contexts/UserContext';
+import { apiRequest } from '@/services/apiClient';
+import { luderror } from '@/lib/ludlog';
 
 /**
  * Hook for checking and enforcing parent consent requirements for students.
@@ -45,28 +47,12 @@ export const useConsentEnforcement = () => {
         return;
       }
 
-      // Call the backend consent status endpoint
-      const response = await fetch('/api/auth/consent-status', {
-        credentials: 'include', // Include cookies for authentication
+      // Call the backend consent status endpoint using API client
+      const statusData = await apiRequest('/auth/consent-status', {
         headers: {
           'Cache-Control': 'no-cache' // Ensure we get fresh data
         }
       });
-
-      if (!response.ok) {
-        // Handle specific HTTP error codes
-        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
-        if (response.status === 401) {
-          errorMessage = 'Authentication expired. Please log in again.';
-        } else if (response.status === 403) {
-          errorMessage = 'Access denied. Please check your permissions.';
-        } else if (response.status >= 500) {
-          errorMessage = 'Server error. Please try again in a few moments.';
-        }
-        throw new Error(errorMessage);
-      }
-
-      const statusData = await response.json();
 
       setEnforcementStatus(prev => ({
         ...prev,
@@ -98,10 +84,8 @@ export const useConsentEnforcement = () => {
         retryCount: isRetry ? prev.retryCount + 1 : 1
       }));
 
-      // Log error for debugging (development only)
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Consent status check failed:', errorDetails);
-      }
+      // Log error for debugging
+      luderror.auth('Consent status check failed:', errorDetails);
     }
   };
 
@@ -118,29 +102,10 @@ export const useConsentEnforcement = () => {
         throw new Error('Invitation code is required');
       }
 
-      const response = await fetch('/api/auth/link-teacher', {
+      const result = await apiRequest('/auth/link-teacher', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include',
         body: JSON.stringify({ invitation_code: invitationCode.trim() })
       });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        // Provide user-friendly error messages
-        let errorMessage = result.error || `HTTP ${response.status}`;
-        if (response.status === 400 && result.code === 'ALREADY_LINKED') {
-          errorMessage = 'You are already linked to a teacher.';
-        } else if (response.status === 404) {
-          errorMessage = 'Invalid invitation code. Please check with your teacher.';
-        } else if (response.status === 429) {
-          errorMessage = 'Too many attempts. Please wait a moment and try again.';
-        }
-        throw new Error(errorMessage);
-      }
 
       // Refresh consent status after linking
       await checkConsentStatus();

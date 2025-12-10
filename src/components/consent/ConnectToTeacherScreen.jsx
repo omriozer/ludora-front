@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useUser } from '@/contexts/UserContext';
 import { showSuccess, showError } from '@/utils/messaging';
+import { apiRequest } from '@/services/apiClient';
 
 /**
  * Screen shown to students who need to connect to a teacher using an invitation code.
@@ -22,20 +23,10 @@ const ConnectToTeacherScreen = ({ onTeacherLinked, onCancel }) => {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch('/api/auth/link-teacher', {
+      const result = await apiRequest('/auth/link-teacher', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include',
         body: JSON.stringify({ invitation_code: invitationCode.trim() })
       });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to link to teacher');
-      }
 
       showSuccess(`התחברת בהצלחה למורה ${result.teacher.full_name}`);
 

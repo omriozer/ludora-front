@@ -1,6 +1,7 @@
 // Content Topic Service with association management
 import { apiRequest } from './apiClient.js';
 import { ContentTopic } from './entities.js';
+import { luderror } from '@/lib/ludlog';
 
 export class ContentTopicService {
 
@@ -58,7 +59,7 @@ export class ContentTopicService {
 
       return response;
     } catch (error) {
-      console.error('❌ API request failed:', error);
+      luderror.api('API request failed:', error);
       throw error;
     }
   }

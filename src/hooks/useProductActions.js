@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { apiDownload } from '@/services/apiClient';
+import { luderror } from '@/lib/ludlog';
 
 /**
  * Reusable hook for product action handlers
@@ -33,7 +34,7 @@ export const useProductActions = () => {
         // Clean up blob URL after a delay
         setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
       } catch (error) {
-        console.error('Error downloading file:', error);
+        luderror.api('Error downloading file:', error);
       }
     }
   };

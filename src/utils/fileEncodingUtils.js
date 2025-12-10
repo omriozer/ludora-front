@@ -7,6 +7,8 @@
  * CRITICAL: This matches the backend encoding fix logic in routes/entities.js
  */
 
+import { luderror } from '@/lib/ludlog';
+
 /**
  * Detects if a filename contains Hebrew encoding corruption
  *
@@ -82,7 +84,7 @@ export function fixHebrewFilename(filename) {
     // If no Hebrew characters detected, return original
     return filename;
   } catch (error) {
-    console.error('Error fixing Hebrew filename encoding:', error);
+    luderror.file('Error fixing Hebrew filename encoding:', error);
     return filename;
   }
 }
