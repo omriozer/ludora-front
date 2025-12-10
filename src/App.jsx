@@ -1,6 +1,7 @@
 import './App.css';
 import './styles/studentsGlobalStyles.css';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { HelmetProvider } from 'react-helmet-async';
 import { useEffect, Suspense, useState, useCallback } from 'react';
 import { apiRequestAnonymous } from '@/services/apiClient';
 // Core pages - loaded immediately for better UX
@@ -433,26 +434,29 @@ function App() {
 	// If on student portal, render student app without main layout/navigation
 	if (isOnStudentPortal) {
 		return (
-			<AudioCacheProvider>
-				<ConfirmationProvider>
-					<AuthErrorProvider>
-						<AccessStateProvider>
-							<StudentPortal />
-							<EnhancedToaster />
-						</AccessStateProvider>
-					</AuthErrorProvider>
-				</ConfirmationProvider>
-			</AudioCacheProvider>
+			<HelmetProvider>
+				<AudioCacheProvider>
+					<ConfirmationProvider>
+						<AuthErrorProvider>
+							<AccessStateProvider>
+								<StudentPortal />
+								<EnhancedToaster />
+							</AccessStateProvider>
+						</AuthErrorProvider>
+					</ConfirmationProvider>
+				</AudioCacheProvider>
+			</HelmetProvider>
 		);
 	}
 
 	// Teacher portal rendering
 	return (
-		<AudioCacheProvider>
-			<ConfirmationProvider>
-				<AuthErrorProvider>
-					<AccessStateProvider>
-						<Layout>
+		<HelmetProvider>
+			<AudioCacheProvider>
+				<ConfirmationProvider>
+					<AuthErrorProvider>
+						<AccessStateProvider>
+							<Layout>
 					<Routes>
 					<Route
 						path='/'
@@ -770,6 +774,18 @@ function App() {
 									</AuthAwareSuspense>
 								</OnboardingRedirect>
 							</ConditionalRoute>
+						}
+					/>
+					<Route
+						path='/classroom-requests'
+						element={
+							<ProtectedRoute>
+								<OnboardingRedirect>
+									<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.PROTECTED}>
+										<LazyPages.PendingRequestsList />
+									</AuthAwareSuspense>
+								</OnboardingRedirect>
+							</ProtectedRoute>
 						}
 					/>
 
@@ -1182,6 +1198,7 @@ function App() {
 				</AuthErrorProvider>
 			</ConfirmationProvider>
 		</AudioCacheProvider>
+		</HelmetProvider>
 	);
 }
 

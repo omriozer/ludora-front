@@ -43,6 +43,7 @@ export const CourseViewer = lazy(() => import('./CourseViewer'));
 export const MyClassrooms = lazy(() => import('./MyClassrooms'));
 export const Curriculum = lazy(() => import('./Curriculum'));
 export const ClassCurriculum = lazy(() => import('./ClassCurriculum'));
+export const PendingRequestsList = lazy(() => import('../components/teacher/PendingRequestsList'));
 
 // Game multiplayer management
 export const GameLobbies = lazy(() => import('./GameLobbies'));

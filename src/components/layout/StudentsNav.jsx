@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { GraduationCap, Keyboard, QrCode, CameraOff, AlertTriangle, LogIn, LogOut, User, ChevronLeft, ChevronRight, Menu, X } from 'lucide-react';
+import { GraduationCap, Keyboard, QrCode, CameraOff, AlertTriangle, LogIn, LogOut, User, ChevronLeft, ChevronRight, Menu, X, ArrowUpCircle } from 'lucide-react';
 import PropTypes from 'prop-types';
 import { useUser } from '@/contexts/UserContext';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { checkCameraAvailability } from '@/utils/qrScannerUtils';
 import { useActivityCodeHandler } from '@/hooks/useActivityCodeHandler';
 import { useLoginModal } from '@/hooks/useLoginModal';
 import LogoDisplay from '@/components/ui/LogoDisplay';
+import MigrateToUserModal from '@/components/student/MigrateToUserModal';
 import {
   getStudentNavFeatures,
   getDefaultStudentNavFeatures,
@@ -50,6 +51,7 @@ const StudentsNav = ({ teacherInfo = null }) => {
 
   const [isCameraAvailable, setIsCameraAvailable] = useState(false);
   const [confirmationDialog, setConfirmationDialog] = useState({ isOpen: false });
+  const [showMigrationModal, setShowMigrationModal] = useState(false);
 
   // Get configurable navigation features
   const navFeatures = settings
@@ -136,6 +138,15 @@ const StudentsNav = ({ teacherInfo = null }) => {
 
   const toggleCollapse = () => {
     setIsCollapsed(!isCollapsed);
+  };
+
+  // Migration modal handler
+  const handleOpenMigration = () => {
+    setShowMigrationModal(true);
+  };
+
+  const handleCloseMigration = () => {
+    setShowMigrationModal(false);
   };
 
 
@@ -421,6 +432,27 @@ const StudentsNav = ({ teacherInfo = null }) => {
                 );
               })()}
 
+              {/* Upgrade to Full Account Button (only for anonymous players) */}
+              {isPlayerAuthenticated && !isAuthenticated && currentPlayer && (
+                <Button
+                  variant="outline"
+                  className={`group relative bg-gradient-to-r from-emerald-50 to-green-50 border-emerald-300 text-emerald-700 font-bold
+                    transition-all duration-300 hover:from-emerald-100 hover:to-green-100 hover:border-emerald-400
+                    hover:shadow-lg hover:shadow-emerald-500/10 focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 ${
+                    isCollapsed
+                      ? 'w-11 h-11 p-0 justify-center rounded-xl'
+                      : 'w-full justify-center py-2.5 rounded-xl text-xs'
+                  }`}
+                  onClick={handleOpenMigration}
+                  title={isCollapsed ? "שדרוג לחשבון מלא" : undefined}
+                >
+                  <ArrowUpCircle className="w-4 h-4 relative z-10 transition-transform duration-300 group-hover:scale-110" />
+                  {!isCollapsed && (
+                    <span className="relative z-10 font-bold mr-1">שדרג חשבון</span>
+                  )}
+                </Button>
+              )}
+
               {/* Logout Button */}
               <Button
                 variant="outline"
@@ -459,6 +491,15 @@ const StudentsNav = ({ teacherInfo = null }) => {
         successMessage={confirmationDialog.successMessage}
         errorMessage={confirmationDialog.errorMessage}
       />
+
+      {/* Migration Modal */}
+      {showMigrationModal && currentPlayer && (
+        <MigrateToUserModal
+          isOpen={showMigrationModal}
+          onClose={handleCloseMigration}
+          player={currentPlayer}
+        />
+      )}
     </>
   );
 };
