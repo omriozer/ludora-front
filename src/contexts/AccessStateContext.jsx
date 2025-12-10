@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback } from 'react';
 import { apiRequest } from '@/services/apiClient';
-import { showSuccess, showError } from '@/utils/messaging';
+import { showSuccess, showError, HEBREW_MESSAGES } from '@/utils/messaging';
+import { luderror } from '@/lib/ludlog';
 
 const AccessStateContext = createContext();
 
@@ -147,17 +148,17 @@ export function AccessStateProvider({ children }) {
         }
       }));
 
-      showSuccess('Product claimed successfully!');
+      showSuccess('המוצר נתבע בהצלחה!');
       return result;
     } catch (error) {
-      console.error('Failed to claim product:', error);
+      luderror.ui('Failed to claim product:', error);
 
       // Revert optimistic update on error
       if (userAccessContext) {
         updateUserContext(userAccessContext);
       }
 
-      showError(error.message || 'Failed to claim product');
+      showError(error.message || 'שגיאה בתביעת המוצר');
       throw error;
     }
   }, [userAccessContext, updateUserContext]);
@@ -190,7 +191,7 @@ export function AccessStateProvider({ children }) {
       // For now, we can trigger a refresh of the products
       window.location.reload(); // Temporary - ideally we'd refresh context
     } catch (error) {
-      console.error('Failed to update after subscription:', error);
+      luderror.ui('Failed to update after subscription:', error);
     }
   }, []);
 

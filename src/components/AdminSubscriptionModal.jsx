@@ -30,6 +30,7 @@ import {
   Settings,
 } from 'lucide-react';
 import { apiRequest } from '@/services/apiClient';
+import { luderror } from '@/lib/ludlog';
 
 export default function AdminSubscriptionModal({
   user,
@@ -180,7 +181,8 @@ export default function AdminSubscriptionModal({
       // Reload subscription data
       await loadSubscriptionData();
     } catch (error) {
-      showMessage('error', error.message || 'שגיאה ביצירת מנוי');
+      luderror.payments('Error creating subscription:', error);
+      showMessage('error', 'שגיאה ביצירת מנוי');
     } finally {
       setIsCreatingSubscription(false);
     }
@@ -313,7 +315,8 @@ export default function AdminSubscriptionModal({
       setAutoRenewReason('');
       await loadSubscriptionData();
     } catch (error) {
-      showMessage('error', error.message || 'שגיאה בעדכון חידוש אוטומטי');
+      luderror.payments('Error toggling auto-renew:', error);
+      showMessage('error', 'שגיאה בעדכון חידוש אוטומטי');
     } finally {
       setIsTogglingAutoRenew(false);
     }
@@ -341,7 +344,8 @@ export default function AdminSubscriptionModal({
       // Close modal and refresh data since subscription no longer exists
       onClose();
     } catch (error) {
-      showMessage('error', error.message || 'שגיאה במחיקת המנוי');
+      luderror.payments('Error resetting subscription:', error);
+      showMessage('error', 'שגיאה במחיקת המנוי');
     } finally {
       setIsResettingSubscription(false);
     }

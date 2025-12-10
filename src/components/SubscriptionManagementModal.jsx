@@ -16,6 +16,7 @@ import {
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { ludlog, luderror } from '@/lib/ludlog';
+import { showSuccess, showError, showInfo } from '@/utils/messaging';
 
 // Helper component for confirmation dialog
 function ConfirmationDialog({ isOpen, onClose, onConfirm, title, message, confirmText, cancelText, variant, isLoading }) {
@@ -46,7 +47,7 @@ function ConfirmationDialog({ isOpen, onClose, onConfirm, title, message, confir
   );
 }
 
-export default function SubscriptionManagementModal({ user, subscriptionPlans, onClose, onUpdate, showMessage }) {
+export default function SubscriptionManagementModal({ user, subscriptionPlans, onClose, onUpdate }) {
   const [selectedPlanId, setSelectedPlanId] = useState(user.current_subscription_plan_id || '');
   const [subscriptionEndDate, setSubscriptionEndDate] = useState(
     user.subscription_end_date ? format(new Date(user.subscription_end_date), 'yyyy-MM-dd') : ''
@@ -108,14 +109,14 @@ export default function SubscriptionManagementModal({ user, subscriptionPlans, o
 
       if (Object.keys(updateData).length > 0) {
         await User.update(user.id, updateData);
-        showMessage('success', 'המנוי עודכן בהצלחה');
+        showSuccess('המנוי עודכן בהצלחה');
         onUpdate();
       } else {
-        showMessage('info', 'לא בוצעו שינויים');
+        showInfo('לא בוצעו שינויים');
       }
     } catch (error) {
       luderror.payment('Error updating subscription:', error);
-      showMessage('error', 'שגיאה בעדכון המנוי');
+      showError('שגיאה בעדכון המנוי');
     } finally {
       setIsLoading(false);
     }
@@ -145,12 +146,12 @@ export default function SubscriptionManagementModal({ user, subscriptionPlans, o
         subscription_status_updated_at: new Date().toISOString(),
         payplus_subscription_uid: null
       });
-      showMessage('success', `המנוי של המשתמש ${user.display_name || user.full_name} אופס בהצלחה.`);
+      showSuccess(`המנוי של המשתמש ${user.display_name || user.full_name} אופס בהצלחה.`);
       onUpdate();
 
     } catch (error) {
       luderror.payment('Error resetting subscription:', error);
-      showMessage('error', 'שגיאה באיפוס המנוי.');
+      showError('שגיאה באיפוס המנוי.');
     } finally {
       setIsLoading(false);
       setShowResetConfirm(false);

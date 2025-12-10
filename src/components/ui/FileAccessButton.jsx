@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { apiDownload } from '@/services/apiClient';
+import { showError } from '@/utils/messaging';
+import { luderror } from '@/lib/ludlog';
 
 /**
  * File Access Button - Handles file viewing/downloading for users with access
@@ -46,7 +48,8 @@ export default function FileAccessButton({
         await handleDefaultFileAccess();
       }
     } catch (error) {
-      console.error('Error accessing file:', error);
+      luderror.file('Error accessing file:', error);
+      showError('שגיאה בגישה לקובץ', 'אנא נסה שוב או בדוק את החיבור לאינטרנט');
     } finally {
       setIsAccessing(false);
     }
@@ -80,7 +83,8 @@ export default function FileAccessButton({
       // Clean up blob URL after a delay
       setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
     } catch (error) {
-      console.error('Error downloading file:', error);
+      luderror.file('Error downloading file:', error);
+      showError('שגיאה בהורדת הקובץ', 'אנא נסה שוב או בדוק את החיבור לאינטרנט');
     }
   };
 

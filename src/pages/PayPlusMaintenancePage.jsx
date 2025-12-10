@@ -3,6 +3,7 @@ import { useUser } from '@/contexts/UserContext';
 import { useNavigate } from 'react-router-dom';
 import { showError, showSuccess } from '@/utils/messaging';
 import { apiRequest } from '@/services/apiClient';
+import { luderror } from '@/lib/ludlog';
 import {
   Shield,
   CreditCard,
@@ -43,8 +44,8 @@ export default function PayPlusMaintenancePage() {
       setAuditResults(response);
       showSuccess('בדיקת המנויים הושלמה בהצלחה');
     } catch (error) {
-      console.error('Error running subscription audit:', error);
-      showError('שגיאה בביצוע בדיקת המנויים: ' + error.message);
+      luderror.payments('Error running subscription audit:', error);
+      showError('שגיאה בביצוע בדיקת המנויים', 'אנא נסה שוב או צור קשר עם התמיכה');
     } finally {
       setIsLoading(false);
     }
@@ -58,8 +59,8 @@ export default function PayPlusMaintenancePage() {
       setRawData(response);
       showSuccess('נתונים גולמיים נטענו בהצלחה');
     } catch (error) {
-      console.error('Error fetching raw data:', error);
-      showError('שגיאה בטעינת נתונים גולמיים: ' + error.message);
+      luderror.payments('Error fetching raw data:', error);
+      showError('שגיאה בטעינת נתונים גולמיים', 'אנא נסה שוב או בדוק את החיבור לשרת');
     } finally {
       setIsLoading(false);
     }

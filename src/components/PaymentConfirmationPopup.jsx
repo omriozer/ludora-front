@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { CreditCard, Loader2, X } from 'lucide-react';
+import { showError } from '@/utils/messaging';
+import { luderror } from '@/lib/ludlog';
 
 /**
  * PaymentConfirmationPopup - Shows confirmation dialog for saved payment methods
@@ -35,7 +37,8 @@ const PaymentConfirmationPopup = ({
     try {
       await onConfirm();
     } catch (error) {
-      console.error('Payment confirmation error:', error);
+      luderror.payments('Payment confirmation error:', error);
+      showError('שגיאה באישור התשלום', 'אנא נסה שוב או צור קשר עם התמיכה');
     } finally {
       setIsConfirming(false);
     }

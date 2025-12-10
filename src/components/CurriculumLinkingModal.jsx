@@ -50,6 +50,34 @@ export default function CurriculumLinkingModal({
   const [manualResults, setManualResults] = useState([]);
   const [manualLoading, setManualLoading] = useState(false);
 
+  /**
+   * Helper to format user-friendly error messages
+   */
+  const formatErrorMessage = (error) => {
+    // Extract the error message
+    const rawMessage = error.response?.data?.error?.message || error.message || '';
+
+    // Parse and improve common backend error messages
+    if (rawMessage.includes('curriculumproduct')) {
+      return 'שגיאה בקישור תכנית לימודים למוצר. יתכן שהקישור כבר קיים.';
+    }
+
+    if (rawMessage.includes('Validation error')) {
+      return 'שגיאת אימות - נא לבדוק שכל הפרטים נכונים ולנסות שוב.';
+    }
+
+    if (rawMessage.includes('not found')) {
+      return 'פריט תכנית הלימודים לא נמצא במערכת.';
+    }
+
+    if (rawMessage.includes('access denied')) {
+      return 'אין לך הרשאה לבצע פעולה זו.';
+    }
+
+    // Return the original message if no specific match
+    return rawMessage || 'שגיאה לא צפויה בקישור תכניות לימודים';
+  };
+
   // Load curriculum suggestions when modal opens
   useEffect(() => {
     if (isOpen && product?.id) {
@@ -212,34 +240,6 @@ export default function CurriculumLinkingModal({
     setSelectedGradeRange(null);
     setManualResults([]);
     setManualLoading(false);
-  };
-
-  /**
-   * Helper to format user-friendly error messages
-   */
-  const formatErrorMessage = (error) => {
-    // Extract the error message
-    const rawMessage = error.response?.data?.error?.message || error.message || '';
-
-    // Parse and improve common backend error messages
-    if (rawMessage.includes('curriculumproduct')) {
-      return 'שגיאה בקישור תכנית לימודים למוצר. יתכן שהקישור כבר קיים.';
-    }
-
-    if (rawMessage.includes('Validation error')) {
-      return 'שגיאת אימות - נא לבדוק שכל הפרטים נכונים ולנסות שוב.';
-    }
-
-    if (rawMessage.includes('not found')) {
-      return 'פריט תכנית הלימודים לא נמצא במערכת.';
-    }
-
-    if (rawMessage.includes('access denied')) {
-      return 'אין לך הרשאה לבצע פעולה זו.';
-    }
-
-    // Return the original message if no specific match
-    return rawMessage || 'שגיאה לא צפויה בקישור תכניות לימודים';
   };
 
   /**

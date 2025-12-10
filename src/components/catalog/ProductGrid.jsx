@@ -5,8 +5,9 @@ import Masonry from 'react-masonry-css';
 import ProductCard from '@/components/ProductCard';
 import { apiDownload } from '@/services/apiClient';
 import PdfViewer from '@/components/pdf/PdfViewer';
-import { showConfirm } from '@/utils/messaging';
+import { showConfirm, showError } from '@/utils/messaging';
 import { useProductAccess } from '@/hooks/useProductAccess';
+import { luderror } from '@/lib/ludlog';
 
 /**
  * Unified Product Grid Component
@@ -48,7 +49,8 @@ export default function ProductGrid({
         // Clean up blob URL after a delay
         setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
       } catch (error) {
-        console.error('Error downloading file:', error);
+        luderror.file('Error downloading file:', error);
+        showError('שגיאה בהורדת הקובץ', 'אנא נסה שוב או בדוק את החיבור לאינטרנט');
       }
     }
   };
