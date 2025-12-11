@@ -4,6 +4,7 @@
  */
 
 import { getCurrentMetrics, getPerformanceHints } from './webVitals';
+import { isDev, isProd } from './environment';
 
 /**
  * Performance monitoring class for development and optimization
@@ -12,7 +13,7 @@ class PerformanceMonitor {
   constructor() {
     this.measurements = new Map();
     this.observers = new Map();
-    this.isProduction = process.env.NODE_ENV === 'production';
+    this.isProduction = isProd();
   }
 
   /**
@@ -250,7 +251,7 @@ class PerformanceMonitor {
 const performanceMonitor = new PerformanceMonitor();
 
 // Auto-start monitoring in development
-if (process.env.NODE_ENV === 'development') {
+if (isDev()) {
   // Start monitoring after a short delay to avoid interfering with initial render
   setTimeout(() => {
     performanceMonitor.startMonitoring();

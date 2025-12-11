@@ -3,6 +3,8 @@
  * Integrated Google Analytics 4 and custom event tracking
  */
 
+import { isDev, isProd } from './environment';
+
 /**
  * Analytics Configuration
  */
@@ -11,10 +13,10 @@ const ANALYTICS_CONFIG = {
   GA4_MEASUREMENT_ID: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || 'G-XXXXXXXXXX',
 
   // Enable/disable analytics based on environment and user consent
-  enabled: process.env.NODE_ENV === 'production',
+  enabled: isProd(),
 
   // Debug mode for development
-  debug: process.env.NODE_ENV === 'development',
+  debug: isDev(),
 
   // Custom dimensions for educational platform
   customDimensions: {

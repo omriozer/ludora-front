@@ -9,6 +9,8 @@
  * properly in development environments.
  */
 
+import { isDev } from '@/utils/environment';
+
 const AUTH_STATE_KEY = 'ludora_auth_state_dev';
 const AUTH_STATE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
@@ -16,7 +18,7 @@ const AUTH_STATE_TTL = 24 * 60 * 60 * 1000; // 24 hours
  * Check if we're in development mode
  */
 function isDevelopment() {
-  return import.meta.env.DEV || import.meta.env.MODE === 'development';
+  return isDev();
 }
 
 /**

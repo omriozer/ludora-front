@@ -6,6 +6,7 @@ import { ludlog, luderror } from '@/lib/ludlog';
 import { apiRequest as apiClientRequest } from '@/services/apiClient';
 // Import centralized configuration
 import { config } from '@/config/environment';
+import { isDev } from '@/utils/environment';
 
 // Get API base URL from centralized configuration
 export const getApiBase = () => {
@@ -142,7 +143,7 @@ export const auth = {
 // Error handling helper
 export function handleApiError(error, customHandlers = {}) {
   // Log error in development
-  if (import.meta.env.DEV) {
+  if (isDev()) {
     luderror.api('Handling API error:', error);
   }
 

@@ -5,6 +5,7 @@ import { toast } from '@/components/ui/use-toast';
 import { SETTINGS_RETRY_INTERVALS, SYSTEM_KEYS, getSetting, validateSettings } from '@/constants/settings';
 import { useAuthErrorHandler } from '@/hooks/useAuthErrorHandler';
 import authManager from '@/services/AuthManager';
+import { isDev } from '@/utils/environment';
 
 // OPENAPI MIGRATION: Import TypeScript AuthManager for gradual migration
 import authManagerTS from '@/services/AuthManager.ts';
@@ -17,7 +18,7 @@ const useTypeScriptAuthManager = import.meta.env.VITE_USE_TS_AUTH_MANAGER === 't
 const activeAuthManager = useTypeScriptAuthManager ? authManagerTS : authManager;
 
 // Log which AuthManager is being used
-if (import.meta.env.DEV) {
+if (isDev()) {
   ludlog.auth(`[UserContext] Using ${useTypeScriptAuthManager ? 'TypeScript' : 'JavaScript'} AuthManager`, {
     flag: useTypeScriptAuthManager,
     env: import.meta.env.VITE_USE_TS_AUTH_MANAGER
@@ -59,7 +60,7 @@ export function UserProvider({ children }) {
 
   // Settings validation for development (logs warnings for missing keys)
   const validateSettingsInDev = useCallback((settings) => {
-    if (import.meta.env?.DEV && settings) {
+    if (isDev() && settings) {
       const validation = validateSettings(settings);
 
       if (!validation.isValid) {

@@ -6,6 +6,8 @@
  * without exposing logs to all users.
  */
 
+import { isDev } from '@/utils/environment';
+
 // Debug users can be set via environment variable or localStorage
 const DEBUG_USERS_KEY = 'ludora_debug_users';
 const ENV_DEBUG_USERS = import.meta.env.VITE_DEBUG_USER_IDS ?
@@ -122,7 +124,7 @@ export function disableDebugMode() {
 }
 
 // Export for browser console debugging
-if (typeof window !== 'undefined' && import.meta.env.MODE === 'development') {
+if (typeof window !== 'undefined' && isDev()) {
   window.ludoraDebug = {
     enableDebugMode,
     disableDebugMode,

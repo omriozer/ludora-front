@@ -4,13 +4,14 @@
  */
 
 import { onCLS, onINP, onFCP, onLCP, onTTFB } from 'web-vitals';
+import { isDev, isProd } from './environment';
 
 /**
  * Configuration for Web Vitals monitoring
  */
 const WEB_VITALS_CONFIG = {
   // Only report metrics in production for real user monitoring
-  enabled: process.env.NODE_ENV === 'production',
+  enabled: isProd(),
 
   // Thresholds for metric classification (Google's standards)
   thresholds: {
@@ -198,7 +199,7 @@ export const getPerformanceHints = () => {
  * Only available in development mode
  */
 export const simulateSlowLoading = (delay = 2000) => {
-  if (process.env.NODE_ENV !== 'development') {
+  if (!isDev()) {
     console.warn('simulateSlowLoading is only available in development mode');
     return;
   }

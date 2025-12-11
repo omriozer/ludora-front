@@ -1,5 +1,6 @@
 import React from 'react';
 import { useUser } from '@/contexts/UserContext';
+import { isDev } from '@/utils/environment';
 
 /**
  * Screen shown to students who are linked to a teacher but are waiting for parent consent.
@@ -105,7 +106,7 @@ const WaitingForConsentScreen = ({ onRefresh, onCancel }) => {
         </div>
 
         {/* Debug info for development */}
-        {process.env.NODE_ENV === 'development' && (
+        {isDev() && (
           <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded">
             <p className="text-xs text-red-600">
               <strong>Development Mode:</strong> This screen enforces parent consent.

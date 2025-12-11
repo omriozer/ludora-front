@@ -9,10 +9,11 @@
 
 // Import debug user management from existing module
 import { isDebugUser } from './debugUsers.js';
+import { isDev, isProd } from '../utils/environment';
 
 // Determine if we should actually log
-const isDevelopment = import.meta.env.MODE === 'development';
-const isProduction = import.meta.env.MODE === 'production';
+const isDevelopment = isDev();
+const isProduction = isProd();
 
 /**
  * Should we log? (Development or debug user)

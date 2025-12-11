@@ -8,6 +8,7 @@ import { useUser } from '@/contexts/UserContext';
 import { useLoginModal } from '@/hooks/useLoginModal';
 import { useGlobalAuthErrorHandler } from '@/components/providers/AuthErrorProvider';
 import { ludlog, luderror } from '@/lib/ludlog';
+import { isDev } from '@/utils/environment';
 
 /**
  * React Error Boundary for Lazy Loading Failures
@@ -278,7 +279,7 @@ function LazyLoadErrorFallback({ error, errorType, errorMessage, onRetry }) {
             </Button>
           </div>
 
-          {process.env.NODE_ENV === 'development' && (
+          {isDev() && (
             <details className="mt-4 text-xs">
               <summary className="cursor-pointer text-gray-500 hover:text-gray-700">
                 פרטי שגיאה (מצב פיתוח)

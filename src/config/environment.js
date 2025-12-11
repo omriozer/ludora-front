@@ -17,13 +17,15 @@
  * console.log(config.domains.student); // Get student portal domain
  */
 
+import { isDev } from '../utils/environment';
+
 // Environment validation utility
 function getEnvVar(name, environmentFallbacks = {}, required = false) {
   const value = import.meta.env[name];
 
   if (required && (value === undefined || value === null || value === '')) {
     console.error(`❌ Required environment variable ${name} is not defined`);
-    if (import.meta.env.DEV) {
+    if (isDev()) {
       throw new Error(`Required environment variable ${name} is missing`);
     }
   }
@@ -38,7 +40,7 @@ function getEnvVar(name, environmentFallbacks = {}, required = false) {
   const fallback = environmentFallbacks[currentEnv] || environmentFallbacks.default;
 
   if (fallback !== undefined) {
-    if (import.meta.env.DEV) {
+    if (isDev()) {
       console.warn(`⚠️  Environment variable ${name} not set, using ${currentEnv} fallback: ${fallback}`);
     }
     return fallback;
@@ -264,7 +266,7 @@ export const config = {
 };
 
 // Development validation (only runs in dev)
-if (import.meta.env.DEV) {
+if (isDev()) {
 
   // Validate critical environment variables
   const missingVars = [];

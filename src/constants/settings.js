@@ -1,8 +1,10 @@
 // Frontend settings constants and utilities
 // Re-export settings keys and retry intervals
 
+import { isDev as isDevEnvironment } from '@/utils/environment';
+
 // Environment-aware settings retry intervals
-const isDev = import.meta.env.DEV;
+const isDev = isDevEnvironment();
 
 export const SETTINGS_RETRY_INTERVALS = {
   SYSTEM_ERROR: isDev ? 10000 : 20000,     // 10s dev, 20s prod

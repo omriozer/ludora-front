@@ -4,6 +4,7 @@ import LogoDisplay from '@/components/ui/LogoDisplay';
 import { ludlog, luderror } from '@/lib/ludlog';
 import { toast } from '@/components/ui/use-toast';
 import { getApiBase } from '@/utils/api.js';
+import { isDev } from '@/utils/environment';
 
 // Utility function to detect YouTube URLs
 const isYouTubeUrl = (url) => {
@@ -130,7 +131,7 @@ const SecureVideoPlayer = ({
       const token = localStorage.getItem('authToken');
       if (token) {
         // For relative URLs in development, keep them relative to use vite proxy
-        if (!videoUrl.startsWith('http') && import.meta.env.DEV) {
+        if (!videoUrl.startsWith('http') && isDev()) {
           // Keep relative for proxy in development - just add auth token as query param
           const separator = videoUrl.includes('?') ? '&' : '?';
           const authenticatedPath = `${videoUrl}${separator}authToken=${token}`;
@@ -153,7 +154,7 @@ const SecureVideoPlayer = ({
         const finalUrl = url.toString();
 
         // Debug logging in development
-        if (import.meta.env.DEV) {
+        if (isDev()) {
 
           // Test the URL by making a fetch request to see the response
           fetch(finalUrl, {
@@ -372,7 +373,7 @@ const SecureVideoPlayer = ({
     luderror.auth('Original video URL:', videoUrl);
 
     // In development mode, throw detailed error
-    if (import.meta.env.DEV) {
+    if (isDev()) {
       const errorDetails = {
         error: e.target?.error,
         errorCode: e.target?.error?.code,

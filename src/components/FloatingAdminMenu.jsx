@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { showSuccess, showError } from '@/utils/messaging';
 import { APP_VERSION } from '@/constants/version';
+import { getEnv } from '@/utils/environment';
 
 export default function FloatingAdminMenu({ currentUser }) {
   const { settings, refreshSettings } = useUser();
@@ -544,7 +545,7 @@ export default function FloatingAdminMenu({ currentUser }) {
                 מרכז הניהול מיועד למנהלי המערכת בלבד • גרסה {APP_VERSION}
               </p>
               <p className="text-xs text-gray-400 text-center mt-1">
-                Environment: {import.meta.env.MODE || 'unknown'} • API: {import.meta.env.VITE_API_BASE || 'default'}
+                Environment: {getEnv()} • API: {import.meta.env.VITE_API_BASE || 'default'}
               </p>
             </div>
           </div>

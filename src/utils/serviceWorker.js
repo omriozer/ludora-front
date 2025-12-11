@@ -3,7 +3,7 @@
  * Registers the service worker for caching and performance optimization
  */
 
-const isProduction = process.env.NODE_ENV === 'production';
+import { isDev, isProd } from './environment';
 const swUrl = '/sw.js';
 
 /**
@@ -16,7 +16,7 @@ export function registerSW() {
   }
 
   // Only register in production to avoid caching issues in development
-  if (!isProduction) {
+  if (!isProd()) {
     console.log('Service worker skipped in development mode');
     return Promise.resolve(null);
   }
@@ -216,7 +216,7 @@ export async function clearAllCaches() {
  * Development utility to toggle service worker
  */
 export function toggleServiceWorker() {
-  if (isProduction) {
+  if (isProd()) {
     console.warn('Cannot toggle service worker in production');
     return;
   }
@@ -238,7 +238,7 @@ export function toggleServiceWorker() {
 }
 
 // Make utilities available globally in development
-if (!isProduction && typeof window !== 'undefined') {
+if (isDev() && typeof window !== 'undefined') {
   window.swUtils = {
     register: registerSW,
     unregister: unregisterSW,

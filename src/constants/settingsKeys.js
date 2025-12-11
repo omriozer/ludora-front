@@ -2,6 +2,8 @@
 // This file MUST stay synchronized with /ludora-api/constants/settingsKeys.js
 // Single source of truth for all Settings keys in the frontend application
 
+import { isProd } from '@/utils/environment';
+
 /**
  * ACCESS CONTROL SETTINGS
  * Control student access modes and invitation system
@@ -389,7 +391,7 @@ export const getSettings = (settings, keyFallbacks) => {
  * @returns {Object} Validation result with missing keys
  */
 export const validateSettings = (settings) => {
-  if (import.meta.env?.PROD) {
+  if (isProd()) {
     return { isValid: true, missingKeys: [], extraKeys: [] };
   }
 

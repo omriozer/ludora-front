@@ -3,6 +3,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import { ludlog, luderror } from '@/lib/ludlog';
 import { config } from '@/config/environment';
+import { isDev } from '@/utils/environment';
 
 // Firebase configuration from centralized environment config
 const firebaseConfig = config.firebase;
@@ -21,7 +22,7 @@ try {
   googleProvider.addScope('email');
   googleProvider.addScope('profile');
 
-  if (import.meta.env.DEV) {
+  if (isDev()) {
     ludlog.auth('✅ Firebase initialized successfully');
   }
 } catch (error) {
@@ -57,10 +58,10 @@ export const firebaseAuth = {
     if (!auth) {
       throw new Error('Firebase not initialized');
     }
-    
+
     try {
       await signOut(auth);
-      if (import.meta.env.DEV) {
+      if (isDev()) {
         ludlog.auth('✅ Firebase sign out successful');
       }
     } catch (error) {
