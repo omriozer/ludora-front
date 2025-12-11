@@ -11,6 +11,7 @@ import SubscriptionClaimButton from '@/components/ui/SubscriptionClaimButton';
 import { isBundle, getBundleComposition } from '@/lib/bundleUtils';
 import { getProductTypeName } from '@/config/productTypes';
 import { getProductAction, shouldShowCartButton } from '@/lib/productAccessUtils';
+import { useAnalytics, useInteractionTracking } from '@/hooks/useAnalytics';
 
 /**
  * Product Action Bar - Smart container that shows appropriate buttons based on product state
@@ -48,6 +49,10 @@ export default function ProductActionBar({
 }) {
   const navigate = useNavigate();
 
+  // Analytics tracking
+  const { track } = useAnalytics();
+  const { trackInteraction } = useInteractionTracking('ProductActionBar');
+
   // UNIFIED SIMPLE LOGIC: Single source of truth from backend
   const productAction = getProductAction(product);
   const productType = product?.product_type || 'file';
@@ -79,6 +84,20 @@ export default function ProductActionBar({
               <Button
                 onClick={(e) => {
                   e.stopPropagation();
+
+                  // Track bundle access interaction
+                  track.product('bundle_access', product.product_type, product.id, {
+                    bundle_items_count: product.type_attributes?.bundle_items?.length || 0,
+                    bundle_composition: getBundleComposition(product),
+                    source: 'action_bar'
+                  });
+
+                  trackInteraction('bundle_access', {
+                    product_id: product.id,
+                    product_type: product.product_type,
+                    action: 'view_bundle_contents'
+                  });
+
                   // For bundle products, trigger bundle access callback to show bundle preview modal
                   if (onBundleAccess) {
                     onBundleAccess(product);
@@ -146,6 +165,19 @@ export default function ProductActionBar({
             <Button
               onClick={(e) => {
                 e.stopPropagation();
+
+                // Track game lobby access
+                track.product('game_lobby_access', product.product_type, product.id, {
+                  source: 'action_bar',
+                  entity_id: product.entity_id
+                });
+
+                trackInteraction('game_lobby_access', {
+                  product_id: product.id,
+                  product_type: product.product_type,
+                  action: 'manage_students'
+                });
+
                 // Navigate to classroom management for this educational activity
                 navigate(`/game-lobbies/${product.entity_id || product.id}`);
               }}
@@ -164,6 +196,19 @@ export default function ProductActionBar({
             <Button
               onClick={(e) => {
                 e.stopPropagation();
+
+                // Track generic product access
+                track.product('generic_access', product.product_type, product.id, {
+                  source: 'action_bar',
+                  entity_id: product.entity_id
+                });
+
+                trackInteraction('generic_access', {
+                  product_id: product.id,
+                  product_type: product.product_type,
+                  action: 'view_details'
+                });
+
                 navigate(`/product-details?type=${productType}&id=${product.entity_id || product.id}`);
               }}
               className={`group relative overflow-hidden bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold rounded-full shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 border-2 border-green-400/20 ${fullWidth ? 'w-full' : ''} ${className}`}

@@ -10,6 +10,8 @@ import { useActivityCodeHandler } from '@/hooks/useActivityCodeHandler';
 import { useLoginModal } from '@/hooks/useLoginModal';
 import LogoDisplay from '@/components/ui/LogoDisplay';
 import MigrateToUserModal from '@/components/student/MigrateToUserModal';
+import { useAnalytics, useInteractionTracking } from '@/hooks/useAnalytics';
+import { withPerformanceMonitoring, usePerformanceMeasurement } from '@/utils/performanceMonitor.jsx';
 import {
   getStudentNavFeatures,
   getDefaultStudentNavFeatures,
@@ -34,6 +36,13 @@ const StudentsNav = ({ teacherInfo = null }) => {
     playerLogout
   } = useUser();
   const { openLoginModal } = useLoginModal();
+
+  // Analytics tracking
+  const { track } = useAnalytics();
+  const { trackInteraction } = useInteractionTracking('StudentsNav');
+
+  // Performance monitoring
+  const { startMeasurement, endMeasurement } = usePerformanceMeasurement();
 
   // Collapse state - load from localStorage with mobile-first default
   const [isCollapsed, setIsCollapsed] = useState(() => {
@@ -115,16 +124,55 @@ const StudentsNav = ({ teacherInfo = null }) => {
   });
 
   const handleEnterCode = () => {
+    // Track activity code entry
+    track.educational('activity_code_entry', {
+      method: 'manual_input',
+      has_teacher_info: !!teacherInfo,
+      nav_collapsed: isCollapsed,
+      authentication_status: hasAnyAuthentication() ? 'authenticated' : 'anonymous'
+    });
+
+    trackInteraction('activity_code_entry', {
+      method: 'keyboard',
+      action: 'enter_code'
+    });
+
     handleCodeEntry();
   };
 
   // Login handler
   const handleLoginClick = () => {
+    // Track login initiation
+    track.educational('student_login_start', {
+      source: 'student_nav',
+      nav_collapsed: isCollapsed,
+      has_teacher_info: !!teacherInfo
+    });
+
+    trackInteraction('login', {
+      action: 'login_modal_open',
+      source: 'student_nav'
+    });
+
     openLoginModal();
   };
 
   // Logout handler - handles both user and player logout
   const handleLogout = async () => {
+    // Track logout action
+    const logoutType = isAuthenticated ? 'user_logout' : 'player_logout';
+    track.educational('student_logout', {
+      logout_type: logoutType,
+      source: 'student_nav',
+      nav_collapsed: isCollapsed,
+      has_teacher_info: !!teacherInfo
+    });
+
+    trackInteraction('logout', {
+      action: logoutType,
+      source: 'student_nav'
+    });
+
     try {
       if (isAuthenticated) {
         await logout();
@@ -137,16 +185,60 @@ const StudentsNav = ({ teacherInfo = null }) => {
   };
 
   const toggleCollapse = () => {
+    // Track navigation toggle
+    track.educational('student_nav_toggle', {
+      from_state: isCollapsed ? 'collapsed' : 'expanded',
+      to_state: isCollapsed ? 'expanded' : 'collapsed',
+      device_type: isMobile ? 'mobile' : 'desktop',
+      has_teacher_info: !!teacherInfo
+    });
+
+    trackInteraction('nav_toggle', {
+      action: isCollapsed ? 'expand' : 'collapse',
+      device: isMobile ? 'mobile' : 'desktop'
+    });
+
     setIsCollapsed(!isCollapsed);
   };
 
   // Migration modal handler
   const handleOpenMigration = () => {
+    // Track account upgrade initiation
+    track.educational('student_account_upgrade_start', {
+      source: 'student_nav',
+      nav_collapsed: isCollapsed,
+      player_id: currentPlayer?.id
+    });
+
+    trackInteraction('account_upgrade', {
+      action: 'migration_modal_open',
+      source: 'student_nav'
+    });
+
     setShowMigrationModal(true);
   };
 
   const handleCloseMigration = () => {
     setShowMigrationModal(false);
+  };
+
+  // QR scan handler with analytics
+  const handleQRScanWithAnalytics = () => {
+    // Track QR scan initiation
+    track.educational('activity_code_entry', {
+      method: 'qr_scan',
+      has_teacher_info: !!teacherInfo,
+      nav_collapsed: isCollapsed,
+      authentication_status: hasAnyAuthentication() ? 'authenticated' : 'anonymous'
+    });
+
+    trackInteraction('activity_code_entry', {
+      method: 'qr_scan',
+      action: 'qr_scan_start'
+    });
+
+    // Call the original QR scan handler from the hook
+    handleQRScan();
   };
 
 
@@ -191,7 +283,7 @@ const StudentsNav = ({ teacherInfo = null }) => {
             <Button
               variant="outline"
               size="sm"
-              onClick={handleQRScan}
+              onClick={handleQRScanWithAnalytics}
               className={`${isCollapsed ? 'w-10 h-10 p-0' : 'flex-1 h-9'} border-blue-300 text-blue-600 hover:bg-blue-100 transition-all duration-200`}
               title="סרוק QR"
             >
@@ -224,10 +316,29 @@ const StudentsNav = ({ teacherInfo = null }) => {
   const renderNavigationFeature = (feature) => {
     const IconComponent = feature.icon;
 
+    const handleNavLinkClick = () => {
+      // Track navigation link click
+      track.educational('student_nav_click', {
+        feature_key: feature.key,
+        feature_text: feature.text,
+        destination_url: feature.url,
+        nav_collapsed: isCollapsed,
+        has_teacher_info: !!teacherInfo,
+        authentication_status: hasAnyAuthentication() ? 'authenticated' : 'anonymous'
+      });
+
+      trackInteraction('nav_link_click', {
+        feature: feature.key,
+        destination: feature.url,
+        nav_state: isCollapsed ? 'collapsed' : 'expanded'
+      });
+    };
+
     return (
       <div key={feature.key} className="relative group">
         <Link
           to={feature.url}
+          onClick={handleNavLinkClick}
           className={`relative flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 hover:scale-105 hover:bg-gradient-to-r hover:from-purple-100 hover:to-blue-100 text-purple-700 hover:shadow-lg ${
             isCollapsed ? 'justify-center w-10 h-10 p-0' : ''
           }`}
@@ -511,4 +622,5 @@ StudentsNav.propTypes = {
   }),
 };
 
-export default StudentsNav;
+// Export with performance monitoring wrapper
+export default withPerformanceMonitoring(StudentsNav);

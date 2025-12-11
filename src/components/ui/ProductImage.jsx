@@ -22,6 +22,16 @@ const PRODUCT_TYPE_ICONS = {
 /**
  * ProductImage - Reusable component for displaying product images with smart fallbacks
  *
+ * ⚠️  CRITICAL: DO NOT use OptimizedImage in this component!
+ * ProductImage implements a sophisticated 3-level fallback system:
+ * 1. Product custom image
+ * 2. Product type fallback image
+ * 3. Product type icon
+ *
+ * OptimizedImage has its own error handling that interferes with this fallback chain,
+ * showing "📷 תמונה לא זמינה" instead of allowing our custom fallback sequence.
+ * Use regular <img> tags with loading="lazy" for proper fallback control.
+ *
  * @param {Object} product - Product object
  * @param {string} className - CSS classes for the image
  * @param {string} iconClassName - CSS classes for the fallback icon
@@ -82,7 +92,9 @@ export default function ProductImage({
     setCurrentImageUrl(null);
   };
 
-  // If we have a valid image URL, render the image
+  // If we have a valid image URL, render the regular image with fallback handling
+  // NOTE: Using regular <img> instead of OptimizedImage to preserve our custom
+  // fallback chain. OptimizedImage would interfere with handleImageError/handleFallbackError.
   if (currentImageUrl) {
     return (
       <img
@@ -90,6 +102,8 @@ export default function ProductImage({
         alt={alt || product.title}
         className={className}
         onError={hasError ? handleFallbackError : handleImageError}
+        loading="lazy"
+        decoding="async"
       />
     );
   }

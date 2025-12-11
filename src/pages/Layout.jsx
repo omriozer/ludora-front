@@ -20,6 +20,7 @@ import LudoraLoadingSpinner from "@/components/ui/LudoraLoadingSpinner";
 import { canBypassMaintenance } from "@/utils/adminCheck";
 import UserWayWidget from "@/components/accessibility/UserWayWidget";
 import { luderror } from "@/lib/ludlog";
+import SEOHead from "@/components/SEOHead";
 
 function LayoutContent({ children }) {
   const location = useLocation();
@@ -339,6 +340,9 @@ function LayoutContent({ children }) {
   // Main layout
   return (
     <CartProvider>
+      {/* Default SEO fallback - gets overridden by page-specific SEOHead components */}
+      <SEOHead />
+
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex">
 
 
