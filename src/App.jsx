@@ -37,6 +37,7 @@ import { SYSTEM_KEYS, getSetting } from '@/constants/settings';
 import UserWayWidget from '@/components/accessibility/UserWayWidget';
 import ConsentEnforcement from '@/components/consent/ConsentEnforcement';
 import { initializeFullAnalytics } from '@/utils/analytics';
+import SitemapProxy from '@/components/seo/SitemapProxy';
 
 // Suspense fallback component
 const SuspenseLoader = () => (
@@ -529,6 +530,10 @@ function App() {
 								<LazyPages.ParentConsent />
 							</AuthAwareSuspense>
 						}
+					/>
+					<Route
+						path='/sitemap.xml'
+						element={<SitemapProxy />}
 					/>
 
 					{/* Protected routes - require authentication */}
