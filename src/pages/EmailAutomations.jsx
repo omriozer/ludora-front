@@ -168,9 +168,13 @@ export default function EmailAutomations() {
     }
 
     // Show confirmation dialog with user's email
+    const isDevelopment = import.meta.env.DEV;
+    const baseMessage = `האם ברצונך לשלוח דוגמה של התבנית "${template.name}" לכתובת ${currentUser.email}?`;
+    const devWarning = '\n\n⚠️ שים לב: במצב פיתוח, המייל לא יישלח באמת - הוא ירשם במסד הנתונים בלבד.';
+
     const confirmed = await showConfirm(
       'שליחת דוגמת מייל',
-      `האם ברצונך לשלוח דוגמה של התבנית "${template.name}" לכתובת ${currentUser.email}?`,
+      baseMessage + (isDevelopment ? devWarning : ''),
       {
         variant: 'info',
         confirmText: 'שלח דוגמה',
@@ -183,7 +187,7 @@ export default function EmailAutomations() {
     setSendingExample(templateId);
 
     try {
-      const response = await fetch('/api/sendExampleEmail', {
+      const response = await fetch('/api/functions/sendExampleEmail', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
