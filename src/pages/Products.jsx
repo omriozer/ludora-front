@@ -7,10 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import KitBadge from "@/components/ui/KitBadge";
 import CurriculumLinkButton from "@/components/ui/CurriculumLinkButton";
+import SimpleOptimizedImage from "@/components/ui/SimpleOptimizedImage";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useConfirmation } from '@/components/ui/ConfirmationProvider';
+import { useAnalytics, useInteractionTracking } from '@/hooks/useAnalytics';
+import { withPerformanceMonitoring, usePerformanceMeasurement } from '@/utils/performanceMonitor.jsx';
 import {
   Plus,
   Edit,
@@ -36,10 +39,17 @@ import { usePaymentPageStatusCheck } from '@/hooks/usePaymentPageStatusCheck';
 import { useSubscriptionPaymentStatusCheck } from '@/hooks/useSubscriptionPaymentStatusCheck';
 import { ludlog } from "@/lib/ludlog";
 
-export default function Products() {
+function Products() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { currentUser, settings, isLoading: userLoading } = useUser();
+
+  // Analytics tracking
+  const { track } = useAnalytics();
+  const { trackInteraction } = useInteractionTracking('Products');
+
+  // Performance monitoring
+  const { startMeasurement, endMeasurement } = usePerformanceMeasurement();
 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -95,6 +105,7 @@ export default function Products() {
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
+    startMeasurement('Products-data-loading');
     try {
       // Check access permissions
       const hasAdminAccess = currentUser.role === 'admin' || currentUser.role === 'sysadmin';
@@ -172,8 +183,9 @@ export default function Products() {
         setCategories(categoriesData);
       }
     } catch (error) {
-      console.error("Error loading data:", error);
+      ludlog.api("Error loading data:", error);
     }
+    endMeasurement('Products-data-loading');
     setIsLoading(false);
   }, [currentUser, settings, showAllContent, selectedTab]);
 
@@ -230,14 +242,52 @@ export default function Products() {
   }, [products, navigate]);
 
   const handleEdit = (product) => {
+    // Track product edit interaction
+    track.product('edit_start', product.product_type, product.id, {
+      is_published: product.is_published,
+      has_price: product.price > 0,
+      source: 'products_page'
+    });
+
+    trackInteraction('product_edit', {
+      product_id: product.id,
+      product_type: product.product_type,
+      action: 'edit_start'
+    });
+
     navigate(`/products/edit/${product.id}`);
   };
 
   const handleCreateNew = () => {
+    // Track product creation initiation
+    track.educational('product_creation_start', {
+      source: 'products_page',
+      visible_types: visibleProductTypes,
+      current_tab: selectedTab,
+      total_products: products.length
+    });
+
+    trackInteraction('product_create', {
+      action: 'create_start',
+      source: 'products_page'
+    });
+
     navigate('/products/create');
   };
 
   const handleRefresh = () => {
+    // Track refresh action
+    track.educational('products_refresh', {
+      current_tab: selectedTab,
+      total_products: products.length,
+      visible_types: visibleProductTypes
+    });
+
+    trackInteraction('refresh', {
+      action: 'manual_refresh',
+      products_count: products.length
+    });
+
     toast({
       title: "מרענן רשימת מוצרים",
       description: "טוען נתונים עדכניים...",
@@ -350,6 +400,19 @@ export default function Products() {
   };
 
   const handleDeleteClick = async (product) => {
+    // Track deletion initiation
+    track.product('delete_start', product.product_type, product.id, {
+      is_published: product.is_published,
+      has_price: product.price > 0,
+      source: 'products_page'
+    });
+
+    trackInteraction('product_delete', {
+      product_id: product.id,
+      product_type: product.product_type,
+      action: 'delete_confirm_show'
+    });
+
     try {
       await showConfirmation(
         'מחיקת מוצר',
@@ -370,6 +433,24 @@ export default function Products() {
     } catch (error) {
       // Error handled by confirmation dialog
     }
+  };
+
+  const handleTabChange = (newTab) => {
+    // Track tab switching
+    track.educational('product_tab_change', {
+      from_tab: selectedTab,
+      to_tab: newTab,
+      products_in_from_tab: selectedTab ? products.filter(p => p.product_type === selectedTab).length : 0,
+      products_in_to_tab: products.filter(p => p.product_type === newTab).length
+    });
+
+    trackInteraction('tab_switch', {
+      from: selectedTab || 'none',
+      to: newTab,
+      action: 'tab_change'
+    });
+
+    setSelectedTab(newTab);
   };
 
   const getFilteredProducts = () => {
@@ -485,10 +566,12 @@ export default function Products() {
           {supportsPreview && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <img
+                <SimpleOptimizedImage
                   src="/logo_sm.svg"
                   alt="Branding"
                   className={`w-3.5 h-3.5 cursor-help ${hasBranding ? 'opacity-100' : 'opacity-30 grayscale'}`}
+                  width={14}
+                  height={14}
                 />
               </TooltipTrigger>
               <TooltipContent side="top" className="bg-gray-800 text-white border-gray-600">
@@ -636,7 +719,7 @@ export default function Products() {
 
         {/* Enhanced Tabs */}
         {visibleProductTypes.length > 0 && (
-          <Tabs value={selectedTab} onValueChange={setSelectedTab}>
+          <Tabs value={selectedTab} onValueChange={handleTabChange}>
             <div className="bg-white/70 backdrop-blur-sm rounded-xl md:rounded-2xl shadow-lg border border-slate-200/60 p-2 md:p-3 mb-4 md:mb-6 ring-1 ring-slate-900/5">
               <TabsList className="flex w-full flex-wrap justify-center lg:justify-center lg:gap-6 bg-slate-50/50 backdrop-blur-sm gap-1 md:gap-2 p-1 rounded-lg md:rounded-xl">
                 {visibleProductTypes.map(productType => {
@@ -1019,3 +1102,6 @@ export default function Products() {
     </div>
   );
 }
+
+// Export with performance monitoring wrapper
+export default withPerformanceMonitoring(Products);

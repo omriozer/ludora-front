@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Purchase } from "@/services/entities";
 import { useUser } from "@/contexts/UserContext";
 import { apiDownload } from "@/services/apiClient";
@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { SafeHtmlRenderer } from "@/components/ui/SafeHtmlRenderer";
 import { ludlog, luderror } from '@/lib/ludlog';
 import KitBadge from "@/components/ui/KitBadge";
+import SimpleOptimizedImage from "@/components/ui/SimpleOptimizedImage";
 import DraftBadgeDisplay from "@/components/ui/DraftBadgeDisplay";
 import { isBundle, getBundleComposition, getBundleCompositionLabel } from "@/lib/bundleUtils";
 import {
@@ -44,6 +45,10 @@ import LudoraLoadingSpinner from "@/components/ui/LudoraLoadingSpinner";
 import VideoPlayer from "../components/VideoPlayer"; // Added import for VideoPlayer component
 import SecureVideoPlayer from "../components/SecureVideoPlayer";
 import { getMarketingVideoUrl, getProductImageUrl } from '@/utils/videoUtils.js';
+import SEOHead from '@/components/SEOHead';
+import { useSEO } from '@/hooks/useSEO';
+import { generateCanonicalUrl, generateBreadcrumbs } from '@/lib/urlUtils';
+import { generatePageStructuredData } from '@/lib/structuredData';
 import { getProductTypeName, formatGradeRange } from "@/config/productTypes";
 import ProductAccessStatus from "@/components/ui/ProductAccessStatus";
 import { hasActiveAccess } from "@/utils/productAccessUtils";
@@ -62,6 +67,7 @@ import BundlePreviewModal from "@/components/BundlePreviewModal";
 
 export default function ProductDetails() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { currentUser, settings, isLoading: userLoading } = useUser();
   const { openLoginModal } = useLoginModal();
 
@@ -110,6 +116,9 @@ export default function ProductDetails() {
 
   // Track if component is mounted to avoid calling setState on unmounted component
   const isMountedRef = useRef(true);
+
+  // SEO Management
+  const { seoData, updateSEO } = useSEO({ autoGenerateUrl: true });
 
   // Track component mount/unmount
   useEffect(() => {
@@ -471,6 +480,62 @@ export default function ProductDetails() {
     };
   }, [loadData]);
 
+  // Generate SEO data for product page - Routing-safe implementation
+  useEffect(() => {
+    // Only proceed if we have stable product data
+    if (!item || !item.id || error) return;
+
+    // Get current product parameter from URL
+    const searchParams = new URLSearchParams(location.search);
+    const productId = searchParams.get('product');
+
+    // Prevent SEO updates during route transitions
+    if (!productId || productId !== item.id) {
+      return; // Skip if product ID doesn't match URL parameter
+    }
+
+    try {
+      const productTitle = item.title || 'מוצר חינוכי';
+      const productDescription = item.description || item.short_description || 'מוצר חינוכי איכותי מפלטפורמת לודורה';
+      const cleanDescription = productDescription.replace(/<[^>]*>/g, '').substring(0, 160) + (productDescription.length > 160 ? '...' : '');
+      const productKeywords = `${item.title || ''}, ${getProductTypeName(item.product_type, 'singular') || 'מוצר חינוכי'}, לודורה, חינוך דיגיטלי`;
+
+      // Generate structured data for the specific product type
+      let structuredDataArray = [];
+
+      try {
+        const productStructuredData = generatePageStructuredData({
+          pageType: item.product_type,
+          content: item,
+          url: generateCanonicalUrl(`/product-details?product=${item.id}`),
+          breadcrumbs: generateBreadcrumbs(location.pathname, {
+            [item.product_type]: getProductTypeName(item.product_type, 'plural') || 'מוצרים',
+            productTitle: item.title
+          })
+        });
+        structuredDataArray.push(productStructuredData);
+      } catch (structuredDataError) {
+        ludlog.ui('Structured data generation error:', structuredDataError);
+      }
+
+      // Update SEO with routing safety timeout
+      const updateTimer = setTimeout(() => {
+        updateSEO({
+          title: productTitle,
+          description: cleanDescription,
+          keywords: productKeywords,
+          image: item.thumbnail_url || item.image_url || '',
+          type: 'product',
+          structuredData: structuredDataArray
+        });
+      }, 100); // Small delay to ensure routing stability
+
+      return () => clearTimeout(updateTimer);
+    } catch (error) {
+      ludlog.ui('Product SEO update error:', error);
+    }
+  }, [item?.id, item?.title, error, location.search, updateSEO]); // Careful dependency management
+
 
 
   const getProductTypeLabel = (type) => {
@@ -634,8 +699,9 @@ export default function ProductDetails() {
   }
 
   return (
-
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/30 mobile-no-scroll-x mobile-safe-container">
+    <>
+      <SEOHead {...seoData} title={seoData?.title || item?.title} />
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/30 mobile-no-scroll-x mobile-safe-container">
       <div className="max-w-7xl mx-auto mobile-padding-x pb-4 sm:pb-6 md:pb-8 mobile-safe-container">
 
         {/* Enhanced Sticky Header with Back Button and Purchase Button */}
@@ -748,10 +814,13 @@ export default function ProductDetails() {
               {/* Image Section - Full Width on Top */}
               <div className="relative w-full">
                 <div className="h-64 sm:h-80 md:h-96 overflow-hidden">
-                  <img
+                  <SimpleOptimizedImage
                     src={getProductImageUrl(item)}
                     alt={item.title}
                     className="w-full h-full object-cover"
+                    priority={true}
+                    width={768}
+                    height={384}
                   />
                 </div>
 
@@ -1905,5 +1974,6 @@ export default function ProductDetails() {
         />
       )}
     </div>
+    </>
   );
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -14,6 +14,11 @@ import ProductGrid from './ProductGrid';
 import EmptyState from './EmptyState';
 import useProductCatalog from './hooks/useProductCatalog';
 import { useSubscriptionEligibility } from '@/hooks/useSubscriptionEligibility';
+import SEOHead from '@/components/SEOHead';
+import { useSEO } from '@/hooks/useSEO';
+import { generateCanonicalUrl, generateBreadcrumbs } from '@/lib/urlUtils';
+import { generateItemListStructuredData, getLudoraOrganization } from '@/lib/structuredData';
+import { ludlog } from '@/lib/ludlog';
 
 
 /**
@@ -68,6 +73,60 @@ export default function ProductCatalog({ productType: propProductType }) {
     isLoading: isSubscriptionLoading,
     refetch: refetchSubscriptionEligibility
   } = useSubscriptionEligibility();
+
+  // SEO Management - Routing-safe implementation
+  const { seoData, updateSEO } = useSEO({ autoGenerateUrl: true });
+
+  // Generate catalog-specific SEO content with routing safety
+  React.useEffect(() => {
+    // Only proceed if we have valid config and we're not in a transitional state
+    if (!config || !typeConfig || !productType) return;
+
+    // Prevent SEO updates during route transitions
+    const currentPath = location.pathname;
+    const expectedPath = typeConfig.url;
+    if (currentPath !== expectedPath && !currentPath.startsWith(expectedPath)) {
+      return; // Skip if path doesn't match expected product type
+    }
+
+    try {
+      const catalogTitle = typeConfig.plural;
+      const catalogDescription = `גלה את אוסף ה${typeConfig.plural} הדיגיטליים שלנו. תכנים חינוכיים איכותיים למורים ותלמידים בתחום ${typeConfig.plural}.`;
+      const catalogKeywords = `${typeConfig.plural}, ${typeConfig.singular}, חינוך דיגיטלי, לודורה, ${productType}, תכנים חינוכיים`;
+
+      // Generate structured data only if we have products and stable state
+      let structuredDataArray = [getLudoraOrganization()];
+
+      if (filteredProducts && filteredProducts.length > 0) {
+        const catalogItems = filteredProducts.slice(0, 10).map((product, index) => ({
+          position: index + 1,
+          name: product.title || '',
+          url: generateCanonicalUrl(`/product-details?product=${product.id}`),
+          image: product.thumbnail_url || '',
+          description: product.description || ''
+        }));
+
+        if (catalogItems.length > 0) {
+          const itemListData = generateItemListStructuredData(catalogItems, catalogTitle);
+          structuredDataArray.push(itemListData);
+        }
+      }
+
+      // Update SEO with routing safety timeout
+      const updateTimer = setTimeout(() => {
+        updateSEO({
+          title: catalogTitle,
+          description: catalogDescription,
+          keywords: catalogKeywords,
+          structuredData: structuredDataArray
+        });
+      }, 100); // Small delay to ensure routing stability
+
+      return () => clearTimeout(updateTimer);
+    } catch (error) {
+      ludlog.ui('SEO update error:', error);
+    }
+  }, [config, typeConfig, productType, location.pathname]); // Removed filteredProducts from deps to prevent routing issues
 
   // Now we can do conditional returns AFTER all hooks have been called
   if (!productType) {
@@ -135,10 +194,12 @@ export default function ProductCatalog({ productType: propProductType }) {
 
   // Render catalog
   return (
-    <div
-      className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-indigo-50/30 mobile-no-scroll-x mobile-safe-container"
-      dir="rtl"
-    >
+    <>
+      <SEOHead {...seoData} title={seoData?.title || typeConfig?.plural || config?.title} />
+      <div
+        className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-indigo-50/30 mobile-no-scroll-x mobile-safe-container"
+        dir="rtl"
+      >
       <div className="max-w-7xl mx-auto mobile-padding-x py-4 md:py-8 mobile-safe-container">
         {/* Header with title, analytics (if applicable) */}
         <CatalogHeader
@@ -175,7 +236,8 @@ export default function ProductCatalog({ productType: propProductType }) {
           onSubscriptionSuccess={refetchSubscriptionEligibility}
         />
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 

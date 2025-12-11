@@ -36,6 +36,7 @@ import SubscriptionModal from "@/components/SubscriptionModal";
 import { ludlog, luderror } from '@/lib/ludlog';
 import { toast } from '@/components/ui/use-toast';
 import { urls } from '@/config/urls';
+import SEOHead from '@/components/SEOHead';
 import { NAV_VISIBILITY_OPTIONS, NAVIGATION_KEYS } from "@/constants/settingsKeys";
 import { usePaymentPageStatusCheck } from '@/hooks/usePaymentPageStatusCheck';
 import { useSubscriptionPaymentStatusCheck } from '@/hooks/useSubscriptionPaymentStatusCheck';
@@ -170,7 +171,7 @@ const MyAccount = () => {
         variant: "default"
       });
     } catch (error) {
-      console.error('Error generating invitation code:', error);
+      luderror.auth('Error generating invitation code:', error);
       toast({
         title: "שגיאה",
         description: "לא הצלחנו ליצור קוד הזמנה",
@@ -193,7 +194,7 @@ const MyAccount = () => {
         variant: "default"
       });
     } catch (error) {
-      console.error('Error copying to clipboard:', error);
+      luderror.ui('Error copying to clipboard:', error);
       toast({
         title: "שגיאה",
         description: "לא הצלחנו להעתיק את הכתובת",
@@ -221,7 +222,7 @@ const MyAccount = () => {
             margin: 0
           });
         } catch (error) {
-          console.error('Error generating QR code:', error);
+          luderror.ui('Error generating QR code:', error);
           toast({
             title: "שגיאה ביצירת QR",
             description: "לא הצלחנו ליצור את קוד ה-QR. אנא נסה שוב.",
@@ -432,7 +433,9 @@ const MyAccount = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-indigo-50/50 py-2 sm:py-4 lg:py-8">
+    <>
+      <SEOHead title="החשבון שלי" />
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-indigo-50/50 py-2 sm:py-4 lg:py-8">
       <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
         {/* Header - Mobile Optimized */}
         <div className="text-center mb-4 sm:mb-6 lg:mb-10">
@@ -1245,6 +1248,7 @@ const MyAccount = () => {
 
       </div>
     </div>
+    </>
   );
 }
 
