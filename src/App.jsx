@@ -36,6 +36,7 @@ import { canBypassMaintenance } from '@/utils/adminCheck';
 import { SYSTEM_KEYS, getSetting } from '@/constants/settings';
 import UserWayWidget from '@/components/accessibility/UserWayWidget';
 import ConsentEnforcement from '@/components/consent/ConsentEnforcement';
+import { initializeFullAnalytics } from '@/utils/analytics';
 
 // Suspense fallback component
 const SuspenseLoader = () => (
@@ -401,6 +402,12 @@ function StudentPortal() {
 function App() {
 	const { currentUser, isLoading } = useUser();
 	const location = useLocation();
+
+	// Initialize analytics and WebVitals monitoring system once
+	useEffect(() => {
+		// Initialize full analytics including WebVitals
+		initializeFullAnalytics();
+	}, []); // Run once on app initialization
 
 	// Teacher portal logic - Handle subscription payment result query parameters
 	// Must be called before any conditional returns to avoid React Hooks rules violation
