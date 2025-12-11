@@ -19,6 +19,8 @@ import { isBundle } from '@/lib/bundleUtils';
 import { isDraft } from '@/lib/productAccessUtils';
 import { SafeHtmlRenderer, hasRichContent } from '@/components/ui/SafeHtmlRenderer';
 import CurriculumLinkButton from '@/components/ui/CurriculumLinkButton';
+import { useAnalytics, useInteractionTracking } from '@/hooks/useAnalytics';
+import { withPerformanceMonitoring, usePerformanceMeasurement } from '@/utils/performanceMonitor.jsx';
 
 // Hebrew grade names constant
 export const HEBREW_GRADES = {
@@ -36,7 +38,7 @@ export const HEBREW_GRADES = {
 	12: 'כיתה יב',
 };
 
-export default function ProductCard({
+function ProductCard({
 	product,
 	_userPurchases = [], // Legacy parameter - no longer used (AccessControlIntegrator provides access info)
 	onFileAccess,
@@ -52,6 +54,13 @@ export default function ProductCard({
 	const { currentUser } = useUser();
 	const [isHovered, setIsHovered] = useState(false);
 	const [isMobile, setIsMobile] = useState(false);
+
+	// Analytics tracking
+	const { track } = useAnalytics();
+	const { trackInteraction } = useInteractionTracking('ProductCard');
+
+	// Performance monitoring
+	const { startMeasurement, endMeasurement } = usePerformanceMeasurement();
 
 	// SINGLE SOURCE OF TRUTH: Use only AccessControlIntegrator embedded access info
 	const access = product?.access || {};
@@ -112,6 +121,21 @@ export default function ProductCard({
 	};
 
 	const handleDetailsClick = () => {
+		// Track product view interaction
+		track.product('view', product.product_type, product.id, {
+			has_access: hasAccess,
+			is_bundle: isBundle(product),
+			is_draft: isDraft(product),
+			price: product.price,
+			creator_type: currentUser?.id === product.creator_user_id ? 'self' : 'other'
+		});
+
+		trackInteraction('details_click', {
+			product_id: product.id,
+			product_type: product.product_type,
+			source: 'product_card'
+		});
+
 		navigate(`/product-details?product=${product.id}`);
 	};
 
@@ -177,8 +201,11 @@ export default function ProductCard({
 
 	// Get description content - prioritize short_description, then use description
 	const getDescriptionContent = () => {
+		startMeasurement('ProductCard-description-processing');
+
 		// Prefer short_description as it's designed to be brief
 		if (product.short_description && product.short_description.trim()) {
+			endMeasurement('ProductCard-description-processing');
 			return {
 				content: product.short_description,
 				isRichText: false,
@@ -187,11 +214,15 @@ export default function ProductCard({
 
 		// Use description field
 		const desc = product.description || '';
-		if (!desc.trim()) return null;
+		if (!desc.trim()) {
+			endMeasurement('ProductCard-description-processing');
+			return null;
+		}
 
 		// Check if description contains rich text formatting
 		const isRich = hasRichContent(desc);
 		if (isRich) {
+			endMeasurement('ProductCard-description-processing');
 			return {
 				content: desc,
 				isRichText: true,
@@ -199,6 +230,7 @@ export default function ProductCard({
 		} else {
 			// Plain text description - truncate if needed
 			const truncated = desc.length > 120 ? desc.substring(0, 120) + '...' : desc;
+			endMeasurement('ProductCard-description-processing');
 			return {
 				content: truncated,
 				isRichText: false,
@@ -429,3 +461,6 @@ export default function ProductCard({
 		</div>
 	);
 }
+
+// Export with performance monitoring wrapper
+export default withPerformanceMonitoring(ProductCard);
