@@ -221,6 +221,46 @@ export default function PrivacyPolicy() {
           <Card className="border-none shadow-lg">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
+                <Shield className="w-5 h-5 text-blue-600" />
+                Google User Data Collection and Usage / שימוש במידע Google
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 className="font-semibold text-blue-900 mb-3">English</h3>
+                <div className="space-y-3 text-sm text-blue-800">
+                  <div>
+                    <strong>Data Accessed:</strong> When you sign in with Google, we access your email address and basic profile information (name and profile picture) through Firebase Authentication.
+                  </div>
+                  <div>
+                    <strong>Data Usage:</strong> We use your Google account information to create and maintain your user account, provide authentication services, and personalize your experience on our educational platform.
+                  </div>
+                  <div>
+                    <strong>Data Sharing:</strong> We do not sell, rent, or share your Google user data with advertising or marketing companies. Your Google data is only shared with our secure backend systems for authentication and account management purposes.
+                  </div>
+                  <div>
+                    <strong>Data Storage & Protection:</strong> Your Google authentication data is securely stored using industry-standard encryption (SSL/TLS) and access is restricted to authorized personnel only.
+                  </div>
+                  <div>
+                    <strong>Data Retention & Deletion:</strong> You can request deletion of your account and associated Google data at any time by contacting us. Upon account deletion, your Google authentication data is permanently removed from our systems.
+                  </div>
+                </div>
+              </div>
+              <div>
+                <h3 className="font-semibold mb-3">עברית</h3>
+                <p className="text-gray-600 mb-2">
+                  כאשר אתה נרשם דרך Google, אנו מקבלים גישה לכתובת הדוא"ל שלך ומידע פרופיל בסיסי (שם ותמונת פרופיל) דרך Firebase Authentication.
+                </p>
+                <p className="text-gray-600">
+                  מידע זה משמש אותנו לצורך יצירת חשבון משתמש, אימות זהות ושיפור החוויה הלימודית שלך בפלטפורמה שלנו.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-none shadow-lg">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
                 <UserCheck className="w-5 h-5 text-orange-600" />
                 שיתוף מידע עם צדדים שלישיים
               </CardTitle>
@@ -234,6 +274,7 @@ export default function PrivacyPolicy() {
                   <li><strong>עיבוד תשלומים:</strong> ספק הסליקה (PayPlus) מקבל פרטים הכרחיים לעיבוד התשלום בלבד</li>
                   <li><strong>דרישה חוקית:</strong> במקרה של דרישה משפטית מהרשויות</li>
                   <li><strong>הסכמה מפורשת:</strong> רק במקרה שנתת הסכמה מפורשת מראש</li>
+                  <li><strong>Google Authentication:</strong> Firebase/Google services for authentication and security purposes only</li>
                 </ul>
                 <p className="text-sm text-gray-500 bg-gray-100 p-3 rounded-lg">
                   <strong>חשוב לדעת:</strong> אנו לא מוכרים, משכירים או מעבירים את המידע האישי שלך לחברות פרסום או שיווק.
