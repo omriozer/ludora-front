@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import OptimizedImage from "@/components/ui/OptimizedImage";
 import PaymentModal from "../components/PaymentModal";
 import { getProductTypeName } from "@/config/productTypes";
 import {
@@ -356,10 +357,13 @@ export default function Registration() {
               </CardHeader>
               <CardContent className="space-y-4">
                 {workshop.image_url && (
-                  <img
+                  <OptimizedImage
                     src={workshop.image_url}
                     alt={workshop.title}
                     className="w-full h-48 object-cover rounded-lg"
+                    width={400}
+                    height={192}
+                    sizes="(max-width: 768px) 100vw, 400px"
                   />
                 )}
                 

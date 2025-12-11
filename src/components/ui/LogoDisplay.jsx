@@ -2,6 +2,7 @@ import React from 'react';
 import { GraduationCap } from 'lucide-react';
 import { useUser } from '@/contexts/UserContext';
 import { BRANDING_KEYS, CONTACT_INFO_KEYS, getSetting } from '@/constants/settings';
+import OptimizedImage from '@/components/ui/OptimizedImage';
 
 /**
  * Centralized logo display component
@@ -27,11 +28,19 @@ const LogoDisplay = ({
   const imageSrc = getSetting(settings, BRANDING_KEYS.LOGO_URL) || logoPath;
 
   if (imageSrc) {
+    // Determine logo dimensions based on size prop
+    const dimensions = size === "small"
+      ? { width: 32, height: 32, sizes: "32px" }
+      : { width: 48, height: 48, sizes: "48px" };
+
     return (
-      <img
+      <OptimizedImage
         src={imageSrc}
         alt={logoAlt}
         className={className}
+        width={dimensions.width}
+        height={dimensions.height}
+        sizes={dimensions.sizes}
         {...props}
       />
     );

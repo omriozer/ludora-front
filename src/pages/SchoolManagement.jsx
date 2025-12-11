@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { School, User } from "@/services/apiClient";
 import { UploadFile, ExtractDataFromUploadedFile } from "@/services/integrations";
+import OptimizedImage from "@/components/ui/OptimizedImage";
 import { getCachedIsraeliCities } from "@/services/publicApis";
 import {
   School as SchoolIcon,
@@ -541,10 +542,13 @@ export default function SchoolManagement() {
                       {/* Logo */}
                       <div className="flex-shrink-0">
                         {school.logo_url ? (
-                          <img
+                          <OptimizedImage
                             src={school.logo_url}
                             alt={school.name}
                             className="w-12 h-12 object-cover rounded-lg border"
+                            width={48}
+                            height={48}
+                            sizes="48px"
                           />
                         ) : (
                           <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">

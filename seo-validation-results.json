@@ -1,0 +1,140 @@
+{
+  "pages": [
+    {
+      "page": "/",
+      "title": "Ludora - פלטפורמה דיגיטלית לחינוך",
+      "description": "פלטפורמת לימוד דיגיטלית מתקדמת למורים ותלמידים. יצירה ושיתוף של תכנים חינוכיים, משחקים אינטראקטיביים ותוכניות לימוד מותאמות אישית.",
+      "keywords": "חינוך, לימוד דיגיטלי, משחקים חינוכיים, פלטפורמת לימוד, מורים, תלמידים, תכנים חינוכיים, למידה אינטראקטיבית",
+      "ogTitle": "Ludora - פלטפורמה דיגיטלית לחינוך",
+      "ogDescription": "פלטפורמת לימוד דיגיטלית מתקדמת למורים ותלמידים. יצירה ושיתוף של תכנים חינוכיים, משחקים אינטראקטיביים ותוכניות לימוד מותאמות אישית.",
+      "ogImage": "https://ludora.app/images/og-default.jpg",
+      "twitterCard": "summary_large_image",
+      "structuredData": [],
+      "canonical": null,
+      "hreflang": 0,
+      "charset": true,
+      "viewport": true,
+      "lang": true,
+      "dir": true
+    },
+    {
+      "page": "/games",
+      "title": "Ludora - פלטפורמה דיגיטלית לחינוך",
+      "description": "פלטפורמת לימוד דיגיטלית מתקדמת למורים ותלמידים. יצירה ושיתוף של תכנים חינוכיים, משחקים אינטראקטיביים ותוכניות לימוד מותאמות אישית.",
+      "keywords": "חינוך, לימוד דיגיטלי, משחקים חינוכיים, פלטפורמת לימוד, מורים, תלמידים, תכנים חינוכיים, למידה אינטראקטיבית",
+      "ogTitle": "Ludora - פלטפורמה דיגיטלית לחינוך",
+      "ogDescription": "פלטפורמת לימוד דיגיטלית מתקדמת למורים ותלמידים. יצירה ושיתוף של תכנים חינוכיים, משחקים אינטראקטיביים ותוכניות לימוד מותאמות אישית.",
+      "ogImage": "https://ludora.app/images/og-default.jpg",
+      "twitterCard": "summary_large_image",
+      "structuredData": [],
+      "canonical": null,
+      "hreflang": 0,
+      "charset": true,
+      "viewport": true,
+      "lang": true,
+      "dir": true
+    },
+    {
+      "page": "/files",
+      "title": "Ludora - פלטפורמה דיגיטלית לחינוך",
+      "description": "פלטפורמת לימוד דיגיטלית מתקדמת למורים ותלמידים. יצירה ושיתוף של תכנים חינוכיים, משחקים אינטראקטיביים ותוכניות לימוד מותאמות אישית.",
+      "keywords": "חינוך, לימוד דיגיטלי, משחקים חינוכיים, פלטפורמת לימוד, מורים, תלמידים, תכנים חינוכיים, למידה אינטראקטיבית",
+      "ogTitle": "Ludora - פלטפורמה דיגיטלית לחינוך",
+      "ogDescription": "פלטפורמת לימוד דיגיטלית מתקדמת למורים ותלמידים. יצירה ושיתוף של תכנים חינוכיים, משחקים אינטראקטיביים ותוכניות לימוד מותאמות אישית.",
+      "ogImage": "https://ludora.app/images/og-default.jpg",
+      "twitterCard": "summary_large_image",
+      "structuredData": [],
+      "canonical": null,
+      "hreflang": 0,
+      "charset": true,
+      "viewport": true,
+      "lang": true,
+      "dir": true
+    },
+    {
+      "page": "/lesson-plans",
+      "title": "Ludora - פלטפורמה דיגיטלית לחינוך",
+      "description": "פלטפורמת לימוד דיגיטלית מתקדמת למורים ותלמידים. יצירה ושיתוף של תכנים חינוכיים, משחקים אינטראקטיביים ותוכניות לימוד מותאמות אישית.",
+      "keywords": "חינוך, לימוד דיגיטלי, משחקים חינוכיים, פלטפורמת לימוד, מורים, תלמידים, תכנים חינוכיים, למידה אינטראקטיבית",
+      "ogTitle": "Ludora - פלטפורמה דיגיטלית לחינוך",
+      "ogDescription": "פלטפורמת לימוד דיגיטלית מתקדמת למורים ותלמידים. יצירה ושיתוף של תכנים חינוכיים, משחקים אינטראקטיביים ותוכניות לימוד מותאמות אישית.",
+      "ogImage": "https://ludora.app/images/og-default.jpg",
+      "twitterCard": "summary_large_image",
+      "structuredData": [],
+      "canonical": null,
+      "hreflang": 0,
+      "charset": true,
+      "viewport": true,
+      "lang": true,
+      "dir": true
+    },
+    {
+      "page": "/workshops",
+      "title": "Ludora - פלטפורמה דיגיטלית לחינוך",
+      "description": "פלטפורמת לימוד דיגיטלית מתקדמת למורים ותלמידים. יצירה ושיתוף של תכנים חינוכיים, משחקים אינטראקטיביים ותוכניות לימוד מותאמות אישית.",
+      "keywords": "חינוך, לימוד דיגיטלי, משחקים חינוכיים, פלטפורמת לימוד, מורים, תלמידים, תכנים חינוכיים, למידה אינטראקטיבית",
+      "ogTitle": "Ludora - פלטפורמה דיגיטלית לחינוך",
+      "ogDescription": "פלטפורמת לימוד דיגיטלית מתקדמת למורים ותלמידים. יצירה ושיתוף של תכנים חינוכיים, משחקים אינטראקטיביים ותוכניות לימוד מותאמות אישית.",
+      "ogImage": "https://ludora.app/images/og-default.jpg",
+      "twitterCard": "summary_large_image",
+      "structuredData": [],
+      "canonical": null,
+      "hreflang": 0,
+      "charset": true,
+      "viewport": true,
+      "lang": true,
+      "dir": true
+    },
+    {
+      "page": "/courses",
+      "title": "Ludora - פלטפורמה דיגיטלית לחינוך",
+      "description": "פלטפורמת לימוד דיגיטלית מתקדמת למורים ותלמידים. יצירה ושיתוף של תכנים חינוכיים, משחקים אינטראקטיביים ותוכניות לימוד מותאמות אישית.",
+      "keywords": "חינוך, לימוד דיגיטלי, משחקים חינוכיים, פלטפורמת לימוד, מורים, תלמידים, תכנים חינוכיים, למידה אינטראקטיבית",
+      "ogTitle": "Ludora - פלטפורמה דיגיטלית לחינוך",
+      "ogDescription": "פלטפורמת לימוד דיגיטלית מתקדמת למורים ותלמידים. יצירה ושיתוף של תכנים חינוכיים, משחקים אינטראקטיביים ותוכניות לימוד מותאמות אישית.",
+      "ogImage": "https://ludora.app/images/og-default.jpg",
+      "twitterCard": "summary_large_image",
+      "structuredData": [],
+      "canonical": null,
+      "hreflang": 0,
+      "charset": true,
+      "viewport": true,
+      "lang": true,
+      "dir": true
+    }
+  ],
+  "endpoints": [
+    {
+      "endpoint": "/api/seo/sitemap.xml",
+      "url": "http://localhost:3003/api/seo/sitemap.xml",
+      "status": 200,
+      "contentType": "application/xml; charset=utf-8",
+      "available": true
+    },
+    {
+      "endpoint": "/api/seo/robots.txt",
+      "url": "http://localhost:3003/api/seo/robots.txt",
+      "status": 200,
+      "contentType": "text/plain; charset=utf-8",
+      "available": true
+    },
+    {
+      "endpoint": "/api/seo/sitemap.json",
+      "url": "http://localhost:3003/api/seo/sitemap.json",
+      "status": 200,
+      "contentType": "application/json; charset=utf-8",
+      "available": true
+    }
+  ],
+  "errors": [],
+  "warnings": [],
+  "summary": {
+    "totalPages": 6,
+    "averageSEOScore": 80,
+    "workingEndpoints": 3,
+    "totalEndpoints": 3,
+    "errorCount": 0,
+    "warningCount": 0,
+    "grade": "B"
+  }
+}
