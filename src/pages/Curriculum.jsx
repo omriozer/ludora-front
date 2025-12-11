@@ -18,6 +18,7 @@ import EntityForm from "@/components/ui/EntityForm";
 import ClassSelector from "@/components/ui/ClassSelector";
 import AssociateProductDialog from "@/components/ui/AssociateProductDialog";
 import SEOHead from '@/components/SEOHead';
+import { ComingSoonBadge } from "@/components/ui/ComingSoonBadge";
 import {
   BookOpen,
   GraduationCap,
@@ -960,7 +961,7 @@ export default function Curriculum() {
   // Show loading spinner while essential data is being loaded
   if (settingsLoading || combinationsLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50" dir="rtl">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50" dir="rtl">
         <div className="container mx-auto px-4 py-8">
           <LudoraLoadingSpinner
             size="lg"
@@ -974,84 +975,107 @@ export default function Curriculum() {
   return (
     <>
       <SEOHead title="תכניות לימודים" />
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 mobile-no-scroll-x mobile-safe-container" dir="rtl">
-      <div className="container mx-auto mobile-padding-x py-4 md:py-8 space-y-4 md:space-y-8 max-w-7xl mobile-safe-container">
-
-        {/* Hero Header */}
-        <div className="text-center space-y-3 md:space-y-4 mobile-safe-container">
-          <div className="mobile-safe-flex items-center justify-center mobile-gap">
-            <div className="w-12 h-12 md:w-16 md:h-16 bg-gradient-to-r from-blue-500 via-indigo-600 to-purple-600 rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg transform hover:scale-105 transition-transform duration-300">
-              <BookOpen className="w-6 h-6 md:w-8 md:h-8 text-white drop-shadow-sm" />
-            </div>
-            <div className="space-y-1 md:space-y-2 mobile-safe-text">
-              <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent mobile-truncate">
-                תכניות לימודים
-              </h1>
-              <div className="w-16 md:w-20 h-1 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full mx-auto"></div>
-            </div>
-          </div>
-          <p className="text-base md:text-lg text-gray-600 max-w-2xl mx-auto leading-relaxed mobile-safe-text mobile-padding-x">
-            בחר מקצוע וכיתה כדי לעיין בתכנית הלימודים המפורטת, לגלות תכנים מרתקים ולחקור את עולם הלמידה
-          </p>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 mobile-no-scroll-x mobile-safe-container relative overflow-hidden" dir="rtl">
+        {/* Animated Background Elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-300/10 to-indigo-400/10 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-slate-300/8 to-blue-400/8 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
+          <div className="absolute top-1/3 left-1/4 w-60 h-60 bg-gradient-to-br from-indigo-300/5 to-blue-400/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '4s' }}></div>
         </div>
 
-        {/* Selection Interface - Collapsible */}
-        <Card className="w-full shadow-2xl border-0 bg-white/80 backdrop-blur-sm mobile-safe-card">
-          <CardHeader className="mobile-padding">
-            <div className="mobile-safe-flex items-center justify-between">
-              <CardTitle className="text-center flex-1 mobile-safe-text">
-                <span className="text-lg md:text-xl mobile-truncate">
-                  {hasBothSelections && selectorsCollapsed
-                    ? `${settings?.study_subjects?.[selectedSubject]} - ${settings?.school_grades?.[selectedGrade]}`
-                    : 'בחר תכנית לימודים'
-                  }
-                </span>
-              </CardTitle>
-              {hasBothSelections && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={toggleSelectorsCollapse}
-                  className="flex items-center gap-1 md:gap-2 text-xs md:text-sm"
-                >
-                  {selectorsCollapsed ? (
-                    <>
-                      <span className="hidden sm:inline">הרחב</span>
-                      <ChevronDown className="w-3 h-3 md:w-4 md:h-4" />
-                    </>
-                  ) : (
-                    <>
-                      <span className="hidden sm:inline">כווץ</span>
-                      <ChevronUp className="w-3 h-3 md:w-4 md:h-4" />
-                    </>
-                  )}
-                </Button>
-              )}
-            </div>
-          </CardHeader>
+        <div className="container mx-auto mobile-padding-x py-1 md:py-2 space-y-2 md:space-y-3 max-w-6xl mobile-safe-container relative z-10">
 
-          <AnimatePresence>
-            {!selectorsCollapsed && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.3, ease: "easeInOut" }}
-                style={{ overflow: "hidden" }}
-              >
-                <CardContent className="space-y-6 md:space-y-10 mobile-padding">
-                  {/* Subject Selection */}
-                  <div className="space-y-4 md:space-y-6 mobile-safe-container">
-                    <div className="text-center space-y-2 md:space-y-3">
-                      <h3 className="text-lg md:text-2xl font-bold text-gray-800 mobile-safe-flex items-center justify-center mobile-gap">
-                        <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg md:rounded-xl flex items-center justify-center">
-                          <BookMarked className="w-4 h-4 md:w-5 md:h-5 text-white" />
-                        </div>
-                        <span className="mobile-safe-text">בחר מקצוע</span>
-                      </h3>
-                      <p className="text-sm md:text-base text-gray-600 mobile-safe-text">גלה את המקצוע שמעניין אותך ביותר</p>
+          {/* Compact Elegant Hero */}
+          <div className="text-center space-y-1 md:space-y-2 mobile-safe-container">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, ease: "easeOut" }}
+              className="relative"
+            >
+              {/* Streamlined Hero Content */}
+              <div className="relative bg-white/15 backdrop-blur-xl rounded-2xl p-3 md:p-4 shadow-xl border border-white/20">
+                {/* Compact Title Section */}
+                <div className="space-y-1 md:space-y-2">
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+                      <BookOpen className="w-4 h-4 md:w-5 md:h-5 text-white" />
                     </div>
-                    <div className="mobile-safe-grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 mobile-gap">
+                    <h1 className="text-xl md:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-700 bg-clip-text text-transparent">
+                      תכניות לימודים
+                    </h1>
+                  </div>
+
+                  <p className="text-sm text-gray-600 max-w-2xl mx-auto leading-relaxed">
+                    בחר מקצוע וכיתה כדי לעיין בתכנית הלימודים המפורטת
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+
+        {/* Compact Selection Interface */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: "easeOut", delay: 0.2 }}
+        >
+          <Card className="w-full shadow-lg border-0 bg-white/25 backdrop-blur-xl mobile-safe-card rounded-2xl overflow-hidden">
+            <CardHeader className="mobile-padding py-2 bg-gradient-to-r from-blue-500/6 via-indigo-500/6 to-slate-500/6">
+              <div className="mobile-safe-flex items-center justify-between gap-3">
+                <CardTitle className="flex-1 mobile-safe-text min-w-0">
+                  <span className="text-lg md:text-xl font-semibold bg-gradient-to-r from-blue-600 to-indigo-700 bg-clip-text text-transparent mobile-truncate block text-center">
+                    {hasBothSelections && selectorsCollapsed
+                      ? `${settings?.study_subjects?.[selectedSubject]} - ${settings?.school_grades?.[selectedGrade]}`
+                      : 'בחר מקצוע וכיתה'
+                    }
+                  </span>
+                </CardTitle>
+                {hasBothSelections && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={toggleSelectorsCollapse}
+                    className="flex items-center mobile-gap text-xs shrink-0 px-3 py-1.5 rounded-xl hover:bg-white/30 transition-all duration-200"
+                  >
+                    {selectorsCollapsed ? (
+                      <>
+                        <span className="hidden sm:inline text-blue-600 font-medium">הרחב</span>
+                        <ChevronDown className="w-4 h-4 text-blue-600" />
+                      </>
+                    ) : (
+                      <>
+                        <span className="hidden sm:inline text-blue-600 font-medium">כווץ</span>
+                        <ChevronUp className="w-4 h-4 text-blue-600" />
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
+
+            <AnimatePresence>
+              {!selectorsCollapsed && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.4, ease: "easeInOut" }}
+                  style={{ overflow: "hidden" }}
+                >
+                  <CardContent className="space-y-4 md:space-y-5 mobile-padding">
+                    {/* Compact Subject Selection */}
+                    <div className="space-y-3 md:space-y-4 mobile-safe-container">
+                      <div className="text-center space-y-2">
+                        <h3 className="text-lg md:text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent flex items-center justify-center gap-2">
+                          <BookMarked className="w-5 h-5 text-blue-600" />
+                          בחר מקצוע
+                        </h3>
+                        <p className="text-sm text-gray-600 max-w-lg mx-auto">
+                          גלה את המקצוע שמעניין אותך ביותר
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3 md:gap-4">
                       {settings?.study_subjects && Object.entries(settings.study_subjects)
                         .sort(([keyA, labelA], [keyB, labelB]) => {
                           const hasItemsA = hasCurriculumItems(keyA);
@@ -1071,70 +1095,95 @@ export default function Curriculum() {
                         const showEmptyIndicator = isAdmin && !hasItems;
 
                         return (
-                          <Card
-                            key={key}
-                            className={`transition-all duration-300 group relative overflow-hidden mobile-safe-card ${
-                              disabled
-                                ? 'opacity-50 cursor-not-allowed bg-gray-100'
-                                : 'cursor-pointer hover:shadow-lg md:hover:shadow-xl hover:-translate-y-0.5 md:hover:-translate-y-1 hover:scale-102 md:hover:scale-105'
-                            } ${
-                              selectedSubject === key
-                                ? 'ring-2 md:ring-3 ring-blue-500 bg-gradient-to-br from-blue-50 to-blue-100 shadow-lg'
-                                : !disabled ? 'hover:bg-gradient-to-br hover:from-blue-50 hover:to-indigo-50' : ''
-                            }`}
-                            onClick={() => !disabled && handleSubjectSelect(key)}
-                          >
-                            <CardContent className="p-3 md:p-4 text-center relative z-10">
-                              <div className="space-y-1.5 md:space-y-2">
-                                <div className={`w-8 h-8 md:w-12 md:h-12 mx-auto rounded-full flex items-center justify-center relative ${
-                                  selectedSubject === key
-                                    ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md md:shadow-lg'
-                                    : disabled
-                                      ? 'bg-gray-300'
-                                      : 'bg-gradient-to-r from-gray-100 to-gray-200 group-hover:from-blue-100 group-hover:to-indigo-100'
-                                }`}>
-                                  <BookOpen className={`w-4 h-4 md:w-6 md:h-6 ${
-                                    selectedSubject === key ? 'text-white' : disabled ? 'text-gray-400' : 'text-gray-600 group-hover:text-blue-600'
-                                  }`} />
-                                  {showEmptyIndicator && (
-                                    <div className="absolute -top-0.5 -right-0.5 md:-top-1 md:-right-1 w-4 h-4 md:w-5 md:h-5 bg-orange-500 rounded-full flex items-center justify-center shadow-lg">
-                                      <AlertCircle className="w-2.5 h-2.5 md:w-3 md:h-3 text-white" />
-                                    </div>
-                                  )}
+                          <div key={key} className="relative">
+                            {/* Compact Subject Card */}
+                            <div
+                              className={`relative group transition-all duration-300 cursor-pointer rounded-xl overflow-hidden ${
+                                disabled
+                                  ? 'opacity-60 cursor-not-allowed'
+                                  : 'hover:shadow-lg'
+                              } ${
+                                selectedSubject === key
+                                  ? 'ring-2 ring-violet-500 shadow-lg'
+                                  : 'shadow-sm hover:shadow-md'
+                              }`}
+                              onClick={() => !disabled && handleSubjectSelect(key)}
+                            >
+                              {/* Background */}
+                              <div className={`absolute inset-0 ${
+                                selectedSubject === key
+                                  ? 'bg-gradient-to-br from-blue-500 to-indigo-600'
+                                  : disabled
+                                    ? 'bg-gradient-to-br from-gray-200 to-gray-300'
+                                    : 'bg-gradient-to-br from-blue-400 to-indigo-500 group-hover:from-blue-500 group-hover:to-indigo-600'
+                              }`}></div>
+
+                              {/* Content */}
+                              <div className="relative p-3 text-center min-h-[80px] flex flex-col justify-center">
+                                {/* Icon */}
+                                <div className="mb-2">
+                                  <div className={`w-8 h-8 mx-auto rounded-lg flex items-center justify-center transition-transform duration-200 ${
+                                    selectedSubject === key
+                                      ? 'bg-white/30'
+                                      : disabled
+                                        ? 'bg-white/20'
+                                        : 'bg-white/25 group-hover:bg-white/35'
+                                  }`}>
+                                    <BookOpen className="w-4 h-4 text-white" />
+                                  </div>
                                 </div>
-                                <p className={`font-semibold text-xs md:text-sm leading-tight mobile-safe-text ${
-                                  disabled ? 'text-gray-400' : selectedSubject === key ? 'text-blue-700' : 'text-gray-700'
-                                }`}>
-                                  {label}
-                                </p>
-                                {showEmptyIndicator && (
-                                  <p className="text-xs text-orange-600 font-medium">
-                                    ללא תכנית
-                                  </p>
+
+                                {/* Text - Always Centered */}
+                                <div>
+                                  <h4 className="font-medium text-white text-xs leading-tight">
+                                    {label}
+                                  </h4>
+                                </div>
+
+                                {/* Selection Indicator */}
+                                {selectedSubject === key && (
+                                  <div className="absolute top-1.5 right-1.5">
+                                    <div className="w-4 h-4 bg-white rounded-full flex items-center justify-center">
+                                      <CheckCircle className="w-3 h-3 text-violet-600" />
+                                    </div>
+                                  </div>
                                 )}
                               </div>
-                            </CardContent>
-                            {selectedSubject === key && (
-                              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-blue-600/10 pointer-events-none"></div>
+                            </div>
+
+                            {/* No Curriculum Badge for admin view */}
+                            {showEmptyIndicator && (
+                              <div className="absolute -top-1 -left-1 z-20">
+                                <span className="inline-block bg-orange-500 text-white text-xs px-1.5 py-0.5 rounded-full font-medium">
+                                  ללא תכנית
+                                </span>
+                              </div>
                             )}
-                          </Card>
+
+                            {/* Coming Soon Badge for disabled subjects */}
+                            {disabled && !isAdmin && (
+                              <div className="absolute -top-1 -right-1 z-20">
+                                <ComingSoonBadge size="sm" variant="warning" />
+                              </div>
+                            )}
+                          </div>
                         );
                       })}
                     </div>
                   </div>
 
-                  {/* Grade Selection */}
-                  <div className="space-y-4 md:space-y-6 mobile-safe-container">
-                    <div className="text-center space-y-2 md:space-y-3">
-                      <h3 className="text-lg md:text-2xl font-bold text-gray-800 mobile-safe-flex items-center justify-center mobile-gap">
-                        <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg md:rounded-xl flex items-center justify-center">
-                          <GraduationCap className="w-4 h-4 md:w-5 md:h-5 text-white" />
-                        </div>
-                        <span className="mobile-safe-text">בחר כיתה</span>
+                  {/* Compact Grade Selection */}
+                  <div className="space-y-3 md:space-y-4 mobile-safe-container">
+                    <div className="text-center space-y-2">
+                      <h3 className="text-lg md:text-xl font-bold bg-gradient-to-r from-emerald-600 to-blue-600 bg-clip-text text-transparent flex items-center justify-center gap-2">
+                        <GraduationCap className="w-5 h-5 text-emerald-600" />
+                        בחר כיתה
                       </h3>
-                      <p className="text-sm md:text-base text-gray-600 mobile-safe-text">איזו כיתה אתה רוצה לחקור?</p>
+                      <p className="text-sm text-gray-600 max-w-lg mx-auto">
+                        איזו כיתה אתה רוצה לחקור?
+                      </p>
                     </div>
-                    <div className="mobile-safe-grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 mobile-gap">
+                    <div className="grid grid-cols-3 md:grid-cols-6 xl:grid-cols-12 gap-3 md:gap-4">
                       {settings?.school_grades && Object.entries(settings.school_grades)
                         .sort(([keyA, labelA], [keyB, labelB]) => {
                           const hasItemsA = selectedSubject
@@ -1166,69 +1215,100 @@ export default function Curriculum() {
                         const showEmptyIndicator = isAdmin && !hasItems;
 
                         return (
-                          <Card
-                            key={key}
-                            className={`transition-all duration-300 group relative overflow-hidden aspect-square mobile-safe-card ${
-                              disabled
-                                ? 'opacity-50 cursor-not-allowed bg-gray-100'
-                                : 'cursor-pointer hover:shadow-lg md:hover:shadow-xl hover:-translate-y-0.5 md:hover:-translate-y-1 hover:scale-105 md:hover:scale-110'
-                            } ${
-                              selectedGrade === key
-                                ? 'ring-2 md:ring-3 ring-purple-500 bg-gradient-to-br from-purple-50 to-purple-100 shadow-lg'
-                                : !disabled ? 'hover:bg-gradient-to-br hover:from-purple-50 hover:to-indigo-50' : ''
-                            }`}
-                            onClick={() => !disabled && handleGradeSelect(key)}
-                          >
-                            <CardContent className="p-2 md:p-3 flex items-center justify-center h-full relative z-10">
-                              <div className="space-y-0.5 md:space-y-1 text-center">
-                                <div className={`w-6 h-6 md:w-8 md:h-8 mx-auto rounded-full flex items-center justify-center text-xs font-bold relative ${
+                          <div key={key} className="relative">
+                            {/* Compact Grade Card */}
+                            <div
+                              className={`relative group transition-all duration-300 cursor-pointer rounded-xl overflow-hidden aspect-square ${
+                                disabled
+                                  ? 'opacity-60 cursor-not-allowed'
+                                  : 'hover:shadow-lg'
+                              } ${
+                                selectedGrade === key
+                                  ? 'ring-2 ring-emerald-500 shadow-lg'
+                                  : 'shadow-sm hover:shadow-md'
+                              }`}
+                              onClick={() => !disabled && handleGradeSelect(key)}
+                            >
+                              {/* Background */}
+                              <div className={`absolute inset-0 ${
+                                selectedGrade === key
+                                  ? 'bg-gradient-to-br from-emerald-500 to-blue-600'
+                                  : disabled
+                                    ? 'bg-gradient-to-br from-gray-200 to-gray-300'
+                                    : 'bg-gradient-to-br from-teal-500 to-blue-600 group-hover:from-emerald-500 group-hover:to-cyan-600'
+                              }`}></div>
+
+                              {/* Content */}
+                              <div className="relative h-full flex flex-col items-center justify-center p-3 text-center">
+                                {/* Grade Number - Always Centered */}
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white transition-transform duration-200 ${
                                   selectedGrade === key
-                                    ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-md md:shadow-lg'
+                                    ? 'bg-white/30'
                                     : disabled
-                                      ? 'bg-gray-300 text-gray-500'
-                                      : 'bg-gradient-to-r from-gray-100 to-gray-200 text-gray-600 group-hover:from-purple-100 group-hover:to-indigo-100 group-hover:text-purple-600'
+                                      ? 'bg-white/20'
+                                      : 'bg-white/25 group-hover:bg-white/35'
                                 }`}>
-                                  <span className="mobile-safe-text text-xs">
+                                  <span className="text-sm">
                                     {label.replace('כיתה ', '').replace(/^\d+\s*/, '')}
                                   </span>
-                                  {showEmptyIndicator && (
-                                    <div className="absolute -top-0.5 -right-0.5 md:-top-1 md:-right-1 w-3 h-3 md:w-4 md:h-4 bg-orange-500 rounded-full flex items-center justify-center shadow-lg">
-                                      <AlertCircle className="w-2 h-2 md:w-2.5 md:h-2.5 text-white" />
-                                    </div>
-                                  )}
                                 </div>
-                                {showEmptyIndicator && (
-                                  <p className="text-xs text-orange-600 font-medium">
-                                    ללא תכנית
-                                  </p>
+
+                                {/* Selection Indicator */}
+                                {selectedGrade === key && (
+                                  <div className="absolute top-1.5 right-1.5">
+                                    <div className="w-4 h-4 bg-white rounded-full flex items-center justify-center">
+                                      <CheckCircle className="w-3 h-3 text-emerald-600" />
+                                    </div>
+                                  </div>
                                 )}
                               </div>
-                            </CardContent>
-                            {selectedGrade === key && (
-                              <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-purple-600/10 pointer-events-none"></div>
+                            </div>
+
+                            {/* No Curriculum Badge for admin view */}
+                            {showEmptyIndicator && (
+                              <div className="absolute -top-1 -left-1 z-20">
+                                <span className="inline-block bg-orange-500 text-white text-xs px-1.5 py-0.5 rounded-full font-medium">
+                                  ללא תכנית
+                                </span>
+                              </div>
                             )}
-                          </Card>
+
+                            {/* Coming Soon Badge for disabled grades */}
+                            {disabled && !isAdmin && (
+                              <div className="absolute -top-1 -right-1 z-20">
+                                <ComingSoonBadge size="sm" variant="warning" />
+                              </div>
+                            )}
+                          </div>
                         );
                       })}
                     </div>
                   </div>
 
-                  {/* Selection Summary */}
+                  {/* Compact Selection Summary */}
                   {(selectedSubject || selectedGrade) && (
-                    <div className="bg-gradient-to-r from-blue-100 to-purple-100 rounded-lg mobile-padding mobile-safe-container">
-                      <div className="mobile-safe-flex items-center justify-between flex-wrap">
+                    <div className="bg-gradient-to-r from-blue-100/60 to-indigo-100/60 rounded-xl mobile-padding mobile-safe-container border border-blue-200/40 backdrop-blur-sm">
+                      <div className="mobile-safe-flex items-center justify-between flex-wrap mobile-gap">
                         <div className="mobile-safe-flex items-center mobile-gap flex-1 min-w-0">
-                          <Target className="w-4 h-4 md:w-5 md:h-5 text-blue-600 flex-shrink-0" />
-                          <span className="font-medium text-sm md:text-base flex-shrink-0">בחירה נוכחית:</span>
-                          <span className="text-blue-700 text-sm md:text-base mobile-safe-text mobile-truncate">
-                            {selectedSubject && settings?.study_subjects?.[selectedSubject]}
-                            {selectedSubject && selectedGrade && ' • '}
-                            {selectedGrade && settings?.school_grades?.[selectedGrade]}
-                          </span>
+                          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                            <Target className="w-4 h-4 text-white" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <span className="font-semibold text-sm text-blue-700 block">בחירה נוכחית</span>
+                            <div className="text-base md:text-lg font-bold bg-gradient-to-r from-blue-700 to-indigo-800 bg-clip-text text-transparent mobile-safe-text mobile-truncate">
+                              {selectedSubject && settings?.study_subjects?.[selectedSubject]}
+                              {selectedSubject && selectedGrade && ' • '}
+                              {selectedGrade && settings?.school_grades?.[selectedGrade]}
+                            </div>
+                          </div>
                         </div>
                         {selectedSubject && selectedGrade && (
-                          <Button variant="outline" size="sm" onClick={handleShareCurriculum} className="mt-2 md:mt-0 text-xs md:text-sm">
-                            <Share2 className="w-3 h-3 md:w-4 md:h-4 ml-1 md:ml-2" />
+                          <Button
+                            onClick={handleShareCurriculum}
+                            size="sm"
+                            className="mt-2 md:mt-0 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white border-0 shadow-sm hover:shadow-md transition-all duration-200 rounded-lg px-4 py-2 text-sm"
+                          >
+                            <Share2 className="w-4 h-4 ml-1.5" />
                             שתף
                           </Button>
                         )}
@@ -1240,90 +1320,98 @@ export default function Curriculum() {
             )}
           </AnimatePresence>
 
-          {/* Collapsed state action bar */}
+          {/* Compact Collapsed Action Bar */}
           {selectorsCollapsed && hasBothSelections && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="mobile-padding-x pb-3 md:pb-4"
-            >
-              <div className="mobile-safe-flex items-center justify-between bg-gradient-to-r from-blue-100 to-purple-100 rounded-lg mobile-padding flex-wrap">
-                <div className="mobile-safe-flex items-center mobile-gap flex-1 min-w-0">
-                  <Target className="w-3 h-3 md:w-4 md:h-4 text-blue-600 flex-shrink-0" />
-                  <span className="text-xs md:text-sm text-blue-700 mobile-safe-text mobile-truncate">
-                    {settings?.study_subjects?.[selectedSubject]} • {settings?.school_grades?.[selectedGrade]}
-                  </span>
-                </div>
-                <div className="mobile-safe-flex items-center mobile-gap mt-2 md:mt-0">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={toggleSelectorsCollapse}
-                    className="text-blue-600 hover:text-blue-700 text-xs md:text-sm px-2 md:px-3 py-1"
-                  >
-                    <Edit3 className="w-3 h-3 md:w-4 md:h-4 ml-1" />
-                    <span className="hidden sm:inline">שנה</span>
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={handleShareCurriculum} className="text-xs md:text-sm px-2 md:px-3 py-1">
-                    <Share2 className="w-3 h-3 md:w-4 md:h-4 ml-1 md:ml-2" />
-                    שתף
-                  </Button>
+            <div className="mobile-padding-x pb-4">
+              <div className="bg-gradient-to-r from-blue-100/60 to-indigo-100/60 rounded-xl mobile-padding border border-blue-200/40 backdrop-blur-sm">
+                <div className="mobile-safe-flex items-center justify-between flex-wrap mobile-gap">
+                  <div className="mobile-safe-flex items-center mobile-gap flex-1 min-w-0">
+                    <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                      <Target className="w-3.5 h-3.5 text-white" />
+                    </div>
+                    <span className="text-base md:text-lg font-bold bg-gradient-to-r from-blue-700 to-indigo-800 bg-clip-text text-transparent mobile-safe-text mobile-truncate">
+                      {settings?.study_subjects?.[selectedSubject]} • {settings?.school_grades?.[selectedGrade]}
+                    </span>
+                  </div>
+                  <div className="mobile-safe-flex items-center mobile-gap mt-2 md:mt-0">
+                    <Button
+                      onClick={toggleSelectorsCollapse}
+                      variant="outline"
+                      size="sm"
+                      className="bg-white/80 hover:bg-white border-blue-300 text-blue-700 hover:text-blue-800 shadow-sm hover:shadow-md transition-all duration-200 rounded-lg px-3 py-1.5 text-sm"
+                    >
+                      <Edit3 className="w-3.5 h-3.5 ml-1" />
+                      <span className="hidden sm:inline">שנה</span>
+                    </Button>
+                    <Button
+                      onClick={handleShareCurriculum}
+                      size="sm"
+                      className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white border-0 shadow-sm hover:shadow-md transition-all duration-200 rounded-lg px-3 py-1.5 text-sm"
+                    >
+                      <Share2 className="w-3.5 h-3.5 ml-1.5" />
+                      שתף
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </motion.div>
+            </div>
           )}
         </Card>
+        </motion.div>
 
         {/* Curriculum Items Display */}
         {selectedSubject && selectedGrade && (
-          <Card className="w-full shadow-2xl border-0 bg-white/90 backdrop-blur-sm">
-            <CardHeader className="bg-gradient-to-r from-green-50 via-emerald-50 to-teal-50 border-b border-green-100">
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-3 text-2xl">
-                  <div className="w-12 h-12 bg-gradient-to-r from-green-500 via-emerald-600 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg">
-                    <Layers className="w-6 h-6 text-white drop-shadow-sm" />
+          <Card className="w-full shadow-2xl border-0 bg-white/90 backdrop-blur-sm mobile-safe-card">
+            <CardHeader className="bg-gradient-to-r from-green-50 via-emerald-50 to-teal-50 border-b border-green-100 mobile-padding">
+              <div className="mobile-safe-flex items-start justify-between mobile-gap flex-col lg:flex-row">
+                <CardTitle className="mobile-safe-flex items-center mobile-gap text-xl md:text-2xl flex-col sm:flex-row">
+                  <div className="w-14 h-14 md:w-16 md:h-16 bg-gradient-to-r from-green-500 via-emerald-600 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg mb-3 sm:mb-0">
+                    <Layers className="w-7 h-7 md:w-8 md:h-8 text-white drop-shadow-sm" />
                   </div>
-                  <div className="space-y-1">
-                    <div className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 bg-clip-text text-transparent font-bold">
+                  <div className="space-y-2 text-center sm:text-right">
+                    <div className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 bg-clip-text text-transparent font-bold mobile-truncate">
                       {settings?.study_subjects?.[selectedSubject]} - {formatGradeDisplay(currentCurriculum)}
                     </div>
                     <div className="text-sm font-normal text-gray-600">תכנית לימודים מפורטת</div>
                   </div>
                 </CardTitle>
-                <div className="flex items-center gap-3">
+                <div className="mobile-safe-flex items-center mobile-gap flex-wrap w-full lg:w-auto justify-center lg:justify-end mt-4 lg:mt-0">
                   {curriculumItems.length > 0 && (
                     <Badge variant="secondary" className="bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border-green-200 px-4 py-2 text-sm font-semibold shadow-sm">
                       {curriculumItems.length} נושאים
                     </Badge>
                   )}
-                  <div className="flex items-center gap-2">
+                  <div className="mobile-safe-flex items-center mobile-gap flex-wrap">
                     {/* Show associate with class button for system curricula for teachers */}
                     {isTeacher && currentCurriculum && currentCurriculum.teacher_user_id === null && currentCurriculum.class_id === null && copyStatus[currentCurriculum.id] && !copyStatus[currentCurriculum.id].hasCopies && (
                       <Button
                         size="sm"
                         variant="default"
                         onClick={() => handleAssociateCurriculumWithClass(currentCurriculum)}
-                        className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 px-4 py-2"
+                        className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 px-4 py-2 text-sm"
                       >
                         <Users className="w-4 h-4 ml-2" />
-                        קשר לכיתה
+                        <span className="hidden sm:inline">קשר לכיתה</span>
+                        <span className="sm:hidden">קשר</span>
                       </Button>
                     )}
                     {isAdmin && currentCurriculum && (
                       <>
                         <Dialog open={showCreateItemDialog} onOpenChange={(open) => open ? handleOpenCreateItemDialog() : handleCloseCreateItemDialog()}>
                           <DialogTrigger asChild>
-                            <Button size="sm" variant="outline" className="border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300 shadow-sm hover:shadow-md transition-all duration-300 px-4 py-2">
+                            <Button size="sm" variant="outline" className="border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300 shadow-sm hover:shadow-md transition-all duration-300 px-4 py-2 text-sm">
                               <Plus className="w-4 h-4 ml-2" />
-                              הוסף נושא
+                              <span className="hidden sm:inline">הוסף נושא</span>
+                              <span className="sm:hidden">הוסף</span>
                             </Button>
                           </DialogTrigger>
                         </Dialog>
                         <Dialog open={showEditCurriculumDialog} onOpenChange={setShowEditCurriculumDialog}>
                           <DialogTrigger asChild>
-                            <Button size="sm" variant="outline" className="border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300 shadow-sm hover:shadow-md transition-all duration-300 px-4 py-2">
+                            <Button size="sm" variant="outline" className="border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300 shadow-sm hover:shadow-md transition-all duration-300 px-4 py-2 text-sm">
                               <SettingsIcon className="w-4 h-4 ml-2" />
-                              ניהול תכנית
+                              <span className="hidden sm:inline">ניהול תכנית</span>
+                              <span className="sm:hidden">ניהול</span>
                             </Button>
                           </DialogTrigger>
                         </Dialog>
@@ -1333,7 +1421,7 @@ export default function Curriculum() {
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="p-8 space-y-6">
+            <CardContent className="mobile-padding space-y-6 md:space-y-8 mobile-safe-container">
               {itemsLoading ? (
                 <div className="flex flex-col items-center justify-center py-12 space-y-4">
                   <LudoraLoadingSpinner text="טוען נושאי לימוד..." size="lg" />
@@ -1390,7 +1478,7 @@ export default function Curriculum() {
               ) : (
                 <div className="space-y-6">
                   {curriculumItems.map((item, index) => (
-                    <Card key={item.id} className="group hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-r from-white via-gray-50/30 to-white hover:from-green-50/30 hover:via-emerald-50/50 hover:to-teal-50/30 shadow-lg hover:scale-[1.02]">
+                    <Card key={item.id} className="group hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-r from-white via-gray-50/30 to-white hover:from-green-50/30 hover:via-emerald-50/50 hover:to-teal-50/30 shadow-lg">
                       <CardContent className="p-6">
                         <div className="space-y-4">
                           <div className="flex items-start justify-between">
@@ -1485,7 +1573,7 @@ export default function Curriculum() {
 
                           {/* Linked Products Display - Collapsible */}
                           {linkedProducts[item.id] && linkedProducts[item.id].length > 0 && (
-                            <div className="mt-6 pt-4 border-t border-gradient-to-r from-green-100 via-emerald-100 to-teal-100">
+                            <div className="mt-3 pt-2 border-t border-gray-100">
                               <Collapsible
                                 open={relatedProductsOpen[item.id] || false}
                                 onOpenChange={() => toggleRelatedProducts(item.id)}
@@ -1493,35 +1581,35 @@ export default function Curriculum() {
                                 <CollapsibleTrigger asChild>
                                   <Button
                                     variant="ghost"
-                                    className="w-full justify-between p-4 h-auto bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 rounded-xl border border-blue-100 hover:border-blue-200 transition-all duration-300 group"
+                                    className="w-full justify-between px-3 py-2 h-auto bg-white/80 hover:bg-blue-50/80 rounded-lg border border-gray-200 hover:border-blue-300 transition-all duration-200 group"
                                   >
-                                    <div className="flex items-center gap-3">
-                                      <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center">
-                                        <Link className="w-4 h-4 text-white" />
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-5 h-5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded flex items-center justify-center">
+                                        <Link className="w-3 h-3 text-white" />
                                       </div>
-                                      <span className="text-lg font-semibold text-gray-800 group-hover:text-blue-700 transition-colors duration-300">
+                                      <span className="text-sm font-medium text-gray-700 group-hover:text-blue-700 transition-colors duration-200">
                                         מוצרים קשורים ({linkedProducts[item.id].length})
                                       </span>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                      <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-200">
+                                    <div className="flex items-center gap-1">
+                                      <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-200 text-xs px-2 py-0.5">
                                         {linkedProducts[item.id].length}
                                       </Badge>
                                       {relatedProductsOpen[item.id] ? (
-                                        <ChevronUp className="w-5 h-5 text-blue-600 group-hover:text-blue-700" />
+                                        <ChevronUp className="w-4 h-4 text-blue-600 group-hover:text-blue-700" />
                                       ) : (
-                                        <ChevronDown className="w-5 h-5 text-blue-600 group-hover:text-blue-700" />
+                                        <ChevronDown className="w-4 h-4 text-blue-600 group-hover:text-blue-700" />
                                       )}
                                     </div>
                                   </Button>
                                 </CollapsibleTrigger>
 
-                                <CollapsibleContent className="mt-4 space-y-4">
+                                <CollapsibleContent className="mt-2 space-y-3">
                                   {(() => {
                                     const groupedProducts = groupProductsByType(linkedProducts[item.id]);
                                     return Object.entries(groupedProducts).map(([productType, typeProducts]) => (
-                                      <div key={productType} className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
-                                        <div className="flex items-center gap-2 mb-3">
+                                      <div key={productType} className="bg-white rounded-lg p-3 border border-gray-100 shadow-sm">
+                                        <div className="flex items-center gap-2 mb-2">
                                           <div className="w-6 h-6 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
                                             <span className="text-white text-xs font-bold">
                                               {typeProducts.length}
@@ -1531,7 +1619,7 @@ export default function Curriculum() {
                                             {getProductTypeDisplayName(productType)}
                                           </p>
                                         </div>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                                           {typeProducts.map((product) => (
                                             <div key={product.id} className="relative group">
                                               <ProductCard
@@ -1583,32 +1671,32 @@ export default function Curriculum() {
 
         {/* Call to Action when nothing selected */}
         {!selectedSubject && !selectedGrade && (
-          <Card className="max-w-4xl mx-auto shadow-2xl border-0 bg-gradient-to-br from-white via-blue-50/30 to-purple-50/30">
-            <CardContent className="p-12 text-center space-y-8">
-              <div className="w-20 h-20 bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-500 rounded-3xl flex items-center justify-center shadow-2xl mx-auto transform hover:scale-110 transition-transform duration-300">
-                <ArrowRight className="w-10 h-10 text-white drop-shadow-sm" />
+          <Card className="max-w-4xl mx-auto shadow-2xl border-0 bg-gradient-to-br from-white via-blue-50/30 to-purple-50/30 mobile-safe-card">
+            <CardContent className="mobile-padding text-center space-y-4 md:space-y-5 py-6 md:py-8 mobile-safe-container">
+              <div className="w-20 h-20 md:w-24 md:h-24 bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-500 rounded-3xl flex items-center justify-center shadow-2xl mx-auto transform hover:shadow-3xl transition-all duration-300">
+                <ArrowRight className="w-10 h-10 md:w-12 md:h-12 text-white drop-shadow-sm" />
               </div>
-              <div className="space-y-4">
-                <h3 className="text-3xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
+              <div className="space-y-4 md:space-y-6 mobile-safe-container">
+                <h3 className="text-2xl md:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent mobile-truncate">
                   התחל בבחירת מקצוע וכיתה
                 </h3>
-                <div className="w-20 h-1 bg-gradient-to-r from-blue-500 to-purple-500 mx-auto rounded-full"></div>
-                <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
+                <div className="w-20 md:w-24 h-1 bg-gradient-to-r from-blue-500 to-purple-500 mx-auto rounded-full"></div>
+                <p className="text-lg md:text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed mobile-safe-text mobile-padding-x">
                   לאחר הבחירה, תוכל לעיין בתכנית הלימודים המפורטת ולשתף אותה עם אחרים
                 </p>
               </div>
-              <div className="flex items-center justify-center gap-8 pt-4">
-                <div className="flex items-center gap-2 text-gray-500">
+              <div className="mobile-safe-flex items-center justify-center mobile-gap pt-4 md:pt-6 flex-wrap">
+                <div className="mobile-safe-flex items-center mobile-gap text-gray-500">
                   <BookOpen className="w-5 h-5" />
-                  <span>תכניות מפורטות</span>
+                  <span className="text-sm md:text-base">תכניות מפורטות</span>
                 </div>
-                <div className="flex items-center gap-2 text-gray-500">
+                <div className="mobile-safe-flex items-center mobile-gap text-gray-500">
                   <Share2 className="w-5 h-5" />
-                  <span>שיתוף קל</span>
+                  <span className="text-sm md:text-base">שיתוף קל</span>
                 </div>
-                <div className="flex items-center gap-2 text-gray-500">
+                <div className="mobile-safe-flex items-center mobile-gap text-gray-500">
                   <Users className="w-5 h-5" />
-                  <span>ניהול כיתות</span>
+                  <span className="text-sm md:text-base">ניהול כיתות</span>
                 </div>
               </div>
             </CardContent>
