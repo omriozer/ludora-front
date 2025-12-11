@@ -17,6 +17,7 @@ import LudoraLoadingSpinner from "@/components/ui/LudoraLoadingSpinner";
 import EntityForm from "@/components/ui/EntityForm";
 import ClassSelector from "@/components/ui/ClassSelector";
 import AssociateProductDialog from "@/components/ui/AssociateProductDialog";
+import SEOHead from '@/components/SEOHead';
 import {
   BookOpen,
   GraduationCap,
@@ -971,7 +972,9 @@ export default function Curriculum() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 mobile-no-scroll-x mobile-safe-container" dir="rtl">
+    <>
+      <SEOHead title="תכניות לימודים" />
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 mobile-no-scroll-x mobile-safe-container" dir="rtl">
       <div className="container mx-auto mobile-padding-x py-4 md:py-8 space-y-4 md:space-y-8 max-w-7xl mobile-safe-container">
 
         {/* Hero Header */}
@@ -1937,5 +1940,6 @@ export default function Curriculum() {
         )}
       </div>
     </div>
+    </>
   );
 }

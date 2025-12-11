@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
 import LogoDisplay from '@/components/ui/LogoDisplay';
+import SimpleOptimizedImage from '@/components/ui/SimpleOptimizedImage';
 import { getProductTypeName, NAV_ITEMS, PRODUCT_TYPES } from '@/config/productTypes';
 import { iconMap } from "@/lib/layoutUtils";
 
@@ -508,13 +509,14 @@ export default function Home() {
                 <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/20 to-pink-400/20 rounded-3xl blur-2xl transform rotate-6"></div>
                 {/* Fixed aspect ratio container for consistent hero image sizing */}
                 <div className="relative z-10 w-full max-w-lg rounded-3xl shadow-2xl transform -rotate-2 hover:rotate-0 transition-transform duration-700 overflow-hidden">
-                  <div className="aspect-[4/3]">
-                    <img
-                      src={selectedHeroImage.src}
-                      alt={selectedHeroImage.alt}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
+                  <SimpleOptimizedImage
+                    src={selectedHeroImage.src}
+                    alt={selectedHeroImage.alt}
+                    className="w-full h-full object-cover"
+                    priority={true}
+                    width={512}
+                    height={384}
+                  />
                 </div>
               </div>
             </div>
@@ -769,10 +771,12 @@ export default function Home() {
 
               <div className="relative">
                 <div className="absolute inset-0 bg-gradient-to-br from-violet-400/20 to-purple-400/20 rounded-3xl blur-2xl transform rotate-3"></div>
-                <img
+                <SimpleOptimizedImage
                   src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80"
                   alt="קהילת יוצרי תוכן"
                   className="relative z-10 w-full h-80 object-cover rounded-3xl shadow-2xl transform -rotate-2 hover:rotate-0 transition-transform duration-700"
+                  width={600}
+                  height={320}
                 />
                 <div className="absolute bottom-6 left-6 right-6 bg-white/90 backdrop-blur-sm rounded-xl p-4 z-20">
                   <p className="text-sm text-gray-700 font-medium text-center">
@@ -1029,10 +1033,12 @@ export default function Home() {
 
               <div className="relative">
                 <div className="absolute inset-0 bg-gradient-to-br from-blue-400/20 to-indigo-400/20 rounded-3xl blur-2xl transform -rotate-3"></div>
-                <img
+                <SimpleOptimizedImage
                   src="https://images.unsplash.com/photo-1571260899304-425eee4c7efc?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80"
                   alt="ניהול מערכת בית ספר"
                   className="relative z-10 w-full h-96 object-cover rounded-3xl shadow-2xl transform rotate-2 hover:rotate-0 transition-transform duration-700"
+                  width={600}
+                  height={384}
                 />
               </div>
             </div>
@@ -1165,10 +1171,12 @@ export default function Home() {
                   <div className="flex items-center gap-4">
                     {/* Avatar */}
                     {(testimonial.avatar || testimonial.image) ? (
-                      <img
+                      <SimpleOptimizedImage
                         src={testimonial.avatar || testimonial.image}
                         alt={testimonial.name || testimonial.author}
                         className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-md"
+                        width={48}
+                        height={48}
                       />
                     ) : (
                       <div className="w-12 h-12 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full flex items-center justify-center shadow-md">

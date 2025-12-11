@@ -14,6 +14,13 @@ import { Badge } from '@/components/ui/badge';
 import ProtectedStudentRoute from '@/components/auth/ProtectedStudentRoute';
 import { useUser } from '@/contexts/UserContext';
 import TeacherAssignmentConfirmation from '@/components/dialogs/TeacherAssignmentConfirmation';
+import SEOHead from '@/components/SEOHead';
+import {
+  generateItemListStructuredData,
+  generateGameStructuredData,
+  getLudoraOrganization,
+  generateBreadcrumbStructuredData
+} from '@/lib/structuredData';
 
 /**
  * Teacher catalog page for students to view games shared by their teacher
@@ -32,6 +39,14 @@ const TeacherCatalogContent = () => {
   const [showTeacherAssignment, setShowTeacherAssignment] = useState(false);
   const [teacherAssignmentData, setTeacherAssignmentData] = useState(null);
   const [isAssigningTeacher, setIsAssigningTeacher] = useState(false);
+
+  // SEO and structured data state
+  const [seoData, setSeoData] = useState({
+    title: 'משחקים - פורטל תלמידים',
+    description: 'גלה משחקים חינוכיים אינטראקטיביים מהמורה שלך',
+    keywords: 'משחקים חינוכיים, לימוד אינטראקטיבי, פורטל תלמידים, לודורה',
+    structuredData: []
+  });
 
   // Socket.IO integration for real-time lobby updates
   const { connected: isSocketConnected, onLobbyUpdate } = useSocket();
@@ -197,6 +212,78 @@ const TeacherCatalogContent = () => {
       fetchTeacherCatalog();
     }
   }, [userCode, isPlayerAuthenticated, currentPlayer, isAuthenticated, currentUser]);
+
+  // Generate SEO and structured data when catalog and games are loaded
+  useEffect(() => {
+    if (!catalog || !gamesWithLobbies.length) return;
+
+    try {
+      const teacherName = catalog.teacher.name || 'המורה';
+      const pageTitle = `משחקי ${teacherName} - פורטל תלמידים`;
+      const pageDescription = `גלה את המשחקים החינוכיים של ${teacherName}. ${gamesWithLobbies.length} משחקים אינטראקטיביים זמינים לשחק.`;
+      const pageKeywords = `משחקים חינוכיים, ${teacherName}, לימוד אינטראקטיבי, פורטל תלמידים, לודורא`;
+
+      // Generate structured data array
+      const structuredDataArray = [
+        getLudoraOrganization()
+      ];
+
+      // Add breadcrumb structured data
+      const breadcrumbs = [
+        { name: 'בית', url: '/' },
+        { name: 'פורטל תלמידים', url: '/student' },
+        { name: `משחקי ${teacherName}`, url: window.location.pathname }
+      ];
+      structuredDataArray.push(generateBreadcrumbStructuredData(breadcrumbs));
+
+      // Generate ItemList structured data for the games catalog
+      const catalogItems = gamesWithLobbies.slice(0, 20).map((game, index) => ({
+        position: index + 1,
+        name: game.product?.title || game.product?.name || 'משחק ללא כותרת',
+        url: window.location.href, // Student portal doesn't have individual game pages
+        image: game.product?.thumbnail_url || '',
+        description: game.description || `משחק חינוכי של ${teacherName}`
+      }));
+
+      if (catalogItems.length > 0) {
+        const itemListData = generateItemListStructuredData(
+          catalogItems,
+          `משחקי ${teacherName}`
+        );
+        structuredDataArray.push(itemListData);
+      }
+
+      // Generate individual game structured data for featured games
+      gamesWithLobbies.slice(0, 5).forEach(game => {
+        if (game.product) {
+          const gameData = {
+            ...game.product,
+            title: game.product.title || game.product.name,
+            creator: { display_name: teacherName },
+            is_published: true,
+            price: 0, // Games are free in student portal
+            difficulty: game.difficulty || 'medium',
+            max_players: game.max_players || 30
+          };
+
+          const gameUrl = window.location.href; // Student portal context
+          const gameSchema = generateGameStructuredData(gameData, gameUrl);
+          structuredDataArray.push(gameSchema);
+        }
+      });
+
+      // Update SEO data
+      setSeoData({
+        title: pageTitle,
+        description: pageDescription,
+        keywords: pageKeywords,
+        structuredData: structuredDataArray
+      });
+
+    } catch (error) {
+      console.warn('Error generating structured data:', error);
+    }
+  }, [catalog, gamesWithLobbies]);
 
   // Initialize Socket.IO connection for real-time updates
   useEffect(() => {
@@ -473,8 +560,15 @@ const TeacherCatalogContent = () => {
   }
 
   return (
-    <div className="flex-1 flex flex-col student-portal-background">
-      {/* Content */}
+    <>
+      {/* SEO Head with structured data */}
+      <SEOHead
+        {...seoData}
+        noindex={true} // Student portal pages should not be indexed
+      />
+
+      <div className="flex-1 flex flex-col student-portal-background">
+        {/* Content */}
       <main className="flex-1 max-w-6xl mx-auto px-4 py-8 w-full">
         {/* Page-level Connection Status */}
         <div className="mb-6 flex justify-center">
@@ -668,7 +762,8 @@ const TeacherCatalogContent = () => {
         onCancel={handleTeacherAssignmentCancel}
         isLoading={isAssigningTeacher}
       />
-    </div>
+      </div>
+    </>
   );
 };
 

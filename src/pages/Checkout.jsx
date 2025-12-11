@@ -40,6 +40,7 @@ import { usePaymentPageStatusCheck } from '@/hooks/usePaymentPageStatusCheck';
 import { useSubscriptionPaymentStatusCheck } from '@/hooks/useSubscriptionPaymentStatusCheck';
 import { isBundle, getBundleItemCount } from '@/lib/bundleUtils';
 import KitBadge from '@/components/ui/KitBadge';
+import SEOHead from '@/components/SEOHead';
 
 
 export default function Checkout() {
@@ -432,7 +433,9 @@ export default function Checkout() {
   // Empty cart state
   if (cartItems.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/30">
+      <>
+        <SEOHead title="עגלת קניות" />
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/30">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Header with Back Button */}
           <div className="mb-8">
@@ -463,11 +466,14 @@ export default function Checkout() {
           </div>
         </div>
       </div>
+      </>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/30">
+    <>
+      <SEOHead title="עגלת קניות" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/30">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header with Back Button */}
         <div className="mb-8">
@@ -722,5 +728,6 @@ export default function Checkout() {
       </div>
 
     </div>
+    </>
   );
 }

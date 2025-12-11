@@ -34,6 +34,7 @@ import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { ludlog, luderror } from '@/lib/ludlog';
 import { toast } from "@/components/ui/use-toast";
 import "@/styles/dashboard.css";
+import SEOHead from '@/components/SEOHead';
 
 // Widget picker modal component
 const WidgetPickerModal = ({ isOpen, onClose, availableWidgets, onAddWidget, onRemoveWidget, userWidgets }) => {
@@ -831,7 +832,9 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-indigo-50/50 mobile-padding-y mobile-no-scroll-x mobile-safe-container">
+    <>
+      <SEOHead title="דאשבורד" />
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-indigo-50/50 mobile-padding-y mobile-no-scroll-x mobile-safe-container">
       <div className="max-w-6xl mx-auto mobile-padding-x mobile-safe-container">
 
         {/* Header Section */}
@@ -964,5 +967,6 @@ export default function Dashboard() {
         />
       </div>
     </div>
+    </>
   );
 }

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import OptimizedImage from "@/components/ui/OptimizedImage";
+// OptimizedImage removed - using simple img for logo display
 import { Settings } from "@/services/entities";
 import { UploadFile } from "@/services/integrations";
 import { showConfirm } from '@/utils/messaging';
@@ -246,13 +246,12 @@ export default function BrandSettings() {
                         </Button>
                       </div>
                     </div>
-                    <OptimizedImage
+                    <img
                       src={formData.logo_url}
                       alt="לוגו האתר"
                       className="max-h-24 object-contain border rounded"
-                      width={96}
-                      height={96}
-                      sizes="96px"
+                      loading="lazy"
+                      decoding="async"
                     />
                   </div>
                 )}

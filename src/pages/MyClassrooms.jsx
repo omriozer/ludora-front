@@ -25,13 +25,13 @@ import SubscriptionModal from "../components/SubscriptionModal";
 import ClassroomForm from "../components/classrooms/ClassroomForm";
 import InviteStudentsModal from "../components/classrooms/InviteStudentsModal";
 import StudentsListModal from "../components/classrooms/StudentsListModal";
+import SEOHead from '@/components/SEOHead';
 
 export default function MyClassrooms() {
   const navigate = useNavigate();
   const { currentUser, settings, isLoading: userLoading } = useUser();
 
   const [subscriptionPlans, setSubscriptionPlans] = useState([]);
-  const [userPlan, setUserPlan] = useState(null);
   const [classrooms, setClassrooms] = useState([]);
   const [studentCounts, setStudentCounts] = useState({}); // New state for student counts
   const [isLoading, setIsLoading] = useState(true);
@@ -49,19 +49,6 @@ export default function MyClassrooms() {
   const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
-      // User data and settings are now available from global UserContext
-
-      // Load subscription plans and user plan
-      if (settings?.subscription_system_enabled) {
-        const plans = await SubscriptionPlan.filter({ is_active: true }, "sort_order");
-        setSubscriptionPlans(plans);
-
-        if (currentUser.current_subscription_plan_id) {
-          const userPlanData = plans.find(plan => plan.id === currentUser.current_subscription_plan_id);
-          setUserPlan(userPlanData);
-        }
-      }
-
       // Load user's classrooms
       if (currentUser.id) {
         const userClassrooms = await Classroom.filter({ teacher_id: currentUser.id });
@@ -69,6 +56,12 @@ export default function MyClassrooms() {
 
         // Load student counts for each classroom
         await loadStudentCounts(userClassrooms);
+      }
+
+      // Load subscription plans for upgrade modal (only if subscription system enabled)
+      if (settings?.subscription_system_enabled) {
+        const plans = await SubscriptionPlan.filter({ is_active: true }, "sort_order");
+        setSubscriptionPlans(plans);
       }
 
     } catch (error) {
@@ -116,10 +109,10 @@ export default function MyClassrooms() {
   }, [loadData, userLoading, currentUser, settings]);
 
   const checkClassroomLimits = () => {
-    // Check if user has classroom management enabled
-    const hasClassroomAccess = userPlan?.benefits?.classroom_management?.enabled;
-    
-    if (!hasClassroomAccess) {
+    // ✅ NEW APPROACH: Use explicit subscription permissions from API
+    const classroomPermissions = currentUser.subscription_permissions?.classroom_management;
+
+    if (!classroomPermissions?.enabled) {
       return {
         canCreate: false,
         limitType: 'feature',
@@ -127,17 +120,14 @@ export default function MyClassrooms() {
       };
     }
 
-    // Check classroom quota
-    const isUnlimited = userPlan.benefits.classroom_management.unlimited_classrooms;
-    const maxClassrooms = userPlan.benefits.classroom_management.max_classrooms || 0;
-    
-    if (!isUnlimited && classrooms.length >= maxClassrooms) {
+    // Use the explicit can_create_classroom permission from API
+    if (!classroomPermissions.can_create_classroom) {
       return {
         canCreate: false,
         limitType: 'quota',
-        currentUsage: classrooms.length,
-        maxAllowed: maxClassrooms,
-        availableUpgrades: getClassroomUpgrades(maxClassrooms)
+        currentUsage: classroomPermissions.current_classrooms || 0,
+        maxAllowed: classroomPermissions.max_classrooms || 0,
+        availableUpgrades: getClassroomUpgrades(classroomPermissions.max_classrooms || 0)
       };
     }
 
@@ -220,12 +210,11 @@ export default function MyClassrooms() {
   };
 
   const handleSubscriptionChange = (plan) => {
-    setUserPlan(plan);
-    setCurrentUser(prev => ({
-      ...prev,
-      current_subscription_plan_id: plan.id
-    }));
+    // After subscription change, reload user data to get updated permissions
+    // The UserContext will automatically refresh and provide new subscription_permissions
     setShowSubscriptionModal(false);
+    // Force a data reload to get updated permissions
+    loadData();
   };
 
   const getGradeLevelText = (gradeLevel) => {
@@ -277,7 +266,9 @@ export default function MyClassrooms() {
   const limits = checkClassroomLimits();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50" dir="rtl">
+    <>
+      <SEOHead title="הכיתות שלי" />
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50" dir="rtl">
       <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
         {/* Header */}
         <div className="mb-8">
@@ -474,7 +465,10 @@ export default function MyClassrooms() {
         featureName="classrooms"
         currentUsage={limits.currentUsage}
         maxAllowed={limits.maxAllowed}
-        currentPlan={userPlan}
+        currentPlan={currentUser.subscription_permissions ? {
+          id: currentUser.subscription_permissions.subscription_plan_id,
+          name: currentUser.subscription_permissions.subscription_plan_name
+        } : null}
         availableUpgrades={limits.availableUpgrades || []}
       />
 
@@ -500,5 +494,6 @@ export default function MyClassrooms() {
         }}
       />
     </div>
+    </>
   );
 }

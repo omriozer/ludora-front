@@ -25,12 +25,14 @@ import {
   Clock,
   Users,
   Zap,
-  Settings
+  Settings,
+  Send
 } from "lucide-react";
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import AdvancedEmailEditor from "../components/email/AdvancedEmailEditor";
 import { Link } from "react-router-dom"; // Import Link for navigation
+import { showConfirm, showSuccess, showError } from '@/utils/messaging';
 
 export default function EmailAutomations() {
   const { currentUser, isLoading: userLoading } = useUser();
@@ -40,6 +42,7 @@ export default function EmailAutomations() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState(null);
+  const [sendingExample, setSendingExample] = useState(null); // Track which template is sending example
 
   const [formData, setFormData] = useState({
     name: "",
@@ -138,7 +141,7 @@ export default function EmailAutomations() {
 
   const handleDelete = async (templateId) => {
     const template = templates.find(t => t.id === templateId);
-    
+
     if (template?.is_system_template) {
       setMessage({ type: 'error', text: 'לא ניתן למחוק תבנית מערכת. ניתן רק לערוך אותה.' });
       setTimeout(() => setMessage(null), 3000);
@@ -155,6 +158,59 @@ export default function EmailAutomations() {
       setMessage({ type: 'error', text: 'שגיאה במחיקת התבנית' });
     }
     setTimeout(() => setMessage(null), 3000);
+  };
+
+  const handleSendExample = async (templateId) => {
+    const template = templates.find(t => t.id === templateId);
+    if (!template) {
+      showError('שגיאה', 'תבנית לא נמצאה');
+      return;
+    }
+
+    // Show confirmation dialog with user's email
+    const confirmed = await showConfirm(
+      'שליחת דוגמת מייל',
+      `האם ברצונך לשלוח דוגמה של התבנית "${template.name}" לכתובת ${currentUser.email}?`,
+      {
+        variant: 'info',
+        confirmText: 'שלח דוגמה',
+        cancelText: 'ביטול'
+      }
+    );
+
+    if (!confirmed) return;
+
+    setSendingExample(templateId);
+
+    try {
+      const response = await fetch('/api/sendExampleEmail', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ templateId })
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        showSuccess(
+          'המייל נשלח בהצלחה',
+          `דוגמת המייל נשלחה לכתובת ${result.data?.recipient || currentUser.email}`
+        );
+      } else {
+        throw new Error(result.error || 'שגיאה בשליחת דוגמת המייל');
+      }
+    } catch (error) {
+      console.error('Error sending example email:', error);
+      showError(
+        'שגיאה בשליחת המייל',
+        error.message || 'אירעה שגיאה לא צפויה בשליחת דוגמת המייל'
+      );
+    } finally {
+      setSendingExample(null);
+    }
   };
 
   const resetForm = () => {
@@ -314,8 +370,27 @@ export default function EmailAutomations() {
                           </div>
                         </div>
                         <div className="flex gap-2">
-                          <Button variant="outline" size="sm" onClick={() => handleEdit(template)}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEdit(template)}
+                            title="ערוך תבנית"
+                          >
                             <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleSendExample(template.id)}
+                            disabled={sendingExample === template.id}
+                            className="text-blue-600 hover:text-blue-700"
+                            title="שלח דוגמת מייל"
+                          >
+                            {sendingExample === template.id ? (
+                              <div className="w-4 h-4 animate-spin border border-blue-600 border-t-transparent rounded-full" />
+                            ) : (
+                              <Send className="w-4 h-4" />
+                            )}
                           </Button>
                           {!template.is_system_template && (
                             <Button
@@ -323,6 +398,7 @@ export default function EmailAutomations() {
                               size="sm"
                               onClick={() => handleDelete(template.id)}
                               className="text-red-600 hover:text-red-700"
+                              title="מחק תבנית"
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
