@@ -2,7 +2,7 @@ import './App.css';
 import './styles/studentsGlobalStyles.css';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
-import { useEffect, Suspense, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { apiRequestAnonymous } from '@/services/apiClient';
 // Core pages - loaded immediately for better UX
 import { Home, Dashboard, Registration, NotFound } from '@/pages/lazy.jsx';
@@ -37,7 +37,6 @@ import { SYSTEM_KEYS, getSetting } from '@/constants/settings';
 import UserWayWidget from '@/components/accessibility/UserWayWidget';
 import ConsentEnforcement from '@/components/consent/ConsentEnforcement';
 import { initializeFullAnalytics } from '@/utils/analytics';
-import SitemapProxy from '@/components/seo/SitemapProxy';
 
 // Suspense fallback component
 const SuspenseLoader = () => (
@@ -369,6 +368,16 @@ function StudentPortal() {
 						}
 					/>
 
+					{/* Demo page - admin only */}
+					<Route
+						path='/demo'
+						element={
+							<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
+								<LazyPages.Demo />
+							</AuthAwareSuspense>
+						}
+					/>
+
 					{/* Student 404 Page */}
 					<Route
 						path='*'
@@ -530,10 +539,6 @@ function App() {
 								<LazyPages.ParentConsent />
 							</AuthAwareSuspense>
 						}
-					/>
-					<Route
-						path='/sitemap.xml'
-						element={<SitemapProxy />}
 					/>
 
 					{/* Protected routes - require authentication */}
@@ -783,6 +788,18 @@ function App() {
 								<OnboardingRedirect>
 									<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
 										<LazyPages.ClassCurriculum />
+									</AuthAwareSuspense>
+								</OnboardingRedirect>
+							</ConditionalRoute>
+						}
+					/>
+					<Route
+						path='/classroom/:classroomId/manage'
+						element={
+							<ConditionalRoute visibilityField='nav_classrooms_visibility'>
+								<OnboardingRedirect>
+									<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
+										<LazyPages.ClassroomManagement />
 									</AuthAwareSuspense>
 								</OnboardingRedirect>
 							</ConditionalRoute>
@@ -1187,15 +1204,13 @@ function App() {
 						}
 					/>
 
-					{/* Demo page */}
+					{/* Demo page - admin protection handled internally */}
 					<Route
 						path='/demo'
 						element={
-							<AdminRoute>
-								<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ADMIN}>
-									<LazyPages.Demo />
-								</AuthAwareSuspense>
-							</AdminRoute>
+							<AuthAwareSuspense fallback={<SuspenseLoader />} {...AuthAwareSuspenseConfig.ENHANCED}>
+								<LazyPages.Demo />
+							</AuthAwareSuspense>
 						}
 					/>
 

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -9,14 +9,16 @@ import { Loader2, AlertCircle, GamepadIcon, GraduationCap, UserIcon, HelpCircle,
 import { ludlog, luderror } from '@/lib/ludlog';
 import { useUser } from '@/contexts/UserContext';
 import { useLoginModal } from '@/hooks/useLoginModal';
-import { loginWithFirebase } from '@/services/apiClient';
+import { loginWithFirebase, apiRequest, apiRequestAnonymous } from '@/services/apiClient';
 import { firebaseAuth } from '@/lib/firebase';
 import { showSuccess, showError } from '@/utils/messaging';
 import { STUDENTS_ACCESS_MODES } from '@/utils/portalContext';
 import { STUDENT_GRADIENTS } from '@/styles/studentsColorSchema';
 import { APP_VERSION } from '@/constants/version';
 import PlayerWelcomeModal from '@/components/dialogs/PlayerWelcomeModal';
+import TeacherAssignmentConfirmation from '@/components/dialogs/TeacherAssignmentConfirmation';
 import LogoDisplay from '@/components/ui/LogoDisplay';
+import ConfirmationDialog from '@/components/ui/confirmation-dialog';
 
 /**
  * StudentLogin Component
@@ -31,13 +33,12 @@ import LogoDisplay from '@/components/ui/LogoDisplay';
  */
 const StudentLogin = ({ onLoginSuccess, returnPath, onClose }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const {
     playerLogin,
     login,
-    settings,
-    isAuthenticated,
-    isPlayerAuthenticated,
-    refreshUser
+    userLoginSuccessMsg,
+    settings
   } = useUser();
 
   // Login states
@@ -50,9 +51,26 @@ const StudentLogin = ({ onLoginSuccess, returnPath, onClose }) => {
   const [loginMode, setLoginMode] = useState('existing'); // 'existing' or 'new'
   const [showPrivacyPopup, setShowPrivacyPopup] = useState(false);
 
+  // Teacher connection error handling states
+  const [teacherConnectionError, setTeacherConnectionError] = useState(null);
+  const [showInvitationFlow, setShowInvitationFlow] = useState(false);
+  const [invitationCode, setInvitationCode] = useState('');
+  const [isInvitationSubmitting, setIsInvitationSubmitting] = useState(false);
+  const [pendingLoginData, setPendingLoginData] = useState(null); // Store login data for retry
+
+  // Teacher assignment confirmation states
+  const [showTeacherAssignment, setShowTeacherAssignment] = useState(false);
+  const [teacherAssignmentData, setTeacherAssignmentData] = useState(null);
+  const [isAssigningTeacher, setIsAssigningTeacher] = useState(false);
+  const [detectedTeacher, setDetectedTeacher] = useState(null);
+  const [justAssignedTeacher, setJustAssignedTeacher] = useState(null); // Track recent teacher assignment
+
   // Welcome modal state
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [newPlayerData, setNewPlayerData] = useState(null);
+
+  // Teacher connection failed dialog state
+  const [showTeacherConnectionFailedDialog, setShowTeacherConnectionFailedDialog] = useState(false);
 
   // Get students_access mode from settings (default to 'all' for maximum accessibility)
   const studentsAccessMode = settings?.students_access || STUDENTS_ACCESS_MODES.ALL;
@@ -63,6 +81,114 @@ const StudentLogin = ({ onLoginSuccess, returnPath, onClose }) => {
   const showGoogleLogin = studentsAccessMode === STUDENTS_ACCESS_MODES.AUTHED_ONLY ||
                           studentsAccessMode === STUDENTS_ACCESS_MODES.ALL;
 
+  // Teacher detection logic - check various sources for teacher context
+  useEffect(() => {
+    const detectTeacherContext = async () => {
+      try {
+        // Check various sources for teacher information
+        let teacherInfo = null;
+        let teacherId = null;
+        let userCode = null;
+
+        // 1. Check URL path for teacher portal patterns (/portal/USERCODE)
+        const pathMatch = location.pathname.match(/\/portal\/([A-Z0-9]+)$/i);
+        if (pathMatch) {
+          userCode = pathMatch[1];
+          ludlog.ui('Detected teacher portal URL with userCode:', userCode);
+        }
+
+        // 2. Check URL parameters (e.g., from teacher portal redirects)
+        const urlParams = new URLSearchParams(location.search);
+        teacherId = urlParams.get('teacher_id');
+
+        // 3. Check location state (from navigation)
+        if (!teacherId && location.state?.teacher_id) {
+          teacherId = location.state.teacher_id;
+        }
+
+        // 4. Check sessionStorage for pending teacher connection
+        if (!teacherId) {
+          const pendingTeacherId = sessionStorage.getItem('pendingTeacherId');
+          if (pendingTeacherId) {
+            teacherId = pendingTeacherId;
+          }
+        }
+
+        // 5. Check for teacher information from teacher portal context
+        if (!teacherId && location.state?.teacher) {
+          teacherInfo = location.state.teacher;
+          teacherId = teacherInfo.id;
+        }
+
+        // 6. If we have a userCode from URL, fetch teacher info using the teacher catalog endpoint
+        if (userCode && !teacherId) {
+          try {
+            ludlog.ui('Fetching teacher info using userCode:', userCode);
+            const response = await apiRequestAnonymous(`/games/teacher/${userCode}`);
+
+            if (response && response.teacher) {
+              teacherInfo = {
+                id: response.teacher.id,
+                name: response.teacher.name || response.teacher.full_name || 'המורה',
+                full_name: response.teacher.full_name || response.teacher.name || 'המורה'
+              };
+              teacherId = response.teacher.id;
+              ludlog.ui('Successfully fetched teacher info from userCode:', teacherInfo);
+            }
+          } catch (error) {
+            luderror.ui('Failed to fetch teacher info from userCode:', userCode, error);
+            // Continue with normal flow if teacher fetch fails
+          }
+        }
+
+        // 7. If we found a teacher ID but no teacher info, fetch teacher details
+        if (teacherId && !teacherInfo) {
+          try {
+            // Try to fetch teacher information (this might fail if not accessible)
+            const response = await apiRequest(`/users/${teacherId}`, {
+              method: 'GET'
+            });
+
+            if (response && response.user_type === 'teacher') {
+              teacherInfo = {
+                id: response.id,
+                name: response.display_name || response.full_name,
+                full_name: response.full_name
+              };
+            }
+          } catch (error) {
+            // If we can't fetch teacher info, create a basic object
+            ludlog.ui('Could not fetch teacher details, using ID only:', teacherId);
+            teacherInfo = {
+              id: teacherId,
+              name: 'המורה',
+              full_name: 'המורה'
+            };
+          }
+        }
+
+        // If we have teacher context, show teacher assignment confirmation
+        if (teacherInfo && teacherId) {
+          ludlog.ui('Showing teacher assignment confirmation for:', teacherInfo);
+          setDetectedTeacher({ id: teacherId, ...teacherInfo });
+          setTeacherAssignmentData({
+            teacher: teacherInfo,
+            teacher_id: teacherId
+          });
+          setShowTeacherAssignment(true);
+        } else {
+          ludlog.ui('No teacher context detected, showing normal login');
+        }
+
+      } catch (error) {
+        luderror.ui('Error detecting teacher context:', error);
+        // Continue with normal login flow if detection fails
+      }
+    };
+
+    detectTeacherContext();
+  }, [location]); // Re-run when location changes
+
   // Handle successful login
   const handleLoginComplete = () => {
     if (onLoginSuccess) {
@@ -72,25 +198,103 @@ const StudentLogin = ({ onLoginSuccess, returnPath, onClose }) => {
     }
   };
 
-  // Google Sign-In handler (reuses LoginModal pattern)
+  // Google Sign-In handler (using new students login endpoint)
   const handleGoogleSignIn = async () => {
     setIsGoogleLoggingIn(true);
     setGoogleError('');
     setPlayerError('');
+    setTeacherConnectionError(null);
 
     try {
-      const { user, idToken } = await firebaseAuth.signInWithGoogle();
-      const apiResult = await loginWithFirebase({ idToken });
+      const { idToken } = await firebaseAuth.signInWithGoogle();
 
-      if (apiResult.valid && apiResult.user) {
-        await login(apiResult.user, false);
-        showSuccess('התחברת בהצלחה!');
-        handleLoginComplete();
-      } else {
-        throw new Error('Authentication failed');
+      // Check if we have a pending teacher connection from previous invitation
+      const pendingTeacherId = sessionStorage.getItem('pendingTeacherId');
+
+      // Prepare request for new students login endpoint
+      const loginRequest = {
+        idToken: idToken
+      };
+
+      if (pendingTeacherId) {
+        loginRequest.teacher_id = pendingTeacherId;
       }
+
+      // Call the new unified students login endpoint
+      const apiResult = await apiRequest('/students/login', {
+        method: 'POST',
+        body: JSON.stringify(loginRequest)
+      });
+
+      // Handle successful login
+      if (apiResult.success && (apiResult.user || apiResult.student)) {
+        await login(apiResult.user || apiResult.student, false);
+
+        // Clear pending teacher ID after successful login
+        sessionStorage.removeItem('pendingTeacherId');
+
+        // Show appropriate success message
+        if (justAssignedTeacher) {
+          // Show teacher connection success message
+          showSuccess(`התחברת בהצלחה למורה ${justAssignedTeacher.name}!`);
+          setJustAssignedTeacher(null); // Clear the flag
+        } else {
+          // Show regular login success message
+          userLoginSuccessMsg(apiResult.user || apiResult.student);
+        }
+
+        handleLoginComplete();
+        return; // Exit function successfully
+      }
+
+      // Handle ALREADY_CONNECTED case as success
+      if (apiResult.code === 'ALREADY_CONNECTED' && apiResult.data) {
+        // User is already connected to the teacher - this is a success case
+        const { teacher, connection } = apiResult.data;
+
+        // Clear pending teacher ID since connection is confirmed
+        sessionStorage.removeItem('pendingTeacherId');
+
+        // Show success message about existing connection
+        const teacherName = teacher.name || teacher.full_name || 'המורה';
+        showSuccess(`אתה כבר מחובר למורה ${teacherName}!`);
+
+        handleLoginComplete();
+        return; // Exit function successfully
+      }
+
+      // If we get here, it's actually a failure
+      throw new Error('Authentication failed');
     } catch (err) {
       luderror.ui('Google sign-in error:', err);
+
+      // Check for teacher connection failed error (subscription issue)
+      if (err.code === 'TEACHER_CONNECTION_FAILED') {
+        // Show custom confirmation dialog for subscription issue
+        setShowTeacherConnectionFailedDialog(true);
+
+        // Clear any auth state and return to login screen
+        setGoogleError('');
+        setIsGoogleLoggingIn(false);
+        return;
+      }
+
+      // Check for teacher connection required error
+      if (err.message && err.message.includes('Teacher connection required')) {
+        setTeacherConnectionError('יש לחבר למורה כדי לגשת לפורטל התלמידים.');
+
+        // Store the current idToken for retry after teacher connection
+        try {
+          const currentIdToken = await firebaseAuth.getCurrentUserIdToken();
+          setPendingLoginData({ idToken: currentIdToken });
+        } catch (tokenError) {
+          luderror.ui('Failed to get current user token:', tokenError);
+          setPendingLoginData(null);
+        }
+
+        setShowInvitationFlow(true);
+        return; // Don't set googleError, show invitation flow instead
+      }
 
       let errorMessage = 'שגיאה בכניסה. נסו שוב.';
 
@@ -134,10 +338,63 @@ const StudentLogin = ({ onLoginSuccess, returnPath, onClose }) => {
 
     try {
       if (loginMode === 'existing') {
-        // Login with existing privacy code
-        await playerLogin(privacyCode.trim().toUpperCase());
-        // Apply same fix as welcome modal - ensure proper state update and closure
-        await handleExistingPlayerLoginComplete();
+        // Login with existing privacy code using new students login endpoint
+        const pendingTeacherId = sessionStorage.getItem('pendingTeacherId');
+
+        const loginRequest = {
+          privacy_code: privacyCode.trim().toUpperCase()
+        };
+
+        if (pendingTeacherId) {
+          loginRequest.teacher_id = pendingTeacherId;
+        }
+
+        // Call the new unified students login endpoint
+        const apiResult = await apiRequest('/students/login', {
+          method: 'POST',
+          body: JSON.stringify(loginRequest)
+        });
+
+        // Handle successful player login
+        if (apiResult.success && apiResult.player) {
+          // Update context with the authenticated player
+          await playerLogin(privacyCode.trim().toUpperCase());
+
+          // Clear pending teacher ID after successful login
+          sessionStorage.removeItem('pendingTeacherId');
+
+          // Show teacher connection success message if applicable
+          if (justAssignedTeacher) {
+            showSuccess(`התחברת בהצלחה למורה ${justAssignedTeacher.name}!`);
+            setJustAssignedTeacher(null); // Clear the flag
+          }
+
+          // Apply same fix as welcome modal - ensure proper state update and closure
+          await handleExistingPlayerLoginComplete();
+          return; // Exit function successfully
+        }
+
+        // Handle ALREADY_CONNECTED case as success for player login
+        if (apiResult.code === 'ALREADY_CONNECTED' && apiResult.data) {
+          // Player is already connected to the teacher - this is a success case
+          const { teacher, connection } = apiResult.data;
+
+          // Still need to authenticate the player locally
+          await playerLogin(privacyCode.trim().toUpperCase());
+
+          // Clear pending teacher ID since connection is confirmed
+          sessionStorage.removeItem('pendingTeacherId');
+
+          // Show success message about existing connection
+          const teacherName = teacher.name || teacher.full_name || 'המורה';
+          showSuccess(`אתה כבר מחובר למורה ${teacherName}!`);
+
+          await handleExistingPlayerLoginComplete();
+          return; // Exit function successfully
+        }
+
+        // If we get here, it's actually a failure
+        throw new Error('Player authentication failed');
       } else {
         // Create new player with display name
         await handleCreateNewPlayer(displayName.trim());
@@ -249,6 +506,134 @@ const StudentLogin = ({ onLoginSuccess, returnPath, onClose }) => {
     }, 100); // Reduced delay since we're not calling refreshUser
   };
 
+  // Handle invitation code submission
+  const handleInvitationSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!invitationCode.trim()) {
+      showError('אנא הכנס קוד הזמנה');
+      return;
+    }
+
+    setIsInvitationSubmitting(true);
+
+    try {
+      // Use the /auth/link-teacher endpoint to validate and link to teacher
+      const { apiRequest } = await import('@/services/apiClient');
+      const result = await apiRequest('/auth/link-teacher', {
+        method: 'POST',
+        body: JSON.stringify({ invitation_code: invitationCode.trim().toUpperCase() })
+      });
+
+      showSuccess(`התחברת בהצלחה למורה ${result.teacher.full_name}`);
+
+      // Store the teacher ID for retry
+      sessionStorage.setItem('pendingTeacherId', result.teacher.id);
+
+      // Hide invitation flow and retry login
+      setShowInvitationFlow(false);
+      setInvitationCode('');
+
+      // Retry login with teacher_id if we have pending login data
+      if (pendingLoginData?.idToken) {
+        try {
+          const loginRequest = {
+            idToken: pendingLoginData.idToken,
+            teacher_id: result.teacher.id
+          };
+
+          const apiResult = await apiRequest('/students/login', {
+            method: 'POST',
+            body: JSON.stringify(loginRequest)
+          });
+
+          if (apiResult.success && (apiResult.user || apiResult.student)) {
+            await login(apiResult.user || apiResult.student, false);
+            sessionStorage.removeItem('pendingTeacherId');
+
+            // Show teacher connection success message
+            showSuccess(`התחברת בהצלחה למורה ${result.teacher.full_name || result.teacher.name}!`);
+
+            handleLoginComplete();
+          } else {
+            throw new Error('Authentication failed after teacher connection');
+          }
+        } catch (retryError) {
+          luderror.ui('Login retry after teacher connection failed:', retryError);
+          showError('התחברות נכשלה לאחר חיבור למורה. נסו שוב.');
+          // Reset states to allow user to try again
+          setTeacherConnectionError(null);
+          setPendingLoginData(null);
+        }
+      }
+
+    } catch (error) {
+      luderror.ui('Teacher invitation error:', error);
+
+      // Error linking to teacher - show user-friendly error messages
+      let errorMessage = 'אירעה שגיאה בחיבור למורה';
+
+      if (error.message?.includes('Invalid invitation code')) {
+        errorMessage = 'קוד הזמנה לא תקין או המורה לא נמצא';
+      } else if (error.message?.includes('required')) {
+        errorMessage = 'קוד הזמנה נדרש';
+      }
+
+      showError(errorMessage);
+    } finally {
+      setIsInvitationSubmitting(false);
+    }
+  };
+
+  // Handle back to login from invitation flow
+  const handleBackToLogin = () => {
+    setShowInvitationFlow(false);
+    setInvitationCode('');
+    setTeacherConnectionError(null);
+    setPendingLoginData(null);
+    setGoogleError('');
+    setPlayerError('');
+  };
+
+  // Teacher assignment handlers
+  const handleTeacherAssignmentConfirm = async () => {
+    if (!teacherAssignmentData) return;
+
+    try {
+      setIsAssigningTeacher(true);
+
+      // Store the teacher ID for the subsequent login
+      sessionStorage.setItem('pendingTeacherId', teacherAssignmentData.teacher_id);
+
+      // Store teacher info for success message after login
+      setJustAssignedTeacher(teacherAssignmentData.teacher);
+
+      // Close the teacher assignment dialog
+      setShowTeacherAssignment(false);
+
+      // Continue with normal login flow - the teacher_id will be included in login calls
+      // Success message will be shown after successful login
+
+    } catch (error) {
+      luderror.ui('Teacher assignment confirmation failed:', error);
+      showError('שגיאה בהכנת החיבור למורה. נסו שוב.');
+    } finally {
+      setIsAssigningTeacher(false);
+    }
+  };
+
+  const handleTeacherAssignmentCancel = () => {
+    setShowTeacherAssignment(false);
+    setTeacherAssignmentData(null);
+    setDetectedTeacher(null);
+    setJustAssignedTeacher(null); // Clear assignment flag
+
+    // Clear any pending teacher data
+    sessionStorage.removeItem('pendingTeacherId');
+
+    // Continue with normal login flow without teacher assignment
+  };
+
   // Get mode-specific messaging
   const getModeMessage = () => {
     switch (studentsAccessMode) {
@@ -297,8 +682,90 @@ const StudentLogin = ({ onLoginSuccess, returnPath, onClose }) => {
         </CardHeader>
 
         <CardContent className="space-y-6 p-6">
-          {/* Google Login Section */}
-          {showGoogleLogin && (
+          {/* Teacher Connection Required - Invitation Flow */}
+          {showInvitationFlow ? (
+            <div className="space-y-4">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">חיבור למורה נדרש</h3>
+                <p className="text-gray-600 text-sm mb-4">
+                  {teacherConnectionError}
+                </p>
+              </div>
+
+              {/* Invitation Code Form */}
+              <form onSubmit={handleInvitationSubmit} className="space-y-4">
+                <div>
+                  <label htmlFor="invitation-code" className="block text-sm font-medium text-gray-700 mb-2">
+                    קוד הזמנה מהמורה
+                  </label>
+                  <Input
+                    id="invitation-code"
+                    type="text"
+                    value={invitationCode}
+                    onChange={(e) => setInvitationCode(e.target.value.toUpperCase())}
+                    placeholder="הכנס קוד הזמנה (למשל: ABC123XY)"
+                    className="text-center text-lg font-mono tracking-wider h-12 border-2 border-gray-200 rounded-xl focus:border-red-500 focus:ring-red-200"
+                    maxLength={8}
+                    disabled={isInvitationSubmitting}
+                    autoFocus
+                  />
+                  <p className="text-xs text-gray-500 mt-2 text-center">
+                    קוד הזמנה מורכב מ-8 תווים באנגלית ומספרים
+                  </p>
+                </div>
+
+                <div className="flex gap-3">
+                  <Button
+                    type="submit"
+                    disabled={isInvitationSubmitting || !invitationCode.trim()}
+                    className="flex-1 h-12 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-3 bg-red-600 hover:bg-red-700"
+                  >
+                    {isInvitationSubmitting ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        מתחבר...
+                      </>
+                    ) : (
+                      'התחבר למורה'
+                    )}
+                  </Button>
+
+                  <Button
+                    type="button"
+                    onClick={handleBackToLogin}
+                    disabled={isInvitationSubmitting}
+                    variant="outline"
+                    className="px-4 py-3 h-12 font-medium rounded-xl"
+                  >
+                    חזרה
+                  </Button>
+                </div>
+              </form>
+
+              {/* Help Text */}
+              <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div className="flex items-start">
+                  <HelpCircle className="w-5 h-5 text-yellow-600 mt-0.5 ml-2" />
+                  <div>
+                    <h4 className="text-sm font-medium text-yellow-800 mb-1">איפה מוצאים את קוד הזמנה?</h4>
+                    <p className="text-xs text-yellow-700">
+                      המורה שלך יכול לשתף איתך קוד הזמנה אישי דרך הפורטל למורים.
+                      פנה למורה שלך לקבלת הקוד.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* Regular Login Content */
+            <>
+              {/* Google Login Section */}
+              {showGoogleLogin && (
             <div className="space-y-4">
               {studentsAccessMode === STUDENTS_ACCESS_MODES.ALL && (
                 <div className="text-center">
@@ -531,6 +998,8 @@ const StudentLogin = ({ onLoginSuccess, returnPath, onClose }) => {
           <div className="text-center text-xs text-gray-400 mt-4">
             גרסה {APP_VERSION}
           </div>
+            </>
+          )}
         </CardContent>
       </Card>
 
@@ -586,6 +1055,30 @@ const StudentLogin = ({ onLoginSuccess, returnPath, onClose }) => {
         player={newPlayerData}
         isOpen={showWelcomeModal}
         onClose={handleWelcomeModalClose}
+      />
+
+      {/* Teacher Assignment Confirmation Dialog */}
+      <TeacherAssignmentConfirmation
+        teacher={teacherAssignmentData?.teacher}
+        isOpen={showTeacherAssignment}
+        onConfirm={handleTeacherAssignmentConfirm}
+        onCancel={handleTeacherAssignmentCancel}
+        isLoading={isAssigningTeacher}
+      />
+
+      {/* Teacher Connection Failed Dialog */}
+      <ConfirmationDialog
+        isOpen={showTeacherConnectionFailedDialog}
+        onClose={() => setShowTeacherConnectionFailedDialog(false)}
+        onConfirm={() => setShowTeacherConnectionFailedDialog(false)}
+        title="לא ניתן להתחבר למורה"
+        message={
+          'המורה שאליו ניסית להתחבר אינו בעל מנוי פעיל עם הרשאות ניהול כיתה.\n\n' +
+          'כדי להתחבר למורה, על המורה להחזיק במנוי פעיל המאפשר ניהול תלמידים.\n\n' +
+          'ניתן לנסות להתחבר למורה אחר או לפנות למורה שלך לבקשו לחדש את המנוי.'
+        }
+        confirmText="הבנתי"
+        variant="warning"
       />
     </div>
   );

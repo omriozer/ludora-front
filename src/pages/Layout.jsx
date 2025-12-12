@@ -28,7 +28,7 @@ function LayoutContent({ children }) {
   const { showLoginModal, openLoginModal, closeLoginModal, executeCallback, modalMessage } = useLoginModal();
 
   // Use UserContext instead of local state
-  const { currentUser, settings, isLoading, settingsLoading, settingsLoadFailed, login, logout } = useUser();
+  const { currentUser, settings, isLoading, settingsLoading, settingsLoadFailed, login, logout, userLoginSuccessMsg } = useUser();
 
   // Track screen size for responsive layout
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
@@ -212,7 +212,8 @@ function LayoutContent({ children }) {
       if (apiResult.valid && apiResult.user) {
         await login(apiResult.user);
 
-        showSuccess('התחברת בהצלחה!');
+        // Show success toast message
+        userLoginSuccessMsg(apiResult.user);
 
         // Execute callback first, then close modal to ensure proper flow
         executeCallback();

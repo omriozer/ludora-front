@@ -37,6 +37,7 @@ export default function PortalsSettings() {
     student_onboarding_enabled: false,
     student_invitation_expiry_days: 7,
     parent_consent_required: false,
+    teacher_consent_verification_enabled: false,
     // Teachers Portal Settings
     teacher_onboarding_enabled: true
   });
@@ -56,6 +57,7 @@ export default function PortalsSettings() {
         student_onboarding_enabled: currentSettings.student_onboarding_enabled || false,
         student_invitation_expiry_days: currentSettings.student_invitation_expiry_days || 7,
         parent_consent_required: currentSettings.parent_consent_required || false,
+        teacher_consent_verification_enabled: currentSettings.teacher_consent_verification_enabled || false,
         teacher_onboarding_enabled: currentSettings.teacher_onboarding_enabled || true
       });
 
@@ -283,6 +285,28 @@ export default function PortalsSettings() {
                 <Switch
                   checked={formData.parent_consent_required}
                   onCheckedChange={(checked) => handleSwitchChange('parent_consent_required', checked)}
+                />
+              </div>
+
+              {/* Teacher Consent Verification */}
+              <div className="flex items-start justify-between p-4 border rounded-lg">
+                <div className="flex-1">
+                  <Label className="text-base font-semibold">
+                    <Shield className="w-4 h-4 inline ml-1" />
+                    אישור הסכמת הורים על ידי מורים
+                  </Label>
+                  <p className="text-sm text-gray-600 mt-1">
+                    מאפשר למורים לסמן שהסכמת הורה התקבלה ונטלו אחריות משפטית על אימות ההסכמה
+                  </p>
+                  {formData.teacher_consent_verification_enabled && (
+                    <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
+                      <strong>אזהרה:</strong> הפעלת האפשרות מעבירה אחריות משפטית למורים לוודא שההסכמה התקבלה באופן חוקי
+                    </div>
+                  )}
+                </div>
+                <Switch
+                  checked={formData.teacher_consent_verification_enabled}
+                  onCheckedChange={(checked) => handleSwitchChange('teacher_consent_verification_enabled', checked)}
                 />
               </div>
 

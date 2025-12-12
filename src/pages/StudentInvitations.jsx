@@ -59,7 +59,7 @@ export default function StudentInvitations() {
       const invitationQueries = [
         // By user ID
         StudentInvitation.filter({
-          student_user_id: user.id,
+          student_id: user.id,
           status: 'pending_student_acceptance'
         }),
         // By email variants
@@ -144,14 +144,14 @@ export default function StudentInvitations() {
       // Update the invitation to link it with the current user
       await StudentInvitation.update(invitation.id, {
         status: 'accepted',
-        student_user_id: currentUser.id,
+        student_id: currentUser.id,
         student_accepted_at: new Date().toISOString()
       });
 
       // Create classroom membership record
       await ClassroomMembership.create({
         classroom_id: invitation.classroom_id,
-        student_user_id: currentUser.id,
+        student_id: currentUser.id,
         teacher_id: invitation.teacher_id,
         joined_at: new Date().toISOString(),
         status: 'active',

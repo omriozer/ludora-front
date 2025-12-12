@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import UserAvatar from "@/components/ui/UserAvatar";
 import {
   Calendar,
   RefreshCw,
@@ -440,9 +441,7 @@ const MyAccount = () => {
         {/* Header - Mobile Optimized */}
         <div className="text-center mb-4 sm:mb-6 lg:mb-10">
           <div className="flex items-center justify-center gap-3 sm:gap-4 mb-3 sm:mb-4">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg">
-              <UserIcon className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-white" />
-            </div>
+            <UserAvatar user={currentUser} size="xl" showTooltip={false} />
             <h1 className="text-xl sm:text-2xl lg:text-4xl font-bold text-gray-900">{accountTexts.title}</h1>
           </div>
         </div>
@@ -550,18 +549,9 @@ const MyAccount = () => {
               <CardContent className="p-3 sm:p-4 lg:p-6 space-y-3 sm:space-y-4 lg:space-y-6">
                 <div>
                   <Label className="text-xs sm:text-sm font-medium text-gray-700 block mb-1">{accountTexts.fullName}</Label>
-                  {isEditingProfile ? (
-                    <Input
-                      value={editedProfile.display_name}
-                      onChange={(e) => setEditedProfile(prev => ({ ...prev, display_name: e.target.value }))}
-                      className="text-sm sm:text-base h-9 sm:h-10"
-                      placeholder="הכנס שם מלא"
-                    />
-                  ) : (
-                    <p className="text-sm sm:text-base lg:text-lg font-medium text-gray-900 break-words leading-relaxed">
-                      {currentUser?.display_name || currentUser?.full_name || 'לא הוגדר'}
-                    </p>
-                  )}
+                  <p className="text-sm sm:text-base lg:text-lg font-medium text-gray-900 break-words leading-relaxed">
+                    {currentUser?.display_name || currentUser?.full_name || 'לא הוגדר'}
+                  </p>
                 </div>
 
                 <div>

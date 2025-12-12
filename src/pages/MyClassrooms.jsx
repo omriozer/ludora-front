@@ -17,14 +17,11 @@ import {
   Loader2,
   Edit,
   Settings as SettingsIcon,
-  User as UserIcon,
-  UserPlus
+  User as UserIcon
 } from "lucide-react";
 import SubscriptionLimitModal from "../components/SubscriptionLimitModal";
 import SubscriptionModal from "../components/SubscriptionModal";
 import ClassroomForm from "../components/classrooms/ClassroomForm";
-import InviteStudentsModal from "../components/classrooms/InviteStudentsModal";
-import StudentsListModal from "../components/classrooms/StudentsListModal";
 import SEOHead from '@/components/SEOHead';
 
 export default function MyClassrooms() {
@@ -40,11 +37,7 @@ export default function MyClassrooms() {
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [showClassroomForm, setShowClassroomForm] = useState(false);
-  const [showInviteStudentsModal, setShowInviteStudentsModal] = useState(false);
   const [editingClassroom, setEditingClassroom] = useState(null);
-  const [selectedClassroomForInvite, setSelectedClassroomForInvite] = useState(null);
-  const [showStudentsModal, setShowStudentsModal] = useState(false);
-  const [selectedClassroomForStudents, setSelectedClassroomForStudents] = useState(null);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -163,18 +156,13 @@ export default function MyClassrooms() {
     setShowClassroomForm(true);
   };
 
-  const handleInviteStudents = (classroom) => {
-    setSelectedClassroomForInvite(classroom);
-    setShowInviteStudentsModal(true);
-  };
-
-  const handleViewStudents = (classroom) => {
-    setSelectedClassroomForStudents(classroom);
-    setShowStudentsModal(true);
-  };
 
   const handleViewCurriculum = (classroom) => {
     navigate(`/classroom/${classroom.id}/curriculum`);
+  };
+
+  const handleManageClassroom = (classroom) => {
+    navigate(`/classroom/${classroom.id}/manage`);
   };
 
   const handleClassroomSubmit = async (classroomData) => {
@@ -355,9 +343,9 @@ export default function MyClassrooms() {
                       </p>
                     )}
 
-                    {/* Action Buttons */}
-                    <div className="pt-3 border-t border-gray-100 space-y-2">
-                      <div className="flex items-center justify-between text-sm text-gray-500 mb-2">
+                    {/* Student Count and Action Button */}
+                    <div className="pt-3 border-t border-gray-100 space-y-3">
+                      <div className="flex items-center justify-center text-sm text-gray-500">
                         <span className="flex items-center gap-1">
                           <UserIcon className="w-4 h-4" />
                           {studentCount.active} תלמידים פעילים
@@ -367,37 +355,16 @@ export default function MyClassrooms() {
                             </span>
                           )}
                         </span>
-                        <Button
-                          onClick={() => handleViewStudents(classroom)}
-                          variant="ghost"
-                          size="sm"
-                          className="text-teal-600 hover:text-teal-700 hover:bg-teal-50"
-                        >
-                          <Users className="w-4 h-4 ml-1" />
-                          רשימת תלמידים
-                        </Button>
                       </div>
-                      
-                      <div className="grid grid-cols-2 gap-2">
-                        <Button
-                          onClick={() => handleViewCurriculum(classroom)}
-                          variant="outline"
-                          size="sm"
-                          className="text-green-600 border-green-200 hover:bg-green-50"
-                        >
-                          <BookOpen className="w-4 h-4 ml-2" />
-                          תכנית לימודים
-                        </Button>
-                        <Button
-                          onClick={() => handleInviteStudents(classroom)}
-                          variant="outline"
-                          size="sm"
-                          className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                        >
-                          <UserPlus className="w-4 h-4 ml-2" />
-                          הזמן תלמידים
-                        </Button>
-                      </div>
+
+                      <Button
+                        onClick={() => handleManageClassroom(classroom)}
+                        variant="outline"
+                        className="w-full bg-gradient-to-r from-teal-600 to-blue-600 text-white border-0 hover:from-teal-700 hover:to-blue-700 shadow-md"
+                      >
+                        <SettingsIcon className="w-4 h-4 ml-2" />
+                        נהל כיתה
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -445,17 +412,6 @@ export default function MyClassrooms() {
         isLoading={isCreatingClassroom}
       />
 
-      {/* Invite Students Modal */}
-      <InviteStudentsModal
-        isOpen={showInviteStudentsModal}
-        onClose={() => {
-          setShowInviteStudentsModal(false);
-          setSelectedClassroomForInvite(null);
-        }}
-        classroom={selectedClassroomForInvite}
-        currentUser={currentUser}
-      />
-
       {/* Subscription Limit Modal */}
       <SubscriptionLimitModal
         isOpen={showLimitModal}
@@ -480,19 +436,6 @@ export default function MyClassrooms() {
         onSubscriptionChange={handleSubscriptionChange}
       />
 
-      {/* Students List Modal */}
-      <StudentsListModal
-        isOpen={showStudentsModal}
-        onClose={() => {
-          setShowStudentsModal(false);
-          setSelectedClassroomForStudents(null);
-        }}
-        classroom={selectedClassroomForStudents}
-        onInviteStudents={() => {
-          setShowStudentsModal(false);
-          handleInviteStudents(selectedClassroomForStudents);
-        }}
-      />
     </div>
     </>
   );

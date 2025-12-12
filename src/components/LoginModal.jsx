@@ -10,6 +10,7 @@ import { X, Loader2, AlertCircle, GamepadIcon } from "lucide-react";
 import { ludlog, luderror } from '@/lib/ludlog';
 import { APP_VERSION } from "@/constants/version";
 import { useUser } from "@/contexts/UserContext";
+import { isStudentPortal } from '@/utils/domainUtils';
 
 export default function LoginModal({ onClose, onLogin, message }) {
   const { playerLogin, settings } = useUser();
@@ -154,8 +155,8 @@ export default function LoginModal({ onClose, onLogin, message }) {
             )}
           </Button>
 
-          {/* Conditionally show player login section - hide during maintenance mode */}
-          {!settings?.maintenance_mode && (
+          {/* Conditionally show player login section - only in student portal and not during maintenance mode */}
+          {isStudentPortal() && !settings?.maintenance_mode && (
             <>
               {/* Divider */}
               <div className="relative my-6">

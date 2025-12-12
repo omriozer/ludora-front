@@ -302,13 +302,23 @@ const TeacherCatalogContent = () => {
     try {
       setIsAssigningTeacher(true);
 
-      // Call the teacher assignment API
-      await Player.assignTeacher({
+      // Call the unified teacher connection API
+      const response = await Player.connectToTeacher({
         teacher_id: teacherAssignmentData.teacher_id
       });
 
       // Refresh user data to get updated player info
       await refreshUser();
+
+      // Log successful connection (optional)
+      if (response?.data?.teacher) {
+        console.log('Successfully connected to teacher:', response.data.teacher.display_name);
+
+        // Could show a success message with classroom info if needed
+        if (response.data.available_classrooms?.length > 0) {
+          console.log(`${response.data.available_classrooms.length} classrooms available for joining`);
+        }
+      }
 
       // Close the dialog
       setShowTeacherAssignment(false);
@@ -320,6 +330,7 @@ const TeacherCatalogContent = () => {
 
     } catch (error) {
       // Error handling is done in the confirmation dialog component
+      console.error('Teacher connection failed:', error);
     } finally {
       setIsAssigningTeacher(false);
     }

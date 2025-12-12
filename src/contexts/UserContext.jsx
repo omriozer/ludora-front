@@ -19,528 +19,557 @@ const activeAuthManager = useTypeScriptAuthManager ? authManagerTS : authManager
 
 // Log which AuthManager is being used
 if (isDev()) {
-  ludlog.auth(`[UserContext] Using ${useTypeScriptAuthManager ? 'TypeScript' : 'JavaScript'} AuthManager`, {
-    flag: useTypeScriptAuthManager,
-    env: import.meta.env.VITE_USE_TS_AUTH_MANAGER
-  });
+	ludlog.auth(`[UserContext] Using ${useTypeScriptAuthManager ? 'TypeScript' : 'JavaScript'} AuthManager`, {
+		flag: useTypeScriptAuthManager,
+		env: import.meta.env.VITE_USE_TS_AUTH_MANAGER,
+	});
 }
 
 const UserContext = createContext(null);
 
 export function useUser() {
-  const context = useContext(UserContext);
-  if (!context) {
-    throw new Error('useUser must be used within a UserProvider');
-  }
-  return context;
+	const context = useContext(UserContext);
+	if (!context) {
+		throw new Error('useUser must be used within a UserProvider');
+	}
+	return context;
 }
 
 export function UserProvider({ children }) {
-  // Unified authentication state from AuthManager
-  const [authState, setAuthState] = useState({
-    isLoading: true,
-    isInitialized: false,
-    authType: null,
-    user: null,
-    player: null,
-    isAuthenticated: false,
-    settings: null
-  });
-
-  // Additional state for user data management
-  const [userDataFresh, setUserDataFresh] = useState(false);
-  const [playerDataFresh, setPlayerDataFresh] = useState(false);
-  const [settingsLoadFailed, setSettingsLoadFailed] = useState(false);
-
-  // Auth error handling for session expiry modal
-  const { handleAuthError } = useAuthErrorHandler();
-
-  // Retry mechanism for settings loading
-  const retryIntervalRef = useRef(null);
-
-  // Settings validation for development (logs warnings for missing keys)
-  const validateSettingsInDev = useCallback((settings) => {
-    if (isDev() && settings) {
-      const validation = validateSettings(settings);
-
-      if (!validation.isValid) {
-        if (validation.error) {
-          luderror.state('[UserContext] Settings validation error:', validation.error);
-        } else {
-
-          if (validation.missingKeys.length > 0) {
-            luderror.state('[UserContext] Missing settings keys:', validation.missingKeys);
-          }
-
-          if (validation.extraKeys.length > 0) {
-            ludlog.state('[UserContext] Extra settings keys (not in constants);:', validation.extraKeys);
-          }
-        }
-      } else {
-        ludlog.state('[UserContext] Settings validation passed - all', { data: validation.totalExpected, keysFound: 'matched' });
-      }
-    }
-  }, []);
-
-  // AuthManager authentication state listener
-  const handleAuthStateChange = useCallback((newAuthState) => {
-    setAuthState(newAuthState);
-
-    // Update data freshness based on authentication type
-    if (newAuthState.authType === 'user') {
-      setUserDataFresh(true);
-      setPlayerDataFresh(false);
-    } else if (newAuthState.authType === 'player') {
-      setPlayerDataFresh(true);
-      setUserDataFresh(false);
-    } else {
-      setUserDataFresh(false);
-      setPlayerDataFresh(false);
-    }
-
-    // Validate settings in development mode
-    if (newAuthState.settings) {
-      validateSettingsInDev(newAuthState.settings);
-    }
-
-    // Handle settings load failures
-    if (newAuthState.settings === null && newAuthState.isInitialized) {
-      setSettingsLoadFailed(true);
-    } else {
-      setSettingsLoadFailed(false);
-    }
-  }, [validateSettingsInDev]);
-
-  // Stop the settings retry mechanism
-  const stopSettingsRetry = useCallback(() => {
-    if (retryIntervalRef.current) {
-      clearInterval(retryIntervalRef.current);
-      retryIntervalRef.current = null;
-    }
-  }, []);
-
-  // Silent retry function for settings
-  const retryLoadSettings = useCallback(async () => {
-    try {
-      await activeAuthManager.initialize();
-    } catch (error) {
-      // Silent retry failed - will retry again on next interval
-    }
-  }, []);
-
-  // Start settings retry with appropriate interval based on current state
-  const startSettingsRetry = useCallback(() => {
-    stopSettingsRetry();
-
-    let interval;
-    if (settingsLoadFailed) {
-      interval = SETTINGS_RETRY_INTERVALS.SYSTEM_ERROR;
-    } else if (getSetting(authState.settings, SYSTEM_KEYS.MAINTENANCE_MODE, false)) {
-      interval = SETTINGS_RETRY_INTERVALS.MAINTENANCE;
-    } else {
-      return;
-    }
-
-    retryIntervalRef.current = setInterval(() => {
-      retryLoadSettings();
-    }, interval);
-  }, [settingsLoadFailed, authState.settings, retryLoadSettings, stopSettingsRetry]);
-
-  // Initialize AuthManager on mount
-  useEffect(() => {
-    const initAuth = async () => {
-      try {
-        // Register for auth state changes
-        activeAuthManager.addAuthListener(handleAuthStateChange);
-
-        // PERFORMANCE OPTIMIZATION: Only force refresh on actual page reloads, not React navigation
-        // This prevents unnecessary API calls on every component mount while still recovering from cookies
-        const isPageReload = !activeAuthManager.isInitialized || performance.navigation?.type === 1; // 1 = reload
-        await activeAuthManager.initialize(isPageReload);
-      } catch (error) {
-        luderror.auth('[UserContext] ActiveAuthManager initialization failed:', error);
-      }
-    };
-
-    initAuth();
-
-    // Cleanup listener on unmount
-    return () => {
-      activeAuthManager.removeAuthListener(handleAuthStateChange);
-      stopSettingsRetry();
-    };
-  }, [handleAuthStateChange, stopSettingsRetry]);
-
-  // Start retry mechanism when settings fails to load or maintenance mode is active
-  useEffect(() => {
-    const isMaintenanceMode = getSetting(authState.settings, SYSTEM_KEYS.MAINTENANCE_MODE, false);
-    if (settingsLoadFailed || isMaintenanceMode) {
-      startSettingsRetry();
-    } else {
-      stopSettingsRetry();
-    }
-  }, [settingsLoadFailed, authState.settings, startSettingsRetry, stopSettingsRetry]);
-
-  // Delegate to AuthManager for onboarding check
-  const needsOnboarding = useCallback((user) => {
-    return activeAuthManager.needsOnboarding(user || authState.user);
-  }, [authState.user]);
-
-  const checkUserSubscription = useCallback(async (user) => {
-    try {
-      // Don't auto-assign subscription if user needs onboarding
-      if (needsOnboarding(user)) {
-        return user;
-      }
-
-      if (!user.current_subscription_plan_id || user.subscription_status !== 'active') {
-
-        const allPlans = await SubscriptionPlan.find({ is_active: true });
-        const freePlans = allPlans.filter(plan =>
-          plan.plan_type === 'free' ||
-          plan.price === 0 ||
-          plan.price === '0' ||
-          plan.price === null
-        );
-
-        if (freePlans && freePlans.length > 0) {
-          const freePlan = freePlans[0];
-          const updatedUser = await User.update(user.id, {
-            current_subscription_plan_id: freePlan.id,
-            subscription_status: 'active',
-            subscription_start_date: new Date().toISOString(),
-            subscription_end_date: null,
-            subscription_status_updated_at: new Date().toISOString()
-          });
-
-          // Record in subscription history
-          try {
-            await SubscriptionHistory.create({
-              user_id: user.id,
-              subscription_plan_id: freePlan.id,
-              action_type: 'started',
-              start_date: new Date().toISOString(),
-              metadata: JSON.stringify({ auto_assigned: true, plan_name: freePlan.name })
-            });
-          } catch (historyError) {
-            luderror.payment('[UserContext] Error recording subscription history:', null, { context: historyError });
-          }
-
-          return updatedUser;
-        }
-      }
-      return user;
-    } catch (error) {
-      luderror.payment('[UserContext] Error checking subscription:', error);
-      return user;
-    }
-  }, [needsOnboarding]);
-
-  const login = useCallback(async (userData) => {
-    try {
-      // Note: TypeScript AuthManager expects idToken string, JavaScript expects userData object
-      const result = useTypeScriptAuthManager
-        ? await activeAuthManager.loginFirebase(userData.idToken || userData)
-        : await activeAuthManager.loginFirebase(userData);
-
-      // Show success message
-      toast({
-        title: "התחברת בהצלחה! 👤",
-        description: `ברוך הבא ${result.user?.email}`,
-        variant: "default",
-      });
-
-      return result.user;
-    } catch (error) {
-      luderror.auth('[UserContext] Login error:', error);
-
-      // Show user-friendly error message
-      toast({
-        title: "שגיאה בהתחברות",
-        description: "לא הצלחנו להתחבר למערכת. אנא נסה שוב.",
-        variant: "destructive",
-      });
-
-      throw error;
-    }
-  }, []);
-
-  const playerLogin = useCallback(async (privacyCode) => {
-    try {
-      const result = await activeAuthManager.loginPlayer(privacyCode);
-
-      // Show success message
-      toast({
-        title: "התחברת בהצלחה! 🎮",
-        description: `ברוך הבא ${result.player?.display_name}`,
-        variant: "default",
-      });
-
-      return result.player;
-    } catch (error) {
-      luderror.auth('[UserContext] Player login error:', error);
-
-      // Determine error message to display
-      let errorDescription;
-      if (error.message) {
-        // For specific known errors, provide Hebrew translations
-        if (error.message.includes('Invalid privacy code')) {
-          errorDescription = 'קוד הפרטיות שהוזן אינו תקין';
-        } else if (error.message.includes('Player not found')) {
-          errorDescription = 'לא נמצא שחקן עם קוד זה';
-        } else if (error.message.includes('Network Error')) {
-          errorDescription = 'בעיית רשת. אנא בדוק את החיבור לאינטרנט';
-        } else {
-          // Show the actual API error message for everything else
-          errorDescription = error.message;
-        }
-      } else {
-        // Only use generic message as last resort
-        errorDescription = "קוד פרטיות שגוי או לא קיים. אנא בדוק את הקוד ונסה שוב.";
-      }
-
-      // Show error message with actual API error content
-      toast({
-        title: "שגיאה בהתחברות 🎮",
-        description: errorDescription,
-        variant: "destructive",
-      });
-
-      throw error;
-    }
-  }, []);
-
-  const logout = useCallback(async () => {
-    try {
-      await activeAuthManager.logout();
-
-      // Show success message
-      toast({
-        title: "התנתקת בהצלחה! 👋",
-        description: "תודה! נתראה בקרוב!",
-        variant: "default",
-      });
-    } catch (error) {
-      luderror.auth('[UserContext] Logout error:', error);
-
-      // Show error message
-      toast({
-        title: "שגיאה בהתנתקות",
-        description: "בעיה בהתנתקות, אך המערכת נוקתה מקומית.",
-        variant: "destructive",
-      });
-    }
-  }, []);
-
-  const playerLogout = useCallback(async () => {
-    try {
-      await activeAuthManager.logout();
-
-      // Show success message
-      toast({
-        title: "התנתקת בהצלחה! 👋",
-        description: "תודה! נתראה בקרוב!",
-        variant: "default",
-      });
-    } catch (error) {
-      luderror.auth('[UserContext] Player logout error:', error);
-
-      // Show error message
-      toast({
-        title: "שגיאה בהתנתקות 🎮",
-        description: "נותקת מהמערכת בכשיר זה בלבד. אם היה לך חיבורים פעילים במכשירים אחרים, יתכן והם נשארו מחוברים",
-        variant: "destructive",
-      });
-    }
-  }, []);
-
-  const clearAuth = useCallback(() => {
-    activeAuthManager.reset();
-
-    // Clear any Firebase session data that might be persisting
-    try {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        const firebaseKeys = Object.keys(localStorage).filter(key =>
-          key.startsWith('firebase:') ||
-          key.startsWith('_firebase') ||
-          key.startsWith('firebaseui')
-        );
-        firebaseKeys.forEach(key => localStorage.removeItem(key));
-      }
-    } catch (error) {
-      luderror.auth('[UserContext] Error clearing Firebase session:', error);
-    }
-  }, []);
-
-  const clearPlayerAuth = useCallback(() => {
-    activeAuthManager.reset();
-  }, []);
-
-  const updateLastActivity = useCallback(() => {
-    // Delegate to AuthManager
-    activeAuthManager.updateLastActivity();
-  }, []);
-
-  const updateUser = useCallback((updatedUserData) => {
-    // For now, handle locally since AuthManager doesn't track partial updates
-    // This could be enhanced to update AuthManager state as well
-    if (authState.authType === 'user' && authState.user) {
-      const updatedUser = { ...authState.user, ...updatedUserData };
-      setAuthState(prev => ({
-        ...prev,
-        user: updatedUser
-      }));
-    }
-  }, [authState.authType, authState.user]);
-
-  const updatePlayer = useCallback((updatedPlayerData) => {
-    // For now, handle locally since AuthManager doesn't track partial updates
-    // This could be enhanced to update AuthManager state as well
-    if (authState.authType === 'player' && authState.player) {
-      const updatedPlayer = { ...authState.player, ...updatedPlayerData };
-      setAuthState(prev => ({
-        ...prev,
-        player: updatedPlayer
-      }));
-    }
-  }, [authState.authType, authState.player]);
-
-  // Helper functions to determine current entity type
-  const isUserSession = useCallback(() => {
-    return authState.authType === 'user' && !!authState.user;
-  }, [authState.authType, authState.user]);
-
-  const isPlayerSession = useCallback(() => {
-    return authState.authType === 'player' && !!authState.player;
-  }, [authState.authType, authState.player]);
-
-  const getCurrentEntity = useCallback(() => {
-    return activeAuthManager.getCurrentEntity() || { type: null, entity: null };
-  }, []);
-
-  const hasAnyAuthentication = useCallback(() => {
-    return authState.isAuthenticated;
-  }, [authState.isAuthenticated]);
-
-  const isFullyLoaded = useCallback(() => {
-    return !authState.isLoading && authState.isInitialized;
-  }, [authState.isLoading, authState.isInitialized]);
-
-  // Refresh user authentication state (for use after login/logout events)
-  const refreshUser = useCallback(async () => {
-    await activeAuthManager.initialize();
-  }, []);
-
-  // Force refresh settings (for use after settings updates)
-  const refreshSettings = useCallback(async () => {
-    await activeAuthManager.initialize(true); // Force refresh to reload settings
-  }, []);
-
-  // CENTRALIZED ROLE CHECKING FUNCTIONS
-  // These functions provide a single source of truth for role-based access control
-
-  // Check if current user is an actual admin (not impersonated)
-  const isAdmin = useCallback(() => {
-    return authState.user?.role === 'admin' && !authState.user?._isImpersonated;
-  }, [authState.user]);
-
-  // Check if current user is a content creator (based on content creator agreement)
-  const isContentCreator = useCallback(() => {
-    // Content creator status is based on signing the content creator agreement
-    return authState.user?.role === 'content_creator' && authState.user?.content_creator_agreement_signed;
-  }, [authState.user]);
-
-  // Check if current user can see an item based on navigation visibility setting
-  const canUserSeeNavItem = useCallback((visibility) => {
-    const user = authState.user;
-    const adminStatus = isAdmin();
-    const contentCreatorStatus = isContentCreator();
-
-    switch (visibility) {
-      case 'public':
-        return true;
-      case 'logged_in_users':
-        return !!user;
-      case 'admins_and_creators':
-        return adminStatus || contentCreatorStatus;
-      case 'admin_only':
-        return adminStatus;
-      case 'hidden':
-        return false; // Hidden means invisible to everyone
-      default:
-        return true; // Default to visible for unknown visibility settings
-    }
-  }, [authState.user, isAdmin, isContentCreator]);
-
-  // Check if current user is any kind of authenticated user (not player)
-  const isAuthenticatedUser = useCallback(() => {
-    return authState.authType === 'user' && !!authState.user;
-  }, [authState.authType, authState.user]);
-
-  // Update last activity on user interactions
-  useEffect(() => {
-    if (hasAnyAuthentication()) {
-      const handleActivity = () => updateLastActivity();
-
-      document.addEventListener('click', handleActivity);
-      document.addEventListener('keypress', handleActivity);
-
-      return () => {
-        document.removeEventListener('click', handleActivity);
-        document.removeEventListener('keypress', handleActivity);
-      };
-    }
-  }, [hasAnyAuthentication, updateLastActivity]);
-
-  const value = {
-    // User state
-    currentUser: authState.user,
-    isAuthenticated: authState.authType === 'user',
-    userDataFresh,
-
-    // Player state
-    currentPlayer: authState.player,
-    isPlayerAuthenticated: authState.authType === 'player',
-    playerDataFresh,
-
-    // Shared state
-    settings: authState.settings,
-    isLoading: authState.isLoading,
-    settingsLoading: authState.isLoading, // Map to same loading state
-    settingsLoadFailed,
-
-    // User functions
+	// Unified authentication state from AuthManager
+	const [authState, setAuthState] = useState({
+		isLoading: true,
+		isInitialized: false,
+		authType: null,
+		user: null,
+		player: null,
+		isAuthenticated: false,
+		settings: null,
+	});
+
+	// Additional state for user data management
+	const [userDataFresh, setUserDataFresh] = useState(false);
+	const [playerDataFresh, setPlayerDataFresh] = useState(false);
+	const [settingsLoadFailed, setSettingsLoadFailed] = useState(false);
+
+	// Auth error handling for session expiry modal
+	const { handleAuthError } = useAuthErrorHandler();
+
+	// Retry mechanism for settings loading
+	const retryIntervalRef = useRef(null);
+
+	// Settings validation for development (logs warnings for missing keys)
+	const validateSettingsInDev = useCallback((settings) => {
+		if (isDev() && settings) {
+			const validation = validateSettings(settings);
+
+			if (!validation.isValid) {
+				if (validation.error) {
+					luderror.state('[UserContext] Settings validation error:', validation.error);
+				} else {
+					if (validation.missingKeys.length > 0) {
+						luderror.state('[UserContext] Missing settings keys:', validation.missingKeys);
+					}
+
+					if (validation.extraKeys.length > 0) {
+						ludlog.state('[UserContext] Extra settings keys (not in constants);:', validation.extraKeys);
+					}
+				}
+			} else {
+				ludlog.state('[UserContext] Settings validation passed - all', {
+					data: validation.totalExpected,
+					keysFound: 'matched',
+				});
+			}
+		}
+	}, []);
+
+	// AuthManager authentication state listener
+	const handleAuthStateChange = useCallback(
+		(newAuthState) => {
+			setAuthState(newAuthState);
+
+			// Update data freshness based on authentication type
+			if (newAuthState.authType === 'user') {
+				setUserDataFresh(true);
+				setPlayerDataFresh(false);
+			} else if (newAuthState.authType === 'player') {
+				setPlayerDataFresh(true);
+				setUserDataFresh(false);
+			} else {
+				setUserDataFresh(false);
+				setPlayerDataFresh(false);
+			}
+
+			// Validate settings in development mode
+			if (newAuthState.settings) {
+				validateSettingsInDev(newAuthState.settings);
+			}
+
+			// Handle settings load failures
+			if (newAuthState.settings === null && newAuthState.isInitialized) {
+				setSettingsLoadFailed(true);
+			} else {
+				setSettingsLoadFailed(false);
+			}
+		},
+		[validateSettingsInDev]
+	);
+
+	// Stop the settings retry mechanism
+	const stopSettingsRetry = useCallback(() => {
+		if (retryIntervalRef.current) {
+			clearInterval(retryIntervalRef.current);
+			retryIntervalRef.current = null;
+		}
+	}, []);
+
+	// Silent retry function for settings
+	const retryLoadSettings = useCallback(async () => {
+		try {
+			await activeAuthManager.initialize();
+		} catch (error) {
+			// Silent retry failed - will retry again on next interval
+		}
+	}, []);
+
+	// Start settings retry with appropriate interval based on current state
+	const startSettingsRetry = useCallback(() => {
+		stopSettingsRetry();
+
+		let interval;
+		if (settingsLoadFailed) {
+			interval = SETTINGS_RETRY_INTERVALS.SYSTEM_ERROR;
+		} else if (getSetting(authState.settings, SYSTEM_KEYS.MAINTENANCE_MODE, false)) {
+			interval = SETTINGS_RETRY_INTERVALS.MAINTENANCE;
+		} else {
+			return;
+		}
+
+		retryIntervalRef.current = setInterval(() => {
+			retryLoadSettings();
+		}, interval);
+	}, [settingsLoadFailed, authState.settings, retryLoadSettings, stopSettingsRetry]);
+
+	// Initialize AuthManager on mount
+	useEffect(() => {
+		const initAuth = async () => {
+			try {
+				// Register for auth state changes
+				activeAuthManager.addAuthListener(handleAuthStateChange);
+
+				// PERFORMANCE OPTIMIZATION: Only force refresh on actual page reloads, not React navigation
+				// This prevents unnecessary API calls on every component mount while still recovering from cookies
+				const isPageReload = !activeAuthManager.isInitialized || performance.navigation?.type === 1; // 1 = reload
+				await activeAuthManager.initialize(isPageReload);
+			} catch (error) {
+				luderror.auth('[UserContext] ActiveAuthManager initialization failed:', error);
+			}
+		};
+
+		initAuth();
+
+		// Cleanup listener on unmount
+		return () => {
+			activeAuthManager.removeAuthListener(handleAuthStateChange);
+			stopSettingsRetry();
+		};
+	}, [handleAuthStateChange, stopSettingsRetry]);
+
+	// Start retry mechanism when settings fails to load or maintenance mode is active
+	useEffect(() => {
+		const isMaintenanceMode = getSetting(authState.settings, SYSTEM_KEYS.MAINTENANCE_MODE, false);
+		if (settingsLoadFailed || isMaintenanceMode) {
+			startSettingsRetry();
+		} else {
+			stopSettingsRetry();
+		}
+	}, [settingsLoadFailed, authState.settings, startSettingsRetry, stopSettingsRetry]);
+
+	// Delegate to AuthManager for onboarding check
+	const needsOnboarding = useCallback(
+		(user) => {
+			return activeAuthManager.needsOnboarding(user || authState.user);
+		},
+		[authState.user]
+	);
+
+	const checkUserSubscription = useCallback(
+		async (user) => {
+			try {
+				// Don't auto-assign subscription if user needs onboarding
+				if (needsOnboarding(user)) {
+					return user;
+				}
+
+				if (!user.current_subscription_plan_id || user.subscription_status !== 'active') {
+					const allPlans = await SubscriptionPlan.find({ is_active: true });
+					const freePlans = allPlans.filter(
+						(plan) => plan.plan_type === 'free' || plan.price === 0 || plan.price === '0' || plan.price === null
+					);
+
+					if (freePlans && freePlans.length > 0) {
+						const freePlan = freePlans[0];
+						const updatedUser = await User.update(user.id, {
+							current_subscription_plan_id: freePlan.id,
+							subscription_status: 'active',
+							subscription_start_date: new Date().toISOString(),
+							subscription_end_date: null,
+							subscription_status_updated_at: new Date().toISOString(),
+						});
+
+						// Record in subscription history
+						try {
+							await SubscriptionHistory.create({
+								user_id: user.id,
+								subscription_plan_id: freePlan.id,
+								action_type: 'started',
+								start_date: new Date().toISOString(),
+								metadata: JSON.stringify({ auto_assigned: true, plan_name: freePlan.name }),
+							});
+						} catch (historyError) {
+							luderror.payment('[UserContext] Error recording subscription history:', null, { context: historyError });
+						}
+
+						return updatedUser;
+					}
+				}
+				return user;
+			} catch (error) {
+				luderror.payment('[UserContext] Error checking subscription:', error);
+				return user;
+			}
+		},
+		[needsOnboarding]
+	);
+
+	const login = useCallback(async (userData) => {
+		try {
+			// Note: TypeScript AuthManager expects idToken string, JavaScript expects userData object
+			const result = useTypeScriptAuthManager
+				? await activeAuthManager.loginFirebase(userData.idToken || userData)
+				: await activeAuthManager.loginFirebase(userData);
+			return result.user;
+		} catch (error) {
+			luderror.auth('[UserContext] Login error:', error);
+
+			// Show user-friendly error message
+			toast({
+				title: 'שגיאה בהתחברות',
+				description: 'לא הצלחנו להתחבר למערכת. אנא נסה שוב.',
+				variant: 'destructive',
+			});
+
+			throw error;
+		}
+	}, []);
+
+	const userLoginSuccessMsg = useCallback((user) => {
+		// Try multiple name sources in order of preference
+		let userName = user?.display_name || user?.full_name;
+
+		// If no display name, try first/last name combination
+		if (!userName && (user?.first_name || user?.last_name)) {
+			userName = [user?.first_name, user?.last_name].filter(Boolean).join(' ');
+		}
+
+		// If still no name, extract name from email (part before @) as last resort
+		if (!userName && user?.email) {
+			userName = user.email.split('@')[0];
+		}
+
+		// Create description with name if available, otherwise just welcome message
+		const description = userName
+			? `ברוכ.ה הבא.ה ${userName}`
+			: 'ברוכ.ה הבא.ה למערכת';
+
+		toast({
+			title: 'התחברת בהצלחה! 👤',
+			description: description,
+			variant: 'default',
+		});
+	}, [])
+
+	const playerLogin = useCallback(async (privacyCode) => {
+		try {
+			const result = await activeAuthManager.loginPlayer(privacyCode);
+
+			// Show success message
+			toast({
+				title: 'התחברת בהצלחה! 🎮',
+				description: `ברוך הבא ${result.player?.display_name}`,
+				variant: 'default',
+			});
+
+			return result.player;
+		} catch (error) {
+			luderror.auth('[UserContext] Player login error:', error);
+
+			// Determine error message to display
+			let errorDescription;
+			if (error.message) {
+				// For specific known errors, provide Hebrew translations
+				if (error.message.includes('Invalid privacy code')) {
+					errorDescription = 'קוד הפרטיות שהוזן אינו תקין';
+				} else if (error.message.includes('Player not found')) {
+					errorDescription = 'לא נמצא שחקן עם קוד זה';
+				} else if (error.message.includes('Network Error')) {
+					errorDescription = 'בעיית רשת. אנא בדוק את החיבור לאינטרנט';
+				} else {
+					// Show the actual API error message for everything else
+					errorDescription = error.message;
+				}
+			} else {
+				// Only use generic message as last resort
+				errorDescription = 'קוד פרטיות שגוי או לא קיים. אנא בדוק את הקוד ונסה שוב.';
+			}
+
+			// Show error message with actual API error content
+			toast({
+				title: 'שגיאה בהתחברות 🎮',
+				description: errorDescription,
+				variant: 'destructive',
+			});
+
+			throw error;
+		}
+	}, []);
+
+	const logout = useCallback(async () => {
+		try {
+			await activeAuthManager.logout();
+
+			// Show success message
+			toast({
+				title: 'התנתקת בהצלחה! 👋',
+				description: 'תודה! נתראה בקרוב!',
+				variant: 'default',
+			});
+		} catch (error) {
+			luderror.auth('[UserContext] Logout error:', error);
+
+			// Show error message
+			toast({
+				title: 'שגיאה בהתנתקות',
+				description: 'בעיה בהתנתקות, אך המערכת נוקתה מקומית.',
+				variant: 'destructive',
+			});
+		}
+	}, []);
+
+	const playerLogout = useCallback(async () => {
+		try {
+			await activeAuthManager.logout();
+
+			// Show success message
+			toast({
+				title: 'התנתקת בהצלחה! 👋',
+				description: 'תודה! נתראה בקרוב!',
+				variant: 'default',
+			});
+		} catch (error) {
+			luderror.auth('[UserContext] Player logout error:', error);
+
+			// Show error message
+			toast({
+				title: 'שגיאה בהתנתקות 🎮',
+				description: 'נותקת מהמערכת בכשיר זה בלבד. אם היה לך חיבורים פעילים במכשירים אחרים, יתכן והם נשארו מחוברים',
+				variant: 'destructive',
+			});
+		}
+	}, []);
+
+	const clearAuth = useCallback(() => {
+		activeAuthManager.reset();
+
+		// Clear any Firebase session data that might be persisting
+		try {
+			if (typeof window !== 'undefined' && window.localStorage) {
+				const firebaseKeys = Object.keys(localStorage).filter(
+					(key) => key.startsWith('firebase:') || key.startsWith('_firebase') || key.startsWith('firebaseui')
+				);
+				firebaseKeys.forEach((key) => localStorage.removeItem(key));
+			}
+		} catch (error) {
+			luderror.auth('[UserContext] Error clearing Firebase session:', error);
+		}
+	}, []);
+
+	const clearPlayerAuth = useCallback(() => {
+		activeAuthManager.reset();
+	}, []);
+
+	const updateLastActivity = useCallback(() => {
+		// Delegate to AuthManager
+		activeAuthManager.updateLastActivity();
+	}, []);
+
+	const updateUser = useCallback(
+		(updatedUserData) => {
+			// For now, handle locally since AuthManager doesn't track partial updates
+			// This could be enhanced to update AuthManager state as well
+			if (authState.authType === 'user' && authState.user) {
+				const updatedUser = { ...authState.user, ...updatedUserData };
+				setAuthState((prev) => ({
+					...prev,
+					user: updatedUser,
+				}));
+			}
+		},
+		[authState.authType, authState.user]
+	);
+
+	const updatePlayer = useCallback(
+		(updatedPlayerData) => {
+			// For now, handle locally since AuthManager doesn't track partial updates
+			// This could be enhanced to update AuthManager state as well
+			if (authState.authType === 'player' && authState.player) {
+				const updatedPlayer = { ...authState.player, ...updatedPlayerData };
+				setAuthState((prev) => ({
+					...prev,
+					player: updatedPlayer,
+				}));
+			}
+		},
+		[authState.authType, authState.player]
+	);
+
+	// Helper functions to determine current entity type
+	const isUserSession = useCallback(() => {
+		return authState.authType === 'user' && !!authState.user;
+	}, [authState.authType, authState.user]);
+
+	const isPlayerSession = useCallback(() => {
+		return authState.authType === 'player' && !!authState.player;
+	}, [authState.authType, authState.player]);
+
+	const getCurrentEntity = useCallback(() => {
+		return activeAuthManager.getCurrentEntity() || { type: null, entity: null };
+	}, []);
+
+	const hasAnyAuthentication = useCallback(() => {
+		return authState.isAuthenticated;
+	}, [authState.isAuthenticated]);
+
+	const isFullyLoaded = useCallback(() => {
+		return !authState.isLoading && authState.isInitialized;
+	}, [authState.isLoading, authState.isInitialized]);
+
+	// Refresh user authentication state (for use after login/logout events)
+	const refreshUser = useCallback(async () => {
+		await activeAuthManager.initialize();
+	}, []);
+
+	// Force refresh settings (for use after settings updates)
+	const refreshSettings = useCallback(async () => {
+		await activeAuthManager.initialize(true); // Force refresh to reload settings
+	}, []);
+
+	// CENTRALIZED ROLE CHECKING FUNCTIONS
+	// These functions provide a single source of truth for role-based access control
+
+	// Check if current user is an actual admin (not impersonated)
+	const isAdmin = useCallback(() => {
+		return authState.user?.role === 'admin' && !authState.user?._isImpersonated;
+	}, [authState.user]);
+
+	// Check if current user is a content creator (based on content creator agreement)
+	const isContentCreator = useCallback(() => {
+		// Content creator status is based on signing the content creator agreement
+		return authState.user?.role === 'content_creator' && authState.user?.content_creator_agreement_signed;
+	}, [authState.user]);
+
+	// Check if current user can see an item based on navigation visibility setting
+	const canUserSeeNavItem = useCallback(
+		(visibility) => {
+			const user = authState.user;
+			const adminStatus = isAdmin();
+			const contentCreatorStatus = isContentCreator();
+
+			switch (visibility) {
+				case 'public':
+					return true;
+				case 'logged_in_users':
+					return !!user;
+				case 'admins_and_creators':
+					return adminStatus || contentCreatorStatus;
+				case 'admin_only':
+					return adminStatus;
+				case 'hidden':
+					return false; // Hidden means invisible to everyone
+				default:
+					return true; // Default to visible for unknown visibility settings
+			}
+		},
+		[authState.user, isAdmin, isContentCreator]
+	);
+
+	// Check if current user is any kind of authenticated user (not player)
+	const isAuthenticatedUser = useCallback(() => {
+		return authState.authType === 'user' && !!authState.user;
+	}, [authState.authType, authState.user]);
+
+	// Update last activity on user interactions
+	useEffect(() => {
+		if (hasAnyAuthentication()) {
+			const handleActivity = () => updateLastActivity();
+
+			document.addEventListener('click', handleActivity);
+			document.addEventListener('keypress', handleActivity);
+
+			return () => {
+				document.removeEventListener('click', handleActivity);
+				document.removeEventListener('keypress', handleActivity);
+			};
+		}
+	}, [hasAnyAuthentication, updateLastActivity]);
+
+	const value = {
+		// User state
+		currentUser: authState.user,
+		isAuthenticated: authState.authType === 'user',
+		userDataFresh,
+
+		// Player state
+		currentPlayer: authState.player,
+		isPlayerAuthenticated: authState.authType === 'player',
+		playerDataFresh,
+
+		// Shared state
+		settings: authState.settings,
+		isLoading: authState.isLoading,
+		settingsLoading: authState.isLoading, // Map to same loading state
+		settingsLoadFailed,
+
+		// User functions
     login,
-    logout,
-    updateUser,
-    clearAuth,
-    needsOnboarding,
+    userLoginSuccessMsg,
+		logout,
+		updateUser,
+		clearAuth,
+		needsOnboarding,
 
-    // Player functions
-    playerLogin,
-    playerLogout,
-    updatePlayer,
-    clearPlayerAuth,
+		// Player functions
+		playerLogin,
+		playerLogout,
+		updatePlayer,
+		clearPlayerAuth,
 
-    // Helper functions
-    isUserSession,
-    isPlayerSession,
-    getCurrentEntity,
-    hasAnyAuthentication,
-    isFullyLoaded,
-    refreshUser,
-    refreshSettings,
+		// Helper functions
+		isUserSession,
+		isPlayerSession,
+		getCurrentEntity,
+		hasAnyAuthentication,
+		isFullyLoaded,
+		refreshUser,
+		refreshSettings,
 
-    // Role checking functions (centralized)
-    isAdmin,
-    isContentCreator,
-    canUserSeeNavItem,
-    isAuthenticatedUser
-  };
+		// Role checking functions (centralized)
+		isAdmin,
+		isContentCreator,
+		canUserSeeNavItem,
+		isAuthenticatedUser,
+	};
 
-  return (
-    <UserContext.Provider value={value}>
-      {children}
-    </UserContext.Provider>
-  );
+	return <UserContext.Provider value={value}>{children}</UserContext.Provider>;
 }

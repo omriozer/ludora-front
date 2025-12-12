@@ -10,26 +10,7 @@
 import createClient from 'openapi-fetch';
 import type { paths } from '../types/api';
 import { ludlog, luderror } from '@/lib/ludlog';
-
-// Determine API base URL based on environment
-const getApiBaseUrl = (): string => {
-  if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL;
-  }
-
-  // Production
-  if (import.meta.env.MODE === 'production') {
-    return 'https://ludora.app/api';
-  }
-
-  // Staging
-  if (import.meta.env.MODE === 'staging') {
-    return 'https://staging.ludora.app/api';
-  }
-
-  // Development
-  return 'http://localhost:3000/api';
-};
+import { isDev, getApiBaseUrl } from '@/utils/environment';
 
 /**
  * Type-safe API client with automatic request/response validation
@@ -53,7 +34,7 @@ export const apiClient = createClient<paths>({
 apiClient.use({
   async onRequest({ request }) {
     // Log requests in development
-    if (import.meta.env.DEV) {
+    if (isDev()) {
       ludlog.api('API Request:', request.method, request.url);
     }
 
@@ -62,7 +43,7 @@ apiClient.use({
 
   async onResponse({ response }) {
     // Log responses in development
-    if (import.meta.env.DEV) {
+    if (isDev()) {
       ludlog.api('API Response:', response.status, response.url);
     }
 

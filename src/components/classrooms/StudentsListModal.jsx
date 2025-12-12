@@ -15,15 +15,30 @@ import {
   X,
   Mail,
   Calendar,
-  Activity
+  Activity,
+  Shield
 } from "lucide-react";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { triggerEmailAutomation } from "@/services/functions";
+import { useUser } from "@/contexts/UserContext";
+import { apiRequest } from "@/services/apiClient";
 
 export default function StudentsListModal({ isOpen, onClose, classroom, onInviteStudents }) {
+  const { settings } = useUser();
+
+  // DEBUG: Log all settings to console
+  React.useEffect(() => {
+    if (isOpen && settings) {
+      console.log('🔍 StudentsListModal Settings Debug:', {
+        teacher_consent_verification_enabled: settings.teacher_consent_verification_enabled,
+        allSettings: settings
+      });
+    }
+  }, [isOpen, settings]);
   const [students, setStudents] = useState([]);
   const [invitations, setInvitations] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [markingConsentId, setMarkingConsentId] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState(null);
   const [message, setMessage] = useState(null);
@@ -43,7 +58,7 @@ export default function StudentsListModal({ isOpen, onClose, classroom, onInvite
       const studentData = [];
       for (const membership of memberships) {
         try {
-          const user = await User.findById(membership.student_user_id); // FIX: use findById instead of get
+          const user = await User.findById(membership.student_id); // FIX: use findById instead of get
           if (user) {
             studentData.push({
               ...user,
@@ -66,6 +81,17 @@ export default function StudentsListModal({ isOpen, onClose, classroom, onInvite
       });
 
       setInvitations(classroomInvitations);
+
+      // DEBUG: Log invitations data
+      console.log('🔍 StudentsListModal Invitations Debug:', {
+        invitationsCount: classroomInvitations.length,
+        invitations: classroomInvitations.map(inv => ({
+          id: inv.id,
+          studentName: inv.student_name,
+          status: inv.status,
+          student_email: inv.student_email
+        }))
+      });
 
     } catch (error) {
       console.error("Error loading students and invitations:", error);
@@ -231,6 +257,57 @@ export default function StudentsListModal({ isOpen, onClose, classroom, onInvite
     }
   };
 
+  const handleMarkConsent = async (invitation) => {
+    setMarkingConsentId(invitation.id);
+    try {
+      setMessage({ type: 'info', text: 'מסמן אישור הורה...' });
+
+      // Find the student user to get their ID
+      const users = await User.filter({ email: invitation.student_email });
+      if (users.length === 0) {
+        throw new Error('Student not found in system');
+      }
+
+      const studentUser = users[0];
+
+      // Call the mark-consent API endpoint
+      await apiRequest('/auth/mark-consent', {
+        method: 'POST',
+        data: {
+          student_id: studentUser.id
+        }
+      });
+
+      setMessage({ type: 'success', text: `אישור הורה נסמן כהתקבל עבור ${invitation.student_name}` });
+
+      // Reload the list to reflect changes
+      loadStudentsAndInvitations();
+
+      // Clear message after 3 seconds
+      setTimeout(() => setMessage(null), 3000);
+
+    } catch (error) {
+      console.error("Error marking consent:", error);
+
+      // Handle specific error cases
+      let errorMessage = "שגיאה בסימון האישור. אנא נסו שוב.";
+
+      if (error.response?.data?.code === 'FEATURE_DISABLED') {
+        errorMessage = "סימון אישור על ידי מורה אינו מופעל במערכת";
+      } else if (error.response?.data?.code === 'CONSENT_ALREADY_EXISTS') {
+        errorMessage = "כבר קיים אישור פעיל לתלמיד זה";
+      } else if (error.response?.status === 403) {
+        errorMessage = "אין לך הרשאה לסמן אישור עבור תלמיד זה";
+      } else if (error.response?.status === 404) {
+        errorMessage = "התלמיד לא נמצא במערכת";
+      }
+
+      setMessage({ type: 'error', text: errorMessage });
+      setTimeout(() => setMessage(null), 3000);
+    }
+    setMarkingConsentId(null);
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return 'לא זמין';
     return new Date(dateString).toLocaleDateString('he-IL');
@@ -383,7 +460,7 @@ export default function StudentsListModal({ isOpen, onClose, classroom, onInvite
                                 <div className="text-xs text-orange-600 flex items-center gap-4">
                                   <span className="flex items-center gap-1">
                                     <Calendar className="w-3 h-3" />
-                                    הוזמן: {formatDate(invitation.created_date)}
+                                    הוזמן: {formatDate(invitation.created_at)}
                                   </span>
                                   <span className="flex items-center gap-1">
                                     <Clock className="w-3 h-3" />
@@ -392,6 +469,31 @@ export default function StudentsListModal({ isOpen, onClose, classroom, onInvite
                                 </div>
                               </div>
                               <div className="flex items-center gap-2 ml-3">
+                                {/* DEBUG: Visible debug info */}
+                                {invitation.status === 'pending_parent_consent' && (
+                                  <div className="text-xs bg-yellow-100 border border-yellow-300 rounded p-1 mb-2">
+                                    DEBUG: Status={invitation.status}, TeacherConsent={settings?.teacher_consent_verification_enabled ? 'ON' : 'OFF'}
+                                  </div>
+                                )}
+                                {/* Mark Consent Button - only for pending_parent_consent when feature is enabled */}
+                                {settings?.teacher_consent_verification_enabled &&
+                                 invitation.status === 'pending_parent_consent' && (
+                                  <Button
+                                    onClick={() => handleMarkConsent(invitation)}
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={markingConsentId === invitation.id}
+                                    className="text-orange-600 border-orange-300 hover:bg-orange-50"
+                                    title="סמן אישור הורה כהתקבל"
+                                  >
+                                    {markingConsentId === invitation.id ? (
+                                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-orange-600"></div>
+                                    ) : (
+                                      <Shield className="w-4 h-4" />
+                                    )}
+                                  </Button>
+                                )}
+
                                 {/* Resend Email Button */}
                                 {(invitation.status === 'pending_parent_consent' || invitation.status === 'pending_student_acceptance') && (
                                   <Button

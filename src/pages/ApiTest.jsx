@@ -1,6 +1,7 @@
 // API Test Page - for testing the new API utility
 import React, { useState } from 'react';
 import { api, auth, handleApiError, ApiError } from '../utils/api.js';
+import { getEnv, isDev, isProd } from '@/utils/environment';
 
 function ApiTest() {
   const [results, setResults] = useState([]);
@@ -126,10 +127,10 @@ function ApiTest() {
       <div style={{ marginTop: '30px', padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '4px' }}>
         <h3>Environment Info:</h3>
         <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '10px' }}>
-          <strong>Environment:</strong> <span>{import.meta.env.MODE}</span>
+          <strong>Environment:</strong> <span>{getEnv()}</span>
           <strong>API Base:</strong> <span>{import.meta.env.VITE_API_BASE || 'default'}</span>
-          <strong>Dev Mode:</strong> <span>{import.meta.env.DEV ? 'Yes' : 'No'}</span>
-          <strong>Build Mode:</strong> <span>{import.meta.env.PROD ? 'Production' : 'Development'}</span>
+          <strong>Dev Mode:</strong> <span>{isDev() ? 'Yes' : 'No'}</span>
+          <strong>Build Mode:</strong> <span>{isProd() ? 'Production' : 'Development'}</span>
         </div>
       </div>
     </div>

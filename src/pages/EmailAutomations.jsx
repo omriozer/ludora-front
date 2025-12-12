@@ -33,6 +33,7 @@ import 'react-quill/dist/quill.snow.css';
 import AdvancedEmailEditor from "../components/email/AdvancedEmailEditor";
 import { Link } from "react-router-dom"; // Import Link for navigation
 import { showConfirm, showSuccess, showError } from '@/utils/messaging';
+import { isDev } from '@/utils/environment';
 
 export default function EmailAutomations() {
   const { currentUser, isLoading: userLoading } = useUser();
@@ -168,7 +169,7 @@ export default function EmailAutomations() {
     }
 
     // Show confirmation dialog with user's email
-    const isDevelopment = import.meta.env.DEV;
+    const isDevelopment = isDev();
     const baseMessage = `האם ברצונך לשלוח דוגמה של התבנית "${template.name}" לכתובת ${currentUser.email}?`;
     const devWarning = '\n\n⚠️ שים לב: במצב פיתוח, המייל לא יישלח באמת - הוא ירשם במסד הנתונים בלבד.';
 

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { iconMap } from "@/lib/layoutUtils";
 import { NAV_ITEMS, getNavItemConfig, PRODUCT_TYPES } from "@/config/productTypes";
 import LogoDisplay from '@/components/ui/LogoDisplay';
+import UserAvatar from '@/components/ui/UserAvatar';
 import { useCart } from "@/contexts/CartContext";
 import {
   NAVIGATION_KEYS,
@@ -480,8 +481,34 @@ const PublicNav = ({ currentUser, handleLogout, handleLogin, settings }) => {
           </nav>
         </div>
 
-        {/* User Section at Bottom */}
-        <div className="border-t border-gray-200/50 p-4">
+        {/* Cart Section - Above separator, at bottom of navigation */}
+        {currentUser && (
+          <div className="px-4 pb-4">
+            <Link
+              to="/checkout"
+              className={`relative flex items-center gap-2 font-bold transition-all duration-300 hover:bg-gray-100 rounded-lg ${
+                isCollapsed ? 'w-12 h-12 p-0 justify-center' : 'w-full justify-center py-3 px-3'
+              }`}
+              title={isCollapsed ? "עגלת קניות" : undefined}
+            >
+              <ShoppingCart className="w-5 h-5 text-blue-600" />
+              {!isCollapsed && <span className="text-blue-600">עגלת קניות</span>}
+              {cartCount > 0 && (
+                <div className={`absolute bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold shadow-lg ${
+                  isCollapsed ? '-top-1 -left-1 w-5 h-5' : '-top-1 left-2 w-5 h-5'
+                }`}>
+                  {cartCount > 99 ? '99+' : cartCount}
+                </div>
+              )}
+            </Link>
+          </div>
+        )}
+
+        {/* Darker Separator Line */}
+        <div className="border-t border-gray-300 mx-2"></div>
+
+        {/* User Info Section - Below separator */}
+        <div className="p-4">
           {!currentUser ? (
             <Button
               variant="default"
@@ -506,37 +533,29 @@ const PublicNav = ({ currentUser, handleLogout, handleLogin, settings }) => {
             </Button>
           ) : (
             <div className="space-y-3">
-              {/* Cart Icon (for authenticated users) */}
-              <Link
-                to="/checkout"
-                className={`relative flex items-center gap-2 font-bold transition-all duration-300 hover:bg-gray-100 rounded-lg ${
-                  isCollapsed ? 'w-12 h-12 p-0 justify-center' : 'w-full justify-center py-3 px-3'
-                }`}
-                title={isCollapsed ? "עגלת קניות" : undefined}
-              >
-                <ShoppingCart className="w-5 h-5 text-blue-600" />
-                {!isCollapsed && <span className="text-blue-600">עגלת קניות</span>}
-                {cartCount > 0 && (
-                  <div className={`absolute bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold shadow-lg ${
-                    isCollapsed ? '-top-1 -left-1 w-5 h-5' : '-top-1 left-2 w-5 h-5'
-                  }`}>
-                    {cartCount > 99 ? '99+' : cartCount}
+              {/* User Avatar and Info */}
+              {isCollapsed ? (
+                /* Avatar only when collapsed */
+                <div className="flex justify-center">
+                  <UserAvatar user={currentUser} size="md" showTooltip={true} />
+                </div>
+              ) : (
+                /* Avatar with info when expanded */
+                <div className="text-center space-y-2">
+                  <div className="flex justify-center">
+                    <UserAvatar user={currentUser} size="lg" showTooltip={false} />
                   </div>
-                )}
-              </Link>
-
-              {/* User Info (only when expanded) */}
-              {!isCollapsed && (
-                <div className="text-center">
-                  <div className="text-sm font-semibold text-gray-800 truncate">
-                    {currentUser.full_name || currentUser.email}
-                  </div>
-                  {currentUser.role === 'admin' && (
-                    <div className="text-xs text-orange-600 font-bold flex items-center justify-center gap-1">
-                      <Crown className="w-3 h-3" />
-                      מנהל
+                  <div>
+                    <div className="text-sm font-semibold text-gray-800 truncate">
+                      {currentUser.full_name || currentUser.email}
                     </div>
-                  )}
+                    {currentUser.role === 'admin' && (
+                      <div className="text-xs text-orange-600 font-bold flex items-center justify-center gap-1">
+                        <Crown className="w-3 h-3" />
+                        מנהל
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 

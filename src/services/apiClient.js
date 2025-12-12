@@ -20,10 +20,15 @@ export async function getCurrentUser(suppressUserErrors = false) {
   return apiRequest('/auth/me', { suppressUserErrors });
 }
 
-export async function loginWithFirebase({ idToken }) {
+export async function loginWithFirebase({ idToken, teacher_id }) {
+  const body = { idToken };
+  if (teacher_id) {
+    body.teacher_id = teacher_id;
+  }
+
   const response = await apiRequest('/auth/verify', {
     method: 'POST',
-    body: JSON.stringify({ idToken })
+    body: JSON.stringify(body)
   });
 
   // Note: Authentication tokens are now set as httpOnly cookies by the server
@@ -108,7 +113,12 @@ async function apiRequestWithRetry(endpoint, options = {}, isRetryAttempt = fals
                         error.message ||
                         JSON.stringify(error) ||
                         `API request failed: ${response.status}`;
-      throw new ApiError(errorMessage, response.status, response);
+
+      // Create enhanced ApiError with error data attached
+      const apiError = new ApiError(errorMessage, response.status, response);
+      apiError.code = error.code; // Preserve error code from backend
+      apiError.data = error; // Preserve full error data for detailed handling
+      throw apiError;
     }
 
     const data = await response.json();
@@ -192,7 +202,12 @@ export async function apiRequestAnonymous(endpoint, options = {}) {
                         error.message ||
                         JSON.stringify(error) ||
                         `Anonymous API request failed: ${response.status}`;
-      throw new ApiError(errorMessage, response.status, response);
+
+      // Create enhanced ApiError with error data attached
+      const apiError = new ApiError(errorMessage, response.status, response);
+      apiError.code = error.code; // Preserve error code from backend
+      apiError.data = error; // Preserve full error data for detailed handling
+      throw apiError;
     }
 
     const data = await response.json();
@@ -872,16 +887,26 @@ export const Player = {
   },
 
   /**
-   * Assign teacher to current anonymous player
-   * @param {Object} data - Assignment data
-   * @param {string} data.teacher_id - Teacher ID to assign
-   * @returns {Promise<Object>} Assignment response with teacher info
+   * Connect student (Player or User) to teacher using unified endpoint
+   * @param {Object} data - Connection data
+   * @param {string} data.teacher_id - Teacher ID to connect to
+   * @param {string} data.invitation_code - Alternative: 6-character invitation code
+   * @param {string} data.request_message - Optional message for connection request
+   * @returns {Promise<Object>} Connection response with teacher info, available classrooms, etc.
    */
-  async assignTeacher(data) {
-    return apiRequest('/players/assign-teacher', {
+  async connectToTeacher(data) {
+    return apiRequest('/students/connect-teacher', {
       method: 'POST',
       body: JSON.stringify(data)
     });
+  },
+
+  /**
+   * @deprecated Use connectToTeacher instead for unified authentication
+   * Legacy method for backward compatibility - routes to new unified endpoint
+   */
+  async assignTeacher(data) {
+    return this.connectToTeacher(data);
   },
 
   /**

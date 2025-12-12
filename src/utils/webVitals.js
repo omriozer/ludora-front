@@ -61,7 +61,7 @@ const reportMetric = async (metric) => {
     userAgent: navigator.userAgent,
     connectionType: navigator.connection?.effectiveType || 'unknown',
     // Portal detection for dual-portal analysis
-    portal: window.location.hostname.includes('my.ludora') ? 'student' : 'teacher'
+    portal: window.location.hostname.includes('my.') ? 'student' : 'teacher'
   };
 
   // Console logging for development and debugging

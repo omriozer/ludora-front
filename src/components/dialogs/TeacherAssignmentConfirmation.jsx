@@ -22,7 +22,8 @@ const TeacherAssignmentConfirmation = ({
   const handleConfirm = async () => {
     try {
       await onConfirm();
-      showSuccess(`התחברתם בהצלחה למורה ${teacher.name}!`);
+      // Success message will be shown after actual login completion
+      // Removed premature success toast from here
     } catch (error) {
       showError('שגיאה בהתחברות למורה. נסו שוב.');
       console.error('Teacher assignment error:', error);

@@ -290,7 +290,7 @@ export default function ParentConsent() {
       };
 
       if (studentUser) {
-        consentData.student_user_id = studentUser.id;
+        consentData.student_id = studentUser.id;
       }
 
       await ParentConsentEntity.create(consentData);
@@ -304,7 +304,7 @@ export default function ParentConsent() {
 
         // Link invitation to student user if found
         if (studentUser) {
-          updateData.student_user_id = studentUser.id;
+          updateData.student_id = studentUser.id;
         }
 
         await StudentInvitation.update(invitation.id, updateData);

@@ -21,9 +21,11 @@ import {
   CheckCircle,
   Users,
   Heart,
-  X
+  X,
+  Shield
 } from "lucide-react";
 import { triggerEmailAutomation } from "@/services/functions";
+import { apiRequest } from "@/services/apiClient";
 
 export default function InviteStudentsModal({ isOpen, onClose, classroom, currentUser }) {
   const { settings } = useUser();
@@ -33,6 +35,7 @@ export default function InviteStudentsModal({ isOpen, onClose, classroom, curren
   const [personalMessage, setPersonalMessage] = useState("");
   const [showEmailPreview, setShowEmailPreview] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isMarkingConsent, setIsMarkingConsent] = useState(false);
   const [isCheckingStudent, setIsCheckingStudent] = useState(false);
   const [studentStatus, setStudentStatus] = useState(null);
   const [errors, setErrors] = useState({});
@@ -228,6 +231,65 @@ export default function InviteStudentsModal({ isOpen, onClose, classroom, curren
       setErrors({ general: "שגיאה בשליחת ההזמנה. אנא נסו שוב." });
     }
     setIsLoading(false);
+  };
+
+  const handleMarkConsent = async () => {
+    if (!studentEmail.trim() || !studentName.trim()) {
+      setErrors({
+        studentEmail: !studentEmail.trim() ? "חובה להזין כתובת מייל של התלמיד" : null,
+        studentName: !studentName.trim() ? "חובה להזין שם התלמיד" : null
+      });
+      return;
+    }
+
+    setIsMarkingConsent(true);
+    try {
+      // Find the student user to get their ID
+      const users = await User.filter({ email: studentEmail.trim() });
+      if (users.length === 0) {
+        throw new Error('Student not found in system');
+      }
+
+      const studentUser = users[0];
+
+      // Call the mark-consent API endpoint
+      await apiRequest('/auth/mark-consent', {
+        method: 'POST',
+        data: {
+          student_id: studentUser.id
+        }
+      });
+
+      // Update the student status to reflect the consent has been marked
+      setStudentStatus(prev => ({
+        ...prev,
+        hasParentConsent: true
+      }));
+
+      // Clear any errors
+      setErrors({});
+
+      // TODO: Show success toast or notification
+
+    } catch (error) {
+      console.error("Error marking consent:", error);
+
+      // Handle specific error cases
+      let errorMessage = "שגיאה בסימון האישור. אנא נסו שוב.";
+
+      if (error.response?.data?.code === 'FEATURE_DISABLED') {
+        errorMessage = "סימון אישור על ידי מורה אינו מופעל במערכת";
+      } else if (error.response?.data?.code === 'CONSENT_ALREADY_EXISTS') {
+        errorMessage = "כבר קיים אישור פעיל לתלמיד זה";
+      } else if (error.response?.status === 403) {
+        errorMessage = "אין לך הרשאה לסמן אישור עבור תלמיד זה";
+      } else if (error.response?.status === 404) {
+        errorMessage = "התלמיד לא נמצא במערכת";
+      }
+
+      setErrors({ general: errorMessage });
+    }
+    setIsMarkingConsent(false);
   };
 
   const getEmailPreviewContent = () => {
@@ -519,6 +581,32 @@ ${personalMessage ? `הודעה אישית מהמורה:\n${personalMessage}\n\n
               <X className="w-4 h-4 ml-2" />
               ביטול
             </Button>
+
+            {/* Show mark consent button if teacher consent verification is enabled and student needs consent */}
+            {settings?.teacher_consent_verification_enabled &&
+             studentStatus &&
+             !studentStatus.hasParentConsent &&
+             !studentStatus.hasExistingInvitation && (
+              <Button
+                onClick={handleMarkConsent}
+                disabled={isMarkingConsent || !studentEmail.trim() || !studentName.trim()}
+                variant="outline"
+                className="bg-orange-50 border-orange-300 text-orange-800 hover:bg-orange-100"
+              >
+                {isMarkingConsent ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-orange-600 ml-2"></div>
+                    מסמן אישור...
+                  </>
+                ) : (
+                  <>
+                    <Shield className="w-4 h-4 ml-2" />
+                    סמן אישור התקבל
+                  </>
+                )}
+              </Button>
+            )}
+
             <Button
               onClick={handleInviteStudent}
               disabled={isLoading || !studentStatus || studentStatus.hasExistingInvitation}
