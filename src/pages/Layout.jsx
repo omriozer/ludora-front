@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, Suspense } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useUser } from "@/contexts/UserContext";
-import { isStaff } from "@/lib/userUtils";
 import Footer from "../components/layout/Footer";
 import FloatingAdminMenu from "../components/FloatingAdminMenu";
 import SubscriptionModal from "../components/SubscriptionModal";
@@ -28,7 +27,7 @@ function LayoutContent({ children }) {
   const { showLoginModal, openLoginModal, closeLoginModal, executeCallback, modalMessage } = useLoginModal();
 
   // Use UserContext instead of local state
-  const { currentUser, settings, isLoading, settingsLoading, settingsLoadFailed, login, logout, userLoginSuccessMsg } = useUser();
+  const { currentUser, settings, isLoading, settingsLoading, settingsLoadFailed, login, logout, userLoginSuccessMsg, isAdmin } = useUser();
 
   // Track screen size for responsive layout
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
@@ -385,7 +384,7 @@ function LayoutContent({ children }) {
         </div>
 
         {/* Floating Admin Menu */}
-        {!isLoading && currentUser && isStaff(currentUser) && (
+        {!isLoading && currentUser && isAdmin() && (
           <FloatingAdminMenu currentUser={currentUser} />
         )}
 

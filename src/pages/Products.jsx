@@ -42,7 +42,7 @@ import { ludlog } from "@/lib/ludlog";
 function Products() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { currentUser, settings, isLoading: userLoading } = useUser();
+  const { currentUser, settings, isLoading: userLoading, isAdmin } = useUser();
 
   // Analytics tracking
   const { track } = useAnalytics();
@@ -54,7 +54,6 @@ function Products() {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [isContentCreator, setIsContentCreator] = useState(false);
   const [showAllContent, setShowAllContent] = useState(true);
   const [visibleProductTypes, setVisibleProductTypes] = useState([]);
@@ -108,10 +107,9 @@ function Products() {
     startMeasurement('Products-data-loading');
     try {
       // Check access permissions
-      const hasAdminAccess = currentUser.role === 'admin' || currentUser.role === 'sysadmin';
+      const hasAdminAccess = isAdmin();
       const hasContentCreatorAccess = currentUser.content_creator_agreement_sign_date;
 
-      setIsAdmin(hasAdminAccess);
       setIsContentCreator(hasContentCreatorAccess);
 
       // Load visible product types based on nav_*_visibility settings
@@ -619,7 +617,7 @@ function Products() {
 
   // Handle unauthorized access with toast and redirect
   useEffect(() => {
-    if (!userLoading && !isLoading && !isAdmin && !isContentCreator) {
+    if (!userLoading && !isLoading && !isAdmin() && !isContentCreator) {
       toast({
         title: "אין הרשאות גישה",
         description: "רק מנהלים ויוצרי תוכן יכולים לגשת לדף ניהול המוצרים",
@@ -628,9 +626,9 @@ function Products() {
       navigate('/');
       return;
     }
-  }, [userLoading, isLoading, isAdmin, isContentCreator, navigate, toast]);
+  }, [userLoading, isLoading, isContentCreator, navigate, toast]);
 
-  if (!isAdmin && !isContentCreator) {
+  if (!isAdmin() && !isContentCreator) {
     return null; // Component will redirect before rendering
   }
 
@@ -669,7 +667,7 @@ function Products() {
               
               <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
                 {/* Admin Toggle */}
-                {isAdmin && (
+                {isAdmin() && (
                   <div className="bg-white/70 backdrop-blur-sm rounded-lg md:rounded-xl p-3 md:p-4 border border-white/20">
                     <div className="flex items-center gap-2 md:gap-3">
                       <Switch
@@ -870,7 +868,7 @@ function Products() {
                           </div>
 
                           {/* Creator (Admin only) */}
-                          {isAdmin && showAllContent && (
+                          {isAdmin() && showAllContent && (
                             <div className="col-span-2 text-center">
                               <div className="text-xs text-slate-500 mb-1">יוצר</div>
                               <div className="text-sm font-medium text-slate-900">
@@ -914,13 +912,13 @@ function Products() {
                     <div className="grid grid-cols-12 gap-2 items-center text-sm font-bold text-slate-700">
                       <div className="col-span-1 text-center">פעולות</div>
                       <div className="col-span-2 text-center">נתונים</div>
-                      <div className={`${isAdmin && showAllContent ? 'col-span-1' : 'col-span-1'} text-center`}>מחיר</div>
-                      {isAdmin && showAllContent && (
+                      <div className={`${isAdmin() && showAllContent ? 'col-span-1' : 'col-span-1'} text-center`}>מחיר</div>
+                      {isAdmin() && showAllContent && (
                         <div className="col-span-1 text-center">יוצר</div>
                       )}
                       <div className="col-span-1 text-center">קטגוריה</div>
                       <div className="col-span-1 text-center">סטטוס</div>
-                      <div className={`${isAdmin && showAllContent ? 'col-span-5' : 'col-span-6'} text-right`}>כותרת</div>
+                      <div className={`${isAdmin() && showAllContent ? 'col-span-5' : 'col-span-6'} text-right`}>כותרת</div>
                     </div>
                   </div>
 
@@ -969,7 +967,7 @@ function Products() {
                         </div>
 
                         {/* Price */}
-                        <div className={`${isAdmin && showAllContent ? 'col-span-1' : 'col-span-1'} text-center`}>
+                        <div className={`${isAdmin() && showAllContent ? 'col-span-1' : 'col-span-1'} text-center`}>
                           <div className="font-bold text-base" dir="rtl">
                             <span className={product.price > 0 ? "text-emerald-600" : "text-blue-600"}>
                               {formatPriceSimple(product.price, product.price === 0)}
@@ -981,7 +979,7 @@ function Products() {
                         </div>
 
                         {/* Creator (Admin only) */}
-                        {isAdmin && showAllContent && (
+                        {isAdmin() && showAllContent && (
                           <div className="col-span-1 text-center">
                             <div className="text-sm">
                               <div className="font-medium text-slate-900">
@@ -1018,7 +1016,7 @@ function Products() {
                         </div>
 
                         {/* Title */}
-                        <div className={`${isAdmin && showAllContent ? 'col-span-5' : 'col-span-6'} text-right`}>
+                        <div className={`${isAdmin() && showAllContent ? 'col-span-5' : 'col-span-6'} text-right`}>
                           <div className="text-right">
                             <div className="flex items-center gap-2 mb-1" dir="rtl">
                               <h3 className="font-bold text-slate-900 text-base leading-tight text-right flex-1">

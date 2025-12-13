@@ -8,15 +8,14 @@ import { AlertCircle, CheckCircle, Volume2 } from "lucide-react";
 import AudioLibrary from "../components/audio/AudioLibrary";
 
 export default function AudioManagement() {
-  const { currentUser, isLoading: userLoading } = useUser();
+  const { currentUser, isLoading: userLoading, isAdmin } = useUser();
   const [isLoading, setLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [message, setMessage] = useState(null);
 
   useEffect(() => {
     if (!userLoading && currentUser) {
       try {
-        setIsAdmin(currentUser.role === 'admin');
+        // Admin check is now handled by useUser context
       } catch (error) {
         console.error("Error loading user:", error);
         setMessage({ type: 'error', text: 'שגיאה בטעינת נתונים' });
@@ -41,7 +40,7 @@ export default function AudioManagement() {
     );
   }
 
-  if (!isAdmin) {
+  if (!isAdmin()) {
     return (
       <div className="p-4 bg-gray-50 min-h-screen">
         <div className="max-w-4xl mx-auto">

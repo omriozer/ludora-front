@@ -1,6 +1,8 @@
 // User utility functions for clean role checking
 // All user data comes from the database - no more customClaims mess!
 
+import { haveAdminAccess } from '@/utils/adminCheck';
+
 export const USER_ROLES = {
   USER: 'user',
   ADMIN: 'admin',
@@ -29,24 +31,44 @@ export function hasRole(user, role) {
 }
 
 /**
- * Check if user is admin
+ * Check if user has admin access for a specific action
+ * @param {Object} user - User object
+ * @param {string} action - The action to check access for (optional, defaults to 'admin_access')
+ * @param {Object} globalSettings - Global settings object (optional)
+ * @returns {boolean} True if user has admin access
  */
-export function isAdmin(user) {
-  return hasRole(user, USER_ROLES.ADMIN);
+export function hasAdminAccess(user, action = 'admin_access', globalSettings = null) {
+  if (!user || !user.role) return false;
+  return haveAdminAccess(user.role, action, globalSettings);
 }
 
 /**
- * Check if user is sysadmin
+ * Check if user is admin (using centralized admin access)
+ * @param {Object} user - User object
+ * @param {Object} globalSettings - Global settings object (optional)
  */
-export function isSysadmin(user) {
-  return hasRole(user, USER_ROLES.SYSADMIN);
+export function isAdmin(user, globalSettings = null) {
+  return hasAdminAccess(user, 'admin_access', globalSettings);
 }
 
 /**
- * Check if user is staff (legacy compatibility - maps to admin or sysadmin)
+ * Check if user is sysadmin (using centralized admin access)
+ * @param {Object} user - User object
+ * @param {Object} globalSettings - Global settings object (optional)
  */
-export function isStaff(user) {
-  return isAdmin(user) || isSysadmin(user);
+export function isSysadmin(user, globalSettings = null) {
+  // Sysadmin is checked through centralized admin access function
+  if (!user || !user.role) return false;
+  return haveAdminAccess(user.role, 'sysadmin_access', globalSettings);
+}
+
+/**
+ * Check if user is staff (legacy compatibility - maps to admin or sysadmin access)
+ * @param {Object} user - User object
+ * @param {Object} globalSettings - Global settings object (optional)
+ */
+export function isStaff(user, globalSettings = null) {
+  return hasAdminAccess(user, 'staff_access', globalSettings);
 }
 
 /**
@@ -83,6 +105,92 @@ export function isParent(user) {
  */
 export function isHeadmaster(user) {
   return hasUserType(user, USER_TYPES.HEADMASTER);
+}
+
+/**
+ * Check if user is school staff (headmaster or teacher)
+ * This replaces the old isStaff function for school-level permissions
+ */
+export function isSchoolStaff(user) {
+  if (!user || !user.user_type) return false;
+  return user.user_type === USER_TYPES.TEACHER || user.user_type === USER_TYPES.HEADMASTER;
+}
+
+/**
+ * Check if user has any teaching permissions (teacher or headmaster)
+ * Useful for features that should be available to both teachers and headmasters
+ */
+export function canTeach(user) {
+  return isSchoolStaff(user);
+}
+
+/**
+ * Check if user has school management permissions
+ * Currently only headmasters, but could be extended for other school admin roles
+ */
+export function canManageSchool(user) {
+  return isHeadmaster(user);
+}
+
+/**
+ * Check if user is associated with a school (has school_id)
+ */
+export function hasSchoolAffiliation(user) {
+  return !!(user && user.school_id);
+}
+
+/**
+ * Check if user can access student-related features
+ * Includes parents, teachers, and headmasters
+ */
+export function canAccessStudentFeatures(user) {
+  if (!user || !user.user_type) return false;
+  return [USER_TYPES.PARENT, USER_TYPES.TEACHER, USER_TYPES.HEADMASTER].includes(user.user_type);
+}
+
+/**
+ * Check if user needs parent consent verification
+ * Students under 18 need parent consent unless age-verified by a teacher
+ */
+export function needsParentConsent(user) {
+  if (!user || user.user_type !== USER_TYPES.STUDENT) return false;
+
+  // If user has age verification from a teacher, no parent consent needed
+  if (user.age_verified_by) return false;
+
+  // If user has birth_date and is 18+, no parent consent needed
+  if (user.birth_date) {
+    const birthDate = new Date(user.birth_date);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+
+    if (age >= 18) return false;
+  }
+
+  // Otherwise, parent consent is needed
+  return true;
+}
+
+/**
+ * Get user's role hierarchy level for comparison
+ * Higher number = higher permissions
+ */
+export function getUserRoleLevel(user) {
+  if (!user || !user.role) return 0;
+  return ROLE_HIERARCHY[user.role] || 0;
+}
+
+/**
+ * Check if user can access admin-level features
+ * Alternative to hasAdminAccess for simple admin/non-admin checks
+ */
+export function isSystemAdmin(user, globalSettings = null) {
+  return hasAdminAccess(user, 'system_admin_access', globalSettings);
 }
 
 /**

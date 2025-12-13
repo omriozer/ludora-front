@@ -33,7 +33,7 @@ export const clearPurchasesCache = (userId = null) => {
  */
 export default function useProductCatalog(productType, filters) {
   // Get user and settings from UserContext instead of loading independently
-  const { currentUser, settings: globalSettings, isLoading: isLoadingUser } = useUser();
+  const { currentUser, settings: globalSettings, isLoading: isLoadingUser, isAdmin } = useUser();
 
   // State management
   const [products, setProducts] = useState([]);
@@ -174,12 +174,12 @@ export default function useProductCatalog(productType, filters) {
           productsData = allProducts.filter(product =>
             product.is_published ||
             purchasedProductIds.includes(product.id) ||
-            (currentUser.role === 'admin' || currentUser.role === 'sysadmin')
+            isAdmin()
           );
         } catch (productError) {
           luderror.ui(`Error loading ${productType} products for logged-in user:`, null, { context: productError });
           // Fallback: show only published products for non-admins, all for admins
-          if (currentUser.role === 'admin' || currentUser.role === 'sysadmin') {
+          if (isAdmin()) {
             productsData = await ProductService.listEnriched({ product_type: productType });
           } else {
             productsData = await ProductService.listEnriched({
@@ -291,7 +291,7 @@ export default function useProductCatalog(productType, filters) {
     }
 
     // Apply publish status filter (admin only)
-    if (filters.publishStatus && filters.publishStatus !== 'all' && currentUser?.role === 'admin') {
+    if (filters.publishStatus && filters.publishStatus !== 'all' && isAdmin()) {
       if (filters.publishStatus === 'published') {
         filtered = filtered.filter(product => product.is_published);
       } else if (filters.publishStatus === 'unpublished') {

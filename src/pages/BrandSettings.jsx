@@ -13,6 +13,7 @@ import { UploadFile } from "@/services/integrations";
 import { showConfirm } from '@/utils/messaging';
 import { ludlog, luderror } from '@/lib/ludlog';
 import { config } from '@/config/environment';
+import { haveAdminAccess } from "@/utils/adminCheck";
 import {
   Palette,
   Save,
@@ -53,7 +54,7 @@ export default function BrandSettings() {
   const loadData = async () => {
     try {
       // Check if user is admin
-      if (currentUser.role !== 'admin') {
+      if (!haveAdminAccess(currentUser.role, 'admin_access', settings)) {
         navigate('/');
         return;
       }

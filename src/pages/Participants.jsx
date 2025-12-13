@@ -21,13 +21,12 @@ import { format } from "date-fns";
 import { he } from "date-fns/locale";
 
 export default function Participants() {
-  const { currentUser, isLoading: userLoading } = useUser();
+  const { currentUser, isLoading: userLoading, isAdmin } = useUser();
   const [registrations, setRegistrations] = useState([]);
   // 'workshops' state variable will now store ALL Product entities, not just 'workshop' type.
   const [workshops, setWorkshops] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     if (!userLoading && currentUser) {
@@ -38,9 +37,7 @@ export default function Participants() {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      setIsAdmin(currentUser.role === 'admin');
-
-      if (currentUser.role === 'admin') {
+      if (isAdmin()) {
         // Get all entities and purchases
         const [workshopsData, coursesData, filesData, toolsData, purchasesData] = await Promise.all([
           Workshop.find({}, '-created_date'),
@@ -88,7 +85,7 @@ export default function Participants() {
     );
   }
 
-  if (!isAdmin) {
+  if (!isAdmin()) {
     return (
       <div className="p-4 bg-gray-50 min-h-screen">
         <div className="max-w-4xl mx-auto">

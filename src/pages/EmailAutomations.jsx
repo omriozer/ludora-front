@@ -36,11 +36,10 @@ import { showConfirm, showSuccess, showError } from '@/utils/messaging';
 import { isDev } from '@/utils/environment';
 
 export default function EmailAutomations() {
-  const { currentUser, isLoading: userLoading } = useUser();
+  const { currentUser, isLoading: userLoading, isAdmin } = useUser();
   const [templates, setTemplates] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState(null);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState(null);
   const [sendingExample, setSendingExample] = useState(null); // Track which template is sending example
@@ -83,9 +82,7 @@ export default function EmailAutomations() {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      setIsAdmin(currentUser.role === 'admin');
-
-      if (currentUser.role === 'admin') {
+      if (isAdmin()) {
         const templatesData = await EmailTemplate.list('-created_date');
         setTemplates(templatesData);
       }
@@ -252,7 +249,7 @@ export default function EmailAutomations() {
     );
   }
 
-  if (!isAdmin) {
+  if (!isAdmin()) {
     return (
       <div className="p-4 bg-gray-50 min-h-screen">
         <div className="max-w-4xl mx-auto">

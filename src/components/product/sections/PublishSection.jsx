@@ -5,6 +5,7 @@ import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CheckCircle, AlertCircle, Eye, X, Check, Clock } from 'lucide-react';
 import { ludlog } from '@/lib/ludlog';
+import { useUser } from '@/contexts/UserContext';
 
 /**
  * PublishSection - Handles publishing settings and final controls
@@ -22,6 +23,7 @@ export const PublishSection = ({
   currentUser = null,
   hasUploadedFile = false
 }) => {
+  const { isAdmin } = useUser();
 
   // Disabled section component
   const DisabledSectionMessage = ({ title, message, icon: Icon }) => (
@@ -347,7 +349,7 @@ export const PublishSection = ({
           </div>
 
           {/* Ludora Creator Toggle - Admin Only */}
-          {(currentUser?.role === 'admin' || currentUser?.role === 'sysadmin') && (
+          {isAdmin() && (
             <div className="space-y-4">
               <h3 className="text-base font-semibold">הגדרות יוצר</h3>
               <div className="flex items-center justify-between p-4 bg-purple-50 rounded-lg border border-purple-200">

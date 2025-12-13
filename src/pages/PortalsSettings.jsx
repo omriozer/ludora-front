@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Settings } from "@/services/entities";
 import { luderror } from '@/lib/ludlog';
 import { STUDENTS_ACCESS_MODES } from '@/constants/settingsKeys';
+import { haveAdminAccess } from "@/utils/adminCheck";
 import {
   Globe2,
   Save,
@@ -45,7 +46,7 @@ export default function PortalsSettings() {
   const loadData = useCallback(async () => {
     try {
       // Check if user is admin
-      if (currentUser.role !== 'admin') {
+      if (!haveAdminAccess(currentUser.role, 'admin_access', settings)) {
         navigate('/');
         return;
       }

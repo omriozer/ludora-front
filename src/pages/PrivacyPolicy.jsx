@@ -17,9 +17,7 @@ export default function PrivacyPolicy() {
   const [enabledFeatures, setEnabledFeatures] = useState([]);
   const [dynamicSections, setDynamicSections] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { currentUser } = useUser();
-
-  const isAdmin = currentUser && (currentUser.role === 'admin' || currentUser.role === 'sysadmin');
+  const { currentUser, isAdmin } = useUser();
 
   // Set the document title to include the site brand name
   useEffect(() => {

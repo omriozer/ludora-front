@@ -34,7 +34,7 @@ import {
 
 export default function TemplateManager() {
   const navigate = useNavigate();
-  const { currentUser, isLoading: userLoading } = useUser();
+  const { currentUser, isLoading: userLoading, isAdmin } = useUser();
 
   const [templates, setTemplates] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -43,7 +43,6 @@ export default function TemplateManager() {
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
   const [message, setMessage] = useState(null);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [showTemplateTypeSelector, setShowTemplateTypeSelector] = useState(false);
   const [showVisualEditor, setShowVisualEditor] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState(null);
@@ -107,9 +106,7 @@ export default function TemplateManager() {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      setIsAdmin(currentUser.role === 'admin' || currentUser.role === 'sysadmin');
-
-      if (currentUser.role === 'admin' || currentUser.role === 'sysadmin') {
+      if (isAdmin()) {
         await loadTemplates();
       }
     } catch (error) {
@@ -462,7 +459,7 @@ export default function TemplateManager() {
     );
   }
 
-  if (!isAdmin) {
+  if (!isAdmin()) {
     return (
       <div className="p-4 md:p-8 bg-gray-50 min-h-screen">
         <div className="max-w-4xl mx-auto">

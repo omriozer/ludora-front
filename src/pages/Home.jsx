@@ -26,6 +26,7 @@ import LogoDisplay from '@/components/ui/LogoDisplay';
 import SimpleOptimizedImage from '@/components/ui/SimpleOptimizedImage';
 import { getProductTypeName, NAV_ITEMS, PRODUCT_TYPES } from '@/config/productTypes';
 import { iconMap } from "@/lib/layoutUtils";
+import { haveAdminAccess } from "@/utils/adminCheck";
 
 // Helper function to check if user can see item based on visibility setting
 function canUserSeeItem(visibility, currentUser, isActualAdmin, isContentCreator) {
@@ -373,7 +374,7 @@ export default function Home() {
 
   // Determine if we're in schools mode
   const isSchoolsMode = settings?.schools_system_enabled || false;
-  const isActualAdmin = currentUser?.role === 'admin' && !currentUser?._isImpersonated;
+  const isActualAdmin = currentUser && haveAdminAccess(currentUser.role, 'admin_access', settings) && !currentUser._isImpersonated;
   const isContentCreator = currentUser && !!currentUser.content_creator_agreement_sign_date;
 
   // Get available products using the same logic as PublicNav

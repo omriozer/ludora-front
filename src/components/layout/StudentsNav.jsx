@@ -12,6 +12,7 @@ import LogoDisplay from '@/components/ui/LogoDisplay';
 import MigrateToUserModal from '@/components/student/MigrateToUserModal';
 import { useAnalytics, useInteractionTracking } from '@/hooks/useAnalytics';
 import { withPerformanceMonitoring, usePerformanceMeasurement } from '@/utils/performanceMonitor.jsx';
+import { haveAdminAccess } from "@/utils/adminCheck";
 import {
   getStudentNavFeatures,
   getDefaultStudentNavFeatures,
@@ -425,7 +426,7 @@ const StudentsNav = ({ teacherInfo = null }) => {
       `} dir="rtl">
 
         {/* Maintenance mode warning (admin only) */}
-        {settings?.maintenance_mode && currentUser?.role === 'admin' && (
+        {settings?.maintenance_mode && haveAdminAccess(currentUser?.role, 'admin_access', settings) && (
           <div className="bg-gradient-to-r from-orange-400 to-red-400 text-white p-2 text-center text-xs font-bold flex items-center justify-center gap-1 shadow-lg animate-pulse">
             <AlertTriangle className="w-4 h-4 animate-bounce" />
             {!isCollapsed && <span>מצב תחזוקה</span>}

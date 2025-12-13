@@ -9,6 +9,7 @@ import { NAV_ITEMS, getNavItemConfig, PRODUCT_TYPES } from "@/config/productType
 import LogoDisplay from '@/components/ui/LogoDisplay';
 import UserAvatar from '@/components/ui/UserAvatar';
 import { useCart } from "@/contexts/CartContext";
+import { useUser } from "@/contexts/UserContext";
 import {
   NAVIGATION_KEYS,
   SYSTEM_KEYS,
@@ -256,6 +257,7 @@ function getNavigationItems({ currentUser, settings, isActualAdmin, isContentCre
 
 const PublicNav = ({ currentUser, handleLogout, handleLogin, settings }) => {
   const location = useLocation();
+  const { isAdmin } = useUser();
   const [isImpersonating, setIsImpersonating] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(() => {
     // Load saved state from localStorage, but default to collapsed on mobile
@@ -310,7 +312,7 @@ const PublicNav = ({ currentUser, handleLogout, handleLogin, settings }) => {
     }
   }, [isCollapsed, isMobile]);
 
-  const isActualAdmin = currentUser?.role === 'admin' && !isImpersonating;
+  const isActualAdmin = isAdmin() && !isImpersonating;
   const isContentCreator = currentUser?.content_creator_agreement_sign_date;
   const currentNavItems = getNavigationItems({ currentUser, settings, isActualAdmin, isContentCreator });
 
@@ -387,7 +389,7 @@ const PublicNav = ({ currentUser, handleLogout, handleLogin, settings }) => {
       `} dir="rtl">
 
         {/* Maintenance mode warning */}
-        {getSetting(settings, SYSTEM_KEYS.MAINTENANCE_MODE, false) && currentUser?.role === 'admin' && (
+        {getSetting(settings, SYSTEM_KEYS.MAINTENANCE_MODE, false) && isAdmin() && (
           <div className="bg-gradient-to-r from-yellow-400 via-orange-400 to-red-400 text-black p-2 text-center text-xs font-bold flex items-center justify-center gap-1 shadow-lg animate-pulse">
             <ShieldAlert className="w-4 h-4 animate-bounce" />
             {!isCollapsed && <span>מצב תחזוקה</span>}
@@ -549,7 +551,7 @@ const PublicNav = ({ currentUser, handleLogout, handleLogin, settings }) => {
                     <div className="text-sm font-semibold text-gray-800 truncate">
                       {currentUser.full_name || currentUser.email}
                     </div>
-                    {currentUser.role === 'admin' && (
+                    {isAdmin() && (
                       <div className="text-xs text-orange-600 font-bold flex items-center justify-center gap-1">
                         <Crown className="w-3 h-3" />
                         מנהל

@@ -5,6 +5,30 @@
 import { luderror } from '@/lib/ludlog';
 
 /**
+ * Check if a user has admin access for a specific action
+ * This function automatically retrieves forbidden actions from settings
+ * @param {string} userRole - The user's role ('admin', 'sysadmin', etc.)
+ * @param {string} action - The action to check access for
+ * @param {Object} globalSettings - The global settings object from useUser()
+ * @returns {boolean} - True if user has access, false otherwise
+ */
+export function haveAdminAccess(userRole, action, globalSettings) {
+  // Admin role has access to all actions
+  if (userRole === 'admin' || isAnonymousAdmin()) {
+    return true;
+  }
+
+  // Sysadmin role has access unless action is forbidden
+  if (userRole === 'sysadmin') {
+    const forbiddenActions = globalSettings?.sysadmin_forbidden_actions || [];
+    return !forbiddenActions.includes(action);
+  }
+
+  // All other roles have no admin access
+  return false;
+}
+
+/**
  * Check if there are admin-level access tokens in either portal
  * This helps with maintenance mode bypass when admin is logged into one portal but not the other
  */

@@ -3,7 +3,6 @@ import { useLocation } from 'react-router-dom';
 import { useUser } from '@/contexts/UserContext';
 import { isStudentPortal } from '@/utils/domainUtils';
 import { STUDENTS_ACCESS_MODES } from '@/utils/portalContext';
-import { isStaff } from '@/lib/userUtils';
 import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
 import StudentLogin from './StudentLogin';
 import { ludlog, luderror } from '@/lib/ludlog';
@@ -40,7 +39,8 @@ export default function ProtectedStudentRoute({
     hasAnyAuthentication,
     isLoading,
     settingsLoading,
-    settings
+    settings,
+    isAdmin: isUserAdmin
   } = useUser();
 
   // Debug logging for development
@@ -58,7 +58,7 @@ export default function ProtectedStudentRoute({
   const studentsAccessMode = settings?.students_access || STUDENTS_ACCESS_MODES.ALL;
 
   // Admin bypass check - admins can always access
-  const isAdmin = currentUser && isStaff(currentUser);
+  const isAdmin = currentUser && isUserAdmin();
   if (isAdmin) {
     ludlog.navigation('[ProtectedStudentRoute] Admin bypass - allowing access');
     return children;
@@ -125,11 +125,12 @@ export function useStudentAuth() {
     hasAnyAuthentication,
     isLoading,
     settingsLoading,
-    settings
+    settings,
+    isAdmin: isUserAdmin
   } = useUser();
 
   const studentsAccessMode = settings?.students_access || STUDENTS_ACCESS_MODES.ALL;
-  const isAdmin = currentUser && isStaff(currentUser);
+  const isAdmin = currentUser && isUserAdmin();
 
   const isAuthorized = (() => {
     // Admin bypass

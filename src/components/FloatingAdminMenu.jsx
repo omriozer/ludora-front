@@ -29,6 +29,7 @@ import {
 import { showSuccess, showError } from '@/utils/messaging';
 import { APP_VERSION } from '@/constants/version';
 import { getEnv } from '@/utils/environment';
+import { haveAdminAccess } from '@/utils/adminCheck';
 
 export default function FloatingAdminMenu({ currentUser }) {
   const { settings, refreshSettings } = useUser();
@@ -45,11 +46,11 @@ export default function FloatingAdminMenu({ currentUser }) {
 
   useEffect(() => {
     if (currentUser) {
-      const hasAdminPrivileges = (currentUser.role === 'admin' || currentUser.role === 'sysadmin') && !currentUser._isImpersonated;
+      const hasAdminPrivileges = haveAdminAccess(currentUser.role, 'floating_admin_menu', settings) && !currentUser._isImpersonated;
       setIsAdmin(hasAdminPrivileges);
       setIsImpersonating(currentUser._isImpersonated);
     }
-  }, [currentUser]);
+  }, [currentUser, settings]);
 
   // Load saved position from localStorage
   useEffect(() => {
