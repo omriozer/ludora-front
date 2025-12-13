@@ -43,14 +43,12 @@ export function UserProvider({ children }) {
 		isInitialized: false,
 		authType: null,
 		user: null,
-		player: null,
 		isAuthenticated: false,
 		settings: null,
 	});
 
 	// Additional state for user data management
 	const [userDataFresh, setUserDataFresh] = useState(false);
-	const [playerDataFresh, setPlayerDataFresh] = useState(false);
 	const [settingsLoadFailed, setSettingsLoadFailed] = useState(false);
 
 	// Auth error handling for session expiry modal
@@ -90,16 +88,11 @@ export function UserProvider({ children }) {
 		(newAuthState) => {
 			setAuthState(newAuthState);
 
-			// Update data freshness based on authentication type
-			if (newAuthState.authType === 'user') {
+			// Update data freshness based on authentication
+			if (newAuthState.user) {
 				setUserDataFresh(true);
-				setPlayerDataFresh(false);
-			} else if (newAuthState.authType === 'player') {
-				setPlayerDataFresh(true);
-				setUserDataFresh(false);
 			} else {
 				setUserDataFresh(false);
-				setPlayerDataFresh(false);
 			}
 
 			// Validate settings in development mode
@@ -291,20 +284,22 @@ export function UserProvider({ children }) {
 		});
 	}, [])
 
-	const playerLogin = useCallback(async (privacyCode) => {
+	const studentLogin = useCallback(async (privacyCode) => {
 		try {
-			const result = await activeAuthManager.loginPlayer(privacyCode);
+			// Note: This calls the unified student authentication that returns a User object with user_type: 'player'
+			const result = await activeAuthManager.loginStudent(privacyCode);
 
-			// Show success message
+			// Show success message - use display_name or first_name from User object
+			const studentName = result.user?.display_name || result.user?.first_name || 'תלמיד';
 			toast({
-				title: 'התחברת בהצלחה! 🎮',
-				description: `ברוך הבא ${result.player?.display_name}`,
+				title: 'התחברת בהצלחה! 🎓',
+				description: `ברוך הבא ${studentName}`,
 				variant: 'default',
 			});
 
-			return result.player;
+			return result.user;
 		} catch (error) {
-			luderror.auth('[UserContext] Player login error:', error);
+			luderror.auth('[UserContext] Student login error:', error);
 
 			// Determine error message to display
 			let errorDescription;
@@ -312,8 +307,8 @@ export function UserProvider({ children }) {
 				// For specific known errors, provide Hebrew translations
 				if (error.message.includes('Invalid privacy code')) {
 					errorDescription = 'קוד הפרטיות שהוזן אינו תקין';
-				} else if (error.message.includes('Player not found')) {
-					errorDescription = 'לא נמצא שחקן עם קוד זה';
+				} else if (error.message.includes('User not found') || error.message.includes('Student not found')) {
+					errorDescription = 'לא נמצא תלמיד עם קוד זה';
 				} else if (error.message.includes('Network Error')) {
 					errorDescription = 'בעיית רשת. אנא בדוק את החיבור לאינטרנט';
 				} else {
@@ -327,7 +322,7 @@ export function UserProvider({ children }) {
 
 			// Show error message with actual API error content
 			toast({
-				title: 'שגיאה בהתחברות 🎮',
+				title: 'שגיאה בהתחברות 🎓',
 				description: errorDescription,
 				variant: 'destructive',
 			});
@@ -358,27 +353,6 @@ export function UserProvider({ children }) {
 		}
 	}, []);
 
-	const playerLogout = useCallback(async () => {
-		try {
-			await activeAuthManager.logout();
-
-			// Show success message
-			toast({
-				title: 'התנתקת בהצלחה! 👋',
-				description: 'תודה! נתראה בקרוב!',
-				variant: 'default',
-			});
-		} catch (error) {
-			luderror.auth('[UserContext] Player logout error:', error);
-
-			// Show error message
-			toast({
-				title: 'שגיאה בהתנתקות 🎮',
-				description: 'נותקת מהמערכת בכשיר זה בלבד. אם היה לך חיבורים פעילים במכשירים אחרים, יתכן והם נשארו מחוברים',
-				variant: 'destructive',
-			});
-		}
-	}, []);
 
 	const clearAuth = useCallback(() => {
 		activeAuthManager.reset();
@@ -396,9 +370,6 @@ export function UserProvider({ children }) {
 		}
 	}, []);
 
-	const clearPlayerAuth = useCallback(() => {
-		activeAuthManager.reset();
-	}, []);
 
 	const updateLastActivity = useCallback(() => {
 		// Delegate to AuthManager
@@ -407,9 +378,9 @@ export function UserProvider({ children }) {
 
 	const updateUser = useCallback(
 		(updatedUserData) => {
-			// For now, handle locally since AuthManager doesn't track partial updates
+			// Handle updates for all authenticated users (teachers and students)
 			// This could be enhanced to update AuthManager state as well
-			if (authState.authType === 'user' && authState.user) {
+			if (authState.user) {
 				const updatedUser = { ...authState.user, ...updatedUserData };
 				setAuthState((prev) => ({
 					...prev,
@@ -417,32 +388,26 @@ export function UserProvider({ children }) {
 				}));
 			}
 		},
-		[authState.authType, authState.user]
-	);
-
-	const updatePlayer = useCallback(
-		(updatedPlayerData) => {
-			// For now, handle locally since AuthManager doesn't track partial updates
-			// This could be enhanced to update AuthManager state as well
-			if (authState.authType === 'player' && authState.player) {
-				const updatedPlayer = { ...authState.player, ...updatedPlayerData };
-				setAuthState((prev) => ({
-					...prev,
-					player: updatedPlayer,
-				}));
-			}
-		},
-		[authState.authType, authState.player]
+		[authState.user]
 	);
 
 	// Helper functions to determine current entity type
 	const isUserSession = useCallback(() => {
-		return authState.authType === 'user' && !!authState.user;
-	}, [authState.authType, authState.user]);
+		return !!authState.user;
+	}, [authState.user]);
 
+	const isStudentSession = useCallback(() => {
+		return !!authState.user && authState.user.user_type === 'player';
+	}, [authState.user]);
+
+	const isTeacherSession = useCallback(() => {
+		return !!authState.user && (authState.user.user_type === 'teacher' || authState.user.role === 'teacher');
+	}, [authState.user]);
+
+	// Legacy compatibility - maps to isStudentSession
 	const isPlayerSession = useCallback(() => {
-		return authState.authType === 'player' && !!authState.player;
-	}, [authState.authType, authState.player]);
+		return isStudentSession();
+	}, [isStudentSession]);
 
 	const getCurrentEntity = useCallback(() => {
 		return activeAuthManager.getCurrentEntity() || { type: null, entity: null };
@@ -508,10 +473,15 @@ export function UserProvider({ children }) {
 		[authState.user, isAdmin, isContentCreator]
 	);
 
-	// Check if current user is any kind of authenticated user (not player)
+	// Check if current user is an authenticated teacher (not student)
+	const isAuthenticatedTeacher = useCallback(() => {
+		return !!authState.user && (authState.user.user_type === 'teacher' || authState.user.role === 'teacher');
+	}, [authState.user]);
+
+	// Legacy compatibility - maps to any authenticated user
 	const isAuthenticatedUser = useCallback(() => {
-		return authState.authType === 'user' && !!authState.user;
-	}, [authState.authType, authState.user]);
+		return !!authState.user;
+	}, [authState.user]);
 
 	// Update last activity on user interactions
 	useEffect(() => {
@@ -529,15 +499,15 @@ export function UserProvider({ children }) {
 	}, [hasAnyAuthentication, updateLastActivity]);
 
 	const value = {
-		// User state
+		// Unified user state (works for both teachers and students)
 		currentUser: authState.user,
-		isAuthenticated: authState.authType === 'user',
+		isAuthenticated: !!authState.user,
 		userDataFresh,
 
-		// Player state
-		currentPlayer: authState.player,
-		isPlayerAuthenticated: authState.authType === 'player',
-		playerDataFresh,
+		// Legacy compatibility for player-based code
+		currentPlayer: authState.user?.user_type === 'player' ? authState.user : null,
+		isPlayerAuthenticated: authState.user?.user_type === 'player',
+		playerDataFresh: userDataFresh, // Map to same data freshness
 
 		// Shared state
 		settings: authState.settings,
@@ -553,15 +523,15 @@ export function UserProvider({ children }) {
 		clearAuth,
 		needsOnboarding,
 
-		// Player functions
-		playerLogin,
-		playerLogout,
-		updatePlayer,
-		clearPlayerAuth,
+		// Student functions (unified with user system)
+		studentLogin,
+		playerLogin: studentLogin, // Legacy compatibility
 
 		// Helper functions
 		isUserSession,
-		isPlayerSession,
+		isStudentSession,
+		isTeacherSession,
+		isPlayerSession, // Legacy compatibility
 		getCurrentEntity,
 		hasAnyAuthentication,
 		isFullyLoaded,
@@ -573,6 +543,7 @@ export function UserProvider({ children }) {
 		isContentCreator,
 		canUserSeeNavItem,
 		isAuthenticatedUser,
+		isAuthenticatedTeacher,
 	};
 
 	return <UserContext.Provider value={value}>{children}</UserContext.Provider>;
