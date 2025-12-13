@@ -13,7 +13,7 @@
  * - Centralized session management
  */
 
-import { User, Player, Settings } from '@/services/apiClient';
+import { User, Settings } from '@/services/apiClient';
 import { isStudentPortal } from '@/utils/domainUtils';
 import { loadSettingsWithRetry } from '@/lib/appUser';
 import { ludlog, luderror } from '@/lib/ludlog';
@@ -24,7 +24,7 @@ export class AuthManager {
     this.isInitialized = false;
     this.isLoading = true;
     this.settings = null;
-    this.currentAuth = null; // { type: 'user'|'player'|null, entity: user|player|null }
+    this.currentAuth = null; // { type: 'user'|null, entity: User|null } - Unified: all authenticated users are User objects
     this.authListeners = new Set();
     this._initializationPromise = null; // COOKIE PERSISTENCE FIX: Track ongoing initialization
 
@@ -69,9 +69,8 @@ export class AuthManager {
     return {
       isLoading: this.isLoading,
       isInitialized: this.isInitialized,
-      authType: this.currentAuth?.type || null,
-      user: this.currentAuth?.type === 'user' ? this.currentAuth.entity : null,
-      player: this.currentAuth?.type === 'player' ? this.currentAuth.entity : null,
+      authType: this.currentAuth ? 'user' : null, // Unified: all authenticated users are 'user' type
+      user: this.currentAuth?.entity || null, // All authenticated entities are Users
       isAuthenticated: !!this.currentAuth,
       settings: this.settings
     };
@@ -277,12 +276,12 @@ export class AuthManager {
       // Firebase auth as primary (teachers/admins can access student portal)
       strategy.methods.push('firebase');
 
-      // Player authentication as fallback
+      // Student authentication as fallback (privacy code login)
       if (studentsAccess === STUDENTS_ACCESS_MODES.INVITE_ONLY || studentsAccess === STUDENTS_ACCESS_MODES.AUTHED_ONLY) {
-        strategy.methods.push('player');
+        strategy.methods.push('student');
       } else {
-        // 'all' mode - always try player auth as fallback
-        strategy.methods.push('player');
+        // 'all' mode - always try student auth as fallback
+        strategy.methods.push('student');
       }
 
       return strategy;
@@ -313,8 +312,8 @@ export class AuthManager {
           case 'firebase':
             result = await this.checkFirebaseAuth(strategy);
             break;
-          case 'player':
-            result = await this.checkPlayerAuth(strategy);
+          case 'student':
+            result = await this.checkStudentAuth(strategy);
             break;
           default:
             continue;
@@ -387,28 +386,30 @@ export class AuthManager {
   }
 
   /**
-   * Check Player privacy code authentication
+   * Check Student privacy code authentication (unified User system)
    */
-  async checkPlayerAuth(strategy) {
+  async checkStudentAuth(strategy) {
     try {
-      const player = await Player.getCurrentPlayer(true);
+      // Check for student User session via privacy code authentication
+      // This calls the unified /auth/student-portal endpoint that works with Users
+      const user = await User.getCurrentUser(true);
 
-      if (player) {
+      if (user && user.user_type === 'player') {
         return {
           success: true,
-          authType: 'player',
-          entity: player
+          authType: 'user', // Unified: students are Users with user_type='player'
+          entity: user
         };
       } else {
         return {
           success: false,
-          reason: 'No Player session found'
+          reason: 'No Student session found'
         };
       }
     } catch (error) {
       return {
         success: false,
-        reason: `Player auth error: ${error.message}`
+        reason: `Student auth error: ${error.message}`
       };
     }
   }
@@ -458,41 +459,48 @@ export class AuthManager {
   }
 
   /**
-   * Login with Player privacy code
+   * Login with Student privacy code (unified User system)
    */
-  async loginPlayer(privacyCode) {
+  async loginStudent(privacyCode) {
     try {
-      const response = await Player.login({ privacy_code: privacyCode });
+      // Use the unified /auth/student-portal endpoint
+      const response = await User.loginStudent({ privacy_code: privacyCode });
 
-      if (response.success && response.player) {
+      if (response.success && response.user) {
         this.currentAuth = {
-          type: 'player',
-          entity: response.player
+          type: 'user', // Unified: all authenticated users are 'user' type
+          entity: response.user
         };
 
         this.notifyAuthListeners();
         this.updateLastActivity();
 
-        return { success: true, player: response.player };
+        return { success: true, user: response.user };
       } else {
         throw new Error('Invalid response from server');
       }
     } catch (error) {
-      luderror.auth('[AuthManager] Player login error:', error);
+      luderror.auth('[AuthManager] Student login error:', error);
       throw error;
     }
   }
 
   /**
-   * Logout current authentication
+   * Login with Player privacy code (legacy compatibility)
+   * @deprecated Use loginStudent instead
+   */
+  async loginPlayer(privacyCode) {
+    return this.loginStudent(privacyCode);
+  }
+
+  /**
+   * Logout current authentication (unified for all user types)
    */
   async logout() {
     try {
-      if (this.currentAuth?.type === 'user') {
+      if (this.currentAuth) {
         const { logout: apiLogout } = await import('@/services/apiClient');
         await apiLogout();
-      } else if (this.currentAuth?.type === 'player') {
-        await Player.logout();
       }
 
       // Clear authentication state
@@ -515,10 +523,15 @@ export class AuthManager {
   }
 
   /**
-   * Check if user needs onboarding
+   * Check if user needs onboarding (unified system)
    */
   needsOnboarding(user) {
-    if (!user || this.currentAuth?.type !== 'user') {
+    if (!user || !this.currentAuth) {
+      return false;
+    }
+
+    // Only teachers need onboarding, students don't go through onboarding flow
+    if (user.user_type === 'player') {
       return false;
     }
 
@@ -531,7 +544,7 @@ export class AuthManager {
   }
 
   /**
-   * Get current authenticated entity (user or player)
+   * Get current authenticated entity (unified User object)
    */
   getCurrentEntity() {
     return this.currentAuth ? {
