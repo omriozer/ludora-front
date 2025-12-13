@@ -1,6 +1,5 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useUser } from '@/contexts/UserContext';
-import { isStaff } from '@/lib/userUtils';
 import LudoraLoadingSpinner from '@/components/ui/LudoraLoadingSpinner';
 import { ludlog, luderror } from '@/lib/ludlog';
 
@@ -16,7 +15,7 @@ export default function ConditionalRoute({
   visibilityField,
   fallbackRoute
 }) {
-  const { currentUser, settings, isLoading, settingsLoading } = useUser();
+  const { currentUser, settings, isLoading, settingsLoading, isAdmin: isUserAdmin } = useUser();
   const location = useLocation();
 
   // Show loading while user/settings are being fetched
@@ -40,7 +39,7 @@ export default function ConditionalRoute({
   const visibility = settings?.[visibilityField] || 'public';
 
   // Determine user roles
-  const isAdmin = currentUser && isStaff(currentUser);
+  const isAdmin = currentUser && isUserAdmin();
   const isContentCreator = currentUser && !!currentUser.content_creator_agreement_sign_date;
   const isLoggedIn = !!currentUser;
 

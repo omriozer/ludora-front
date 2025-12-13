@@ -12,10 +12,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Users, Search, Crown, User as UserIcon, Mail, Calendar, AlertTriangle, CheckCircle } from "lucide-react";
 import AdminSubscriptionModal from "@/components/AdminSubscriptionModal";
 import { luderror } from "@/lib/ludlog";
+import { haveAdminAccess } from "@/utils/adminCheck";
 
 export default function AdminSystemUsers() {
   const navigate = useNavigate();
-  const { currentUser, isLoading: userLoading } = useUser();
+  const { currentUser, settings, isLoading: userLoading } = useUser();
 
   const [users, setUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -35,7 +36,7 @@ export default function AdminSystemUsers() {
   const checkAdminAccess = async () => {
     try {
       // User data is now available from global UserContext
-      if (currentUser.role !== 'admin') {
+      if (!haveAdminAccess(currentUser.role, 'admin_access', settings)) {
         navigate('/');
         return;
       }

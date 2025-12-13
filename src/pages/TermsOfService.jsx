@@ -14,14 +14,12 @@ export default function TermsOfService() {
   const [enabledFeatures, setEnabledFeatures] = useState([]);
   const [dynamicSections, setDynamicSections] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { currentUser } = useUser();
-
-  const isAdmin = currentUser && (currentUser.role === 'admin' || currentUser.role === 'sysadmin');
+  const { currentUser, isAdmin } = useUser();
 
   useEffect(() => {
     const loadFeatures = async () => {
       try {
-        const features = isAdmin
+        const features = isAdmin()
           ? await FeatureFlagService.getAllFeaturesForAdmin()
           : await FeatureFlagService.getPublicFeatures();
 
@@ -47,7 +45,7 @@ export default function TermsOfService() {
   };
 
   const getVisibilityBadge = (visibility, enabled) => {
-    if (!isAdmin) return null;
+    if (!isAdmin()) return null;
 
     if (!enabled) {
       return (
@@ -110,7 +108,7 @@ export default function TermsOfService() {
           <h1 className="text-3xl font-bold text-gray-900 mb-4">תנאי השימוש</h1>
           <p className="text-lg text-gray-600">תנאים וכללים לשימוש באתר ובשירותים הדיגיטליים</p>
 
-          {isAdmin && (
+          {isAdmin() && (
             <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-2xl mx-auto">
               <div className="flex items-center justify-center gap-2 mb-2">
                 <Crown className="w-5 h-5 text-blue-600" />
@@ -164,15 +162,15 @@ export default function TermsOfService() {
                 <h3 className="font-semibold mb-2">אישור רכישה:</h3>
                 <ul className="list-disc list-inside text-gray-600 space-y-1">
                   <li>לאחר השלמת התשלום יתקבל אישור רכישה בדוא"ל</li>
-                  {(enabledFeatures.some(f => f.key === 'workshops') || isAdmin) && (
+                  {(enabledFeatures.some(f => f.key === 'workshops') || isAdmin()) && (
                     <>
                       <li className="flex items-center gap-2">
                         במקרה של {getProductTypeName('workshop', 'singular')} "חיה" - יתקבל קישור זום עד שעה לפני תחילת ה{getProductTypeName('workshop', 'singular')}
-                        {isAdmin && getVisibilityBadge(enabledFeatures.find(f => f.key === 'workshops')?.visibility, enabledFeatures.find(f => f.key === 'workshops')?.enabled)}
+                        {isAdmin() && getVisibilityBadge(enabledFeatures.find(f => f.key === 'workshops')?.visibility, enabledFeatures.find(f => f.key === 'workshops')?.enabled)}
                       </li>
                       <li className="flex items-center gap-2">
                         גישה להקלטה לרוכשים {getProductTypeName('workshop', 'singular')} תינתן לא יאוחר מ-48 שעות לאחר סיום ה{getProductTypeName('workshop', 'singular')} במידה וה{getProductTypeName('workshop', 'singular')} כוללת הקלטה
-                        {isAdmin && getVisibilityBadge(enabledFeatures.find(f => f.key === 'workshops')?.visibility, enabledFeatures.find(f => f.key === 'workshops')?.enabled)}
+                        {isAdmin() && getVisibilityBadge(enabledFeatures.find(f => f.key === 'workshops')?.visibility, enabledFeatures.find(f => f.key === 'workshops')?.enabled)}
                       </li>
                     </>
                   )}
@@ -195,15 +193,15 @@ export default function TermsOfService() {
                 <h3 className="font-semibold mb-2">ביטול עסקה בהתאם לחוק הגנת הצרכן:</h3>
                 <ul className="list-disc list-inside text-gray-600 space-y-1">
                   <li>ניתן לבטל עסקה לרכישת שירות בתוך 14 ימים מיום ביצוע העסקה, ובלבד שהביטול ייעשה לפחות 2 ימי עסקים קודם למועד תחילת השירות.</li>
-                  {(enabledFeatures.some(f => f.key === 'workshops') || isAdmin) && (
+                  {(enabledFeatures.some(f => f.key === 'workshops') || isAdmin()) && (
                     <>
                       <li className="flex items-center gap-2">
                         <span><strong>{getProductTypeName('workshop', 'plural')} חיות (אונליין):</strong> ניתן לבטל ולקבל החזר כספי מלא (בניכוי עמלת סליקה של 5% או 100 ש"ח, הנמוך מבניהם) עד 5 ימי עסקים לפני מועד ה{getProductTypeName('workshop', 'singular')}. לאחר מכן, לא יינתן החזר.</span>
-                        {isAdmin && getVisibilityBadge(enabledFeatures.find(f => f.key === 'workshops')?.visibility, enabledFeatures.find(f => f.key === 'workshops')?.enabled)}
+                        {isAdmin() && getVisibilityBadge(enabledFeatures.find(f => f.key === 'workshops')?.visibility, enabledFeatures.find(f => f.key === 'workshops')?.enabled)}
                       </li>
                       <li className="flex items-center gap-2">
                         <span><strong>{getProductTypeName('workshop', 'plural')} מוקלטות:</strong> בהתאם לחוק, מוצר דיגיטלי הניתן לשכפול או העתקה (כמו הקלטה) אינו ניתן לביטול לאחר קבלת הגישה אליו, אלא אם נמצא פגם במוצר. לא יינתן החזר כספי לאחר קבלת גישה להקלטה.</span>
-                        {isAdmin && getVisibilityBadge(enabledFeatures.find(f => f.key === 'workshops')?.visibility, enabledFeatures.find(f => f.key === 'workshops')?.enabled)}
+                        {isAdmin() && getVisibilityBadge(enabledFeatures.find(f => f.key === 'workshops')?.visibility, enabledFeatures.find(f => f.key === 'workshops')?.enabled)}
                       </li>
                     </>
                   )}
@@ -211,11 +209,11 @@ export default function TermsOfService() {
                 </ul>
               </div>
               
-              {(enabledFeatures.some(f => f.key === 'workshops') || isAdmin) && (
+              {(enabledFeatures.some(f => f.key === 'workshops') || isAdmin()) && (
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <h3 className="font-semibold">ביטול על ידי מספק השירות:</h3>
-                    {isAdmin && getVisibilityBadge(enabledFeatures.find(f => f.key === 'workshops')?.visibility, enabledFeatures.find(f => f.key === 'workshops')?.enabled)}
+                    {isAdmin() && getVisibilityBadge(enabledFeatures.find(f => f.key === 'workshops')?.visibility, enabledFeatures.find(f => f.key === 'workshops')?.enabled)}
                   </div>
                   <ul className="list-disc list-inside text-gray-600 space-y-1">
                     <li>מספק השירות שומר לעצמו את הזכות לבטל או לדחות {getProductTypeName('workshop', 'singular')} מכל סיבה שהיא.</li>
@@ -244,10 +242,10 @@ export default function TermsOfService() {
                   <li>כל התכנים מוגנים בזכויות יוצרים</li>
                   <li>השימוש מותר לצרכים אישיים בלבד</li>
                   <li>אסור להעתיק, להפיץ או למכור את התכנים</li>
-                  {(enabledFeatures.some(f => f.key === 'workshops') || isAdmin) && (
+                  {(enabledFeatures.some(f => f.key === 'workshops') || isAdmin()) && (
                     <li className="flex items-center gap-2">
                       אסור להקליט או לצלם במהלך {getProductTypeName('workshop', 'plural')} חיות
-                      {isAdmin && getVisibilityBadge(enabledFeatures.find(f => f.key === 'workshops')?.visibility, enabledFeatures.find(f => f.key === 'workshops')?.enabled)}
+                      {isAdmin() && getVisibilityBadge(enabledFeatures.find(f => f.key === 'workshops')?.visibility, enabledFeatures.find(f => f.key === 'workshops')?.enabled)}
                     </li>
                   )}
                 </ul>
@@ -258,10 +256,10 @@ export default function TermsOfService() {
                 <ul className="list-disc list-inside text-gray-600 space-y-1">
                   <li>גישה נתונה לחשבון הרוכש בלבד</li>
                   <li>אסור לשתף סיסמאות או קישורי גישה</li>
-                  {(enabledFeatures.some(f => f.key === 'workshops') || isAdmin) && (
+                  {(enabledFeatures.some(f => f.key === 'workshops') || isAdmin()) && (
                     <li className="flex items-center gap-2">
                       גישה להקלטות מוגבלת בזמן (כמצוין בפרטי ה{getProductTypeName('workshop', 'singular')})
-                      {isAdmin && getVisibilityBadge(enabledFeatures.find(f => f.key === 'workshops')?.visibility, enabledFeatures.find(f => f.key === 'workshops')?.enabled)}
+                      {isAdmin() && getVisibilityBadge(enabledFeatures.find(f => f.key === 'workshops')?.visibility, enabledFeatures.find(f => f.key === 'workshops')?.enabled)}
                     </li>
                   )}
                   <li>הגישה עשויה להיות מוגבלת בזמן בהתאם לסוג המוצר</li>
@@ -273,7 +271,7 @@ export default function TermsOfService() {
           {/* Dynamic Product-Specific Terms */}
           {dynamicSections.map((section) => {
             const IconComponent = getIconComponent(section.icon);
-            const visibilityBadge = isAdmin && section.visibility ? getVisibilityBadge(section.visibility, true) : null;
+            const visibilityBadge = isAdmin() && section.visibility ? getVisibilityBadge(section.visibility, true) : null;
 
             return (
               <Card key={section.key} className="border-none shadow-lg">

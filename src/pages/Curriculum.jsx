@@ -19,6 +19,7 @@ import ClassSelector from "@/components/ui/ClassSelector";
 import AssociateProductDialog from "@/components/ui/AssociateProductDialog";
 import SEOHead from '@/components/SEOHead';
 import { ComingSoonBadge } from "@/components/ui/ComingSoonBadge";
+import { haveAdminAccess } from "@/utils/adminCheck";
 import {
   BookOpen,
   GraduationCap,
@@ -87,7 +88,7 @@ export default function Curriculum() {
   const [associationLoading, setAssociationLoading] = useState(false);
   const [selectedClassForAssociation, setSelectedClassForAssociation] = useState(null);
 
-  const isAdmin = currentUser?.role === 'admin';
+  const isAdmin = haveAdminAccess(currentUser?.role, 'admin_access', settings);
   const isTeacher = currentUser?.role === 'teacher' || isAdmin;
 
   // Load available combinations for all users when settings are available

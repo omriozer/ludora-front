@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { showError, showSuccess } from '@/utils/messaging';
 import { apiRequest } from '@/services/apiClient';
 import { luderror } from '@/lib/ludlog';
+import { haveAdminAccess } from "@/utils/adminCheck";
 import {
   Shield,
   CreditCard,
@@ -22,14 +23,14 @@ import {
 
 export default function PayPlusMaintenancePage() {
   const navigate = useNavigate();
-  const { currentUser } = useUser();
+  const { currentUser, settings } = useUser();
   const [isLoading, setIsLoading] = useState(false);
   const [auditResults, setAuditResults] = useState(null);
   const [rawData, setRawData] = useState(null);
   const [copiedData, setCopiedData] = useState(null);
 
   // Admin access check
-  if (currentUser?.role !== 'admin') {
+  if (!haveAdminAccess(currentUser?.role, 'admin_access', settings)) {
     navigate('/');
     return null;
   }

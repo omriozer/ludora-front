@@ -25,7 +25,7 @@ export default function ProductPage() {
   const { productId } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { currentUser, settings: globalSettings, isLoading: userLoading } = useUser();
+  const { currentUser, settings: globalSettings, isLoading: userLoading, isAdmin } = useUser();
   const [editingProduct, setEditingProduct] = useState(null);
   const [editingLessonPlan, setEditingLessonPlan] = useState(null);
   const [isLoadingData, setIsLoadingData] = useState(true);
@@ -34,7 +34,6 @@ export default function ProductPage() {
   const [saveAndContinue, setSaveAndContinue] = useState(false);
   const [message, setMessage] = useState(null);
   const [enabledProductTypes, setEnabledProductTypes] = useState([]);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [isContentCreator, setIsContentCreator] = useState(false);
   const [isContentCreatorModeActive, setIsContentCreatorModeActive] = useState(false);
   const [contentCreatorPermissions, setContentCreatorPermissions] = useState({});
@@ -91,10 +90,9 @@ export default function ProductPage() {
     setIsLoadingData(true);
     try {
       // Check access permissions
-      const hasAdminAccess = currentUser.role === 'admin' || currentUser.role === 'sysadmin';
+      const hasAdminAccess = isAdmin();
       const hasContentCreatorAccess = currentUser.content_creator_agreement_sign_date;
 
-      setIsAdmin(hasAdminAccess);
       setIsContentCreator(hasContentCreatorAccess);
 
       // Detect access context

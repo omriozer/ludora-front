@@ -6,6 +6,7 @@ import { SETTINGS_RETRY_INTERVALS, SYSTEM_KEYS, getSetting, validateSettings } f
 import { useAuthErrorHandler } from '@/hooks/useAuthErrorHandler';
 import authManager from '@/services/AuthManager';
 import { isDev } from '@/utils/environment';
+import { haveAdminAccess } from '@/utils/adminCheck';
 
 // OPENAPI MIGRATION: Import TypeScript AuthManager for gradual migration
 import authManagerTS from '@/services/AuthManager.ts';
@@ -470,8 +471,11 @@ export function UserProvider({ children }) {
 
 	// Check if current user is an actual admin (not impersonated)
 	const isAdmin = useCallback(() => {
-		return authState.user?.role === 'admin' && !authState.user?._isImpersonated;
-	}, [authState.user]);
+		if (!authState.user || authState.user._isImpersonated) {
+			return false;
+		}
+		return haveAdminAccess(authState.user.role, 'admin_access', authState.settings);
+	}, [authState.user, authState.settings]);
 
 	// Check if current user is a content creator (based on content creator agreement)
 	const isContentCreator = useCallback(() => {

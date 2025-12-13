@@ -11,6 +11,7 @@ import { School, User } from "@/services/apiClient";
 import { UploadFile, ExtractDataFromUploadedFile } from "@/services/integrations";
 // OptimizedImage removed - using simple img for school logo display
 import { getCachedIsraeliCities } from "@/services/publicApis";
+import { haveAdminAccess } from "@/utils/adminCheck";
 import {
   School as SchoolIcon,
   Plus,
@@ -49,7 +50,7 @@ export default function SchoolManagement() {
   const loadData = useCallback(async () => {
     try {
       // Check if user is admin
-      if (currentUser.role !== 'admin') {
+      if (!haveAdminAccess(currentUser.role, 'admin_access', null)) {
         navigate('/');
         return;
       }

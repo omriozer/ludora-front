@@ -26,7 +26,7 @@ import { Link } from "react-router-dom";
 import { NAV_ITEMS } from "@/config/productTypes";
 
 export default function ContentCreatorPortal() {
-  const { currentUser, settings, isLoading: userLoading } = useUser();
+  const { currentUser, settings, isLoading: userLoading, isAdmin } = useUser();
   const [availableFeatures, setAvailableFeatures] = useState([]);
   const [stats, setStats] = useState({
     games: { total: 0, published: 0 },
@@ -54,7 +54,7 @@ export default function ContentCreatorPortal() {
       // Moved inside useCallback to prevent dependency issues
       const checkAvailableFeatures = (user, settings) => {
         const features = [];
-        const isAdmin = user.role === 'admin' || user.role === 'sysadmin';
+        const hasAdminAccess = isAdmin();
         
         // Define all possible features using centralized configuration
         const featureDefinitions = [
@@ -83,7 +83,7 @@ export default function ContentCreatorPortal() {
         });
 
         // Moved inside useCallback to prevent dependency issues
-        const shouldShowFeature = (visibility, isAdmin) => {
+        const shouldShowFeature = (visibility, hasAdminAccess) => {
           const isContentCreator = currentUser && !!currentUser.content_creator_agreement_sign_date;
 
           switch (visibility) {
@@ -92,9 +92,9 @@ export default function ContentCreatorPortal() {
             case 'logged_in_users':
               return !!currentUser;
             case 'admin_only':
-              return isAdmin;
+              return hasAdminAccess;
             case 'admins_and_creators':
-              return isAdmin || isContentCreator;
+              return hasAdminAccess || isContentCreator;
             case 'hidden':
               return false;
             default:
@@ -109,12 +109,12 @@ export default function ContentCreatorPortal() {
 
           // Check content creator permissions for non-admin users
           let hasContentCreatorPermission = true;
-          if (!isAdmin) {
+          if (!hasAdminAccess) {
             const permissionKey = `allow_content_creator_${feature.key}`;
             hasContentCreatorPermission = settings[permissionKey] === true;
           }
 
-          if (enabled && shouldShowFeature(visibility, isAdmin) && hasContentCreatorPermission) {
+          if (enabled && shouldShowFeature(visibility, hasAdminAccess) && hasContentCreatorPermission) {
             features.push({
               ...feature,
               visibility,
@@ -302,10 +302,10 @@ export default function ContentCreatorPortal() {
               <Users className="w-6 h-6 text-white" />
             </div>
             <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">פורטל יוצרי תוכן</h1>
-            {(currentUser.role === 'admin' || currentUser.role === 'sysadmin') && (
+            {isAdmin() && (
               <Badge className="bg-gradient-to-r from-yellow-400 to-orange-500 text-gray-900 font-semibold">
                 <Crown className="w-3 h-3 mr-1" />
-                {currentUser.role === 'sysadmin' ? 'מנהל מערכת' : 'מנהל'}
+                מנהל
               </Badge>
             )}
           </div>

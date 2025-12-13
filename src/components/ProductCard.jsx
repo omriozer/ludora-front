@@ -10,7 +10,6 @@ import PriceDisplayTag from '@/components/ui/PriceDisplayTag';
 import ProductActionBar from '@/components/ui/ProductActionBar';
 import { getSubjectColors } from '@/config/subjectColors';
 import { getToolCategoryLabel } from '@/config/toolCategories';
-import { isAdmin } from '@/lib/userUtils';
 import { useUser } from '@/contexts/UserContext';
 import { ludlog } from '@/lib/ludlog';
 import KitBadge from '@/components/ui/KitBadge';
@@ -51,7 +50,7 @@ function ProductCard({
 	onSubscriptionSuccess,
 }) {
 	const navigate = useNavigate();
-	const { currentUser } = useUser();
+	const { currentUser, isAdmin } = useUser();
 	const [isHovered, setIsHovered] = useState(false);
 	const [isMobile, setIsMobile] = useState(false);
 
@@ -67,7 +66,7 @@ function ProductCard({
 	const hasAccess = access.hasAccess || false;
 
 	// ADMIN-ONLY VISIBILITY: Hide unpublished products from non-admins
-	if (isDraft(product) && !isAdmin(currentUser)) {
+	if (isDraft(product) && !isAdmin()) {
 		return null;
 	}
 
@@ -275,7 +274,7 @@ function ProductCard({
 				<div className='absolute top-3 md:top-4 left-3 md:left-4 z-50 flex gap-1 md:gap-2'>
 					{/* Edit Button - Only visible to admin users */}
 					{(() => {
-						return isAdmin(currentUser);
+						return isAdmin();
 					})() && (
 						<Button
 							variant='ghost'

@@ -30,13 +30,12 @@ import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 
 export default function Emails() {
-  const { currentUser, isLoading: userLoading } = useUser();
+  const { currentUser, isLoading: userLoading, isAdmin } = useUser();
   const [workshops, setWorkshops] = useState([]);
   const [users, setUsers] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState(null);
-  const [isAdmin, setIsAdmin] = useState(false);
 
   // Email form state
   const [recipientType, setRecipientType] = useState("workshop");
@@ -59,9 +58,7 @@ export default function Emails() {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      setIsAdmin(currentUser.role === 'admin');
-
-      if (currentUser.role === 'admin') {
+      if (isAdmin()) {
         const [workshopsData, usersData, templatesData] = await Promise.all([
           Workshop.find({}, "-created_date"),
           User.list("-created_date"),
@@ -207,7 +204,7 @@ export default function Emails() {
     );
   }
 
-  if (!isAdmin) {
+  if (!isAdmin()) {
     return (
       <div className="p-4 bg-gray-50 min-h-screen">
         <div className="max-w-4xl mx-auto">

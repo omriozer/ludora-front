@@ -1,10 +1,11 @@
 import { useState, useCallback, useEffect } from 'react';
+import { haveAdminAccess } from "@/utils/adminCheck";
 
 /**
  * Custom hook for managing product form data and form-related state
  * Handles form data, validation, and form submission logic
  */
-export const useProductForm = (editingProduct = null, currentUser = null) => {
+export const useProductForm = (editingProduct = null, currentUser = null, settings = null) => {
   // Initial form data based on editing vs creating
   const getInitialFormData = useCallback(() => {
     if (editingProduct) {
@@ -110,7 +111,7 @@ export const useProductForm = (editingProduct = null, currentUser = null) => {
       watermark_template_id: null,
       watermark_settings: null,
       accessible_pages: null,
-      creator_user_id: (currentUser?.role === 'admin' || currentUser?.role === 'sysadmin') ? null : currentUser?.id || null, // Default to Ludora for admins, user for others
+      creator_user_id: haveAdminAccess(currentUser?.role, 'admin_access', settings) ? null : currentUser?.id || null, // Default to Ludora for admins, user for others
       image_is_private: false,
       // Lesson plan specific
       file_configs: null,
@@ -129,7 +130,7 @@ export const useProductForm = (editingProduct = null, currentUser = null) => {
       tool_description: '',
       tool_category: '',
     };
-  }, [editingProduct, currentUser]);
+  }, [editingProduct, currentUser, settings]);
 
   const [formData, setFormData] = useState(getInitialFormData);
   const [initialFormData, setInitialFormData] = useState(getInitialFormData);

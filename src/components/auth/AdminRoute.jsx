@@ -1,9 +1,8 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useUser } from '@/contexts/UserContext';
-import { isStaff } from '@/lib/userUtils';
 
 export default function AdminRoute({ children }) {
-  const { currentUser, isLoading } = useUser();
+  const { currentUser, isLoading, isAdmin } = useUser();
   const location = useLocation();
 
   if (isLoading) {
@@ -14,8 +13,8 @@ export default function AdminRoute({ children }) {
     return <Navigate to="/" state={{ from: location }} replace />;
   }
 
-  // Clean role check using utility function
-  if (!isStaff(currentUser)) {
+  // Use centralized admin check from UserContext
+  if (!isAdmin()) {
     return <Navigate to="/dashboard" replace />;
   }
 

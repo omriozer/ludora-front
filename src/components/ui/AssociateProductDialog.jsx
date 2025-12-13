@@ -34,7 +34,7 @@ export default function AssociateProductDialog({
   loading = false,
   errors = {}
 }) {
-  const { currentUser, settings } = useUser();
+  const { currentUser, settings, isAdmin } = useUser();
 
   // Step 1: Product type selection, Step 2: Product selection
   const [step, setStep] = useState(1);
@@ -195,8 +195,7 @@ export default function AssociateProductDialog({
     }
 
     // Apply publish status filter (admin only)
-    if (filters.publishStatus && filters.publishStatus !== 'all' &&
-        currentUser && (currentUser.role === 'admin' || currentUser.role === 'sysadmin')) {
+    if (filters.publishStatus && filters.publishStatus !== 'all' && isAdmin()) {
       if (filters.publishStatus === 'published') {
         filtered = filtered.filter(product => product.is_published);
       } else if (filters.publishStatus === 'unpublished') {
@@ -521,7 +520,7 @@ export default function AssociateProductDialog({
         );
 
       case 'publishStatus':
-        if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'sysadmin')) {
+        if (!isAdmin()) {
           return null;
         }
         return (

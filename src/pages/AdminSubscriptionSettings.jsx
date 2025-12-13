@@ -37,11 +37,10 @@ import {
 
 export default function SubscriptionSettings() {
   // Use global state from UserContext instead of direct API calls
-  const { currentUser, settings, isLoading: userLoading, refreshSettings } = useUser();
+  const { currentUser, settings, isLoading: userLoading, refreshSettings, isAdmin } = useUser();
 
   const [subscriptionPlans, setSubscriptionPlans] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [message, setMessage] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [editingPlan, setEditingPlan] = useState(null);
@@ -105,9 +104,7 @@ export default function SubscriptionSettings() {
     setIsLoading(true);
     try {
       // User and settings come from global state, no API calls needed
-      setIsAdmin(currentUser?.role === 'admin');
-
-      if (currentUser?.role === 'admin') {
+      if (isAdmin()) {
         const plans = await SubscriptionPlan.list('sort_order');
         setSubscriptionPlans(plans);
       }
@@ -455,7 +452,7 @@ export default function SubscriptionSettings() {
     );
   }
 
-  if (!isAdmin) {
+  if (!isAdmin()) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 p-4">
         <div className="max-w-4xl mx-auto">

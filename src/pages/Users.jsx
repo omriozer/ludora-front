@@ -98,12 +98,11 @@ function ConfirmationDialog({
 
 export default function UsersPage() {
 	const navigate = useNavigate();
-	const { currentUser, isLoading: userLoading } = useUser();
+	const { currentUser, isLoading: userLoading, isAdmin } = useUser();
 
 	const [users, setUsers] = useState([]);
 	const [subscriptionPlans, setSubscriptionPlans] = useState([]);
 	const [isLoading, setLoading] = useState(true);
-	const [isAdmin, setIsAdmin] = useState(false);
 	const [message, setMessage] = useState(null);
 	const [searchTerm, setSearchTerm] = useState('');
 	const [filteredUsers, setFilteredUsers] = useState([]);
@@ -126,9 +125,7 @@ export default function UsersPage() {
 		setLoading(true);
 		try {
 			// User data is now available from global UserContext
-			setIsAdmin(currentUser.role === 'admin' || currentUser.role === 'sysadmin');
-
-			if (currentUser.role === 'admin' || currentUser.role === 'sysadmin') {
+			if (isAdmin()) {
 				const [allUsersData, plansData] = await Promise.all([
 					User.filter({}, { order: [['created_at', 'DESC']] }),
 					SubscriptionPlan.filter({}, { order: [['sort_order', 'ASC']] }),
@@ -515,7 +512,7 @@ export default function UsersPage() {
 		);
 	}
 
-	if (!isAdmin) {
+	if (!isAdmin()) {
 		return (
 			<div className='p-4 bg-gray-50 min-h-screen'>
 				<div className='max-w-4xl mx-auto'>

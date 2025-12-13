@@ -26,6 +26,7 @@ import InviteStudentsModal from "../components/classrooms/InviteStudentsModal";
 import LudoraLoadingSpinner from "@/components/ui/LudoraLoadingSpinner";
 import SEOHead from '@/components/SEOHead';
 import { ludlog, luderror } from '@/lib/ludlog';
+import { haveAdminAccess } from "@/utils/adminCheck";
 
 export default function ClassroomManagement() {
   const { classroomId } = useParams();
@@ -49,7 +50,7 @@ export default function ClassroomManagement() {
       setClassroom(classroomData);
 
       // Verify user has access to this classroom
-      if (currentUser?.role !== 'admin' && classroomData.teacher_id !== currentUser?.id) {
+      if (!haveAdminAccess(currentUser?.role, 'admin_access', settings) && classroomData.teacher_id !== currentUser?.id) {
         toast({
           title: "אין הרשאה",
           description: "אין לך הרשאה לנהל כיתה זו",
